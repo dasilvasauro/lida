@@ -172,6 +172,26 @@ export const TaskModal = ({ isOpen, onClose }: TaskModalProps) => {
                     {deadlineTime || 'Sem hora'}
                   </button>
                 </div>
+
+                {/* Exibição condicional dos seletores com Animação */}
+                <AnimatePresence>
+                  {showDatePicker && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                      <CustomDatePicker 
+                        selectedDate={deadlineDate} 
+                        onSelect={(date) => { setDeadlineDate(date); setShowDatePicker(false); }} 
+                      />
+                    </motion.div>
+                  )}
+                  {showTimePicker && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                      <CustomTimePicker 
+                        selectedTime={deadlineTime} 
+                        onSelect={(time) => { setDeadlineTime(time); }} 
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               )}
 
               {/* 2. Tarefa Sprint (Requer Início, Fim e Subtarefas) */}
