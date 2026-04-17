@@ -1,11 +1,20 @@
-import { useState } from 'react'
+import { useConfigStore } from './store/useConfigStore';
+import { ThemeWrapper } from './components/layout/ThemeWrapper';
+import { OnboardingFlow } from './features/onboarding/OnboardingFlow';
+import { TaskDashboard } from './features/tasks/TaskDashboard';
 
 function App() {
+  const isOnboarded = useConfigStore((state) => state.isOnboarded);
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-      <h1 className="text-3xl font-bold text-blue-500">Lida App Configurado!</h1>
-    </div>
-  )
+    <ThemeWrapper>
+      {!isOnboarded ? (
+        <OnboardingFlow />
+      ) : (
+        <TaskDashboard />
+      )}
+    </ThemeWrapper>
+  );
 }
 
-export default App
+export default App;
