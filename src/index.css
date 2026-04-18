@@ -1,2 +1,41 @@
 @import "tailwindcss";
 @custom-variant dark (&:is(.dark *));
+
+/* === Customização Global do Scrollbar === */
+
+/* Suporte para Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #e4e4e7 transparent; /* zinc-200 */
+}
+
+.dark * {
+    scrollbar-color: #27272a transparent; /* zinc-800 */
+}
+
+/* Suporte para Chrome, Edge e Safari */
+::-webkit-scrollbar {
+    width: 4px; /* Bem sutil na vertical */
+    height: 4px; /* Bem sutil na horizontal */
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #e4e4e7; /* zinc-200 para modo claro */
+    border-radius: 10px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    background-color: #27272a; /* zinc-800 para modo escuro */
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: #d4d4d8; /* Escurece um pouco no hover (zinc-300) */
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+    background-color: #3f3f46; /* Clareia um pouco no hover (zinc-700) */
+}

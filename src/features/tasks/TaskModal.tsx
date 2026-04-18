@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Zap, Target, Timer, Gift, Sparkles, CheckCircle2, Calendar, Clock, ListPlus } from 'lucide-react';
+import {
+  X, Zap, Target, Timer, Gift, CheckCircle2,
+  Calendar, Clock, Plus, RotateCcw, Info
+} from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
-import type { Priority, TaskType } from '../../types';
+import type { Priority, TaskType, Task } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { CustomDatePicker } from '../../components/ui/CustomDatePicker';
 import { CustomTimePicker } from '../../components/ui/CustomTimePicker';
@@ -12,50 +15,133 @@ import { ptBR } from 'date-fns/locale';
 interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
+  taskToEdit?: Task | null;
 }
 
-export const TaskModal = ({ isOpen, onClose }: TaskModalProps) => {
+export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
   const addTask = useTaskStore((state) => state.addTask);
+  const updateTask = useTaskStore((state) => state.updateTask);
 
+  const hasActiveSprint = useTaskStore((state) =>
+  state.tasks.some(t => t.type === 'sprint' && !t.isCompleted && t.id !== taskToEdit?.id)
+  );
+
+  // Estados do Formulário
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Priority>('P4');
   const [type, setType] = useState<TaskType>('normal');
-  
-  // Novos estados para Datas, Tempos e Sprints
+
+  // Estados de Tempo e Datas
   const [deadlineDate, setDeadlineDate] = useState<string>('');
   const [deadlineTime, setDeadlineTime] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [duration, setDuration] = useState<number>(30); // Para tarefas do tipo 'Tempo' (em minutos)
+  const [duration, setDuration] = useState<number>(30);
+
+  // Estados de Subtarefas
+  const [subtaskInput, setSubtaskInput] = useState('');
+  const [subtasks, setSubtasks] = useState<{ id: string; title: string; completed: boolean }[]>([]);
+
+  // Estados de Recorrência
+  const [recurrenceType, setRecurrenceType] = useState<'none' | 'weekly' | 'monthly' | 'yearly'>('none');
+  const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]);
+
+  // Controles de Seletores
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [activeDateField, setActiveDateField] = useState<'deadline' | 'start' | 'end' | null>(null);
+
+  // Regra: Sprints, Bônus e Desafios não podem ser recorrentes
+  const canBeRecurrent = !['sprint', 'daily_challenge', 'bonus'].includes(type);
+
+  // Efeito para carregar dados (Edição vs Criação)
+  useEffect(() => {
+    if (taskToEdit && isOpen) {
+      setTitle(taskToEdit.title);
+      setDescription(taskToEdit.description || '');
+      setPriority(taskToEdit.priority);
+      setType(taskToEdit.type);
+      setDeadlineDate(taskToEdit.deadlineDate || '');
+      setDeadlineTime(taskToEdit.deadlineTime || '');
+
+      if (taskToEdit.type === 'sprint') {
+        setEndDate(taskToEdit.deadlineDate || '');
+        setStartDate(format(new Date(taskToEdit.createdAt), 'yyyy-MM-dd'));
+      }
+
+      setSubtasks(taskToEdit.subtasks || []);
+      setDuration(taskToEdit.duration || 30);
+      setRecurrenceType(taskToEdit.recurrence?.type || 'none');
+      setSelectedWeekdays(taskToEdit.recurrence?.weekdays || []);
+    } else if (isOpen) {
+      setTitle('');
+      setDescription('');
+      setPriority('P4');
+      setType('normal');
+      setDeadlineDate('');
+      setDeadlineTime('');
+      setStartDate('');
+      setEndDate('');
+      setSubtasks([]);
+      setDuration(30);
+      setRecurrenceType('none');
+      setSelectedWeekdays([]);
+      setShowDatePicker(false);
+      setShowTimePicker(false);
+    }
+  }, [taskToEdit, isOpen]);
+
+  const addSubtask = () => {
+    if (!subtaskInput.trim()) return;
+    setSubtasks([...subtasks, { id: uuidv4(), title: subtaskInput, completed: false }]);
+    setSubtaskInput('');
+  };
+
+  const removeSubtask = (id: string) => {
+    setSubtasks(subtasks.filter(st => st.id !== id));
+  };
+
+  const toggleWeekday = (day: number) => {
+    setSelectedWeekdays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
+  };
 
   const handleSave = () => {
     if (!title.trim()) return;
+    if (type === 'sprint' && subtasks.length === 0) return;
 
-    addTask({
-      id: uuidv4(),
+    // Se houver data limite, usamos ela para extrair o dia/mês da repetição. Senão, usa hoje.
+    const dateObj = deadlineDate ? new Date(deadlineDate + 'T12:00:00') : new Date();
+
+    const taskData: Partial<Task> = {
       title,
       description,
       type,
       priority,
-      createdAt: Date.now(),
-      deadlineDate: deadlineDate || undefined,
+      deadlineDate: type === 'sprint' ? endDate : (deadlineDate || undefined),
       deadlineTime: deadlineTime || undefined,
-      isCompleted: false,
-      folderId: 'default',
-    });
+      duration: type === 'time' ? duration : undefined,
+      subtasks: (type === 'sprint' || subtasks.length > 0) ? subtasks : undefined,
+      recurrence: (canBeRecurrent && recurrenceType !== 'none') ? {
+        type: recurrenceType,
+        weekdays: recurrenceType === 'weekly' ? selectedWeekdays : undefined,
+        dayOfMonth: (recurrenceType === 'monthly' || recurrenceType === 'yearly') ? dateObj.getDate() : undefined,
+        monthOfYear: recurrenceType === 'yearly' ? dateObj.getMonth() : undefined,
+      } : undefined,
+    };
 
-    // Resetar estados
-    setTitle('');
-    setDescription('');
-    setPriority('P4');
-    setType('normal');
-    setDeadlineDate('');
-    setDeadlineTime('');
-    setStartDate('');
-    setEndDate('');
+    if (taskToEdit) {
+      updateTask(taskToEdit.id, taskData);
+    } else {
+      addTask({
+        id: uuidv4(),
+              createdAt: Date.now(),
+              isCompleted: false,
+              folderId: 'default',
+              ...taskData,
+      } as Task);
+    }
+
     onClose();
   };
 
@@ -65,215 +151,376 @@ export const TaskModal = ({ isOpen, onClose }: TaskModalProps) => {
     { id: 'sprint', label: 'Sprint', icon: Target, color: 'text-purple-500' },
     { id: 'time', label: 'Tempo', icon: Timer, color: 'text-blue-500' },
     { id: 'bonus', label: 'Bônus', icon: Gift, color: 'text-emerald-500' },
-    { id: 'surprise', label: 'Surpresa', icon: Sparkles, color: 'text-rose-500' },
   ];
 
   return (
     <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
-          />
+    {isOpen && (
+      <>
+      <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+      />
 
-          <motion.div
-            initial={{ opacity: 0, y: '100%' }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-zinc-50 dark:bg-zinc-900 rounded-t-3xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[90vh]"
+      <motion.div
+      initial={{ opacity: 0, y: '100%' }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: '100%' }}
+      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-zinc-50 dark:bg-zinc-900 rounded-t-3xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[90vh]"
+      >
+      <div className="flex justify-between items-center p-6 border-b border-zinc-200 dark:border-zinc-800">
+      <h3 className="text-xl font-bold">{taskToEdit ? 'Editar Tarefa' : 'Nova Tarefa'}</h3>
+      <button
+      onClick={onClose}
+      className="p-2 rounded-full bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
+      >
+      <X size={20} />
+      </button>
+      </div>
+
+      <div className="p-6 overflow-y-auto flex-1 space-y-8 scrollbar-hide">
+
+      {/* Título e Descrição */}
+      <div className="space-y-2">
+      <input
+      type="text"
+      placeholder="O que precisa ser feito?"
+      value={title}
+      onChange={(e) => setTitle(e.target.value)}
+      className="w-full text-2xl font-bold bg-transparent border-none outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
+      autoFocus
+      />
+      <textarea
+      placeholder="Detalhes (Opcional)..."
+      value={description}
+      onChange={(e) => setDescription(e.target.value)}
+      className="w-full resize-none bg-transparent border-none outline-none text-sm text-zinc-600 dark:text-zinc-400 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 h-12"
+      />
+      </div>
+
+      {/* Recorrência */}
+      {canBeRecurrent && (
+        <div className="space-y-4">
+        <span className="text-xs uppercase tracking-widest text-zinc-500 font-bold flex items-center gap-2">
+        <RotateCcw size={14} /> Repetir Tarefa
+        </span>
+        <div className="flex gap-2">
+        {['none', 'weekly', 'monthly', 'yearly'].map((r) => (
+          <button
+          key={r}
+          onClick={() => setRecurrenceType(r as any)}
+          className={`flex-1 py-2 rounded-lg text-[10px] font-bold border transition-all ${
+            recurrenceType === r
+            ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black border-transparent'
+            : 'border-zinc-200 dark:border-zinc-800 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+          }`}
           >
-            <div className="flex justify-between items-center p-6 border-b border-zinc-200 dark:border-zinc-800">
-              <h3 className="text-xl font-bold">Nova Tarefa</h3>
-              <button onClick={onClose} className="p-2 rounded-full bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors">
-                <X size={20} />
-              </button>
-            </div>
+          {r === 'none' ? 'Não' : r === 'weekly' ? 'Semanal' : r === 'monthly' ? 'Mensal' : 'Anual'}
+          </button>
+        ))}
+        </div>
 
-            <div className="p-6 overflow-y-auto flex-1 space-y-8 scrollbar-hide">
-              
-              {/* Nome e Descrição */}
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  placeholder="O que precisa ser feito?"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full text-2xl font-bold bg-transparent border-none outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-600"
-                  autoFocus
-                />
-                <textarea
-                  placeholder="Detalhes (Opcional)..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full resize-none bg-transparent border-none outline-none text-sm text-zinc-600 dark:text-zinc-400 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 h-12"
-                />
-              </div>
-
-              {/* Seletor de Tipo */}
-              <div>
-                <span className="text-xs uppercase tracking-widest text-zinc-500 mb-3 block font-bold">Tipo</span>
-                <div className="grid grid-cols-3 gap-2">
-                  {taskTypes.map((t) => {
-                    const Icon = t.icon;
-                    const isSelected = type === t.id;
-                    return (
-                      <button
-                        key={t.id}
-                        onClick={() => setType(t.id)}
-                        className={`flex flex-col items-center justify-center py-2 rounded-xl border transition-all ${
-                          isSelected 
-                            ? 'bg-zinc-200 border-zinc-400 dark:bg-zinc-800 dark:border-zinc-500 shadow-inner' 
-                            : 'bg-transparent border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
-                        }`}
-                      >
-                        <Icon size={20} className={isSelected ? t.color : 'text-zinc-400'} />
-                        <span className={`text-[10px] mt-1 ${isSelected ? 'font-bold' : ''}`}>{t.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Lógica Condicional Baseada no Tipo */}
-              
-              {/* 1. Tarefa Normal ou Bônus (Requer Data Limite e Hora) */}
-              {(type === 'normal' || type === 'bonus') && (
-                {/* Seletor de Data Limite */}
-                <div className="flex-1 space-y-3">
-                  <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold flex items-center gap-1">
-                    <Calendar size={14}/> Data Limite
-                  </span>
-                  <button 
-                    onClick={() => {setShowDatePicker(!showDatePicker); setShowTimePicker(false);}}
-                    className={`w-full p-3 rounded-lg border text-sm transition-all ${
-                      deadlineDate ? 'border-zinc-900 dark:border-zinc-100 font-bold' : 'border-zinc-200 dark:border-zinc-800 text-zinc-400'
-                    }`}
-                  >
-                    {deadlineDate ? format(new Date(deadlineDate + 'T12:00:00'), "dd 'de' MMM", { locale: ptBR }) : 'Selecionar'}
-                  </button>
-                </div>
-                
-                {/* Seletor de Hora */}
-                <div className={`flex-1 space-y-3 ${!deadlineDate ? 'opacity-30 pointer-events-none' : ''}`}>
-                  <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold flex items-center gap-1">
-                    <Clock size={14}/> Hora
-                  </span>
-                  <button 
-                    onClick={() => {setShowTimePicker(!showTimePicker); setShowDatePicker(false);}}
-                    className={`w-full p-3 rounded-lg border text-sm transition-all ${
-                      deadlineTime ? 'border-zinc-900 dark:border-zinc-100 font-bold' : 'border-zinc-200 dark:border-zinc-800 text-zinc-400'
-                    }`}
-                  >
-                    {deadlineTime || 'Sem hora'}
-                  </button>
-                </div>
-
-                {/* Exibição condicional dos seletores com Animação */}
-                <AnimatePresence>
-                  {showDatePicker && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                      <CustomDatePicker 
-                        selectedDate={deadlineDate} 
-                        onSelect={(date) => { setDeadlineDate(date); setShowDatePicker(false); }} 
-                      />
-                    </motion.div>
-                  )}
-                  {showTimePicker && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                      <CustomTimePicker 
-                        selectedTime={deadlineTime} 
-                        onSelect={(time) => { setDeadlineTime(time); }} 
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              )}
-
-              {/* 2. Tarefa Sprint (Requer Início, Fim e Subtarefas) */}
-              {type === 'sprint' && (
-                <div className="space-y-4">
-                  <div className="flex gap-4">
-                    <div className="flex-1 space-y-3">
-                      <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold flex items-center gap-1">Início</span>
-                      <div className="w-full p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 text-center text-sm text-zinc-500 cursor-pointer">Data Inicial</div>
-                    </div>
-                    <div className="flex-1 space-y-3">
-                      <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold flex items-center gap-1">Fim (Máx 31d)</span>
-                      <div className="w-full p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 text-center text-sm text-zinc-500 cursor-pointer">Data Final</div>
-                    </div>
-                  </div>
-                  <button className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
-                    <ListPlus size={18} /> Adicionar Subtarefa (Obrigatório)
-                  </button>
-                </div>
-              )}
-
-              {/* 3. Tarefa de Tempo (Slider de Duração) */}
-              {type === 'time' && (
-                <div className="space-y-3">
-                  <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold flex items-center gap-1">
-                    <Timer size={14}/> Duração do Foco: <span className="text-blue-500 ml-1">{duration} min</span>
-                  </span>
-                  <input 
-                    type="range" 
-                    min="5" 
-                    max="120" 
-                    step="5"
-                    value={duration}
-                    onChange={(e) => setDuration(Number(e.target.value))}
-                    className="w-full accent-blue-500"
-                  />
-                </div>
-              )}
-
-              {/* Desafio Diário e Surpresa (Mostra aviso) */}
-              {(type === 'daily_challenge' || type === 'surprise') && (
-                <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 p-4 rounded-xl text-sm flex items-center gap-3">
-                  <Zap size={24} className="shrink-0" />
-                  <p>Esta tarefa é válida <b>apenas para hoje</b>. O prazo expira à meia-noite.</p>
-                </div>
-              )}
-
-              {/* Seletor de Prioridade */}
-              <div>
-                <span className="text-xs uppercase tracking-widest text-zinc-500 mb-3 block font-bold">Prioridade</span>
-                <div className="flex gap-2">
-                  {(['P0', 'P1', 'P2', 'P3', 'P4'] as Priority[]).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setPriority(p)}
-                      className={`flex-1 py-2 rounded-lg border font-bold transition-all ${
-                        priority === p 
-                          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black border-transparent' 
-                          : 'bg-transparent border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-
-            {/* Rodapé e Botão de Salvar */}
-            <div className="p-6 bg-zinc-100 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800">
+        <AnimatePresence mode="popLayout">
+        {recurrenceType !== 'none' && (
+          <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          className="space-y-3 overflow-hidden"
+          >
+          {recurrenceType === 'weekly' && (
+            <div className="flex justify-between pt-2">
+            {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, i) => (
               <button
-                onClick={handleSave}
-                disabled={!title.trim() || (type === 'sprint' && (!startDate || !endDate))}
-                className="w-full py-4 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black font-bold text-lg disabled:opacity-50 transition-opacity"
+              key={i}
+              onClick={() => toggleWeekday(i)}
+              className={`w-8 h-8 rounded-full text-[10px] font-bold border transition-all ${
+                selectedWeekdays.includes(i)
+                ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black border-transparent'
+                : 'border-zinc-200 dark:border-zinc-800 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+              }`}
               >
-                Criar Tarefa
+              {day}
               </button>
+            ))}
             </div>
+          )}
+
+          {(recurrenceType === 'monthly' || recurrenceType === 'yearly') && (
+            <div className="bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 p-3 rounded-xl text-[11px] flex items-start gap-2 italic">
+            <Info size={14} className="mt-0.5 shrink-0" />
+            <p>A tarefa repetirá com base no dia definido em <b>"Data Limite"</b> abaixo.</p>
+            </div>
+          )}
           </motion.div>
-        </>
+        )}
+        </AnimatePresence>
+        </div>
       )}
+
+      {/* Seletor de Tipo */}
+      <div>
+      <span className="text-xs uppercase tracking-widest text-zinc-500 mb-3 block font-bold">Tipo</span>
+      <div className="grid grid-cols-3 gap-2">
+      {taskTypes.map((t) => {
+        const Icon = t.icon;
+        const isSelected = type === t.id;
+        const isDisabled = t.id === 'sprint' && hasActiveSprint;
+
+        return (
+          <button
+          key={t.id}
+          onClick={() => {
+            if (isDisabled) return;
+            setType(t.id);
+            setShowDatePicker(false);
+            setShowTimePicker(false);
+          }}
+          disabled={isDisabled}
+          className={`flex flex-col items-center justify-center py-2 rounded-xl border transition-all ${
+            isSelected
+            ? 'bg-zinc-200 border-zinc-400 dark:bg-zinc-800 dark:border-zinc-500 shadow-inner'
+            : isDisabled
+            ? 'opacity-30 cursor-not-allowed grayscale border-zinc-200 dark:border-zinc-800'
+            : 'bg-transparent border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+          }`}
+          >
+          <Icon size={20} className={isSelected ? t.color : 'text-zinc-400'} />
+          <span className={`text-[10px] mt-1 ${isSelected ? 'font-bold' : ''}`}>{t.label}</span>
+          </button>
+        );
+      })}
+      </div>
+      </div>
+
+      {/* 1. Tarefa Normal ou Bônus */}
+      {(type === 'normal' || type === 'bonus') && (
+        <div className="flex gap-4">
+        <div className="flex-1 space-y-3">
+        <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold flex items-center gap-1">
+        <Calendar size={14} /> Data Limite
+        </span>
+        <button
+        onClick={() => {
+          setActiveDateField('deadline');
+          setShowDatePicker(!showDatePicker);
+          setShowTimePicker(false);
+        }}
+        className={`w-full p-3 rounded-lg border text-sm transition-all ${
+          deadlineDate ? 'border-zinc-900 dark:border-zinc-100 font-bold' : 'border-zinc-200 dark:border-zinc-800 text-zinc-400'
+        }`}
+        >
+        {deadlineDate ? format(new Date(deadlineDate + 'T12:00:00'), "dd 'de' MMM", { locale: ptBR }) : 'Selecionar'}
+        </button>
+        </div>
+
+        <div className={`flex-1 space-y-3 ${!deadlineDate ? 'opacity-30 pointer-events-none' : ''}`}>
+        <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold flex items-center gap-1">
+        <Clock size={14} /> Hora
+        </span>
+        <button
+        onClick={() => {
+          setShowTimePicker(!showTimePicker);
+          setShowDatePicker(false);
+        }}
+        className={`w-full p-3 rounded-lg border text-sm transition-all ${
+          deadlineTime ? 'border-zinc-900 dark:border-zinc-100 font-bold' : 'border-zinc-200 dark:border-zinc-800 text-zinc-400'
+        }`}
+        >
+        {deadlineTime || 'Sem hora'}
+        </button>
+        </div>
+        </div>
+      )}
+
+      {/* 2. Tarefa Sprint */}
+      {type === 'sprint' && (
+        <div className="space-y-6">
+        <div className="flex gap-4">
+        <div className="flex-1 space-y-3">
+        <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold">
+        Início
+        </span>
+        <button
+        onClick={() => {
+          setActiveDateField('start');
+          setShowDatePicker(true);
+          setShowTimePicker(false);
+        }}
+        className={`w-full p-3 rounded-lg border text-sm transition-all ${
+          startDate ? 'border-zinc-900 dark:border-zinc-100 font-bold' : 'border-zinc-200 dark:border-zinc-800 text-zinc-400'
+        }`}
+        >
+        {startDate ? format(new Date(startDate + 'T12:00:00'), "dd 'de' MMM", { locale: ptBR }) : 'Data Inicial'}
+        </button>
+        </div>
+        <div className="flex-1 space-y-3">
+        <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold">
+        Fim
+        </span>
+        <button
+        onClick={() => {
+          setActiveDateField('end');
+          setShowDatePicker(true);
+          setShowTimePicker(false);
+        }}
+        className={`w-full p-3 rounded-lg border text-sm transition-all ${
+          endDate ? 'border-zinc-900 dark:border-zinc-100 font-bold' : 'border-zinc-200 dark:border-zinc-800 text-zinc-400'
+        }`}
+        >
+        {endDate ? format(new Date(endDate + 'T12:00:00'), "dd 'de' MMM", { locale: ptBR }) : 'Data Final'}
+        </button>
+        </div>
+        </div>
+
+        <div className="space-y-3">
+        <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold">
+        Subtarefas
+        </span>
+        <div className="flex gap-2">
+        <input
+        type="text"
+        value={subtaskInput}
+        onChange={(e) => setSubtaskInput(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSubtask())}
+        placeholder="Ex: Definir escopo"
+        className="flex-1 bg-zinc-100 dark:bg-zinc-800 p-3 rounded-lg text-sm outline-none"
+        />
+        <button
+        onClick={addSubtask}
+        className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-black p-3 rounded-lg"
+        >
+        <Plus size={20} />
+        </button>
+        </div>
+        <div className="space-y-2">
+        {subtasks.map((st) => (
+          <div key={st.id} className="flex items-center justify-between bg-zinc-100 dark:bg-zinc-800/50 p-2 pl-4 rounded-lg">
+          <span className="text-sm text-zinc-900 dark:text-zinc-100">{st.title}</span>
+          <button
+          onClick={() => removeSubtask(st.id)}
+          className="p-1 text-zinc-400 hover:text-red-500 transition-colors"
+          >
+          <X size={16} />
+          </button>
+          </div>
+        ))}
+        </div>
+        </div>
+        </div>
+      )}
+
+      {/* 3. Tarefa de Tempo */}
+      {type === 'time' && (
+        <div className="space-y-3">
+        <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold flex items-center gap-1">
+        <Timer size={14} /> Duração: <span className="text-blue-500 ml-1">{duration} min</span>
+        </span>
+        <input
+        type="range"
+        min="5"
+        max="120"
+        step="5"
+        value={duration}
+        onChange={(e) => setDuration(Number(e.target.value))}
+        className="w-full accent-blue-500"
+        />
+        </div>
+      )}
+
+      {/* Desafio Diário */}
+      {type === 'daily_challenge' && (
+        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 p-4 rounded-xl text-xs flex items-center gap-3">
+        <Zap size={20} className="shrink-0" />
+        <p>Este desafio é válido apenas para hoje e expira à meia-noite.</p>
+        </div>
+      )}
+
+      {/* Renderização dos Seletores de Data/Hora */}
+      <AnimatePresence>
+      {showDatePicker && (
+        <motion.div
+        initial={{ height: 0, opacity: 0 }}
+        animate={{ height: 'auto', opacity: 1 }}
+        exit={{ height: 0, opacity: 0 }}
+        className="overflow-hidden"
+        >
+        <div className="pt-4">
+        <CustomDatePicker
+        selectedDate={
+          activeDateField === 'start' ? startDate :
+          activeDateField === 'end' ? endDate :
+          deadlineDate
+        }
+        onSelect={(date) => {
+          if (activeDateField === 'start') setStartDate(date);
+          else if (activeDateField === 'end') setEndDate(date);
+          else setDeadlineDate(date);
+          setShowDatePicker(false);
+        }}
+        />
+        </div>
+        </motion.div>
+      )}
+      {showTimePicker && (
+        <motion.div
+        initial={{ height: 0, opacity: 0 }}
+        animate={{ height: 'auto', opacity: 1 }}
+        exit={{ height: 0, opacity: 0 }}
+        className="overflow-hidden"
+        >
+        <div className="pt-4">
+        <CustomTimePicker
+        selectedTime={deadlineTime}
+        onSelect={(time) => setDeadlineTime(time)}
+        />
+        </div>
+        </motion.div>
+      )}
+      </AnimatePresence>
+
+      {/* Seletor de Prioridade */}
+      <div>
+      <span className="text-xs uppercase tracking-widest text-zinc-500 mb-3 block font-bold">
+      Prioridade
+      </span>
+      <div className="flex gap-2">
+      {(['P0', 'P1', 'P2', 'P3', 'P4'] as Priority[]).map((p) => (
+        <button
+        key={p}
+        onClick={() => setPriority(p)}
+        className={`flex-1 py-2 rounded-lg border font-bold transition-all ${
+          priority === p
+          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black border-transparent'
+          : 'bg-transparent border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+        }`}
+        >
+        {p}
+        </button>
+      ))}
+      </div>
+      </div>
+
+      </div>
+
+      {/* Rodapé e Botão de Salvar */}
+      <div className="p-6 bg-zinc-100 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800">
+      <button
+      onClick={handleSave}
+      disabled={!title.trim() || (type === 'sprint' && (!startDate || !endDate || subtasks.length === 0))}
+      className="w-full py-4 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black font-bold text-lg disabled:opacity-50 transition-opacity hover:opacity-90"
+      >
+      {taskToEdit ? 'Salvar Alterações' : 'Criar Tarefa'}
+      </button>
+      </div>
+
+      </motion.div>
+      </>
+    )}
     </AnimatePresence>
   );
 };

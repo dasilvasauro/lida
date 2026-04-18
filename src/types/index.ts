@@ -20,6 +20,13 @@ export interface Task {
   createdAt: number; // Timestamp
   deadlineDate?: string; // Formato YYYY-MM-DD
   deadlineTime?: string; // Formato HH:MM
+  duration?: number;
+  recurrence?: {
+    type: 'none' | 'weekly' | 'monthly' | 'yearly';
+    weekdays?: number[]; // 0-6 (Dom-Sab)
+    dayOfMonth?: number;
+    monthOfYear?: number;
+  };
   isCompleted: boolean;
   completedAt?: number;
   folderId: string; // 'default' para a pasta inicial
