@@ -512,19 +512,26 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
       Prioridade
       </span>
       <div className="flex gap-2">
-      {(['P0', 'P1', 'P2', 'P3', 'P4'] as Priority[]).map((p) => (
+      {(['P0', 'P1', 'P2', 'P3', 'P4'] as Priority[]).map((p) => {
+        const isSelected = priority === p;
+        let colorClass = '';
+
+        if (p === 'P0') colorClass = isSelected ? 'bg-red-500 text-white border-red-500' : 'text-red-500 border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/20';
+        else if (p === 'P1') colorClass = isSelected ? 'bg-orange-500 text-white border-orange-500' : 'text-orange-500 border-orange-200 dark:border-orange-900/50 hover:bg-orange-50 dark:hover:bg-orange-900/20';
+        else if (p === 'P2') colorClass = isSelected ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black border-transparent' : 'text-zinc-500 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800';
+        else if (p === 'P3') colorClass = isSelected ? 'bg-blue-500 text-white border-blue-500' : 'text-blue-500 border-blue-200 dark:border-blue-900/50 hover:bg-blue-50 dark:hover:bg-blue-900/20';
+        else if (p === 'P4') colorClass = isSelected ? 'bg-purple-500 text-white border-purple-500' : 'text-purple-500 border-purple-200 dark:border-purple-900/50 hover:bg-purple-50 dark:hover:bg-purple-900/20';
+
+      return (
         <button
         key={p}
         onClick={() => setPriority(p)}
-        className={`flex-1 py-2 rounded-lg border font-bold transition-all ${
-          priority === p
-          ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black border-transparent'
-          : 'bg-transparent border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-        }`}
+        className={`flex-1 py-2 rounded-lg border font-bold transition-all ${colorClass}`}
         >
         {p}
         </button>
-      ))}
+      )
+      })}
       </div>
       </div>
 

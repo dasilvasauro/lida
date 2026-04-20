@@ -1,122 +1,137 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useConfigStore } from "../../store/useConfigStore";
-import { LogIn, ArrowRight, Shield, Target, Zap, Clock } from "lucide-react";
+import { LogIn, ArrowRight, Shield, Target, Zap, Clock, ChevronRight } from "lucide-react";
 
 export const OnboardingFlow = () => {
   const [step, setStep] = useState(1);
   const { setUserName, setUserClass, setTheme, setFont, completeOnboarding } = useConfigStore();
 
-  // 1. Boas-vindas
-  if (step === 1) return (
-    <div className="flex flex-col items-center justify-center h-screen p-6 text-center animate-in fade-in duration-700">
-      <h1 className="text-5xl font-bold mb-4">Lida</h1>
-      <p className="text-zinc-400 max-w-sm mb-8">
-        Sua vida organizada com propósito. Gerencie tarefas, hábitos e objetivos em um só lugar.
+  const handleNext = () => setStep(step + 1);
+
+  const fadeVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -20 }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 p-6 transition-colors duration-500">
+    <AnimatePresence mode="wait">
+
+    {/* 1. Boas-vindas */}
+    {step === 1 && (
+      <motion.div key="step1" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="flex flex-col items-center text-center max-w-md">
+      <h1 className="text-5xl font-black mb-4 tracking-tight">Lida</h1>
+      <p className="text-zinc-500 dark:text-zinc-400 mb-8 leading-relaxed">
+      Sua vida organizada com propósito. Gerencie tarefas, hábitos e objetivos em um só lugar e com foco absoluto.
       </p>
-      <button
-        onClick={() => setStep(2)}
-        className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full font-bold hover:scale-105 transition-transform"
-      >
-        Entrar com Google <LogIn size={20} />
+      <button onClick={handleNext} className="flex items-center gap-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black px-8 py-4 rounded-full font-bold hover:scale-105 transition-transform shadow-xl">
+      Entrar com Google <LogIn size={20} />
       </button>
-    </div>
-  );
+      </motion.div>
+    )}
 
-  // 2. Explicação e Nome
-  if (step === 2) return (
-    <div className="flex flex-col items-center justify-center h-screen p-6 animate-in slide-in-from-right duration-500">
-      <h2 className="text-2xl mb-6 italic">Como devemos te chamar?</h2>
+    {/* 2. Nome */}
+    {step === 2 && (
+      <motion.div key="step2" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="flex flex-col items-center w-full max-w-md">
+      <h2 className="text-2xl font-light tracking-tight mb-8">Como devemos te chamar?</h2>
       <input
-        type="text"
-        placeholder="Seu nome ou apelido"
-        className="bg-transparent border-b-2 border-zinc-700 p-2 text-2xl outline-none focus:border-white transition-colors text-center"
-        onChange={(e) => setUserName(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && setStep(3)}
+      type="text"
+      placeholder="Seu nome ou apelido"
+      className="w-full bg-transparent border-b-2 border-zinc-200 dark:border-zinc-800 p-4 text-3xl font-bold outline-none focus:border-zinc-900 dark:focus:border-zinc-100 transition-colors text-center placeholder:text-zinc-300 dark:placeholder:text-zinc-700"
+      onChange={(e) => setUserName(e.target.value)}
+      onKeyDown={(e) => e.key === 'Enter' && handleNext()}
+      autoFocus
       />
-      <button onClick={() => setStep(3)} className="mt-8 text-zinc-500 hover:text-white flex items-center gap-2">
-        Continuar <ArrowRight size={18} />
+      <button onClick={handleNext} className="mt-12 text-zinc-400 hover:text-zinc-900 dark:hover:text-white flex items-center gap-2 font-bold transition-colors">
+      Continuar <ArrowRight size={18} />
       </button>
+      </motion.div>
+    )}
+
+    {/* 3. Preferências Visuais */}
+    {step === 3 && (
+      <motion.div key="step3" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="w-full max-w-md space-y-8">
+      <div className="text-center">
+      <h2 className="text-3xl font-black tracking-tight mb-2">Sua Estética</h2>
+      <p className="text-zinc-500 dark:text-zinc-400">Configure seu ambiente de trabalho.</p>
+      </div>
+
+      <div className="space-y-6">
+      <div className="space-y-3">
+      <span className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Tema</span>
+      <div className="flex gap-3">
+      <button onClick={() => setTheme('light')} className="flex-1 py-4 border border-zinc-200 dark:border-zinc-800 rounded-2xl font-bold hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors focus:ring-2 ring-zinc-900 dark:ring-zinc-100">Claro</button>
+      <button onClick={() => setTheme('dark-amoled')} className="flex-1 py-4 border border-zinc-200 dark:border-zinc-800 rounded-2xl font-bold hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors focus:ring-2 ring-zinc-900 dark:ring-zinc-100">AMOLED</button>
+      </div>
+      </div>
+
+      <div className="space-y-3">
+      <span className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Tipografia</span>
+      <button onClick={() => setFont('sans')} className="w-full text-left p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors focus:ring-2 ring-zinc-900 dark:ring-zinc-100 font-sans text-lg">Moderna (Sem Serifa)</button>
+      <button onClick={() => setFont('serif')} className="w-full text-left p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors focus:ring-2 ring-zinc-900 dark:ring-zinc-100 font-serif text-lg">Clássica (Com Serifa)</button>
+      <button onClick={() => setFont('special')} className="w-full text-left p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors focus:ring-2 ring-zinc-900 dark:ring-zinc-100 font-mono text-lg">Especial (VT323)</button>
+      </div>
+      </div>
+
+      <button onClick={handleNext} className="w-full mt-4 flex items-center justify-center gap-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black py-4 rounded-xl font-bold transition-all hover:opacity-90">
+      Próximo <ChevronRight size={20} />
+      </button>
+      </motion.div>
+    )}
+
+    {/* 4. Modus Operandi (Dark e Elegante) */}
+    {step === 4 && (
+      <motion.div key="step4" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="w-full max-w-2xl space-y-8">
+      <div className="text-center mb-8">
+      <h2 className="text-3xl font-black tracking-tight mb-2">Modus Operandi</h2>
+      <p className="text-zinc-500 dark:text-zinc-400">Escolha a filosofia da sua rotina.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <ModusCard
+      title="Multitarefa"
+      desc="Foco em volume. Você ganha bônus por quantidade de tarefas finalizadas."
+      icon={<Zap size={24} />}
+      onClick={() => { setUserClass('multitask'); completeOnboarding(); }}
+      />
+      <ModusCard
+      title="Minimalista"
+      desc="Menos é mais. Você ganha bônus por focar no que é puramente essencial."
+      icon={<Shield size={24} />}
+      onClick={() => { setUserClass('minimalist'); completeOnboarding(); }}
+      />
+      <ModusCard
+      title="Pontual"
+      desc="A precisão é o seu lema. Bônus gigantesco por respeitar horários."
+      icon={<Clock size={24} />}
+      onClick={() => { setUserClass('punctual'); completeOnboarding(); }}
+      />
+      <ModusCard
+      title="Ambicioso"
+      desc="Foco no longo prazo. Seu multiplicador aumenta ao finalizar Sprints."
+      icon={<Target size={24} />}
+      onClick={() => { setUserClass('ambitious'); completeOnboarding(); }}
+      />
+      </div>
+      </motion.div>
+    )}
+
+    </AnimatePresence>
     </div>
   );
-
-  // 3. Modus Operandi (Cards Imersivos)
-  if (step === 3) return (
-    <div className="grid grid-cols-1 md:grid-cols-2 h-screen overflow-hidden">
-        <ModusCard
-            title="Multitarefa"
-            desc="Foco em volume. Bônus por quantidade."
-            icon={<Zap size={40}/>}
-            color="bg-amber-600"
-            onClick={() => { setUserClass('multitask'); setStep(4); }}
-        />
-        <ModusCard
-            title="Minimalista"
-            desc="Menos é mais. Bônus por essencialismo."
-            icon={<Shield size={40}/>}
-            color="bg-emerald-700"
-            onClick={() => { setUserClass('minimalist'); setStep(4); }}
-        />
-        <ModusCard
-            title="Pontual"
-            desc="Precisão é tudo. Bônus por prazos."
-            icon={<Clock size={40}/>}
-            color="bg-blue-700"
-            onClick={() => { setUserClass('punctual'); setStep(4); }}
-        />
-        <ModusCard
-            title="Ambicioso"
-            desc="Grandes projetos. Bônus por Sprints."
-            icon={<Target size={40}/>}
-            color="bg-purple-800"
-            onClick={() => { setUserClass('ambitious'); setStep(4); }}
-        />
-    </div>
-  );
-
-  // 4. Preferências Visuais
-  if (step === 4) return (
-    <div className="flex flex-col items-center justify-center h-screen p-6">
-        <h2 className="text-3xl font-bold mb-12 text-center">Últimos detalhes...</h2>
-
-        <div className="space-y-8 w-full max-w-xs">
-            <div className="flex flex-col gap-3">
-                <span className="text-sm uppercase tracking-widest text-zinc-500">Escolha seu Tema</span>
-                <div className="flex gap-2">
-                    <button onClick={() => setTheme('light')} className="flex-1 border border-zinc-700 p-2 hover:bg-zinc-200 hover:text-black">Claro</button>
-                    <button onClick={() => setTheme('dark-amoled')} className="flex-1 border border-zinc-700 p-2 hover:bg-white hover:text-black">AMOLED</button>
-                </div>
-            </div>
-
-            <div className="flex flex-col gap-3">
-                <span className="text-sm uppercase tracking-widest text-zinc-500">Escolha uma Fonte</span>
-                <button onClick={() => setFont('sans')} className="text-left p-2 border border-zinc-700 font-['Barlow_Condensed'] text-xl">Sem Serifa (Barlow Condensed)</button>
-                <button onClick={() => setFont('serif')} className="text-left p-2 border border-zinc-700 font-['EB_Garamond'] text-lg">Com Serifa (EB Garamond)</button>
-                <button onClick={() => setFont('special')} className="text-left p-2 border border-zinc-700 font-['VT323'] text-xl">Especial (VT323)</button>
-            </div>
-        </div>
-
-        <button
-            onClick={completeOnboarding}
-            className="mt-12 bg-white text-black px-12 py-3 rounded-full font-black animate-pulse"
-        >
-            TUDO CERTO
-        </button>
-    </div>
-  );
-
-  return null;
 };
 
-const ModusCard = ({ title, desc, icon, color, onClick }: any) => (
-    <div
-        onClick={onClick}
-        className={`${color} flex flex-col items-center justify-center p-8 cursor-pointer hover:opacity-90 transition-all group relative overflow-hidden`}
-    >
-        <div className="z-10 flex flex-col items-center">
-            {icon}
-            <h3 className="text-3xl font-black mt-4 uppercase italic tracking-tighter">{title}</h3>
-            <p className="text-white/70 text-center mt-2 max-w-[200px]">{desc}</p>
-        </div>
-        <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-20 transition-opacity" />
-    </div>
-)
+const ModusCard = ({ title, desc, icon, onClick }: any) => (
+  <button
+  onClick={onClick}
+  className="flex flex-col items-start text-left p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 hover:border-zinc-400 dark:hover:border-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-all group"
+  >
+  <div className="p-3 rounded-2xl bg-zinc-200 dark:bg-black text-zinc-900 dark:text-zinc-100 mb-4 group-hover:scale-110 transition-transform">
+  {icon}
+  </div>
+  <h3 className="text-xl font-bold uppercase tracking-wide mb-2">{title}</h3>
+  <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">{desc}</p>
+  </button>
+);

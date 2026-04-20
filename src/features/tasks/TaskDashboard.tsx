@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, AlertTriangle,
-  Frown, CloudRain, Meh, Smile, Sparkles
+  Frown, CloudRain, Meh, Smile, Sparkles, Trash2
 } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
 import { TaskModal } from './TaskModal';
@@ -12,7 +12,7 @@ import type { Task, Mood } from '../../types';
 
 export const TaskDashboard = () => {
   const {
-    tasks, toggleTaskCompletion, deleteTask,
+    tasks, toggleTaskCompletion, deleteTask, clearCompletedTasks,
     selectedFilter, setFilter,
     dailyMood, setDailyMood
   } = useTaskStore();
@@ -77,6 +77,9 @@ export const TaskDashboard = () => {
     } else if (confirmDialog.type === 'delete') {
       deleteTask(confirmDialog.taskId);
       showToast('Tarefa excluída com sucesso.');
+    } else if (confirmDialog.type === 'clear_completed') {
+      clearCompletedTasks();
+      showToast('Tarefas limpas com sucesso.');
     }
     setConfirmDialog(null);
   };
@@ -87,7 +90,14 @@ export const TaskDashboard = () => {
       return !task.deadlineDate || task.deadlineDate === new Date().toISOString().split('T')[0];
     }
     return true;
+  }).sort((a, b) => {
+    // Se ambas têm o mesmo status, ordena pela mais recente
+    if (a.isCompleted === b.isCompleted) return b.createdAt - a.createdAt;
+    // Se não, joga a concluída (true) para baixo
+    return a.isCompleted ? 1 : -1;
   });
+
+  const hasCompletedTasks = filteredTasks.some(t => t.isCompleted);
 
   // Configuração dos Moods com Lucide Icons
   const moods: { value: Mood; icon: any; label: string }[] = [
@@ -115,9 +125,9 @@ export const TaskDashboard = () => {
     {/* Cabeçalho: Título (Esq) + Controles (Dir) */}
     <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-zinc-100 dark:border-zinc-900">
     <div>
-    <h1 className="text-3xl font-black tracking-tight">Foco</h1>
+    <h1 className="text-3xl font-black tracking-tight">Suas tarefas</h1>
     <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium mt-1">
-    Sua mesa de trabalho
+    Como você está, e o que vamos realizar hoje?
     </p>
     </div>
 
@@ -187,6 +197,17 @@ export const TaskDashboard = () => {
       ))
     )}
     </AnimatePresence>
+    {/* Botão de limpar tarefas concluídas */}
+    {hasCompletedTasks && (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center mt-8">
+      <button
+      onClick={() => setConfirmDialog({ type: 'clear_completed', taskId: 'all', title: 'Limpar Concluídas?', subtitle: 'Todas as tarefas finalizadas serão removidas permanentemente.' })}
+      className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all"
+      >
+      <Trash2 size={14} /> Limpar tarefas concluídas
+      </button>
+      </motion.div>
+    )}
     </main>
 
     </div>

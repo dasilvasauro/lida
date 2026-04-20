@@ -87,11 +87,19 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) =>
     const Icon = icons[task.type as keyof typeof icons] || CheckCircle2;
 
     const priorityStyles = {
-        P0: 'border-red-500/50 dark:border-red-500/30 bg-red-50/50 dark:bg-red-950/20',
-        P1: 'border-orange-500/50 dark:border-orange-500/30',
+        P0: 'border-red-500/50 dark:border-red-500/40 bg-red-500/5 dark:bg-red-950/20',
+        P1: 'border-orange-500/50 dark:border-orange-500/40',
         P2: 'border-zinc-300 dark:border-zinc-700',
-        P3: 'border-zinc-200 dark:border-zinc-800',
-        P4: 'border-zinc-100 dark:border-zinc-800/50 opacity-80',
+        P3: 'border-blue-500/50 dark:border-blue-500/40',
+        P4: 'border-purple-500/50 dark:border-purple-500/40',
+    };
+
+    const priorityBadgeStyles = {
+        P0: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-900/50',
+        P1: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-900/50',
+        P2: 'bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
+        P3: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50',
+        P4: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50',
     };
 
     const hasSubtasks = task.subtasks && task.subtasks.length > 0;
@@ -190,7 +198,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) =>
 
         {/* Ações da Direita (Prioridade e Expandir) */}
         <div className="flex flex-col items-end gap-2">
-        <span className="px-2 py-0.5 rounded-md bg-zinc-200 dark:bg-zinc-800 text-[10px] font-black">
+        <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${priorityBadgeStyles[task.priority]}`}>
         {task.priority}
         </span>
 
@@ -305,7 +313,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) =>
 
             {/* Botões de Ação Inferiores (Editar e Excluir) */}
             <div className="flex justify-end pt-2 gap-2">
-            {onEdit && (
+            {onEdit && !task.isCompleted && (
                 <button
                 onClick={(e) => {
                     e.stopPropagation();
