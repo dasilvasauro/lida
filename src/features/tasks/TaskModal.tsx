@@ -171,11 +171,8 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
       />
 
       <motion.div
-      initial={{ opacity: 0, y: '100%' }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: '100%' }}
-      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-zinc-50 dark:bg-zinc-900 rounded-t-3xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[90vh]"
+      layoutId={taskToEdit ? undefined : "fab-modal"} // Anima a partir do FAB só se for Nova Tarefa
+      className="fixed bottom-0 left-0 right-0 md:bottom-6 max-w-md mx-auto bg-zinc-50 dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[90vh]"
       >
 
       {/* Cabeçalho */}

@@ -8,6 +8,8 @@ interface TaskState {
   selectedFilter: 'today' | 'week' | 'month' | 'all';
   activeFocusSession: { taskId: string; startTime: number; duration: number } | null;
   isFocusModeOpen: boolean; // <-- Novo estado
+  isGlobalModalOpen: boolean;
+  setGlobalModalOpen: (isOpen: boolean) => void;
 
   addTask: (task: Task) => void;
   toggleTaskCompletion: (taskId: string) => void;
@@ -32,6 +34,7 @@ export const useTaskStore = create<TaskState>()(
       selectedFilter: 'today',
       activeFocusSession: null,
       isFocusModeOpen: false,
+      isGlobalModalOpen: false,
 
       addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
 
@@ -64,6 +67,10 @@ export const useTaskStore = create<TaskState>()(
                 : t
                 )
               })),
+
+              isGlobalModalOpen: false,
+
+              setGlobalModalOpen: (isOpen) => set({ isGlobalModalOpen: isOpen }),
 
               startFocus: (taskId, durationMinutes) => set((state) => {
                 // Se já tem um timer rodando para essa tarefa, não reinicia, apenas abre a tela

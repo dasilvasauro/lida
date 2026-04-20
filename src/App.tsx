@@ -1,12 +1,18 @@
+import { useState } from 'react';
 import { useConfigStore } from './store/useConfigStore';
+import { useTaskStore } from './store/useTaskStore';
 import { ThemeWrapper } from './components/layout/ThemeWrapper';
 import { OnboardingFlow } from './features/onboarding/OnboardingFlow';
 import { TaskDashboard } from './features/tasks/TaskDashboard';
 import { FocusMode } from './features/tasks/FocusMode';
+import { Navbar, type Tab } from './components/layout/Navbar';
 import { AnimatePresence, motion } from 'framer-motion';
 
 function App() {
   const isOnboarded = useConfigStore((state) => state.isOnboarded);
+  const [currentTab, setCurrentTab] = useState<Tab>('tasks');
+  const isGlobalModalOpen = useTaskStore((state) => state.isGlobalModalOpen);
+  const isFocusModeOpen = useTaskStore((state) => state.isFocusModeOpen);
 
   return (
     <ThemeWrapper>
@@ -27,8 +33,19 @@ function App() {
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+      className="relative min-h-screen pb-24"
       >
-      <TaskDashboard />
+      {currentTab === 'tasks' && <TaskDashboard />}
+      {currentTab === 'habits' && <div className="p-8 text-center mt-20">Tela de Hábitos em construção...</div>}
+      {currentTab === 'shop' && <div className="p-8 text-center mt-20">Tela de Loja em construção...</div>}
+      {currentTab === 'profile' && <div className="p-8 text-center mt-20">Tela de Perfil em construção...</div>}
+
+      {!isGlobalModalOpen && !isFocusModeOpen && (
+        <Navbar currentTab={currentTab} setCurrentTab={setCurrentTab} />
+      )}
+
+      <Navbar currentTab={currentTab} setCurrentTab={setCurrentTab} />
+
       <FocusMode />
       </motion.div>
     )}

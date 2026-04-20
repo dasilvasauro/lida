@@ -18,7 +18,8 @@ export const TaskDashboard = () => {
   } = useTaskStore();
 
   // Estados dos Modais e Edição
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const isModalOpen = useTaskStore((state) => state.isGlobalModalOpen);
+  const setIsModalOpen = useTaskStore((state) => state.setGlobalModalOpen);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
 
   // Estados de Feedback Visual
@@ -212,13 +213,14 @@ export const TaskDashboard = () => {
 
     </div>
 
-    {/* Botão de Adicionar (FAB Responsivo) */}
-    <button
+    {/* Botão de Adicionar (FAB Reposicionado) */}
+    <motion.button
+    layoutId="fab-modal" // <-- CHAVE DA ANIMAÇÃO
     onClick={() => { setTaskToEdit(null); setIsModalOpen(true); }}
-    className="fixed bottom-8 left-1/2 -translate-x-1/2 md:left-auto md:right-12 md:bottom-12 md:transform-none p-4 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:scale-105 transition-transform shadow-2xl z-40"
+    className="fixed bottom-28 right-6 md:right-12 md:bottom-12 p-4 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:scale-105 shadow-2xl z-40 flex items-center justify-center"
     >
     <Plus size={28} strokeWidth={3} />
-    </button>
+    </motion.button>
 
     {/* --- MODAIS E TOASTS --- */}
 
