@@ -30,9 +30,9 @@ function App() {
     ) : (
       <motion.div
       key="dashboard"
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
       className="relative min-h-screen pb-24"
       >
       {currentTab === 'tasks' && <TaskDashboard />}
@@ -43,8 +43,6 @@ function App() {
       {!isGlobalModalOpen && !isFocusModeOpen && (
         <Navbar currentTab={currentTab} setCurrentTab={setCurrentTab} />
       )}
-
-      <Navbar currentTab={currentTab} setCurrentTab={setCurrentTab} />
 
       <FocusMode />
       </motion.div>

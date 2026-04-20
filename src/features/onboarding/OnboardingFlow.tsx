@@ -71,7 +71,7 @@ export const OnboardingFlow = () => {
       <span className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Tipografia</span>
       <button onClick={() => setFont('sans')} className="w-full text-left p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors focus:ring-2 ring-zinc-900 dark:ring-zinc-100 font-sans text-lg">Moderna (Sem Serifa)</button>
       <button onClick={() => setFont('serif')} className="w-full text-left p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors focus:ring-2 ring-zinc-900 dark:ring-zinc-100 font-serif text-lg">Clássica (Com Serifa)</button>
-      <button onClick={() => setFont('special')} className="w-full text-left p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors focus:ring-2 ring-zinc-900 dark:ring-zinc-100 font-mono text-lg">Especial (VT323)</button>
+      <button onClick={() => setFont('special')} style={{ fontFamily: '"VT323"' }} className="w-full text-left p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors focus:ring-2 ring-zinc-900 dark:ring-zinc-100 text-xl tracking-wide">Especial (VT323)</button>
       </div>
       </div>
 
