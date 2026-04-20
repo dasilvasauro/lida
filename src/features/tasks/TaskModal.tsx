@@ -16,17 +16,19 @@ interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   taskToEdit?: Task | null;
+  onSuccess?: (message: string) => void;
 }
 
-export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
+export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalProps) => {
   const addTask = useTaskStore((state) => state.addTask);
   const updateTask = useTaskStore((state) => state.updateTask);
 
+  // Verifica se já existe uma Sprint ativa (ignorando a própria tarefa se estivermos editando ela)
   const hasActiveSprint = useTaskStore((state) =>
   state.tasks.some(t => t.type === 'sprint' && !t.isCompleted && t.id !== taskToEdit?.id)
   );
 
-  // Estados do Formulário
+  // Estados Base
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Priority>('P4');
@@ -47,15 +49,15 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
   const [recurrenceType, setRecurrenceType] = useState<'none' | 'weekly' | 'monthly' | 'yearly'>('none');
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([]);
 
-  // Controles de Seletores
+  // Controles de Pickers de Data/Hora
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [activeDateField, setActiveDateField] = useState<'deadline' | 'start' | 'end' | null>(null);
 
-  // Regra: Sprints, Bônus e Desafios não podem ser recorrentes
+  // Tipos que aceitam repetição
   const canBeRecurrent = !['sprint', 'daily_challenge', 'bonus'].includes(type);
 
-  // Efeito para carregar dados (Edição vs Criação)
+  // Preenchimento de dados (Edição vs Nova Tarefa)
   useEffect(() => {
     if (taskToEdit && isOpen) {
       setTitle(taskToEdit.title);
@@ -110,7 +112,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
     if (!title.trim()) return;
     if (type === 'sprint' && subtasks.length === 0) return;
 
-    // Se houver data limite, usamos ela para extrair o dia/mês da repetição. Senão, usa hoje.
+    // Se houver data limite, usamos ela para basear a repetição. Senão, usamos hoje.
     const dateObj = deadlineDate ? new Date(deadlineDate + 'T12:00:00') : new Date();
 
     const taskData: Partial<Task> = {
@@ -121,7 +123,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
       deadlineDate: type === 'sprint' ? endDate : (deadlineDate || undefined),
       deadlineTime: deadlineTime || undefined,
       duration: type === 'time' ? duration : undefined,
-      subtasks: (type === 'sprint' || subtasks.length > 0) ? subtasks : undefined,
+      subtasks: subtasks.length > 0 ? subtasks : undefined, // Agora salva subtasks para qualquer tipo
       recurrence: (canBeRecurrent && recurrenceType !== 'none') ? {
         type: recurrenceType,
         weekdays: recurrenceType === 'weekly' ? selectedWeekdays : undefined,
@@ -132,6 +134,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
 
     if (taskToEdit) {
       updateTask(taskToEdit.id, taskData);
+      onSuccess?.('Tarefa atualizada com sucesso!');
     } else {
       addTask({
         id: uuidv4(),
@@ -140,6 +143,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
               folderId: 'default',
               ...taskData,
       } as Task);
+      onSuccess?.('Tarefa criada com sucesso!');
     }
 
     onClose();
@@ -151,6 +155,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
     { id: 'sprint', label: 'Sprint', icon: Target, color: 'text-purple-500' },
     { id: 'time', label: 'Tempo', icon: Timer, color: 'text-blue-500' },
     { id: 'bonus', label: 'Bônus', icon: Gift, color: 'text-emerald-500' },
+    // "Surprise" removido da lista manual
   ];
 
   return (
@@ -172,8 +177,12 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
       className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-zinc-50 dark:bg-zinc-900 rounded-t-3xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[90vh]"
       >
+
+      {/* Cabeçalho */}
       <div className="flex justify-between items-center p-6 border-b border-zinc-200 dark:border-zinc-800">
-      <h3 className="text-xl font-bold">{taskToEdit ? 'Editar Tarefa' : 'Nova Tarefa'}</h3>
+      <h3 className="text-xl font-bold">
+      {taskToEdit ? 'Editar Tarefa' : 'Nova Tarefa'}
+      </h3>
       <button
       onClick={onClose}
       className="p-2 rounded-full bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"
@@ -182,9 +191,10 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
       </button>
       </div>
 
+      {/* Corpo Rolável */}
       <div className="p-6 overflow-y-auto flex-1 space-y-8 scrollbar-hide">
 
-      {/* Título e Descrição */}
+      {/* Nome e Descrição */}
       <div className="space-y-2">
       <input
       type="text"
@@ -208,6 +218,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
         <span className="text-xs uppercase tracking-widest text-zinc-500 font-bold flex items-center gap-2">
         <RotateCcw size={14} /> Repetir Tarefa
         </span>
+
         <div className="flex gap-2">
         {['none', 'weekly', 'monthly', 'yearly'].map((r) => (
           <button
@@ -264,7 +275,9 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
 
       {/* Seletor de Tipo */}
       <div>
-      <span className="text-xs uppercase tracking-widest text-zinc-500 mb-3 block font-bold">Tipo</span>
+      <span className="text-xs uppercase tracking-widest text-zinc-500 mb-3 block font-bold">
+      Tipo
+      </span>
       <div className="grid grid-cols-3 gap-2">
       {taskTypes.map((t) => {
         const Icon = t.icon;
@@ -290,14 +303,16 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
           }`}
           >
           <Icon size={20} className={isSelected ? t.color : 'text-zinc-400'} />
-          <span className={`text-[10px] mt-1 ${isSelected ? 'font-bold' : ''}`}>{t.label}</span>
+          <span className={`text-[10px] mt-1 ${isSelected ? 'font-bold' : ''}`}>
+          {t.label}
+          </span>
           </button>
         );
       })}
       </div>
       </div>
 
-      {/* 1. Tarefa Normal ou Bônus */}
+      {/* Data e Hora para Normal/Bônus */}
       {(type === 'normal' || type === 'bonus') && (
         <div className="flex gap-4">
         <div className="flex-1 space-y-3">
@@ -337,9 +352,8 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
         </div>
       )}
 
-      {/* 2. Tarefa Sprint */}
+      {/* Datas para Sprint */}
       {type === 'sprint' && (
-        <div className="space-y-6">
         <div className="flex gap-4">
         <div className="flex-1 space-y-3">
         <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold">
@@ -358,6 +372,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
         {startDate ? format(new Date(startDate + 'T12:00:00'), "dd 'de' MMM", { locale: ptBR }) : 'Data Inicial'}
         </button>
         </div>
+
         <div className="flex-1 space-y-3">
         <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold">
         Fim
@@ -376,45 +391,9 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
         </button>
         </div>
         </div>
-
-        <div className="space-y-3">
-        <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold">
-        Subtarefas
-        </span>
-        <div className="flex gap-2">
-        <input
-        type="text"
-        value={subtaskInput}
-        onChange={(e) => setSubtaskInput(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSubtask())}
-        placeholder="Ex: Definir escopo"
-        className="flex-1 bg-zinc-100 dark:bg-zinc-800 p-3 rounded-lg text-sm outline-none"
-        />
-        <button
-        onClick={addSubtask}
-        className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-black p-3 rounded-lg"
-        >
-        <Plus size={20} />
-        </button>
-        </div>
-        <div className="space-y-2">
-        {subtasks.map((st) => (
-          <div key={st.id} className="flex items-center justify-between bg-zinc-100 dark:bg-zinc-800/50 p-2 pl-4 rounded-lg">
-          <span className="text-sm text-zinc-900 dark:text-zinc-100">{st.title}</span>
-          <button
-          onClick={() => removeSubtask(st.id)}
-          className="p-1 text-zinc-400 hover:text-red-500 transition-colors"
-          >
-          <X size={16} />
-          </button>
-          </div>
-        ))}
-        </div>
-        </div>
-        </div>
       )}
 
-      {/* 3. Tarefa de Tempo */}
+      {/* Slider de Tempo */}
       {type === 'time' && (
         <div className="space-y-3">
         <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold flex items-center gap-1">
@@ -432,7 +411,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
         </div>
       )}
 
-      {/* Desafio Diário */}
+      {/* Alerta de Desafio Diário */}
       {type === 'daily_challenge' && (
         <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 p-4 rounded-xl text-xs flex items-center gap-3">
         <Zap size={20} className="shrink-0" />
@@ -440,7 +419,50 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
         </div>
       )}
 
-      {/* Renderização dos Seletores de Data/Hora */}
+      {/* Subtarefas (Agora Globais) */}
+      <div className="space-y-3 pt-2">
+      <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold">
+      Subtarefas {type === 'sprint' ? '(Obrigatório)' : '(Opcional)'}
+      </span>
+
+      <div className="flex gap-2">
+      <input
+      type="text"
+      value={subtaskInput}
+      onChange={(e) => setSubtaskInput(e.target.value)}
+      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSubtask())}
+      placeholder="Ex: Definir escopo"
+      className="flex-1 bg-zinc-100 dark:bg-zinc-800 p-3 rounded-lg text-sm outline-none"
+      />
+      <button
+      onClick={addSubtask}
+      className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-black p-3 rounded-lg"
+      >
+      <Plus size={20} />
+      </button>
+      </div>
+
+      <div className="space-y-2">
+      {subtasks.map((st) => (
+        <div
+        key={st.id}
+        className="flex items-center justify-between bg-zinc-100 dark:bg-zinc-800/50 p-2 pl-4 rounded-lg"
+        >
+        <span className="text-sm text-zinc-900 dark:text-zinc-100">
+        {st.title}
+        </span>
+        <button
+        onClick={() => removeSubtask(st.id)}
+        className="p-1 text-zinc-400 hover:text-red-500 transition-colors"
+        >
+        <X size={16} />
+        </button>
+        </div>
+      ))}
+      </div>
+      </div>
+
+      {/* Exibição dos Date/Time Pickers (Animados) */}
       <AnimatePresence>
       {showDatePicker && (
         <motion.div
@@ -466,6 +488,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
         </div>
         </motion.div>
       )}
+
       {showTimePicker && (
         <motion.div
         initial={{ height: 0, opacity: 0 }}
@@ -507,7 +530,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit }: TaskModalProps) => {
 
       </div>
 
-      {/* Rodapé e Botão de Salvar */}
+      {/* Rodapé: Botão de Salvar */}
       <div className="p-6 bg-zinc-100 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800">
       <button
       onClick={handleSave}

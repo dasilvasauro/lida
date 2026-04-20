@@ -20,6 +20,8 @@ interface TaskState {
   stopFocus: () => void;
   toggleFocusMode: (isOpen: boolean) => void;
   updateTask: (taskId: string, updatedTask: Partial<Task>) => void;
+  markTaskFailed: (taskId: string) => void;
+  clearCompletedTasks: () => void;
 }
 
 export const useTaskStore = create<TaskState>()(
@@ -79,8 +81,19 @@ export const useTaskStore = create<TaskState>()(
 
               toggleFocusMode: (isOpen) => set({ isFocusModeOpen: isOpen }),
 
+              // Edição de Tarefa
               updateTask: (taskId, updatedTask) => set((state) => ({
                 tasks: state.tasks.map((t) => t.id === taskId ? { ...t, ...updatedTask } : t)
+              })),
+
+              // Marca como "Task Mal-Sucedida" após expiração do Timer
+              markTaskFailed: (taskId) => set((state) => ({
+                tasks: state.tasks.map((t) => t.id === taskId ? { ...t, isFailed: true } : t)
+              })),
+
+              // Limpa tasks concluídas
+              clearCompletedTasks: () => set((state) => ({
+                tasks: state.tasks.filter((t) => !t.isCompleted)
               })),
     }),
     { name: 'lida-tasks' }

@@ -13,7 +13,7 @@ export const OnboardingFlow = () => {
       <p className="text-zinc-400 max-w-sm mb-8">
         Sua vida organizada com propósito. Gerencie tarefas, hábitos e objetivos em um só lugar.
       </p>
-      <button 
+      <button
         onClick={() => setStep(2)}
         className="flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full font-bold hover:scale-105 transition-transform"
       >
@@ -26,8 +26,8 @@ export const OnboardingFlow = () => {
   if (step === 2) return (
     <div className="flex flex-col items-center justify-center h-screen p-6 animate-in slide-in-from-right duration-500">
       <h2 className="text-2xl mb-6 italic">Como devemos te chamar?</h2>
-      <input 
-        type="text" 
+      <input
+        type="text"
         placeholder="Seu nome ou apelido"
         className="bg-transparent border-b-2 border-zinc-700 p-2 text-2xl outline-none focus:border-white transition-colors text-center"
         onChange={(e) => setUserName(e.target.value)}
@@ -42,32 +42,32 @@ export const OnboardingFlow = () => {
   // 3. Modus Operandi (Cards Imersivos)
   if (step === 3) return (
     <div className="grid grid-cols-1 md:grid-cols-2 h-screen overflow-hidden">
-        <ModusCard 
-            title="Multitarefa" 
-            desc="Foco em volume. Bônus por quantidade." 
-            icon={<Zap size={40}/>} 
-            color="bg-amber-600" 
+        <ModusCard
+            title="Multitarefa"
+            desc="Foco em volume. Bônus por quantidade."
+            icon={<Zap size={40}/>}
+            color="bg-amber-600"
             onClick={() => { setUserClass('multitask'); setStep(4); }}
         />
-        <ModusCard 
-            title="Minimalista" 
-            desc="Menos é mais. Bônus por essencialismo." 
-            icon={<Shield size={40}/>} 
-            color="bg-emerald-700" 
+        <ModusCard
+            title="Minimalista"
+            desc="Menos é mais. Bônus por essencialismo."
+            icon={<Shield size={40}/>}
+            color="bg-emerald-700"
             onClick={() => { setUserClass('minimalist'); setStep(4); }}
         />
-        <ModusCard 
-            title="Pontual" 
-            desc="Precisão é tudo. Bônus por prazos." 
-            icon={<Clock size={40}/>} 
-            color="bg-blue-700" 
+        <ModusCard
+            title="Pontual"
+            desc="Precisão é tudo. Bônus por prazos."
+            icon={<Clock size={40}/>}
+            color="bg-blue-700"
             onClick={() => { setUserClass('punctual'); setStep(4); }}
         />
-        <ModusCard 
-            title="Ambicioso" 
-            desc="Grandes projetos. Bônus por Sprints." 
-            icon={<Target size={40}/>} 
-            color="bg-purple-800" 
+        <ModusCard
+            title="Ambicioso"
+            desc="Grandes projetos. Bônus por Sprints."
+            icon={<Target size={40}/>}
+            color="bg-purple-800"
             onClick={() => { setUserClass('ambitious'); setStep(4); }}
         />
     </div>
@@ -77,7 +77,7 @@ export const OnboardingFlow = () => {
   if (step === 4) return (
     <div className="flex flex-col items-center justify-center h-screen p-6">
         <h2 className="text-3xl font-bold mb-12 text-center">Últimos detalhes...</h2>
-        
+
         <div className="space-y-8 w-full max-w-xs">
             <div className="flex flex-col gap-3">
                 <span className="text-sm uppercase tracking-widest text-zinc-500">Escolha seu Tema</span>
@@ -95,7 +95,7 @@ export const OnboardingFlow = () => {
             </div>
         </div>
 
-        <button 
+        <button
             onClick={completeOnboarding}
             className="mt-12 bg-white text-black px-12 py-3 rounded-full font-black animate-pulse"
         >
@@ -108,7 +108,7 @@ export const OnboardingFlow = () => {
 };
 
 const ModusCard = ({ title, desc, icon, color, onClick }: any) => (
-    <div 
+    <div
         onClick={onClick}
         className={`${color} flex flex-col items-center justify-center p-8 cursor-pointer hover:opacity-90 transition-all group relative overflow-hidden`}
     >

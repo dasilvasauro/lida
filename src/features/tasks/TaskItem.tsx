@@ -1,8 +1,21 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Check, Clock, Calendar, Zap, Target, Timer, Gift,
-    Sparkles, CheckCircle2, ChevronDown, Play, Maximize2, Trash2
+    Check,
+    Clock,
+    Calendar,
+    Zap,
+    Target,
+    Timer,
+    Gift,
+    Sparkles,
+    CheckCircle2,
+    ChevronDown,
+    Play,
+    Maximize2,
+    Trash2,
+    Repeat,
+    Edit2
 } from 'lucide-react';
 import type { Task } from '../../types';
 import { format } from 'date-fns';
@@ -12,38 +25,49 @@ import { useTaskStore } from '../../store/useTaskStore';
 interface TaskItemProps {
     task: Task;
     onToggle: (id: string) => void;
+    onEdit?: () => void;
+    onDelete?: () => void;
 }
 
-export const TaskItem = ({ task, onToggle }: TaskItemProps) => {
+export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) => {
     const [isExpanded, setIsExpanded] = useState(false);
+
     const toggleSubtask = useTaskStore((state) => state.toggleSubtask);
     const activeFocusSession = useTaskStore((state) => state.activeFocusSession);
     const startFocus = useTaskStore((state) => state.startFocus);
     const toggleFocusMode = useTaskStore((state) => state.toggleFocusMode);
-    const deleteTask = useTaskStore((state) => state.deleteTask);
+    const markTaskFailed = useTaskStore((state) => state.markTaskFailed);
 
     const isActiveSession = activeFocusSession?.taskId === task.id;
 
-    // Lógica do cronômetro no card
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
+    const [isOvertime, setIsOvertime] = useState(false);
 
     useEffect(() => {
         if (!isActiveSession || !activeFocusSession) {
             setTimeLeft(null);
+            setIsOvertime(false);
             return;
         }
 
         const calculateTime = () => {
             const elapsedSeconds = Math.floor((Date.now() - activeFocusSession.startTime) / 1000);
             const remaining = activeFocusSession.duration - elapsedSeconds;
-            setTimeLeft(remaining > 0 ? remaining : 0);
+
+            const overtime = remaining < 0;
+            if (overtime && !task.isFailed) {
+                markTaskFailed(task.id);
+            }
+
+            setTimeLeft(Math.abs(remaining));
+            setIsOvertime(overtime);
         };
 
         calculateTime();
         const interval = setInterval(calculateTime, 1000);
 
         return () => clearInterval(interval);
-    }, [isActiveSession, activeFocusSession]);
+    }, [isActiveSession, activeFocusSession, task.id, task.isFailed, markTaskFailed]);
 
     const formatTime = (seconds: number) => {
         const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -59,7 +83,8 @@ export const TaskItem = ({ task, onToggle }: TaskItemProps) => {
         bonus: Gift,
         surprise: Sparkles,
     };
-    const Icon = icons[task.type] || CheckCircle2;
+
+    const Icon = icons[task.type as keyof typeof icons] || CheckCircle2;
 
     const priorityStyles = {
         P0: 'border-red-500/50 dark:border-red-500/30 bg-red-50/50 dark:bg-red-950/20',
@@ -73,15 +98,42 @@ export const TaskItem = ({ task, onToggle }: TaskItemProps) => {
     const completedSubtasks = task.subtasks?.filter(s => s.completed).length || 0;
     const progress = hasSubtasks ? (completedSubtasks / task.subtasks!.length) * 100 : 0;
 
+    const getRecurrenceLabel = () => {
+        if (!task.recurrence || task.recurrence.type === 'none') return null;
+
+        const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+        switch (task.recurrence.type) {
+            case 'weekly':
+                if (task.recurrence.weekdays?.length === 7) return 'Diário';
+                return `Toda ${task.recurrence.weekdays?.map(d => days[d]).join(', ')}`;
+            case 'monthly':
+                return `Todo dia ${task.recurrence.dayOfMonth}`;
+            case 'yearly':
+                return `Todo dia ${task.recurrence.dayOfMonth} de ${months[task.recurrence.monthOfYear || 0]}`;
+            default:
+                return null;
+        }
+    };
+
+    const recurrenceLabel = getRecurrenceLabel();
+
     return (
         <motion.div
         layout
-        className={`flex flex-col p-4 mb-3 rounded-2xl border transition-all ${priorityStyles[task.priority]} ${task.isCompleted ? 'opacity-50 grayscale' : ''}`}
+        className={`flex flex-col p-4 mb-3 rounded-2xl border transition-all ${priorityStyles[task.priority]} ${
+            task.isCompleted ? 'opacity-50 grayscale' : ''
+        }`}
         >
         <div className="flex items-start gap-4">
+
         {/* Checkbox Principal */}
         <button
-        onClick={() => onToggle(task.id)}
+        onClick={(e) => {
+            e.stopPropagation();
+            onToggle(task.id);
+        }}
         className={`mt-1 shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
             task.isCompleted
             ? 'bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-100 dark:border-zinc-100 dark:text-black'
@@ -91,8 +143,11 @@ export const TaskItem = ({ task, onToggle }: TaskItemProps) => {
         {task.isCompleted && <Check size={14} strokeWidth={3} />}
         </button>
 
-        {/* Conteúdo Central (Agora sempre clicável e sem a trava de subtasks) */}
-        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
+        {/* Conteúdo Central */}
+        <div
+        className="flex-1 min-w-0 cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+        >
         <h4 className={`text-base font-bold truncate ${task.isCompleted ? 'line-through text-zinc-500' : 'text-zinc-900 dark:text-zinc-100'}`}>
         {task.title}
         </h4>
@@ -108,6 +163,14 @@ export const TaskItem = ({ task, onToggle }: TaskItemProps) => {
         <Icon size={12} />
         {task.type.replace('_', ' ')}
         </span>
+
+        {/* Selo de Recorrência */}
+        {recurrenceLabel && (
+            <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-md">
+            <Repeat size={12} />
+            {recurrenceLabel}
+            </span>
+        )}
 
         {task.deadlineDate && (
             <span className="flex items-center gap-1">
@@ -125,13 +188,12 @@ export const TaskItem = ({ task, onToggle }: TaskItemProps) => {
         </div>
         </div>
 
-        {/* Ações da Direita */}
+        {/* Ações da Direita (Prioridade e Expandir) */}
         <div className="flex flex-col items-end gap-2">
         <span className="px-2 py-0.5 rounded-md bg-zinc-200 dark:bg-zinc-800 text-[10px] font-black">
         {task.priority}
         </span>
 
-        {/* A setinha agora aparece sempre, para indicar que pode expandir para excluir */}
         <motion.div
         animate={{ rotate: isExpanded ? 180 : 0 }}
         className="text-zinc-400 cursor-pointer"
@@ -140,6 +202,7 @@ export const TaskItem = ({ task, onToggle }: TaskItemProps) => {
         <ChevronDown size={20} />
         </motion.div>
 
+        {/* Botões do Tipo Tempo */}
         {task.type === 'time' && !task.isCompleted && (
             <div className="flex gap-1 mt-1">
             <button
@@ -156,9 +219,9 @@ export const TaskItem = ({ task, onToggle }: TaskItemProps) => {
             }`}
             >
             {isActiveSession && timeLeft !== null ? (
-                <span className="flex items-center gap-1.5 text-xs font-bold tabular-nums tracking-wider">
+                <span className={`flex items-center gap-1.5 text-xs font-bold tabular-nums tracking-wider ${isOvertime ? 'text-zinc-500 line-through decoration-1' : ''}`}>
                 <Timer size={14} className="animate-pulse" />
-                {formatTime(timeLeft)}
+                {isOvertime ? '+' : ''}{formatTime(timeLeft)}
                 </span>
             ) : (
                 <Play size={16} fill="currentColor" />
@@ -183,7 +246,7 @@ export const TaskItem = ({ task, onToggle }: TaskItemProps) => {
         </div>
         </div>
 
-        {/* Área Expandida (Subtarefas, Progresso e Botão de Excluir) */}
+        {/* Área Expandida (Subtarefas, Progresso e Botões de Ação) */}
         <AnimatePresence>
         {isExpanded && (
             <motion.div
@@ -193,6 +256,7 @@ export const TaskItem = ({ task, onToggle }: TaskItemProps) => {
             className="overflow-hidden"
             >
             <div className="pt-4 mt-4 border-t border-zinc-200 dark:border-zinc-800 space-y-4">
+
             {task.description && (
                 <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
                 {task.description}
@@ -206,6 +270,7 @@ export const TaskItem = ({ task, onToggle }: TaskItemProps) => {
                 <span>Progresso da tarefa</span>
                 <span>{Math.round(progress)}%</span>
                 </div>
+
                 <div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
                 <motion.div
                 initial={{ width: 0 }}
@@ -238,14 +303,31 @@ export const TaskItem = ({ task, onToggle }: TaskItemProps) => {
                 </>
             )}
 
-            {/* Botão de Excluir */}
-            <div className="flex justify-end pt-2">
-            <button
-            onClick={() => deleteTask(task.id)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-red-500 hover:bg-red-500/10 transition-colors"
-            >
-            <Trash2 size={14} /> Excluir
-            </button>
+            {/* Botões de Ação Inferiores (Editar e Excluir) */}
+            <div className="flex justify-end pt-2 gap-2">
+            {onEdit && (
+                <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit();
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
+                >
+                <Edit2 size={14} /> Editar
+                </button>
+            )}
+
+            {onDelete && (
+                <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete();
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-red-500 hover:bg-red-500/10 transition-colors"
+                >
+                <Trash2 size={14} /> Excluir
+                </button>
+            )}
             </div>
 
             </div>

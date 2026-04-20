@@ -29,5 +29,6 @@ export interface Task {
   };
   isCompleted: boolean;
   completedAt?: number;
+  isFailed?: boolean;
   folderId: string; // 'default' para a pasta inicial
 }
