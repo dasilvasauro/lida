@@ -16,7 +16,7 @@ export const RewardToast = ({ isVisible, xp, gold, isFailed }: RewardToastProps)
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            className="fixed bottom-32 left-1/2 -translate-x-1/2 bg-zinc-900 text-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 px-6 py-3.5 rounded-2xl shadow-2xl z-50 flex items-center gap-4 font-bold border border-zinc-800 dark:border-zinc-200"
+            className="fixed bottom-32 left-1/2 -translate-x-1/2 bg-zinc-900 text-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 px-6 py-3.5 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)] z-50 flex items-center gap-4 font-bold border border-zinc-800 dark:border-zinc-200"
             >
             {isFailed ? (
                 <div className="flex items-center gap-3 text-zinc-500 dark:text-zinc-400">

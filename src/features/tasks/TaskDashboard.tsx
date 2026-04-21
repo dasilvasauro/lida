@@ -17,15 +17,13 @@ export const TaskDashboard = () => {
     dailyMood, setDailyMood
   } = useTaskStore();
 
-  // Estados dos Modais e Edição
   const isModalOpen = useTaskStore((state) => state.isGlobalModalOpen);
   const setIsModalOpen = useTaskStore((state) => state.setGlobalModalOpen);
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
 
-  // Estados de Feedback Visual
   const [reward, setReward] = useState<{ xp: number; gold: number; isFailed?: boolean } | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [confirmDialog, setConfirmDialog] = useState<{ type: 'delete' | 'complete'; taskId: string; title: string; subtitle: string } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ type: 'delete' | 'complete' | 'clear_completed'; taskId: string; title: string; subtitle: string } | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -38,7 +36,7 @@ export const TaskDashboard = () => {
       if (task.isFailed) {
         setReward({ xp: 0, gold: 0, isFailed: true });
       } else {
-        setReward({ xp: 45, gold: 15 }); // Valores provisórios
+        setReward({ xp: 45, gold: 15 });
       }
       setTimeout(() => setReward(null), 4000);
     }
@@ -92,15 +90,12 @@ export const TaskDashboard = () => {
     }
     return true;
   }).sort((a, b) => {
-    // Se ambas têm o mesmo status, ordena pela mais recente
     if (a.isCompleted === b.isCompleted) return b.createdAt - a.createdAt;
-    // Se não, joga a concluída (true) para baixo
     return a.isCompleted ? 1 : -1;
   });
 
   const hasCompletedTasks = filteredTasks.some(t => t.isCompleted);
 
-  // Configuração dos Moods com Lucide Icons
   const moods: { value: Mood; icon: any; label: string }[] = [
     { value: 'terrible', icon: Frown, label: 'Exausto' },
     { value: 'bad', icon: CloudRain, label: 'Difícil' },
@@ -109,7 +104,6 @@ export const TaskDashboard = () => {
     { value: 'great', icon: Sparkles, label: 'Incrível' },
   ];
 
-  // Configuração dos Filtros
   const filters: { id: typeof selectedFilter; label: string }[] = [
     { id: 'today', label: 'Hoje' },
     { id: 'week', label: 'Semana' },
@@ -120,10 +114,8 @@ export const TaskDashboard = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 pb-32 transition-colors">
 
-    {/* Container Responsivo: Margens generosas no Desktop */}
     <div className="max-w-4xl mx-auto px-6 md:px-8 pt-12 space-y-8">
 
-    {/* Cabeçalho: Título (Esq) + Controles (Dir) */}
     <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-zinc-100 dark:border-zinc-900">
     <div>
     <h1 className="text-3xl font-black tracking-tight">Suas tarefas</h1>
@@ -133,8 +125,6 @@ export const TaskDashboard = () => {
     </div>
 
     <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
-
-    {/* Seletor de Tempo (Segmented Control Elegante) */}
     <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900/80 rounded-xl w-full md:w-auto">
     {filters.map((f) => (
       <button
@@ -151,7 +141,6 @@ export const TaskDashboard = () => {
     ))}
     </div>
 
-    {/* Seletor de Mood (Lucide Icons) */}
     <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900/80 rounded-xl w-full md:w-auto">
     {moods.map((m) => {
       const Icon = m.icon;
@@ -172,11 +161,9 @@ export const TaskDashboard = () => {
       );
     })}
     </div>
-
     </div>
     </header>
 
-    {/* Lista de Tarefas */}
     <main>
     <AnimatePresence mode="popLayout">
     {filteredTasks.length === 0 ? (
@@ -198,7 +185,7 @@ export const TaskDashboard = () => {
       ))
     )}
     </AnimatePresence>
-    {/* Botão de limpar tarefas concluídas */}
+
     {hasCompletedTasks && (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center mt-8">
       <button
@@ -213,11 +200,11 @@ export const TaskDashboard = () => {
 
     </div>
 
-    {/* Botão de Adicionar (FAB Reposicionado) */}
+    {/* FAB com Sombra Suave */}
     <motion.button
-    layoutId="fab-modal" // <-- CHAVE DA ANIMAÇÃO
+    layoutId="fab-modal"
     onClick={() => { setTaskToEdit(null); setIsModalOpen(true); }}
-    className="fixed bottom-28 right-6 md:right-12 md:bottom-12 p-4 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:scale-105 shadow-2xl z-40 flex items-center justify-center"
+    className="fixed bottom-28 right-6 md:right-12 md:bottom-12 p-4 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:scale-105 shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] z-40 flex items-center justify-center"
     >
     <Plus size={28} strokeWidth={3} />
     </motion.button>
@@ -238,19 +225,21 @@ export const TaskDashboard = () => {
     isFailed={reward?.isFailed}
     />
 
+    {/* Toast do Topo com Sombra Suave */}
     <AnimatePresence>
     {toastMessage && (
       <motion.div
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black px-6 py-3 rounded-full shadow-2xl font-bold text-sm tracking-wide border border-zinc-800 dark:border-zinc-200"
+      className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black px-6 py-3 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] font-bold text-sm tracking-wide border border-zinc-800 dark:border-zinc-200"
       >
       {toastMessage}
       </motion.div>
     )}
     </AnimatePresence>
 
+    {/* Dialog com Sombra Suave */}
     <AnimatePresence>
     {confirmDialog && (
       <motion.div
@@ -263,9 +252,9 @@ export const TaskDashboard = () => {
       initial={{ scale: 0.95, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       exit={{ scale: 0.95, opacity: 0 }}
-      className="bg-zinc-50 dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800"
+      className="bg-zinc-50 dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.6)] border border-zinc-200 dark:border-zinc-800"
       >
-      <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${confirmDialog.type === 'delete' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
+      <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${confirmDialog.type === 'delete' || confirmDialog.type === 'clear_completed' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
       <AlertTriangle size={24} />
       </div>
       <h3 className="text-xl font-bold mb-2 text-zinc-900 dark:text-zinc-100">{confirmDialog.title}</h3>
@@ -281,7 +270,7 @@ export const TaskDashboard = () => {
       </button>
       <button
       onClick={handleConfirmAction}
-      className={`flex-1 py-3 rounded-xl font-bold text-white transition-colors ${confirmDialog.type === 'delete' ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600 text-zinc-900'}`}
+      className={`flex-1 py-3 rounded-xl font-bold text-white transition-colors ${confirmDialog.type === 'delete' || confirmDialog.type === 'clear_completed' ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600 text-zinc-900'}`}
       >
       Confirmar
       </button>

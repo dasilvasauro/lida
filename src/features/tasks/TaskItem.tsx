@@ -1,21 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Check,
-    Clock,
-    Calendar,
-    Zap,
-    Target,
-    Timer,
-    Gift,
-    Sparkles,
-    CheckCircle2,
-    ChevronDown,
-    Play,
-    Maximize2,
-    Trash2,
-    Repeat,
-    Edit2
+    Check, Clock, Calendar, Zap, Target, Timer, Gift,
+    Sparkles, CheckCircle2, ChevronDown, Play, Maximize2, Trash2, Repeat, Edit2
 } from 'lucide-react';
 import type { Task } from '../../types';
 import { format } from 'date-fns';
@@ -130,12 +117,23 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) =>
     return (
         <motion.div
         layout
-        className={`flex flex-col p-4 mb-3 rounded-2xl border transition-all ${priorityStyles[task.priority]} ${
+        // Adicionado "relative overflow-hidden" para a bandeira quadriculada ficar contida e sombra suave
+        className={`relative overflow-hidden flex flex-col p-4 mb-3 rounded-2xl border transition-all shadow-sm ${priorityStyles[task.priority]} ${
             task.isCompleted ? 'opacity-50 grayscale' : ''
         }`}
         >
-        <div className="flex items-start gap-4">
+        {/* ELEMENTO DISCRETO: Bandeira Quadriculada para Sprint */}
+        {task.type === 'sprint' && (
+            <div
+            className="absolute top-0 left-0 w-full h-1.5 opacity-10 dark:opacity-20 pointer-events-none"
+            style={{
+                backgroundImage: 'repeating-conic-gradient(currentColor 0% 25%, transparent 0% 50%)',
+                                    backgroundSize: '12px 12px'
+            }}
+            />
+        )}
 
+        <div className="flex items-start gap-4">
         {/* Checkbox Principal */}
         <button
         onClick={(e) => {
