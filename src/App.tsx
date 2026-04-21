@@ -4,6 +4,7 @@ import { useTaskStore } from './store/useTaskStore';
 import { ThemeWrapper } from './components/layout/ThemeWrapper';
 import { OnboardingFlow } from './features/onboarding/OnboardingFlow';
 import { TaskDashboard } from './features/tasks/TaskDashboard';
+import { HabitDashboard } from './features/habits/HabitDashboard';
 import { FocusMode } from './features/tasks/FocusMode';
 import { Navbar, type Tab } from './components/layout/Navbar';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -36,7 +37,7 @@ function App() {
       className="relative min-h-screen pb-24"
       >
       {currentTab === 'tasks' && <TaskDashboard />}
-      {currentTab === 'habits' && <div className="p-8 text-center mt-20">Tela de Hábitos em construção...</div>}
+      {currentTab === 'habits' && <HabitDashboard />}
       {currentTab === 'shop' && <div className="p-8 text-center mt-20">Tela de Loja em construção...</div>}
       {currentTab === 'profile' && <div className="p-8 text-center mt-20">Tela de Perfil em construção...</div>}
 
