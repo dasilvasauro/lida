@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useConfigStore } from "../../store/useConfigStore";
-import { LogIn, ArrowRight, Shield, Target, Zap, Clock, ChevronRight } from "lucide-react";
+import { ArrowRight, Shield, Target, Zap, Clock, ChevronRight } from "lucide-react";
 
 export const OnboardingFlow = () => {
   const [step, setStep] = useState(1);

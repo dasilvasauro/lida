@@ -10,7 +10,7 @@ import { format, subDays, startOfWeek, addDays } from 'date-fns';
 
 export const HabitDashboard = () => {
   const { habits, logs, modifiers, setLog, deleteHabit, applyGlobalDayOff, applyModifier } = useHabitStore();
-  const { inventory, useItem, voucherProgress, vouchers, addVoucherProgress } = useEconomyStore();
+  const { inventory, useItem, voucherProgress, addVoucherProgress } = useEconomyStore();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [habitToEdit, setHabitToEdit] = useState<Habit | null>(null);

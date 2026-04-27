@@ -18,7 +18,7 @@ interface HabitState {
 
 export const useHabitStore = create<HabitState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       habits: [],
       logs: {},
       modifiers: {},
