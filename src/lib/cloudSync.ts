@@ -7,14 +7,16 @@ import { useVisionStore } from '../store/useVisionStore';
 import { useConfigStore } from '../store/useConfigStore';
 
 let unsubscribeSnapshot: (() => void) | null = null;
-let lastSyncTime = 0; // Trava contra loop infinito (Echo cancellation)
+let lastSyncTime = 0; 
+let isApplyingCloudData = false;
+let syncTimeout: ReturnType<typeof setTimeout> | null = null;
 
 export const syncToCloud = async () => {
   const { uid, e2eePin } = useConfigStore.getState();
   if (!uid || !e2eePin || !navigator.onLine) return;
 
   const timestamp = Date.now();
-  lastSyncTime = timestamp; // Atualiza nosso timestamp local
+  lastSyncTime = timestamp; // Atualiza a trava no momento exato do envio
 
   const payload = {
     tasks: encryptData(JSON.stringify(useTaskStore.getState()), e2eePin),
@@ -32,13 +34,19 @@ export const syncToCloud = async () => {
     updatedAt: timestamp
   };
 
-  await setDoc(doc(db, 'users', uid), payload);
+  try {
+    await setDoc(doc(db, 'users', uid), payload);
+  } catch (error) {
+    console.error("Erro ao sincronizar com a nuvem:", error);
+  }
 };
 
 const applyCloudData = (data: any, pin: string) => {
   try {
-    // Se a atualização que chegou for mais antiga ou igual à nossa última, ignoramos
-    if (data.updatedAt && data.updatedAt <= lastSyncTime) return 'ignored';
+    // Se a atualização da nuvem for mais velha ou igual à nossa ação local, a ignoramos!
+    if (!data.updatedAt || data.updatedAt <= lastSyncTime) return 'ignored';
+    
+    isApplyingCloudData = true;
 
     if (data.tasks) useTaskStore.setState(JSON.parse(decryptData(data.tasks, pin)));
     if (data.habits) useHabitStore.setState(JSON.parse(decryptData(data.habits, pin)));
@@ -49,9 +57,13 @@ const applyCloudData = (data: any, pin: string) => {
       useConfigStore.setState(conf);
     }
     
-    if (data.updatedAt) lastSyncTime = data.updatedAt;
+    lastSyncTime = data.updatedAt;
+
+    // Libera a trava após o React renderizar a tela
+    setTimeout(() => { isApplyingCloudData = false; }, 500);
     return 'success';
   } catch (e) {
+    isApplyingCloudData = false;
     return 'wrong_pin';
   }
 };
@@ -62,12 +74,11 @@ export const syncFromCloud = async (uid: string, pin: string) => {
   return applyCloudData(snap.data(), pin);
 };
 
-// NOVO: Função que fica "escutando" a nuvem o tempo todo
 export const startCloudListener = (uid: string, pin: string) => {
-  if (unsubscribeSnapshot) unsubscribeSnapshot(); // Limpa listeners anteriores
+  if (unsubscribeSnapshot) unsubscribeSnapshot(); 
   
   unsubscribeSnapshot = onSnapshot(doc(db, 'users', uid), (doc) => {
-    // Só aplica os dados se a mudança veio de outro dispositivo (hasPendingWrites = false)
+    // Ignora se a mudança veio de nós mesmos (PendingWrites)
     if (doc.exists() && !doc.metadata.hasPendingWrites) {
       applyCloudData(doc.data(), pin);
     }
@@ -79,4 +90,32 @@ export const stopCloudListener = () => {
     unsubscribeSnapshot();
     unsubscribeSnapshot = null;
   }
+};
+
+// NOVO: Fica escutando as Stores. Qualquer clique que você der, ele aciona!
+export const setupAutoSync = () => {
+  const handleStoreChange = () => {
+    if (isApplyingCloudData) return; // Não faz upload se estivermos apenas baixando da nuvem
+    
+    // A MÁGICA: Assim que o usuário clica, atualizamos o lastSyncTime para rejeitar 
+    // agressivamente qualquer versão antiga que a nuvem tente empurrar de volta!
+    lastSyncTime = Date.now(); 
+
+    if (syncTimeout) clearTimeout(syncTimeout);
+    
+    // Aguarda 1.5 segundos de inatividade do usuário para empurrar o pacote todo
+    syncTimeout = setTimeout(() => {
+      syncToCloud();
+    }, 1500); 
+  };
+
+  const unsub1 = useTaskStore.subscribe(handleStoreChange);
+  const unsub2 = useHabitStore.subscribe(handleStoreChange);
+  const unsub3 = useEconomyStore.subscribe(handleStoreChange);
+  const unsub4 = useVisionStore.subscribe(handleStoreChange);
+  const unsub5 = useConfigStore.subscribe(handleStoreChange);
+
+  return () => {
+    unsub1(); unsub2(); unsub3(); unsub4(); unsub5();
+  };
 };

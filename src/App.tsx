@@ -12,7 +12,7 @@ import { FocusMode } from './features/tasks/FocusMode';
 import { DailySummaryModal } from './features/daily/DailySummaryModal';
 import { Navbar, type Tab } from './components/layout/Navbar';
 import { AnimatePresence, motion } from 'framer-motion';
-import { syncToCloud, startCloudListener, stopCloudListener } from './lib/cloudSync';
+import { startCloudListener, stopCloudListener, setupAutoSync } from './lib/cloudSync';
 import { WifiOff } from 'lucide-react';
 
 function App() {
@@ -21,7 +21,6 @@ function App() {
   const isGlobalModalOpen = useTaskStore((state) => state.isGlobalModalOpen);
   const isFocusModeOpen = useTaskStore((state) => state.isFocusModeOpen);
   
-  // Estado de Rede
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   useEffect(() => {
@@ -38,15 +37,12 @@ function App() {
   // SERVIÇO DE SINCRONIZAÇÃO (REAL-TIME + BACKUP)
   useEffect(() => {
     if (uid && e2eePin && isOnboarded) {
-      startCloudListener(uid, e2eePin); // Inicia o túnel de tempo real
+      startCloudListener(uid, e2eePin); // Inicia o túnel de tempo real (baixa dados)
+      const stopAutoSync = setupAutoSync(); // Inicia o espião de cliques (sobe dados instantaneamente)
 
-      const interval = setInterval(() => {
-        if (navigator.onLine) syncToCloud().catch(console.error); 
-      }, 60000); 
-      
       return () => {
-        clearInterval(interval);
         stopCloudListener();
+        stopAutoSync();
       };
     }
   }, [uid, e2eePin, isOnboarded]);
@@ -54,7 +50,6 @@ function App() {
   return (
     <ThemeWrapper>
       
-      {/* INDICATIVO DE MODO OFFLINE */}
       <AnimatePresence>
         {isOffline && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-amber-500 text-white dark:bg-amber-600 font-bold text-xs py-2 px-4 flex justify-center items-center gap-2 z-[999] relative">
