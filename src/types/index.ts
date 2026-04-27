@@ -1,13 +1,16 @@
 export type Priority = 'P0' | 'P1' | 'P2' | 'P3' | 'P4';
-
 export type TaskType = 'normal' | 'daily_challenge' | 'sprint' | 'time' | 'bonus' | 'surprise';
-
 export type Mood = 'radiant' | 'happy' | 'normal' | 'annoyed' | 'disappointed';
 
 export interface SubTask {
   id: string;
   title: string;
   completed: boolean;
+}
+
+export interface Folder {
+  id: string;
+  name: string;
 }
 
 export interface Task {
@@ -17,20 +20,23 @@ export interface Task {
   type: TaskType;
   priority: Priority;
   subtasks?: SubTask[];
-  createdAt: number; // Timestamp
-  deadlineDate?: string; // Formato YYYY-MM-DD
-  deadlineTime?: string; // Formato HH:MM
+  createdAt: number;
+  deadlineDate?: string;
+  deadlineTime?: string;
   duration?: number;
   recurrence?: {
     type: 'none' | 'weekly' | 'monthly' | 'yearly';
-    weekdays?: number[]; // 0-6 (Dom-Sab)
+    weekdays?: number[];
     dayOfMonth?: number;
     monthOfYear?: number;
   };
   isCompleted: boolean;
   completedAt?: number;
   isFailed?: boolean;
-  folderId: string; // 'default' para a pasta inicial
+  folderId: string;
+  hasRespite?: boolean; 
+  hasRelief?: boolean;  
+  hasMagicDice?: boolean;
 }
 
 export interface Habit {

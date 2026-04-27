@@ -8,6 +8,7 @@ import { HabitDashboard } from './features/habits/HabitDashboard';
 import { FocusMode } from './features/tasks/FocusMode';
 import { Navbar, type Tab } from './components/layout/Navbar';
 import { AnimatePresence, motion } from 'framer-motion';
+import { ShopDashboard } from './features/shop/ShopDashboard';
 
 function App() {
   const isOnboarded = useConfigStore((state) => state.isOnboarded);
@@ -38,7 +39,7 @@ function App() {
       >
       {currentTab === 'tasks' && <TaskDashboard />}
       {currentTab === 'habits' && <HabitDashboard />}
-      {currentTab === 'shop' && <div className="p-8 text-center mt-20">Tela de Loja em construção...</div>}
+      {currentTab === 'shop' && <ShopDashboard />}
       {currentTab === 'profile' && <div className="p-8 text-center mt-20">Tela de Perfil em construção...</div>}
 
       {!isGlobalModalOpen && !isFocusModeOpen && (
