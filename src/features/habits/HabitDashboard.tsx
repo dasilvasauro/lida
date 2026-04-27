@@ -11,7 +11,7 @@ import { format, subDays, startOfWeek, addDays } from 'date-fns';
 
 export const HabitDashboard = () => {
   const { habits, logs, modifiers, setLog, deleteHabit, applyGlobalDayOff, applyModifier } = useHabitStore();
-  const { inventory, useItem, voucherProgress, vouchers, addVoucherProgress, removeVoucherProgress } = useEconomyStore();
+  const { inventory, useItem, voucherProgress, addVoucherProgress, removeVoucherProgress } = useEconomyStore();
   
   // Usando o estado global para ocultar a Navbar corretamente
   const isModalOpen = useTaskStore((state) => state.isGlobalModalOpen);
