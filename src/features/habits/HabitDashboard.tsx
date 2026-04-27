@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Info, Coffee, Ticket } from 'lucide-react';
 import { useHabitStore } from '../../store/useHabitStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
+import { useTaskStore } from '../../store/useTaskStore'; // <-- Adicionado para a Navbar
 import { HabitModal } from './HabitModal';
 import { HabitItem } from './HabitItem';
 import type { Habit } from '../../types';
@@ -10,9 +11,12 @@ import { format, subDays, startOfWeek, addDays } from 'date-fns';
 
 export const HabitDashboard = () => {
   const { habits, logs, modifiers, setLog, deleteHabit, applyGlobalDayOff, applyModifier } = useHabitStore();
-  const { inventory, useItem, voucherProgress, addVoucherProgress } = useEconomyStore();
+  const { inventory, useItem, voucherProgress, vouchers, addVoucherProgress, removeVoucherProgress } = useEconomyStore();
   
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Usando o estado global para ocultar a Navbar corretamente
+  const isModalOpen = useTaskStore((state) => state.isGlobalModalOpen);
+  const setIsModalOpen = useTaskStore((state) => state.setGlobalModalOpen);
+  
   const [habitToEdit, setHabitToEdit] = useState<Habit | null>(null);
   const [toastMessage, setToastMessage] = useState<{ msg: string; type: 'success'|'strict'|'motivational' } | null>(null);
 
@@ -35,8 +39,14 @@ export const HabitDashboard = () => {
       else if (currentStreak === 2) showToast("3 dias seguidos! Você está pegando o ritmo! 🔥", "motivational");
       else if (currentStreak === 6) showToast("Uma semana perfeita! Inparável! 🚀", "motivational");
       else if (currentStreak === 20) showToast("Dizem que leva 21 dias para criar um hábito. Falta 1! 👀", "motivational");
-    } else if (newCount === 0 && currentStreak > 3) {
-      showToast("Sério? Você vai jogar essa ofensiva no lixo? Recupere isso.", "strict");
+    } else {
+      // Reverte o Voucher se ele desmarcar um hábito que já estava concluído
+      if (wasCompleted) {
+        removeVoucherProgress();
+      }
+      if (newCount === 0 && currentStreak > 3) {
+        showToast("Sério? Você vai jogar essa ofensiva no lixo? Recupere isso.", "strict");
+      }
     }
   };
 
@@ -102,7 +112,6 @@ export const HabitDashboard = () => {
           )}
         </header>
 
-        {/* BARRA DE VOUCHERS: Segmentada em 3 e com indicativo de +1 */}
         <div className="bg-blue-500/10 border border-blue-500/20 p-5 rounded-3xl flex items-center justify-between">
           <div className="flex-1 mr-6">
             <div className="flex justify-between text-xs font-bold text-blue-600 dark:text-blue-400 mb-3 uppercase tracking-widest">

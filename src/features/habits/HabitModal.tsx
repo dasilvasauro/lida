@@ -16,7 +16,7 @@ export const HabitModal = ({ isOpen, onClose, habitToEdit, onSuccess }: HabitMod
     const { addHabit, updateHabit } = useHabitStore();
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [goal, setGoal] = useState<number>(1); // <-- Meta diária
+    const [goal, setGoal] = useState<number>(1);
 
     useEffect(() => {
         if (habitToEdit && isOpen) {
@@ -47,8 +47,8 @@ export const HabitModal = ({ isOpen, onClose, habitToEdit, onSuccess }: HabitMod
         <AnimatePresence>
         {isOpen && (
             <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" />
-            <motion.div layoutId={habitToEdit ? undefined : "fab-habit"} className="fixed bottom-0 left-0 right-0 md:bottom-6 max-w-md mx-auto bg-zinc-50 dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-[0_0_40px_rgba(0,0,0,0.1)] dark:shadow-[0_0_40px_rgba(0,0,0,0.4)] z-50 overflow-hidden flex flex-col">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/80 z-40" />
+            <motion.div layoutId={habitToEdit ? undefined : "fab-habit"} className="fixed bottom-0 left-0 right-0 md:bottom-6 max-w-md mx-auto bg-zinc-50 dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl z-50 overflow-hidden flex flex-col">
 
             <div className="flex justify-between items-center p-6 border-b border-zinc-200 dark:border-zinc-800">
             <h3 className="text-xl font-bold">{habitToEdit ? 'Editar Hábito' : 'Forjar Hábito'}</h3>
@@ -61,7 +61,6 @@ export const HabitModal = ({ isOpen, onClose, habitToEdit, onSuccess }: HabitMod
             <textarea placeholder="Detalhes ou motivação (Opcional)..." value={description} onChange={(e) => setDescription(e.target.value)} className="w-full resize-none bg-transparent border-none outline-none text-sm text-zinc-600 dark:text-zinc-400 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 h-16" />
             </div>
 
-            {/* SLIDER DE META DIÁRIA */}
             <div className="space-y-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
             <div className="flex justify-between items-center">
             <span className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Meta Diária (Vezes)</span>

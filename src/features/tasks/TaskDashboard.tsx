@@ -9,7 +9,7 @@ import { TaskItem } from './TaskItem';
 import { RewardToast } from '../../components/ui/RewardToast';
 import type { Task, Mood } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
-import { format } from 'date-fns'; // <-- Importado para lidar com o timezone local
+import { format } from 'date-fns';
 
 export const TaskDashboard = () => {
   const { userClass } = useConfigStore();
@@ -17,7 +17,7 @@ export const TaskDashboard = () => {
     tasks, folders, selectedFolderId, setFolderId, addFolder, deleteFolder,
     toggleTaskCompletion, deleteTask, clearCompletedTasks, selectedFilter, setFilter, dailyMood, setDailyMood 
   } = useTaskStore();
-  const { activeXpBoostUntil, activeGoldBoostUntil, addReward } = useEconomyStore();
+  const { activeXpBoostUntil, activeGoldBoostUntil, addReward, removeReward } = useEconomyStore();
 
   const isModalOpen = useTaskStore((state) => state.isGlobalModalOpen);
   const setIsModalOpen = useTaskStore((state) => state.setGlobalModalOpen);
@@ -46,48 +46,48 @@ export const TaskDashboard = () => {
     }
   };
 
+  // Helper centralizado para calcular o valor da tarefa
+  const calculateTaskReward = (task: Task) => {
+    let baseGold = 15; let baseXp = 45;
+    switch (task.priority) {
+      case 'P0': baseGold = 50; baseXp = 150; break;
+      case 'P1': baseGold = 40; baseXp = 100; break;
+      case 'P2': baseGold = 30; baseXp = 75; break;
+      case 'P3': baseGold = 20; baseXp = 50; break;
+      case 'P4': baseGold = 10; baseXp = 25; break;
+    }
+    let modusGoldMulti = 1; let modusXpMulti = 1;
+    if (userClass === 'multitask') { modusGoldMulti = 1.2; modusXpMulti = 1.2; }
+    else if (userClass === 'minimalist' && (task.priority === 'P0' || task.priority === 'P1')) { modusGoldMulti = 1.5; modusXpMulti = 1.5; }
+    else if (userClass === 'punctual' && task.deadlineDate) { modusGoldMulti = 1.3; modusXpMulti = 1.3; }
+    else if (userClass === 'ambitious' && (task.type === 'sprint' || task.type === 'daily_challenge')) { modusGoldMulti = 1.8; modusXpMulti = 1.8; }
+    const magicMultiplier = task.hasMagicDice ? 2 : 1;
+    return { 
+      xpAmount: Math.round(baseXp * modusXpMulti * magicMultiplier), 
+      goldAmount: Math.round(baseGold * modusGoldMulti * magicMultiplier) 
+    };
+  };
+
   const executeToggle = (taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
-    if (task && !task.isCompleted) {
-      if (task.isFailed) {
-        setReward({ xp: 0, gold: 0, isFailed: true });
+    if (task) {
+      if (!task.isCompleted) {
+        if (task.isFailed) {
+          setReward({ xp: 0, gold: 0, isFailed: true });
+        } else {
+          const { xpAmount, goldAmount } = calculateTaskReward(task);
+          setReward({ xp: xpAmount, gold: goldAmount });
+          addReward(xpAmount, goldAmount); 
+        }
+        setTimeout(() => setReward(null), 4000);
       } else {
-        let baseGold = 15;
-        let baseXp = 45;
-
-        switch (task.priority) {
-          case 'P0': baseGold = 50; baseXp = 150; break;
-          case 'P1': baseGold = 40; baseXp = 100; break;
-          case 'P2': baseGold = 30; baseXp = 75; break;
-          case 'P3': baseGold = 20; baseXp = 50; break;
-          case 'P4': baseGold = 10; baseXp = 25; break;
+        // Tarefa desmarcada! Reverte a recompensa local (Anti-trapaça)
+        if (!task.isFailed) {
+          const { xpAmount, goldAmount } = calculateTaskReward(task);
+          removeReward(xpAmount, goldAmount);
+          showToast('Recompensas revertidas.');
         }
-
-        let modusGoldMulti = 1;
-        let modusXpMulti = 1;
-
-        if (userClass === 'multitask') {
-          modusGoldMulti = 1.2; 
-          modusXpMulti = 1.2;
-        } else if (userClass === 'minimalist' && (task.priority === 'P0' || task.priority === 'P1')) {
-          modusGoldMulti = 1.5;
-          modusXpMulti = 1.5;
-        } else if (userClass === 'punctual' && task.deadlineDate) {
-          modusGoldMulti = 1.3;
-          modusXpMulti = 1.3;
-        } else if (userClass === 'ambitious' && (task.type === 'sprint' || task.type === 'daily_challenge')) {
-          modusGoldMulti = 1.8;
-          modusXpMulti = 1.8;
-        }
-
-        const magicMultiplier = task.hasMagicDice ? 2 : 1;
-        const xpAmount = Math.round(baseXp * modusXpMulti * magicMultiplier);
-        const goldAmount = Math.round(baseGold * modusGoldMulti * magicMultiplier);
-        
-        setReward({ xp: xpAmount, gold: goldAmount });
-        addReward(xpAmount, goldAmount); 
       }
-      setTimeout(() => setReward(null), 4000);
     }
     toggleTaskCompletion(taskId);
   };
@@ -122,10 +122,7 @@ export const TaskDashboard = () => {
   const filteredTasks = tasks.filter((task) => {
     if (selectedFolderId !== 'all' && task.folderId !== selectedFolderId) return false;
     if (selectedFilter === 'all') return true;
-    
-    // <-- RESOLVIDO AQUI: Usando format(new Date()) para não ter erro de timezone
     if (selectedFilter === 'today') return !task.deadlineDate || task.deadlineDate === format(new Date(), 'yyyy-MM-dd');
-    
     return true;
   }).sort((a, b) => {
     if (a.isCompleted === b.isCompleted) return b.createdAt - a.createdAt;
@@ -245,7 +242,7 @@ export const TaskDashboard = () => {
       <AnimatePresence>
         {confirmDialog && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-zinc-50 dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.6)] border border-zinc-200 dark:border-zinc-800">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-zinc-50 dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800">
               <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${confirmDialog.type === 'delete' || confirmDialog.type === 'clear_completed' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}><AlertTriangle size={24} /></div>
               <h3 className="text-xl font-bold mb-2 text-zinc-900 dark:text-zinc-100">{confirmDialog.title}</h3>
               <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-8 leading-relaxed">{confirmDialog.subtitle}</p>
