@@ -31,14 +31,15 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
   const inventory = useEconomyStore((state) => state.inventory);
   const useItem = useEconomyStore((state) => state.useItem);
 
-  const hasActiveSprint = useTaskStore((state) =>
-    state.tasks.some(t => t.type === 'sprint' && !t.isCompleted && t.id !== taskToEdit?.id)
-  );
+  const hasActiveSprint = tasks.some(t => t.type === 'sprint' && !t.isCompleted && t.id !== taskToEdit?.id);
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const todaysTasks = tasks.filter(t => t.deadlineDate === todayStr || !t.deadlineDate);
   const countP0 = todaysTasks.filter(t => t.priority === 'P0' && t.id !== taskToEdit?.id).length;
   const countP1 = todaysTasks.filter(t => t.priority === 'P1' && t.id !== taskToEdit?.id).length;
+
+  // <-- Nova trava do Desafio Diário
+  const hasDailyChallengeToday = tasks.some(t => t.type === 'daily_challenge' && format(new Date(t.createdAt), 'yyyy-MM-dd') === todayStr && t.id !== taskToEdit?.id);
 
   const isP0Locked = countP0 >= 1 && inventory.extraP0 <= 0;
   const isP1Locked = countP1 >= 2 && inventory.extraP1 <= 0;
@@ -183,8 +184,9 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
 
   const taskTypes: { id: TaskType; label: string; icon: any; color: string; isLocked?: boolean }[] = [
     { id: 'normal', label: 'Normal', icon: CheckCircle2, color: 'text-zinc-500' },
-    { id: 'daily_challenge', label: 'Desafio', icon: Zap, color: 'text-amber-500' },
-    { id: 'sprint', label: 'Sprint', icon: Target, color: 'text-purple-500' },
+    // Desafio agora respeita a trava
+    { id: 'daily_challenge', label: 'Desafio', icon: Zap, color: 'text-amber-500', isLocked: hasDailyChallengeToday },
+    { id: 'sprint', label: 'Sprint', icon: Target, color: 'text-purple-500', isLocked: hasActiveSprint },
     { id: 'time', label: 'Tempo', icon: Timer, color: 'text-blue-500' },
     { id: 'bonus', label: 'Bônus', icon: Gift, color: 'text-emerald-500', isLocked: isBonusLocked },
   ];

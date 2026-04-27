@@ -27,7 +27,7 @@ export const OnboardingFlow = () => {
       Sua vida organizada com propósito. Gerencie tarefas, hábitos e objetivos em um só lugar e com foco absoluto.
       </p>
       <button onClick={handleNext} className="flex items-center gap-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black px-8 py-4 rounded-full font-bold hover:scale-105 transition-transform shadow-xl">
-      Entrar com Google <LogIn size={20} />
+      Começar Jornada <ArrowRight size={20} />
       </button>
       </motion.div>
     )}

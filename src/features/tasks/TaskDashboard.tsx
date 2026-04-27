@@ -3,13 +3,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, AlertTriangle, Frown, CloudRain, Meh, Smile, Sparkles, Trash2, TrendingUp, Coins, X, Check } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
+import { useConfigStore } from '../../store/useConfigStore';
 import { TaskModal } from './TaskModal';
 import { TaskItem } from './TaskItem';
 import { RewardToast } from '../../components/ui/RewardToast';
 import type { Task, Mood } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
+import { format } from 'date-fns'; // <-- Importado para lidar com o timezone local
 
 export const TaskDashboard = () => {
+  const { userClass } = useConfigStore();
   const { 
     tasks, folders, selectedFolderId, setFolderId, addFolder, deleteFolder,
     toggleTaskCompletion, deleteTask, clearCompletedTasks, selectedFilter, setFilter, dailyMood, setDailyMood 
@@ -49,9 +52,38 @@ export const TaskDashboard = () => {
       if (task.isFailed) {
         setReward({ xp: 0, gold: 0, isFailed: true });
       } else {
-        const multiplier = task.hasMagicDice ? 2 : 1;
-        const xpAmount = 45 * multiplier;
-        const goldAmount = 15 * multiplier;
+        let baseGold = 15;
+        let baseXp = 45;
+
+        switch (task.priority) {
+          case 'P0': baseGold = 50; baseXp = 150; break;
+          case 'P1': baseGold = 40; baseXp = 100; break;
+          case 'P2': baseGold = 30; baseXp = 75; break;
+          case 'P3': baseGold = 20; baseXp = 50; break;
+          case 'P4': baseGold = 10; baseXp = 25; break;
+        }
+
+        let modusGoldMulti = 1;
+        let modusXpMulti = 1;
+
+        if (userClass === 'multitask') {
+          modusGoldMulti = 1.2; 
+          modusXpMulti = 1.2;
+        } else if (userClass === 'minimalist' && (task.priority === 'P0' || task.priority === 'P1')) {
+          modusGoldMulti = 1.5;
+          modusXpMulti = 1.5;
+        } else if (userClass === 'punctual' && task.deadlineDate) {
+          modusGoldMulti = 1.3;
+          modusXpMulti = 1.3;
+        } else if (userClass === 'ambitious' && (task.type === 'sprint' || task.type === 'daily_challenge')) {
+          modusGoldMulti = 1.8;
+          modusXpMulti = 1.8;
+        }
+
+        const magicMultiplier = task.hasMagicDice ? 2 : 1;
+        const xpAmount = Math.round(baseXp * modusXpMulti * magicMultiplier);
+        const goldAmount = Math.round(baseGold * modusGoldMulti * magicMultiplier);
+        
         setReward({ xp: xpAmount, gold: goldAmount });
         addReward(xpAmount, goldAmount); 
       }
@@ -70,6 +102,15 @@ export const TaskDashboard = () => {
     }
   };
 
+  const requestDelete = (taskId: string) => {
+    setConfirmDialog({
+      type: 'delete',
+      taskId,
+      title: 'Excluir Tarefa?',
+      subtitle: 'Essa ação não pode ser desfeita e a tarefa será removida permanentemente.'
+    });
+  };
+
   const handleConfirmAction = () => {
     if (!confirmDialog) return;
     if (confirmDialog.type === 'complete') executeToggle(confirmDialog.taskId);
@@ -81,7 +122,10 @@ export const TaskDashboard = () => {
   const filteredTasks = tasks.filter((task) => {
     if (selectedFolderId !== 'all' && task.folderId !== selectedFolderId) return false;
     if (selectedFilter === 'all') return true;
-    if (selectedFilter === 'today') return !task.deadlineDate || task.deadlineDate === new Date().toISOString().split('T')[0];
+    
+    // <-- RESOLVIDO AQUI: Usando format(new Date()) para não ter erro de timezone
+    if (selectedFilter === 'today') return !task.deadlineDate || task.deadlineDate === format(new Date(), 'yyyy-MM-dd');
+    
     return true;
   }).sort((a, b) => {
     if (a.isCompleted === b.isCompleted) return b.createdAt - a.createdAt;
@@ -91,9 +135,9 @@ export const TaskDashboard = () => {
   const hasCompletedTasks = filteredTasks.some(t => t.isCompleted);
 
   const moods: { value: Mood; icon: any; label: string }[] = [
-    { value: 'terrible', icon: Frown, label: 'Exausto' }, { value: 'bad', icon: CloudRain, label: 'Difícil' },
-    { value: 'neutral', icon: Meh, label: 'Normal' }, { value: 'good', icon: Smile, label: 'Bom' },
-    { value: 'great', icon: Sparkles, label: 'Incrível' },
+    { value: 'disappointed', icon: CloudRain, label: 'Desapontado' }, { value: 'annoyed', icon: Frown, label: 'Incomodado' },
+    { value: 'normal', icon: Meh, label: 'Normal' }, { value: 'happy', icon: Smile, label: 'Feliz' },
+    { value: 'radiant', icon: Sparkles, label: 'Radiante' },
   ];
 
   const filters: { id: typeof selectedFilter; label: string }[] = [

@@ -46,3 +46,19 @@ export interface Habit {
   goal: number;
   createdAt: number;
 }
+
+export type GoalState = 1 | 2 | 3 | 4 | 5;
+
+export interface BigGoal {
+  id: string;
+  title: string;
+  state: GoalState;
+}
+
+export interface Vision {
+  traitsToDevelop: string[];
+  traitsToAbandon: string[];
+  goals: BigGoal[];
+  checkpoints: string[]; // Formato YYYY-MM-DD
+  createdAt: number;
+}

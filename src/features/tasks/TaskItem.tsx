@@ -124,6 +124,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) =>
         )}
 
         {task.deadlineDate && <span className="flex items-center gap-1"><Calendar size={12} />{format(new Date(task.deadlineDate + 'T12:00:00'), "dd/MM", { locale: ptBR })}</span>}
+        {task.deadlineTime && <span className="flex items-center gap-1"><Clock size={12} />{task.deadlineTime}</span>}
         {hasSubtasks && <span className="flex items-center gap-1 text-purple-500"><Target size={12} />{completedSubtasks}/{task.subtasks?.length}</span>}
         </div>
         </div>
@@ -167,7 +168,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) =>
                 </>
             )}
 
-            <div className="flex flex-wrap items-center justify-between pt-2 gap-2 border-t border-zinc-100 dark:border-zinc-800">
+            <div className="flex flex-wrap items-center justify-between pt-2 gap-2">
               
               {/* NOME DA PASTA NO CANTO INFERIOR ESQUERDO */}
               <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-md">

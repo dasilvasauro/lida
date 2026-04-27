@@ -1,13 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Task, Mood, Folder } from '../types';
-import { format } from 'date-fns';
+import { format } from 'date-fns'; // <-- Importado
 
 interface TaskState {
   tasks: Task[];
   folders: Folder[];
   dailyMood: Mood | null;
-  moodHistory: Record<string, Mood>; // <-- Novo: Histórico de Humor
+  moodHistory: Record<string, Mood>;
   selectedFilter: 'today' | 'week' | 'month' | 'all';
   selectedFolderId: string;
   activeFocusSession: { taskId: string; startTime: number; duration: number } | null;
@@ -34,6 +34,7 @@ interface TaskState {
   markTaskFailed: (taskId: string) => void;
   clearCompletedTasks: () => void;
   applyPowerUp: (taskId: string, type: 'respite' | 'relief' | 'magicDice') => void;
+  failPastDailyChallenges: (todayStr: string) => void; // <-- Nova função
 }
 
 export const useTaskStore = create<TaskState>()(
@@ -74,7 +75,6 @@ export const useTaskStore = create<TaskState>()(
         selectedFolderId: state.selectedFolderId === folderId ? 'all' : state.selectedFolderId
       })),
 
-      // Atualizado para salvar no histórico
       setDailyMood: (mood) => set((state) => {
         const todayStr = format(new Date(), 'yyyy-MM-dd');
         return { 
@@ -128,6 +128,19 @@ export const useTaskStore = create<TaskState>()(
               newDate = dateObj.toISOString().split('T')[0];
             }
             return { ...t, hasRelief: true, deadlineDate: newDate };
+          }
+          return t;
+        })
+      })),
+
+      // Lógica que "falha" os desafios diários passados
+      failPastDailyChallenges: (todayStr) => set((state) => ({
+        tasks: state.tasks.map((t) => {
+          if (t.type === 'daily_challenge' && !t.isCompleted && !t.isFailed) {
+            const createdAtStr = format(new Date(t.createdAt), 'yyyy-MM-dd');
+            if (createdAtStr < todayStr) {
+              return { ...t, isFailed: true };
+            }
           }
           return t;
         })

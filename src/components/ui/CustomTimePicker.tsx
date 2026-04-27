@@ -1,5 +1,3 @@
-import { motion } from 'framer-motion';
-
 interface TimePickerProps {
   selectedTime: string;
   onSelect: (time: string) => void;
@@ -7,7 +5,8 @@ interface TimePickerProps {
 
 export const CustomTimePicker = ({ selectedTime, onSelect }: TimePickerProps) => {
   const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
-  const minutes = ['00', '15', '30', '45'];
+  // <-- Exibindo todos os minutos
+  const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
 
   const currentHour = selectedTime.split(':')[0] || '12';
   const currentMin = selectedTime.split(':')[1] || '00';

@@ -4,13 +4,12 @@ import { getFirestore } from "firebase/firestore";
 import CryptoJS from "crypto-js";
 
 const firebaseConfig = {
-  // Cole suas credenciais aqui
-  apiKey: "SUA_API_KEY",
-  authDomain: "SEU_AUTH_DOMAIN",
-  projectId: "SEU_PROJECT_ID",
-  storageBucket: "SEU_STORAGE_BUCKET",
-  messagingSenderId: "SEU_SENDER_ID",
-  appId: "SEU_APP_ID"
+  apiKey: "AIzaSyDX9t1O0_scsUP9hi8deNk1eh3Iw60oQ8U",
+  authDomain: "lida-81429.firebaseapp.com",
+  projectId: "lida-81429",
+  storageBucket: "lida-81429.firebasestorage.app",
+  messagingSenderId: "790788286874",
+  appId: "1:790788286874:web:636e2c821ce4af7bcdb223"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -24,6 +23,12 @@ export const encryptData = (data: string, key: string) => {
 };
 
 export const decryptData = (ciphertext: string, key: string) => {
-  const bytes = CryptoJS.AES.decrypt(ciphertext, key);
-  return bytes.toString(CryptoJS.enc.Utf8);
+  try {
+    const bytes = CryptoJS.AES.decrypt(ciphertext, key);
+    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+    if (!decrypted) throw new Error("Chave inválida");
+    return decrypted;
+  } catch (error) {
+    throw new Error("Chave inválida");
+  }
 };

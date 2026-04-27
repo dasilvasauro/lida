@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, isSameDay, isSameMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 interface DatePickerProps {
   selectedDate: string;
@@ -56,6 +55,7 @@ export const CustomDatePicker = ({ selectedDate, onSelect }: DatePickerProps) =>
         const formattedDate = format(day, 'yyyy-MM-dd');
         const isSelected = selectedDate === formattedDate;
         const isCurrentMonth = isSameMonth(day, monthStart);
+        const isToday = isSameDay(day, new Date()); // <-- Identifica se o botão é de hoje
 
         days.push(
           <button
@@ -64,9 +64,11 @@ export const CustomDatePicker = ({ selectedDate, onSelect }: DatePickerProps) =>
             className={`h-9 w-full flex items-center justify-center text-sm rounded-lg transition-all ${
               isSelected 
                 ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black font-bold' 
-                : !isCurrentMonth 
-                  ? 'text-zinc-300 dark:text-zinc-700' 
-                  : 'hover:bg-zinc-200 dark:hover:bg-zinc-800'
+                : isToday
+                  ? 'border border-blue-500 text-blue-500 dark:border-blue-400 dark:text-blue-400 font-bold'
+                  : !isCurrentMonth 
+                    ? 'text-zinc-300 dark:text-zinc-700' 
+                    : 'hover:bg-zinc-200 dark:hover:bg-zinc-800'
             }`}
           >
             {format(day, 'd')}
