@@ -12,28 +12,57 @@ import { FocusMode } from './features/tasks/FocusMode';
 import { DailySummaryModal } from './features/daily/DailySummaryModal';
 import { Navbar, type Tab } from './components/layout/Navbar';
 import { AnimatePresence, motion } from 'framer-motion';
-import { syncToCloud } from './lib/cloudSync';
+import { syncToCloud, startCloudListener, stopCloudListener } from './lib/cloudSync';
+import { WifiOff } from 'lucide-react';
 
 function App() {
   const { uid, e2eePin, isOnboarded } = useConfigStore();
   const [currentTab, setCurrentTab] = useState<Tab>('tasks');
   const isGlobalModalOpen = useTaskStore((state) => state.isGlobalModalOpen);
   const isFocusModeOpen = useTaskStore((state) => state.isFocusModeOpen);
+  
+  // Estado de Rede
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
-  // SERVIÇO DE SINCRONIZAÇÃO AUTOMÁTICA DE FUNDO
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // SERVIÇO DE SINCRONIZAÇÃO (REAL-TIME + BACKUP)
   useEffect(() => {
     if (uid && e2eePin && isOnboarded) {
+      startCloudListener(uid, e2eePin); // Inicia o túnel de tempo real
+
       const interval = setInterval(() => {
-        syncToCloud().catch(console.error); // Envia para o Firestore a cada 1 minuto
+        if (navigator.onLine) syncToCloud().catch(console.error); 
       }, 60000); 
-      return () => clearInterval(interval);
+      
+      return () => {
+        clearInterval(interval);
+        stopCloudListener();
+      };
     }
   }, [uid, e2eePin, isOnboarded]);
 
   return (
     <ThemeWrapper>
       
-      {/* SÓ MOSTRA O RITUAL SE ESTIVER TOTALMENTE LOGADO */}
+      {/* INDICATIVO DE MODO OFFLINE */}
+      <AnimatePresence>
+        {isOffline && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-amber-500 text-white dark:bg-amber-600 font-bold text-xs py-2 px-4 flex justify-center items-center gap-2 z-[999] relative">
+            <WifiOff size={14} /> Você está offline. As alterações serão sincronizadas quando reconectar.
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {uid && e2eePin && isOnboarded && <DailySummaryModal />}
 
       <AnimatePresence mode="wait">

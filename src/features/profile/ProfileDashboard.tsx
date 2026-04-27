@@ -1,20 +1,47 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Star, Coins, Flame, CheckCircle2, TrendingUp, Eye, Medal, Info, Activity } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Star, Coins, Flame, CheckCircle2, TrendingUp, Eye, Medal, Info, Activity, RefreshCw } from 'lucide-react';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useHabitStore } from '../../store/useHabitStore';
+import { useConfigStore } from '../../store/useConfigStore';
 import { format, subDays, startOfWeek, addDays, isSameDay } from 'date-fns';
 import type { Mood } from '../../types';
 import { VisionModal } from '../vision/VisionModal';
+import { syncToCloud, syncFromCloud } from '../../lib/cloudSync';
 
 export const ProfileDashboard = () => {
   const { xp, level, gold } = useEconomyStore();
   const { tasks, moodHistory } = useTaskStore();
   const { habits, logs, modifiers } = useHabitStore();
+  const { uid, e2eePin } = useConfigStore();
 
   const [gridMode, setGridMode] = useState<'perfect' | 'habits' | 'mood'>('perfect');
   const [isVisionOpen, setIsVisionOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleForceSync = async () => {
+    if (!uid || !e2eePin || !navigator.onLine) {
+        showToast("Não foi possível sincronizar. Verifique a rede.");
+        return;
+    }
+    setIsSyncing(true);
+    try {
+      await syncToCloud(); // Empurra o local
+      await syncFromCloud(uid, e2eePin); // Puxa e confere o remoto
+      showToast("Sincronização concluída com sucesso!");
+    } catch (e) {
+      showToast("Erro ao sincronizar dados.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // --- CÁLCULOS DE XP ---
   const currentLevelXp = Math.pow(level - 1, 2) * 100;
@@ -118,9 +145,21 @@ export const ProfileDashboard = () => {
     <div className="min-h-screen bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 pb-32 transition-colors">
       <div className="max-w-4xl mx-auto px-6 md:px-8 pt-12 space-y-8">
         
-        <header className="pb-6 border-b border-zinc-100 dark:border-zinc-900">
-          <h1 className="text-3xl font-black tracking-tight">Perfil de Agente</h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium mt-1">Seu progresso e evolução ao longo do tempo.</p>
+        <header className="pb-6 border-b border-zinc-100 dark:border-zinc-900 flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight">Perfil de Agente</h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium mt-1">Seu progresso e evolução ao longo do tempo.</p>
+          </div>
+          
+          <button 
+            onClick={handleForceSync} 
+            disabled={isSyncing}
+            className="flex items-center gap-2 p-2 px-4 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-xs font-bold text-zinc-500 dark:text-zinc-400 disabled:opacity-50"
+            title="Forçar Sincronização"
+          >
+            <RefreshCw size={14} className={isSyncing ? "animate-spin" : ""} />
+            <span className="hidden md:inline">Forçar Sync</span>
+          </button>
         </header>
 
         {/* VISÃO (INTERATIVO) - REPOSICIONADO PARA O TOPO E MENOR */}
@@ -221,6 +260,15 @@ export const ProfileDashboard = () => {
       </div>
       
       <VisionModal isOpen={isVisionOpen} onClose={() => setIsVisionOpen(false)} />
+
+      {/* TOAST SYSTEM DA TELA DE PERFIL */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black px-6 py-3 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.12)] font-bold text-sm tracking-wide border border-zinc-800 dark:border-zinc-200">
+            {toastMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
