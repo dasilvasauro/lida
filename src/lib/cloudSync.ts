@@ -1,4 +1,4 @@
-import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, getDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { db, encryptData, decryptData } from './firebase';
 import { useTaskStore } from '../store/useTaskStore';
 import { useHabitStore } from '../store/useHabitStore';
@@ -12,11 +12,11 @@ let isApplyingCloudData = false;
 let syncTimeout: ReturnType<typeof setTimeout> | null = null;
 
 export const syncToCloud = async () => {
-  const { uid, e2eePin } = useConfigStore.getState();
-  if (!uid || !e2eePin || !navigator.onLine) return;
+  const { uid, e2eePin, isLocalMode } = useConfigStore.getState();
+  if (isLocalMode || !uid || !e2eePin || !navigator.onLine) return;
 
   const timestamp = Date.now();
-  lastSyncTime = timestamp; // Atualiza a trava no momento exato do envio
+  lastSyncTime = timestamp; 
 
   const payload = {
     tasks: encryptData(JSON.stringify(useTaskStore.getState()), e2eePin),
@@ -92,18 +92,14 @@ export const stopCloudListener = () => {
   }
 };
 
-// NOVO: Fica escutando as Stores. Qualquer clique que você der, ele aciona!
 export const setupAutoSync = () => {
   const handleStoreChange = () => {
-    if (isApplyingCloudData) return; // Não faz upload se estivermos apenas baixando da nuvem
+    if (isApplyingCloudData || useConfigStore.getState().isLocalMode) return; 
     
-    // A MÁGICA: Assim que o usuário clica, atualizamos o lastSyncTime para rejeitar 
-    // agressivamente qualquer versão antiga que a nuvem tente empurrar de volta!
     lastSyncTime = Date.now(); 
 
     if (syncTimeout) clearTimeout(syncTimeout);
     
-    // Aguarda 1.5 segundos de inatividade do usuário para empurrar o pacote todo
     syncTimeout = setTimeout(() => {
       syncToCloud();
     }, 1500); 
@@ -118,4 +114,12 @@ export const setupAutoSync = () => {
   return () => {
     unsub1(); unsub2(); unsub3(); unsub4(); unsub5();
   };
+};
+
+export const deleteCloudVault = async (uid: string) => {
+  try {
+    await deleteDoc(doc(db, 'users', uid));
+  } catch (error) {
+    console.error("Erro ao deletar cofre na nuvem:", error);
+  }
 };

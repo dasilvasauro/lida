@@ -16,12 +16,15 @@ import { startCloudListener, stopCloudListener, setupAutoSync } from './lib/clou
 import { WifiOff } from 'lucide-react';
 
 function App() {
-  const { uid, e2eePin, isOnboarded } = useConfigStore();
+  const { uid, e2eePin, isOnboarded, isLocalMode } = useConfigStore(); // <-- isLocalMode injetado
   const [currentTab, setCurrentTab] = useState<Tab>('tasks');
   const isGlobalModalOpen = useTaskStore((state) => state.isGlobalModalOpen);
   const isFocusModeOpen = useTaskStore((state) => state.isFocusModeOpen);
   
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  // <-- A nova variável que define se o usuário pode ver o app
+  const isAuth = (uid && e2eePin) || isLocalMode;
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -34,34 +37,35 @@ function App() {
     };
   }, []);
 
-  // SERVIÇO DE SINCRONIZAÇÃO (REAL-TIME + BACKUP)
+  // SERVIÇO DE SINCRONIZAÇÃO
   useEffect(() => {
-    if (uid && e2eePin && isOnboarded) {
-      startCloudListener(uid, e2eePin); // Inicia o túnel de tempo real (baixa dados)
-      const stopAutoSync = setupAutoSync(); // Inicia o espião de cliques (sobe dados instantaneamente)
+    // Só liga a nuvem se NÃO estiver em modo local e tiver credenciais
+    if (!isLocalMode && uid && e2eePin && isOnboarded) {
+      startCloudListener(uid, e2eePin); 
+      const stopAutoSync = setupAutoSync(); 
 
       return () => {
         stopCloudListener();
         stopAutoSync();
       };
     }
-  }, [uid, e2eePin, isOnboarded]);
+  }, [uid, e2eePin, isOnboarded, isLocalMode]);
 
   return (
     <ThemeWrapper>
       
       <AnimatePresence>
-        {isOffline && (
+        {isOffline && !isLocalMode && ( // Só avisa de offline se ele for um usuário de nuvem
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-amber-500 text-white dark:bg-amber-600 font-bold text-xs py-2 px-4 flex justify-center items-center gap-2 z-[999] relative">
             <WifiOff size={14} /> Você está offline. As alterações serão sincronizadas quando reconectar.
           </motion.div>
         )}
       </AnimatePresence>
 
-      {uid && e2eePin && isOnboarded && <DailySummaryModal />}
+      {isAuth && isOnboarded && <DailySummaryModal />}
 
       <AnimatePresence mode="wait">
-        {(!uid || !e2eePin) ? (
+        {!isAuth ? (
           <motion.div key="auth" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }}>
             <AuthScreen />
           </motion.div>

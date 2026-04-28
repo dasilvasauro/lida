@@ -70,9 +70,16 @@ export const AuthScreen = () => {
               O Lida utiliza Criptografia de Ponta a Ponta (E2EE). Nós não temos acesso às suas tarefas, hábitos ou visão de vida.
             </p>
             {error && <div className="text-red-500 text-sm font-bold mb-4">{error}</div>}
-            <button onClick={handleGoogleLogin} className="flex items-center gap-3 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black px-8 py-4 rounded-full font-bold hover:scale-105 transition-transform shadow-xl">
+            
+            <button onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-3 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black px-8 py-4 rounded-xl font-bold hover:scale-105 transition-transform shadow-xl">
               Autenticar com Google <ArrowRight size={20} />
             </button>
+
+            {/* BOTÃO DO MODO LOCAL */}
+            <button onClick={() => useConfigStore.getState().setLocalMode(true)} className="mt-8 text-sm font-bold text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+              Continuar Offline (Armazenamento Local)
+            </button>
+
           </motion.div>
         )}
 

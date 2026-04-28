@@ -8,23 +8,26 @@ type ModusOperandi = 'multitask' | 'minimalist' | 'punctual' | 'ambitious' | nul
 interface ConfigState {
   theme: Theme; font: Font; userClass: ModusOperandi; userName: string;
   isOnboarded: boolean; lastLoginDate: string | null;
-  uid: string | null;          // <-- NOVO
-  e2eePin: string | null;      // <-- NOVO
+  uid: string | null;          
+  e2eePin: string | null;      
+  isLocalMode: boolean;        // <-- NOVO: Flag do modo offline
 
   setTheme: (theme: Theme) => void; setFont: (font: Font) => void;
   setUserName: (name: string) => void; setUserClass: (userClass: ModusOperandi) => void;
   completeOnboarding: () => void; setLastLoginDate: (date: string) => void;
-  setAuth: (uid: string, pin: string) => void; // <-- NOVO
-  logout: () => void;                          // <-- NOVO
+  setAuth: (uid: string, pin: string) => void; 
+  setLocalMode: (isLocal: boolean) => void;    // <-- NOVO
+  logout: () => void;                          
 }
 
 export const useConfigStore = create<ConfigState>()(persist((set) => ({
   theme: 'dark-amoled', font: 'sans', userClass: null, userName: '',
-  isOnboarded: false, lastLoginDate: null, uid: null, e2eePin: null,
+  isOnboarded: false, lastLoginDate: null, uid: null, e2eePin: null, isLocalMode: false,
   
   setTheme: (theme) => set({ theme }), setFont: (font) => set({ font }),
   setUserName: (userName) => set({ userName }), setUserClass: (userClass) => set({ userClass }),
   completeOnboarding: () => set({ isOnboarded: true }), setLastLoginDate: (date) => set({ lastLoginDate: date }),
-  setAuth: (uid, pin) => set({ uid, e2eePin: pin }),
-  logout: () => set({ uid: null, e2eePin: null, isOnboarded: false }),
+  setAuth: (uid, pin) => set({ uid, e2eePin: pin, isLocalMode: false }), // Desativa o modo local ao logar
+  setLocalMode: (isLocalMode) => set({ isLocalMode }),
+  logout: () => set({ uid: null, e2eePin: null, isOnboarded: false, isLocalMode: false }), // Zera tudo no logout
 }), { name: 'lida-config' }));

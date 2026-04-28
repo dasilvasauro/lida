@@ -1,7 +1,50 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Task, Mood, Folder } from '../types';
-import { format } from 'date-fns'; // <-- Importado
+import { format, addDays, addMonths } from 'date-fns';
+import { v4 as uuidv4 } from 'uuid';
+
+// MOTOR DE RECORRÊNCIA: Calcula a próxima data baseado na regra da tarefa
+const calculateNextRecurrence = (currentDateStr: string | undefined, recurrence: Task['recurrence']): string | null => {
+  if (!recurrence || recurrence.type === 'none') return null;
+
+  // Cria a data localmente evitando bugs de fuso horário (UTC vs GMT-3)
+  const baseDate = currentDateStr 
+    ? new Date(Number(currentDateStr.split('-')[0]), Number(currentDateStr.split('-')[1]) - 1, Number(currentDateStr.split('-')[2])) 
+    : new Date();
+
+  if (recurrence.type === 'weekly' && recurrence.weekdays && recurrence.weekdays.length > 0) {
+    const sortedDays = [...recurrence.weekdays].sort((a, b) => a - b);
+    const currentDayOfWeek = baseDate.getDay();
+    const nextDay = sortedDays.find(d => d > currentDayOfWeek);
+
+    if (nextDay !== undefined) {
+      const daysToAdd = nextDay - currentDayOfWeek;
+      return format(addDays(baseDate, daysToAdd), 'yyyy-MM-dd');
+    } else {
+      const daysToAdd = 7 - currentDayOfWeek + sortedDays[0];
+      return format(addDays(baseDate, daysToAdd), 'yyyy-MM-dd');
+    }
+  }
+
+  if (recurrence.type === 'monthly' && recurrence.dayOfMonth) {
+    const nextMonthDate = addMonths(baseDate, 1);
+    const year = nextMonthDate.getFullYear();
+    const month = nextMonthDate.getMonth();
+    const daysInNextMonth = new Date(year, month + 1, 0).getDate();
+    const targetDay = Math.min(recurrence.dayOfMonth, daysInNextMonth);
+    return format(new Date(year, month, targetDay), 'yyyy-MM-dd');
+  }
+
+  if (recurrence.type === 'yearly' && recurrence.dayOfMonth && recurrence.monthOfYear !== undefined) {
+    const year = baseDate.getFullYear() + 1;
+    const daysInTargetMonth = new Date(year, recurrence.monthOfYear + 1, 0).getDate();
+    const targetDay = Math.min(recurrence.dayOfMonth, daysInTargetMonth);
+    return format(new Date(year, recurrence.monthOfYear, targetDay), 'yyyy-MM-dd');
+  }
+
+  return null;
+};
 
 interface TaskState {
   tasks: Task[];
@@ -34,7 +77,7 @@ interface TaskState {
   markTaskFailed: (taskId: string) => void;
   clearCompletedTasks: () => void;
   applyPowerUp: (taskId: string, type: 'respite' | 'relief' | 'magicDice') => void;
-  failPastDailyChallenges: (todayStr: string) => void; // <-- Nova função
+  failPastDailyChallenges: (todayStr: string) => void;
 }
 
 export const useTaskStore = create<TaskState>()(
@@ -54,13 +97,52 @@ export const useTaskStore = create<TaskState>()(
       addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
       
       toggleTaskCompletion: (taskId) => set((state) => {
+        const task = state.tasks.find(t => t.id === taskId);
+        if (!task) return state;
+
+        const isCompleting = !task.isCompleted;
         const isCompletingActive = state.activeFocusSession?.taskId === taskId;
+
+        const newTasks = state.tasks.map((t) =>
+          t.id === taskId
+            ? { ...t, isCompleted: isCompleting, completedAt: isCompleting ? Date.now() : undefined }
+            : t
+        );
+
+        // GERAÇÃO DA PRÓXIMA RECORRÊNCIA SE A TAREFA FOI MARCADA COMO FEITA
+        if (isCompleting && task.recurrence && task.recurrence.type !== 'none') {
+          const nextDateStr = calculateNextRecurrence(task.deadlineDate, task.recurrence);
+          
+          if (nextDateStr) {
+            // Escudo de duplicação: evita gerar 2x se o usuário clicar muito rápido
+            const futureTaskExists = state.tasks.some(t => 
+              t.title === task.title && 
+              t.deadlineDate === nextDateStr && 
+              !t.isCompleted
+            );
+
+            if (!futureTaskExists) {
+              const nextTask: Task = {
+                ...task,
+                id: uuidv4(), // ID novo para a nova tarefa
+                createdAt: Date.now(),
+                isCompleted: false,
+                completedAt: undefined,
+                deadlineDate: nextDateStr,
+                // Reseta as subtarefas e powerups para a próxima rodada
+                subtasks: task.subtasks?.map(st => ({ ...st, completed: false })),
+                hasRespite: false,
+                hasRelief: false,
+                hasMagicDice: false,
+                isFailed: false,
+              };
+              newTasks.push(nextTask);
+            }
+          }
+        }
+
         return {
-          tasks: state.tasks.map((t) =>
-            t.id === taskId
-              ? { ...t, isCompleted: !t.isCompleted, completedAt: !t.isCompleted ? Date.now() : undefined }
-              : t
-          ),
+          tasks: newTasks,
           ...(isCompletingActive ? { activeFocusSession: null, isFocusModeOpen: false } : {})
         };
       }),
@@ -133,7 +215,6 @@ export const useTaskStore = create<TaskState>()(
         })
       })),
 
-      // Lógica que "falha" os desafios diários passados
       failPastDailyChallenges: (todayStr) => set((state) => ({
         tasks: state.tasks.map((t) => {
           if (t.type === 'daily_challenge' && !t.isCompleted && !t.isFailed) {
