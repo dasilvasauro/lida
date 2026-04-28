@@ -17,7 +17,7 @@ interface EconomyState {
   activeGoldBoostUntil: number | null;
   dailyHistory: Record<string, { xp: number; gold: number }>;
   
-  levelUpData: { level: number; hasReward: boolean } | null; // <-- NOVO: Dados do modal
+  levelUpData: { level: number; hasReward: boolean } | null;
 
   addReward: (baseXp: number, baseGold: number) => void;
   removeReward: (baseXp: number, baseGold: number) => void; 
@@ -27,7 +27,7 @@ interface EconomyState {
   buyItem: (item: EconomyItem, cost: number, currency: 'gold' | 'vouchers') => boolean;
   useItem: (item: EconomyItem) => boolean;
   setBoost: (type: 'xp' | 'gold', hours: number) => void;
-  clearLevelUp: () => void; // <-- NOVO: Limpar o modal
+  clearLevelUp: () => void;
 }
 
 const calculateLevel = (xp: number) => Math.floor(Math.sqrt(xp / 100)) + 1;
@@ -57,11 +57,11 @@ export const useEconomyStore = create<EconomyState>()(
         let newInventory = state.inventory;
         let levelUpInfo = null;
 
-        // LÓGICA DE LEVEL UP
         if (newLevel > state.level) {
-          const hasReward = newLevel % 5 === 0; // Ganha Sorte Instantânea a cada 5 níveis
+          const hasReward = newLevel % 5 === 0;
           if (hasReward) {
-            newInventory = { ...state.inventory, instantLuck: state.inventory.instantLuck + 1 };
+            // FIX: Adiciona diretamente a Carta de Sorte ao invés do pacote genérico
+            newInventory = { ...state.inventory, luckyCard: state.inventory.luckyCard + 1 };
           }
           levelUpInfo = { level: newLevel, hasReward };
         }
@@ -86,14 +86,14 @@ export const useEconomyStore = create<EconomyState>()(
         
         let newInventory = state.inventory;
         
-        // ANTI-TRAPAÇA: Se ele regrediu de nível e perdeu um marco de 5, removemos o item dele.
         if (newLevel < state.level) {
           let lostItems = 0;
           for (let l = state.level; l > newLevel; l--) {
             if (l % 5 === 0) lostItems++;
           }
           if (lostItems > 0) {
-            newInventory = { ...state.inventory, instantLuck: Math.max(0, state.inventory.instantLuck - lostItems) };
+            // FIX: Confisca a Carta de Sorte do inventário em caso de trapaça
+            newInventory = { ...state.inventory, luckyCard: Math.max(0, state.inventory.luckyCard - lostItems) };
           }
         }
 

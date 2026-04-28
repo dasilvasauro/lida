@@ -25,55 +25,63 @@ function App() {
 
   const isAuth = (config.uid && config.e2eePin) || config.isLocalMode;
 
-  // Referência para o interceptador de botão voltar
   const currentTabRef = useRef(currentTab);
   useEffect(() => { currentTabRef.current = currentTab; }, [currentTab]);
 
-  // INTERCEPTADOR DO BOTÃO VOLTAR (ANDROID)
+  // INTERCEPTADOR DO BOTÃO VOLTAR (ANDROID) - VERSÃO INDESTRUTÍVEL
   useEffect(() => {
-    window.history.pushState({ page: 'app' }, '', window.location.href);
-    let isForceExiting = false;
+    // 1. Armadilha inicial de histórico
+    window.history.pushState({ id: 'lida-trap' }, '', window.location.href);
 
     const handlePopState = () => {
-      if (isForceExiting) return;
-
       const c = useConfigStore.getState();
       const t = useTaskStore.getState();
+      let didHandle = false;
 
+      // A) Se o modal de sair estiver aberto, cancela a saída
       if (c.isExitModalOpen) {
         c.setExitModalOpen(false);
-        window.history.pushState({ page: 'app' }, '', window.location.href);
-        return;
+        didHandle = true;
       }
-
-      const anyModalOpen = t.isGlobalModalOpen || t.isFocusModeOpen || c.isVisionOpen || c.isSettingsOpen || c.isGoogleConnectOpen || c.isChangelogOpen;
-
-      if (anyModalOpen) {
-        t.setGlobalModalOpen(false); t.toggleFocusMode(false);
-        c.setVisionOpen(false); c.setSettingsOpen(false); c.setGoogleConnectOpen(false); c.setChangelogOpen(false);
-        window.history.pushState({ page: 'app' }, '', window.location.href);
-        return;
+      // B) Se houver modais de fluxo abertos, fecha-os
+      else if (t.isGlobalModalOpen || t.isFocusModeOpen || c.isVisionOpen || c.isSettingsOpen || c.isGoogleConnectOpen || c.isChangelogOpen) {
+        t.setGlobalModalOpen(false);
+        t.toggleFocusMode(false);
+        c.setVisionOpen(false);
+        c.setSettingsOpen(false);
+        c.setGoogleConnectOpen(false);
+        c.setChangelogOpen(false);
+        didHandle = true;
       }
-
-      if (currentTabRef.current !== 'tasks') {
+      // C) Se estiver em outra aba que não a principal, volta pra aba Tarefas
+      else if (currentTabRef.current !== 'tasks') {
         setCurrentTab('tasks');
-        window.history.pushState({ page: 'app' }, '', window.location.href);
-        return;
+        didHandle = true;
       }
 
-      if (c.showExitWarning) {
-        c.setExitModalOpen(true);
-        window.history.pushState({ page: 'app' }, '', window.location.href);
+      // Se nós interceptamos o evento, rearmamos a armadilha pro próximo clique
+      if (didHandle) {
+        window.history.pushState({ id: 'lida-trap' }, '', window.location.href);
       } else {
-        isForceExiting = true;
-        window.history.back();
+        // D) NORTE FINAL: Não há modais abertos e já está na tela de tarefas.
+        if (c.showExitWarning) {
+          c.setExitModalOpen(true);
+          // Rearma a armadilha para o usuário poder cancelar com o voltar
+          window.history.pushState({ id: 'lida-trap' }, '', window.location.href);
+        } else {
+          // Sai do app nativamente
+          window.history.back();
+        }
       }
     };
 
     window.addEventListener('popstate', handlePopState);
-    
-    // Escuta evento global para forçar saída
-    const handleForceExit = () => { isForceExiting = true; window.history.back(); };
+
+    // Evento forçado que apenas o botão "Sair" do modal consegue disparar
+    const handleForceExit = () => {
+      window.removeEventListener('popstate', handlePopState); // Desliga a armadilha
+      window.history.back(); // Sai do app
+    };
     window.addEventListener('force-app-exit', handleForceExit);
 
     return () => {
@@ -153,7 +161,6 @@ function App() {
         )}
       </AnimatePresence>
     </ThemeWrapper>
-    
   );
 }
 
