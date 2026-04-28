@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Zap, Shield, Smartphone, RefreshCw } from 'lucide-react';
+import { X, Smartphone } from 'lucide-react';
 
 export const ChangelogModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
   if (!isOpen) return null;
