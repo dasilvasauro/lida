@@ -14,6 +14,7 @@ import { Navbar, type Tab } from './components/layout/Navbar';
 import { AnimatePresence, motion } from 'framer-motion';
 import { startCloudListener, stopCloudListener, setupAutoSync } from './lib/cloudSync';
 import { WifiOff, LogOut, Check } from 'lucide-react';
+import { LevelUpModal } from './components/ui/LevelUpModal';
 
 function App() {
   const config = useConfigStore();
@@ -97,6 +98,7 @@ function App() {
 
   return (
     <ThemeWrapper>
+      <LevelUpModal />
       
       <AnimatePresence>
         {isOffline && !config.isLocalMode && (
@@ -151,6 +153,7 @@ function App() {
         )}
       </AnimatePresence>
     </ThemeWrapper>
+    
   );
 }
 
