@@ -1,15 +1,19 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, LogOut, Trash2, History, AlertTriangle } from 'lucide-react';
+import { X, LogOut, Trash2, History, AlertTriangle, Download, Upload } from 'lucide-react';
 import { useConfigStore } from '../../store/useConfigStore';
-import { deleteCloudVault } from '../../lib/cloudSync';
+import { useTaskStore } from '../../store/useTaskStore';
+import { useHabitStore } from '../../store/useHabitStore';
+import { useEconomyStore } from '../../store/useEconomyStore';
+import { useVisionStore } from '../../store/useVisionStore';
+import { deleteCloudVault, syncToCloud } from '../../lib/cloudSync';
 import { ChangelogModal } from './ChangelogModal';
 
 export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
-  // NOVO: Puxando o isLocalMode para exibir o aviso correto
-  const { theme, font, setTheme, setFont, uid, isChangelogOpen, setChangelogOpen, isLocalMode } = useConfigStore();
+  const { theme, font, setTheme, setFont, uid, e2eePin, isChangelogOpen, setChangelogOpen, isLocalMode } = useConfigStore();
   
   const [confirmAction, setConfirmAction] = useState<'logout' | 'wipe' | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -20,22 +24,74 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
   };
 
   const handleLogout = () => {
-    // FIX: Destrói todo o armazenamento local para não vazar dados para a próxima sessão
     localStorage.clear();
     window.location.reload();
+  };
+
+  // --- LÓGICA DE EXPORTAÇÃO ---
+  const handleExport = () => {
+    const data = {
+      tasks: localStorage.getItem('lida-tasks'),
+      habits: localStorage.getItem('lida-habits-v5'),
+      economy: localStorage.getItem('lida-economy-v3'),
+      vision: localStorage.getItem('lida-vision'),
+      config: localStorage.getItem('lida-config'),
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lida-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // --- LÓGICA DE IMPORTAÇÃO SEGURA ---
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        
+        if (data.tasks) useTaskStore.setState(JSON.parse(data.tasks).state);
+        if (data.habits) useHabitStore.setState(JSON.parse(data.habits).state);
+        if (data.economy) useEconomyStore.setState(JSON.parse(data.economy).state);
+        if (data.vision) useVisionStore.setState(JSON.parse(data.vision).state);
+        
+        // Cuidado especial com a Configuração: Preserva o Login, PIN e Modo Local atuais!
+        if (data.config) {
+          const importedConfig = JSON.parse(data.config).state;
+          useConfigStore.setState({ ...importedConfig, uid, e2eePin, isLocalMode });
+        }
+
+        // Se estiver conectado ao Google, força a nuvem a aceitar o backup na mesma hora
+        if (uid && e2eePin && navigator.onLine) {
+          await syncToCloud();
+        }
+
+        window.location.reload();
+      } catch (err) {
+        alert("O arquivo de backup é inválido ou está corrompido.");
+      }
+    };
+    reader.readAsText(file);
   };
 
   return (
     <AnimatePresence>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4">
-        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl">
+        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
           
           <div className="flex justify-between items-center p-6 border-b border-zinc-200 dark:border-zinc-800">
             <h3 className="text-xl font-black">Configurações</h3>
             <button onClick={onClose} className="p-2 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"><X size={20} /></button>
           </div>
 
-          <div className="p-6 space-y-8 max-h-[70vh] overflow-y-auto scrollbar-hide">
+          <div className="p-6 space-y-8 overflow-y-auto scrollbar-hide flex-1">
             
             <div className="space-y-3">
               <span className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Estética Visual</span>
@@ -52,6 +108,27 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
                 <button onClick={() => setFont('serif')} className={`p-3 rounded-xl border text-left font-serif transition-all ${font === 'serif' ? 'border-zinc-900 dark:border-zinc-100 font-bold' : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}>Clássica (Com Serifa)</button>
                 <button onClick={() => setFont('special')} style={{ fontFamily: '"VT323"' }} className={`p-3 rounded-xl border text-left transition-all ${font === 'special' ? 'border-zinc-900 dark:border-zinc-100 font-bold' : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}>Especial (VT323)</button>
               </div>
+            </div>
+
+            {/* SEÇÃO DE BACKUP */}
+            <div className="space-y-3 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+              <span className="text-xs uppercase tracking-widest text-emerald-500 font-bold">Backup e Restauração</span>
+              <div className="flex gap-3">
+                <button onClick={handleExport} className="flex-1 flex flex-col items-center justify-center p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all text-emerald-600 dark:text-emerald-500 group">
+                  <Download size={24} className="mb-2 group-hover:-translate-y-1 transition-transform" />
+                  <span className="font-bold text-sm">Exportar</span>
+                </button>
+                
+                <button onClick={() => fileInputRef.current?.click()} className="flex-1 flex flex-col items-center justify-center p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:bg-blue-500/10 hover:border-blue-500/30 transition-all text-blue-600 dark:text-blue-500 group">
+                  <Upload size={24} className="mb-2 group-hover:-translate-y-1 transition-transform" />
+                  <span className="font-bold text-sm">Importar</span>
+                </button>
+                {/* Input Invisível para abrir arquivo */}
+                <input type="file" accept=".json" ref={fileInputRef} onChange={handleImport} className="hidden" />
+              </div>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-2 font-medium leading-relaxed">
+                Guarde seu arquivo `.json` em um local seguro. Caso você importe um backup com sua conta do Google conectada, a nuvem adotará o novo arquivo automaticamente.
+              </p>
             </div>
 
             <div className="space-y-3 pt-6 border-t border-zinc-200 dark:border-zinc-800">
@@ -88,7 +165,6 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
                   {confirmAction === 'wipe' ? 'Destruir Cofre?' : 'Sair da Conta?'}
                 </h3>
                 
-                {/* AVISO INTELIGENTE: Muda se for modo local */}
                 <p className="text-zinc-500 dark:text-zinc-400 mb-8 text-sm">
                   {confirmAction === 'wipe' 
                     ? 'Esta ação é irreversível. Todos os seus dados locais e na nuvem serão permanentemente apagados.' 
@@ -109,7 +185,6 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
           )}
         </AnimatePresence>
 
-        <ChangelogModal isOpen={isChangelogOpen} onClose={() => setChangelogOpen(false)} />
       </motion.div>
     </AnimatePresence>
   );
