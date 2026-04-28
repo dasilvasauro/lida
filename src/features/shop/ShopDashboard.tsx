@@ -72,11 +72,11 @@ export const ShopDashboard = () => {
     { id: 'instantLuck', name: 'Sorte Instantânea', desc: 'Ganha Carta de Sorte na hora.', cost: 5, icon: Clover },
   ];
   const goldItems = [
-    { id: 'magicDice', name: 'Dado Mágico', desc: 'Rola D6 e aplica boost aleatório.', cost: 500, icon: Dices },
-    { id: 'xpBoost', name: 'Boost de XP', desc: 'Aumenta XP ganho (15-50%) por 24h.', cost: 400, icon: TrendingUp },
-    { id: 'goldBoost', name: 'Boost de Ouro', desc: 'Aumenta Ouro ganho (25-45%) por 24h.', cost: 200, icon: Coins },
-    { id: 'extraP0', name: 'P0 Extra', desc: 'Permite criar 1 P0 extra no dia.', cost: 300, icon: AlertOctagon },
-    { id: 'extraP1', name: 'P1 Extra', desc: 'Permite criar 1 P1 extra no dia.', cost: 200, icon: AlertTriangle },
+    { id: 'magicDice', name: 'Dado Mágico', desc: 'Rola D6 e aplica boost aleatório.', cost: 370, icon: Dices },
+    { id: 'xpBoost', name: 'Boost de XP', desc: 'Aumenta XP ganho (15-50%) por 24h.', cost: 300, icon: TrendingUp },
+    { id: 'goldBoost', name: 'Boost de Ouro', desc: 'Aumenta Ouro ganho (25-45%) por 24h.', cost: 300, icon: Coins },
+    { id: 'extraP0', name: 'P0 Extra', desc: 'Permite criar 1 P0 extra no dia.', cost: 100, icon: AlertOctagon },
+    { id: 'extraP1', name: 'P1 Extra', desc: 'Permite criar 1 P1 extra no dia.', cost: 50, icon: AlertTriangle },
     { id: 'respite', name: 'Respiro', desc: 'Aumenta prazo da tarefa em 3h.', cost: 100, icon: Wind },
     { id: 'relief', name: 'Alívio', desc: 'Aumenta prazo da tarefa em 1 dia.', cost: 200, icon: CalendarHeart },
     { id: 'bonusTask', name: 'Tarefa Bônus', desc: 'Permite criar 1 Tarefa Bônus extra.', cost: 200, icon: Gift },
@@ -87,7 +87,7 @@ export const ShopDashboard = () => {
       <div className="max-w-5xl mx-auto px-6 md:px-8 pt-12 space-y-12">
         
         <header className="flex flex-wrap items-end justify-between gap-6 pb-6 border-b border-zinc-100 dark:border-zinc-900">
-          <div><h1 className="text-3xl font-black tracking-tight">Mercado & Estoque</h1><p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium mt-1">Gerencie seus recursos com sabedoria.</p></div>
+          <div><h1 className="text-3xl font-black tracking-tight">Loja</h1><p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium mt-1">Gerencie seus recursos com sabedoria.</p></div>
           <div className="flex gap-6">
             <div className="flex flex-col items-end"><span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Nível {level}</span><div className="flex items-center gap-1.5 text-xl font-black">{xp} <Star size={18} className="text-zinc-400" /></div></div>
             <div className="w-px h-10 bg-zinc-200 dark:bg-zinc-800" />
