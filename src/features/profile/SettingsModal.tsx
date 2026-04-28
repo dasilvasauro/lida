@@ -7,10 +7,9 @@ import { useHabitStore } from '../../store/useHabitStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useVisionStore } from '../../store/useVisionStore';
 import { deleteCloudVault, syncToCloud } from '../../lib/cloudSync';
-import { ChangelogModal } from './ChangelogModal';
 
 export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
-  const { theme, font, setTheme, setFont, uid, e2eePin, isChangelogOpen, setChangelogOpen, isLocalMode } = useConfigStore();
+  const { theme, font, setTheme, setFont, uid, e2eePin, setChangelogOpen, isLocalMode } = useConfigStore();
   
   const [confirmAction, setConfirmAction] = useState<'logout' | 'wipe' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
