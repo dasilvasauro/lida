@@ -163,9 +163,9 @@ export const HabitDashboard = () => {
         </main>
       </div>
 
-      <motion.button layoutId="fab-habit" onClick={() => { setHabitToEdit(null); setIsModalOpen(true); }} className="fixed bottom-28 right-6 md:right-12 md:bottom-12 p-4 rounded-full bg-emerald-600 text-white hover:bg-emerald-500 hover:scale-105 shadow-[0_8px_30px_rgba(16,185,129,0.3)] z-40 flex items-center justify-center">
+      <button onClick={() => { setHabitToEdit(null); setIsModalOpen(true); }} className="fixed bottom-28 right-6 md:right-12 md:bottom-12 p-4 rounded-full bg-emerald-600 text-white hover:bg-emerald-500 hover:scale-105 shadow-[0_8px_30px_rgba(16,185,129,0.3)] z-40 flex items-center justify-center">
         <Plus size={28} strokeWidth={3} />
-      </motion.button>
+      </button>
 
       <HabitModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} habitToEdit={habitToEdit} onSuccess={(msg) => showToast(msg, 'success')} />
 

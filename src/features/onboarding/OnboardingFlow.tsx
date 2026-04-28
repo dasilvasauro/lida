@@ -38,6 +38,7 @@ export const OnboardingFlow = () => {
       <h2 className="text-2xl font-light tracking-tight mb-8">Como devemos te chamar?</h2>
       <input
       type="text"
+      maxLength={40}
       placeholder="Seu nome ou apelido"
       className="w-full bg-transparent border-b-2 border-zinc-200 dark:border-zinc-800 p-4 text-3xl font-bold outline-none focus:border-zinc-900 dark:focus:border-zinc-100 transition-colors text-center placeholder:text-zinc-300 dark:placeholder:text-zinc-700"
       onChange={(e) => setUserName(e.target.value)}

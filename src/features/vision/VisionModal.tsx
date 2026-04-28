@@ -63,7 +63,7 @@ export const VisionModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () 
           <h3 className="text-3xl font-black tracking-tight">Internalizar</h3>
           <p className="text-zinc-500 text-sm mb-4">Liste até 4 características, valores ou habilidades que você precisa absorver na sua personalidade.</p>
           {devTraits.map((t, i) => (
-             <input key={i} value={t} onChange={e => { const n = [...devTraits]; n[i] = e.target.value; setDevTraits(n); }} placeholder={`Característica ${i+1}`} className="w-full p-4 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 outline-none focus:border-zinc-500 transition-colors font-bold" />
+             <input key={i} maxLength={150} value={t} onChange={e => { const n = [...devTraits]; n[i] = e.target.value; setDevTraits(n); }} placeholder={`Característica ${i+1}`} className="w-full p-4 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 outline-none focus:border-zinc-500 transition-colors font-bold" />
           ))}
           <div className="flex justify-between pt-8">
             <button onClick={() => setStep(0)} className="text-zinc-500 font-bold px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl transition-colors">Voltar</button>
@@ -77,7 +77,7 @@ export const VisionModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () 
           <h3 className="text-3xl font-black tracking-tight">Abandonar</h3>
           <p className="text-zinc-500 text-sm mb-4">A clareza também vem da destruição. Liste até 4 traços prejudiciais ou vícios de personalidade que você rejeita.</p>
           {abTraits.map((t, i) => (
-             <input key={i} value={t} onChange={e => { const n = [...abTraits]; n[i] = e.target.value; setAbTraits(n); }} placeholder={`Traço ${i+1}`} className="w-full p-4 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 outline-none focus:border-zinc-500 transition-colors font-bold" />
+             <input key={i} maxLength={150} value={t} onChange={e => { const n = [...abTraits]; n[i] = e.target.value; setAbTraits(n); }} placeholder={`Traço ${i+1}`} className="w-full p-4 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 outline-none focus:border-zinc-500 transition-colors font-bold" />
           ))}
           <div className="flex justify-between pt-8">
             <button onClick={() => setStep(1)} className="text-zinc-500 font-bold px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl transition-colors">Voltar</button>

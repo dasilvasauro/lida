@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, AlertTriangle, Frown, CloudRain, Meh, Smile, Sparkles, Trash2, TrendingUp, Coins, X, Check } from 'lucide-react';
+import { Plus, AlertTriangle, Frown, CloudRain, Meh, Smile, Sparkles, Trash2, TrendingUp, Coins, X, Check, ArrowDownUp } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useConfigStore } from '../../store/useConfigStore';
 import { TaskModal } from './TaskModal';
 import { TaskItem } from './TaskItem';
 import { RewardToast } from '../../components/ui/RewardToast';
-import type { Task, Mood } from '../../types';
+import type { Task, Mood, Priority } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
 
@@ -25,6 +25,8 @@ export const TaskDashboard = () => {
 
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  
+  const [isSortedByPriority, setIsSortedByPriority] = useState(false); // Estado da Ordenação
 
   const [reward, setReward] = useState<{ xp: number; gold: number; isFailed?: boolean } | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -46,7 +48,6 @@ export const TaskDashboard = () => {
     }
   };
 
-  // Helper centralizado para calcular o valor da tarefa
   const calculateTaskReward = (task: Task) => {
     let baseGold = 15; let baseXp = 45;
     switch (task.priority) {
@@ -81,7 +82,6 @@ export const TaskDashboard = () => {
         }
         setTimeout(() => setReward(null), 4000);
       } else {
-        // Tarefa desmarcada! Reverte a recompensa local (Anti-trapaça)
         if (!task.isFailed) {
           const { xpAmount, goldAmount } = calculateTaskReward(task);
           removeReward(xpAmount, goldAmount);
@@ -119,14 +119,24 @@ export const TaskDashboard = () => {
     setConfirmDialog(null);
   };
 
+  const priorityWeight: Record<Priority, number> = { P0: 0, P1: 1, P2: 2, P3: 3, P4: 4 };
+
   const filteredTasks = tasks.filter((task) => {
     if (selectedFolderId !== 'all' && task.folderId !== selectedFolderId) return false;
     if (selectedFilter === 'all') return true;
     if (selectedFilter === 'today') return !task.deadlineDate || task.deadlineDate === format(new Date(), 'yyyy-MM-dd');
     return true;
   }).sort((a, b) => {
-    if (a.isCompleted === b.isCompleted) return b.createdAt - a.createdAt;
-    return a.isCompleted ? 1 : -1;
+    // 1º Sempre coloca as concluídas no final
+    if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
+    // 2º Se estiver ordenado por prioridade
+    if (isSortedByPriority) {
+        if (priorityWeight[a.priority] !== priorityWeight[b.priority]) {
+            return priorityWeight[a.priority] - priorityWeight[b.priority];
+        }
+    }
+    // 3º Padrão: Mais recentes primeiro
+    return b.createdAt - a.createdAt;
   });
 
   const hasCompletedTasks = filteredTasks.some(t => t.isCompleted);
@@ -174,8 +184,8 @@ export const TaskDashboard = () => {
           </div>
         </header>
 
-        {/* NAVEGAÇÃO DE PASTAS */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide py-2">
+        {/* NAVEGAÇÃO DE PASTAS E ORDENAÇÃO */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide py-2 items-center">
           <button onClick={() => setFolderId('all')} className={`px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${selectedFolderId === 'all' ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black shadow-md' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'}`}>Todas</button>
           
           {folders.map(f => (
@@ -189,13 +199,24 @@ export const TaskDashboard = () => {
           
           {isCreatingFolder ? (
             <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-full px-2 shadow-inner">
-              <input autoFocus type="text" value={newFolderName} onChange={e=>setNewFolderName(e.target.value)} onKeyDown={e=>e.key === 'Enter' && handleCreateFolder()} placeholder="Nome da pasta" className="bg-transparent text-xs font-bold outline-none w-24 px-2 placeholder:text-zinc-400" />
+              <input autoFocus type="text" maxLength={30} value={newFolderName} onChange={e=>setNewFolderName(e.target.value)} onKeyDown={e=>e.key === 'Enter' && handleCreateFolder()} placeholder="Nome da pasta" className="bg-transparent text-xs font-bold outline-none w-28 px-2 placeholder:text-zinc-400" />
               <button onClick={handleCreateFolder} className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded-full transition-colors"><Check size={14}/></button>
               <button onClick={() => setIsCreatingFolder(false)} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-full transition-colors"><X size={14}/></button>
             </div>
           ) : (
             <button onClick={() => setIsCreatingFolder(true)} className="px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap border border-dashed border-zinc-300 text-zinc-500 dark:border-zinc-700 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all">+ Nova Pasta</button>
           )}
+
+          <div className="flex-1" />
+          
+          {/* Botão de Ordenar por Prioridade */}
+          <button 
+            onClick={() => setIsSortedByPriority(!isSortedByPriority)} 
+            className={`p-2 rounded-full transition-all shrink-0 ${isSortedByPriority ? 'bg-blue-500 text-white shadow-md' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
+            title="Ordenar por Prioridade"
+          >
+            <ArrowDownUp size={16} />
+          </button>
         </div>
 
         {(isXpBoosted || isGoldBoosted) && (
@@ -226,9 +247,9 @@ export const TaskDashboard = () => {
         </main>
       </div>
 
-      <motion.button layoutId="fab-modal" onClick={() => { setTaskToEdit(null); setIsModalOpen(true); }} className="fixed bottom-28 right-6 md:right-12 md:bottom-12 p-4 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:scale-105 shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] z-40 flex items-center justify-center">
+      <button onClick={() => { setTaskToEdit(null); setIsModalOpen(true); }} className="fixed bottom-28 right-6 md:right-12 md:bottom-12 p-4 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:scale-105 shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] z-40 flex items-center justify-center">
         <Plus size={28} strokeWidth={3} />
-      </motion.button>
+      </button>
 
       <TaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} taskToEdit={taskToEdit} onSuccess={showToast} />
       <RewardToast isVisible={!!reward} xp={reward?.xp || 0} gold={reward?.gold || 0} isFailed={reward?.isFailed} />

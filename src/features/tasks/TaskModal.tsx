@@ -38,7 +38,6 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
   const countP0 = todaysTasks.filter(t => t.priority === 'P0' && t.id !== taskToEdit?.id).length;
   const countP1 = todaysTasks.filter(t => t.priority === 'P1' && t.id !== taskToEdit?.id).length;
 
-  // <-- Nova trava do Desafio Diário
   const hasDailyChallengeToday = tasks.some(t => t.type === 'daily_challenge' && format(new Date(t.createdAt), 'yyyy-MM-dd') === todayStr && t.id !== taskToEdit?.id);
 
   const isP0Locked = countP0 >= 1 && inventory.extraP0 <= 0;
@@ -184,7 +183,6 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
 
   const taskTypes: { id: TaskType; label: string; icon: any; color: string; isLocked?: boolean }[] = [
     { id: 'normal', label: 'Normal', icon: CheckCircle2, color: 'text-zinc-500' },
-    // Desafio agora respeita a trava
     { id: 'daily_challenge', label: 'Desafio', icon: Zap, color: 'text-amber-500', isLocked: hasDailyChallengeToday },
     { id: 'sprint', label: 'Sprint', icon: Target, color: 'text-purple-500', isLocked: hasActiveSprint },
     { id: 'time', label: 'Tempo', icon: Timer, color: 'text-blue-500' },
@@ -196,7 +194,10 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
       {isOpen && (
         <>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/80 z-40" />
-          <motion.div layoutId={taskToEdit ? undefined : "fab-modal"} className="fixed bottom-0 left-0 right-0 md:bottom-6 max-w-md mx-auto bg-zinc-50 dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[90vh]">
+          <motion.div 
+            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'tween', duration: 0.3, ease: 'easeOut' }}
+            className="fixed bottom-0 left-0 right-0 md:bottom-6 max-w-md mx-auto bg-zinc-50 dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[90vh]"
+          >
 
             {/* Cabeçalho */}
             <div className="flex justify-between items-center p-6 border-b border-zinc-200 dark:border-zinc-800">
@@ -218,6 +219,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
               <div className="space-y-2">
                 <input
                   type="text"
+                  maxLength={120}
                   placeholder="O que precisa ser feito?"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -225,10 +227,11 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
                   autoFocus
                 />
                 <textarea
+                  maxLength={500}
                   placeholder="Detalhes (Opcional)..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full resize-none bg-transparent border-none outline-none text-sm text-zinc-600 dark:text-zinc-400 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 h-12"
+                  className="w-full resize-none bg-transparent border-none outline-none text-sm text-zinc-600 dark:text-zinc-400 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 h-16"
                 />
               </div>
 
@@ -498,6 +501,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
                 <div className="flex gap-2">
                   <input
                     type="text"
+                    maxLength={120}
                     value={subtaskInput}
                     onChange={(e) => setSubtaskInput(e.target.value)}
                     onKeyDown={(e) => { if(e.key === 'Enter'){ e.preventDefault(); addSubtask(); } }}
@@ -551,7 +555,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
                   
                   {isCreatingFolder ? (
                     <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl px-2 shadow-inner border border-zinc-200 dark:border-zinc-700">
-                      <input autoFocus type="text" value={newFolderName} onChange={e=>setNewFolderName(e.target.value)} onKeyDown={e=>{ if(e.key === 'Enter'){ e.preventDefault(); handleCreateFolder(); } }} placeholder="Nome" className="bg-transparent text-xs font-bold outline-none w-24 px-2 placeholder:text-zinc-400" />
+                      <input autoFocus type="text" maxLength={30} value={newFolderName} onChange={e=>setNewFolderName(e.target.value)} onKeyDown={e=>{ if(e.key === 'Enter'){ e.preventDefault(); handleCreateFolder(); } }} placeholder="Nome" className="bg-transparent text-xs font-bold outline-none w-28 px-2 placeholder:text-zinc-400" />
                       <button onClick={(e) => { e.preventDefault(); handleCreateFolder(); }} className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors"><Check size={14}/></button>
                       <button onClick={(e) => { e.preventDefault(); setIsCreatingFolder(false); }} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><X size={14}/></button>
                     </div>
