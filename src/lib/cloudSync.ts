@@ -5,6 +5,7 @@ import { useHabitStore } from '../store/useHabitStore';
 import { useEconomyStore } from '../store/useEconomyStore';
 import { useVisionStore } from '../store/useVisionStore';
 import { useConfigStore } from '../store/useConfigStore';
+import { useReflectionStore } from '../store/useReflectionStore';
 
 let unsubscribeSnapshot: (() => void) | null = null;
 let lastSyncTime = 0; 
@@ -23,6 +24,7 @@ export const syncToCloud = async () => {
     habits: encryptData(JSON.stringify(useHabitStore.getState()), e2eePin),
     economy: encryptData(JSON.stringify(useEconomyStore.getState()), e2eePin),
     vision: encryptData(JSON.stringify(useVisionStore.getState()), e2eePin),
+    reflections: encryptData(JSON.stringify(useReflectionStore.getState()), e2eePin),
     config: encryptData(JSON.stringify({
       theme: useConfigStore.getState().theme,
       font: useConfigStore.getState().font,
@@ -52,6 +54,7 @@ const applyCloudData = (data: any, pin: string) => {
     if (data.habits) useHabitStore.setState(JSON.parse(decryptData(data.habits, pin)));
     if (data.economy) useEconomyStore.setState(JSON.parse(decryptData(data.economy, pin)));
     if (data.vision) useVisionStore.setState(JSON.parse(decryptData(data.vision, pin)));
+    if (data.reflections) useReflectionStore.setState(JSON.parse(decryptData(data.reflections, pin)));
     if (data.config) {
       const conf = JSON.parse(decryptData(data.config, pin));
       useConfigStore.setState(conf);
@@ -110,9 +113,10 @@ export const setupAutoSync = () => {
   const unsub3 = useEconomyStore.subscribe(handleStoreChange);
   const unsub4 = useVisionStore.subscribe(handleStoreChange);
   const unsub5 = useConfigStore.subscribe(handleStoreChange);
+  const unsub6 = useReflectionStore.subscribe(handleStoreChange);
 
   return () => {
-    unsub1(); unsub2(); unsub3(); unsub4(); unsub5();
+    unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6();
   };
 };
 

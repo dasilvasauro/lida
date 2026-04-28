@@ -62,3 +62,13 @@ export interface Vision {
   checkpoints: string[]; // Formato YYYY-MM-DD
   createdAt: number;
 }
+
+export type ReflectionColor = 'blue' | 'emerald' | 'amber' | 'rose' | 'purple' | 'cyan' | 'indigo' | 'zinc';
+
+export interface Reflection {
+  id: string;
+  title: string;
+  color: ReflectionColor;
+  cards: string[];
+  createdAt: number;
+}
