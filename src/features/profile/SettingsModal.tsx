@@ -6,7 +6,8 @@ import { deleteCloudVault } from '../../lib/cloudSync';
 import { ChangelogModal } from './ChangelogModal';
 
 export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
-  const { theme, font, setTheme, setFont, logout, uid, isChangelogOpen, setChangelogOpen } = useConfigStore();
+  // NOVO: Puxando o isLocalMode para exibir o aviso correto
+  const { theme, font, setTheme, setFont, uid, isChangelogOpen, setChangelogOpen, isLocalMode } = useConfigStore();
   
   const [confirmAction, setConfirmAction] = useState<'logout' | 'wipe' | null>(null);
 
@@ -19,7 +20,8 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
   };
 
   const handleLogout = () => {
-    logout();
+    // FIX: Destrói todo o armazenamento local para não vazar dados para a próxima sessão
+    localStorage.clear();
     window.location.reload();
   };
 
@@ -86,10 +88,13 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
                   {confirmAction === 'wipe' ? 'Destruir Cofre?' : 'Sair da Conta?'}
                 </h3>
                 
+                {/* AVISO INTELIGENTE: Muda se for modo local */}
                 <p className="text-zinc-500 dark:text-zinc-400 mb-8 text-sm">
                   {confirmAction === 'wipe' 
                     ? 'Esta ação é irreversível. Todos os seus dados locais e na nuvem serão permanentemente apagados.' 
-                    : 'Suas alterações já estão salvas. Você precisará da sua Chave Mestra para acessar novamente.'}
+                    : isLocalMode
+                      ? 'Atenção! Você está no Modo Local. Como seus dados não estão na nuvem, sair da conta irá APAGAR TUDO permanentemente.'
+                      : 'Sua sessão local será encerrada. Você precisará da sua Chave Mestra para descriptografar a nuvem ao acessar novamente.'}
                 </p>
 
                 <div className="flex gap-3">
