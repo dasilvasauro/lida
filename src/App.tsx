@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useConfigStore } from './store/useConfigStore';
 import { useTaskStore } from './store/useTaskStore';
 import { ThemeWrapper } from './components/layout/ThemeWrapper';
@@ -13,79 +13,140 @@ import { DailySummaryModal } from './features/daily/DailySummaryModal';
 import { Navbar, type Tab } from './components/layout/Navbar';
 import { AnimatePresence, motion } from 'framer-motion';
 import { startCloudListener, stopCloudListener, setupAutoSync } from './lib/cloudSync';
-import { WifiOff } from 'lucide-react';
+import { WifiOff, LogOut, Check } from 'lucide-react';
 
 function App() {
-  const { uid, e2eePin, isOnboarded, isLocalMode } = useConfigStore(); // <-- isLocalMode injetado
-  const [currentTab, setCurrentTab] = useState<Tab>('tasks');
-  const isGlobalModalOpen = useTaskStore((state) => state.isGlobalModalOpen);
-  const isFocusModeOpen = useTaskStore((state) => state.isFocusModeOpen);
+  const config = useConfigStore();
+  const tasks = useTaskStore();
   
+  const [currentTab, setCurrentTab] = useState<Tab>('tasks');
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
-  // <-- A nova variável que define se o usuário pode ver o app
-  const isAuth = (uid && e2eePin) || isLocalMode;
+  const isAuth = (config.uid && config.e2eePin) || config.isLocalMode;
 
+  // Referência para o interceptador de botão voltar
+  const currentTabRef = useRef(currentTab);
+  useEffect(() => { currentTabRef.current = currentTab; }, [currentTab]);
+
+  // INTERCEPTADOR DO BOTÃO VOLTAR (ANDROID)
   useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    window.history.pushState({ page: 'app' }, '', window.location.href);
+    let isForceExiting = false;
+
+    const handlePopState = () => {
+      if (isForceExiting) return;
+
+      const c = useConfigStore.getState();
+      const t = useTaskStore.getState();
+
+      if (c.isExitModalOpen) {
+        c.setExitModalOpen(false);
+        window.history.pushState({ page: 'app' }, '', window.location.href);
+        return;
+      }
+
+      const anyModalOpen = t.isGlobalModalOpen || t.isFocusModeOpen || c.isVisionOpen || c.isSettingsOpen || c.isGoogleConnectOpen || c.isChangelogOpen;
+
+      if (anyModalOpen) {
+        t.setGlobalModalOpen(false); t.toggleFocusMode(false);
+        c.setVisionOpen(false); c.setSettingsOpen(false); c.setGoogleConnectOpen(false); c.setChangelogOpen(false);
+        window.history.pushState({ page: 'app' }, '', window.location.href);
+        return;
+      }
+
+      if (currentTabRef.current !== 'tasks') {
+        setCurrentTab('tasks');
+        window.history.pushState({ page: 'app' }, '', window.location.href);
+        return;
+      }
+
+      if (c.showExitWarning) {
+        c.setExitModalOpen(true);
+        window.history.pushState({ page: 'app' }, '', window.location.href);
+      } else {
+        isForceExiting = true;
+        window.history.back();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    
+    // Escuta evento global para forçar saída
+    const handleForceExit = () => { isForceExiting = true; window.history.back(); };
+    window.addEventListener('force-app-exit', handleForceExit);
+
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('force-app-exit', handleForceExit);
     };
   }, []);
 
-  // SERVIÇO DE SINCRONIZAÇÃO
   useEffect(() => {
-    // Só liga a nuvem se NÃO estiver em modo local e tiver credenciais
-    if (!isLocalMode && uid && e2eePin && isOnboarded) {
-      startCloudListener(uid, e2eePin); 
-      const stopAutoSync = setupAutoSync(); 
+    const handleOnline = () => setIsOffline(false); const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline); window.addEventListener('offline', handleOffline);
+    return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); };
+  }, []);
 
-      return () => {
-        stopCloudListener();
-        stopAutoSync();
-      };
+  useEffect(() => {
+    if (!config.isLocalMode && config.uid && config.e2eePin && config.isOnboarded) {
+      startCloudListener(config.uid, config.e2eePin); 
+      const stopAutoSync = setupAutoSync(); 
+      return () => { stopCloudListener(); stopAutoSync(); };
     }
-  }, [uid, e2eePin, isOnboarded, isLocalMode]);
+  }, [config.uid, config.e2eePin, config.isOnboarded, config.isLocalMode]);
 
   return (
     <ThemeWrapper>
       
       <AnimatePresence>
-        {isOffline && !isLocalMode && ( // Só avisa de offline se ele for um usuário de nuvem
+        {isOffline && !config.isLocalMode && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-amber-500 text-white dark:bg-amber-600 font-bold text-xs py-2 px-4 flex justify-center items-center gap-2 z-[999] relative">
             <WifiOff size={14} /> Você está offline. As alterações serão sincronizadas quando reconectar.
           </motion.div>
         )}
       </AnimatePresence>
 
-      {isAuth && isOnboarded && <DailySummaryModal />}
+      {isAuth && config.isOnboarded && <DailySummaryModal />}
 
       <AnimatePresence mode="wait">
         {!isAuth ? (
-          <motion.div key="auth" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }}>
-            <AuthScreen />
-          </motion.div>
-        ) : !isOnboarded ? (
-          <motion.div key="onboarding" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, filter: 'blur(10px)' }} transition={{ duration: 0.6, ease: "easeInOut" }}>
-            <OnboardingFlow />
-          </motion.div>
+          <motion.div key="auth" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }}><AuthScreen /></motion.div>
+        ) : !config.isOnboarded ? (
+          <motion.div key="onboarding" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, filter: 'blur(10px)' }} transition={{ duration: 0.6, ease: "easeInOut" }}><OnboardingFlow /></motion.div>
         ) : (
           <motion.div key="dashboard" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }} className="relative min-h-screen pb-24">
-            
             {currentTab === 'tasks' && <TaskDashboard />}
             {currentTab === 'habits' && <HabitDashboard />}
             {currentTab === 'shop' && <ShopDashboard />}
             {currentTab === 'profile' && <ProfileDashboard />}
-
-            {!isGlobalModalOpen && !isFocusModeOpen && (
-              <Navbar currentTab={currentTab} setCurrentTab={setCurrentTab} />
-            )}
-
+            {!tasks.isGlobalModalOpen && !tasks.isFocusModeOpen && <Navbar currentTab={currentTab} setCurrentTab={setCurrentTab} />}
             <FocusMode />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL DE SAÍDA DO APP */}
+      <AnimatePresence>
+        {config.isExitModalOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1000] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 text-center">
+              <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4"><LogOut size={32} className="ml-1" /></div>
+              <h3 className="text-xl font-black mb-2 dark:text-white">Sair do Lida?</h3>
+              <p className="text-zinc-500 dark:text-zinc-400 mb-6 text-sm">Deseja fechar o aplicativo?</p>
+              
+              <label className="flex items-center justify-center gap-3 mb-6 cursor-pointer group">
+                <div className="relative flex items-center justify-center">
+                  <input type="checkbox" className="peer appearance-none w-5 h-5 rounded border-2 border-zinc-300 dark:border-zinc-700 checked:bg-blue-500 checked:border-blue-500 transition-colors cursor-pointer" onChange={(e) => config.setShowExitWarning(!e.target.checked)} />
+                  <Check size={14} strokeWidth={4} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" />
+                </div>
+                <span className="text-sm font-bold text-zinc-600 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">Não perguntar novamente</span>
+              </label>
+
+              <div className="flex gap-3">
+                <button onClick={() => config.setExitModalOpen(false)} className="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
+                <button onClick={() => { config.setExitModalOpen(false); window.dispatchEvent(new CustomEvent('force-app-exit')); }} className="flex-1 p-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-colors">Sair</button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

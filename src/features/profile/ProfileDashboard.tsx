@@ -18,10 +18,8 @@ export const ProfileDashboard = () => {
   const { habits, logs, modifiers } = useHabitStore();
   const { uid, e2eePin, isLocalMode } = useConfigStore();
 
+  const { isVisionOpen, setVisionOpen, isSettingsOpen, setSettingsOpen, isGoogleConnectOpen, setGoogleConnectOpen } = useConfigStore();
   const [gridMode, setGridMode] = useState<'perfect' | 'habits' | 'mood'>('perfect');
-  const [isVisionOpen, setIsVisionOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isGoogleConnectOpen, setIsGoogleConnectOpen] = useState(false);
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -131,7 +129,7 @@ export const ProfileDashboard = () => {
                 <span className="hidden md:inline">Forçar Sync</span>
               </button>
             )}
-            <button onClick={() => setIsSettingsOpen(true)} className="p-2 px-4 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-xs font-bold text-zinc-500 dark:text-zinc-400 flex items-center gap-2">
+            <button onClick={() => setSettingsOpen(true)} className="p-2 px-4 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-xs font-bold text-zinc-500 dark:text-zinc-400 flex items-center gap-2">
               <Settings size={14} />
               <span className="hidden md:inline">Ajustes</span>
             </button>
@@ -144,14 +142,14 @@ export const ProfileDashboard = () => {
                <h3 className="text-blue-600 dark:text-blue-400 font-black text-lg tracking-tight">Modo Local Ativo</h3>
                <p className="text-sm text-blue-600/80 dark:text-blue-400/80 font-medium mt-1">Seus dados estão apenas neste navegador. Conecte-se para protegê-los com criptografia de ponta-a-ponta na nuvem.</p>
              </div>
-             <button onClick={() => setIsGoogleConnectOpen(true)} className="w-full md:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-colors shrink-0 shadow-lg shadow-blue-500/20">
+             <button onClick={() => setGoogleConnectOpen(true)} className="w-full md:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-colors shrink-0 shadow-lg shadow-blue-500/20">
                Conectar ao Google
              </button>
           </div>
         )}
 
         {/* VISÃO (INTERATIVO) */}
-        <button onClick={() => setIsVisionOpen(true)} className="w-full relative p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/50 flex flex-col md:flex-row items-start md:items-center gap-6 overflow-hidden hover:border-blue-500/50 transition-colors group shadow-sm text-left">
+        <button onClick={() => setVisionOpen(true)} className="w-full relative p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/50 flex flex-col md:flex-row items-start md:items-center gap-6 overflow-hidden hover:border-blue-500/50 transition-colors group shadow-sm text-left">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent to-zinc-50/50 dark:to-zinc-950/50 pointer-events-none" />
           <div className="p-4 bg-zinc-200 dark:bg-zinc-800 rounded-2xl group-hover:bg-blue-500/10 transition-colors shrink-0"><Eye size={32} className="text-zinc-500 dark:text-zinc-400 group-hover:text-blue-500 transition-colors" /></div>
           <div className="flex-1">
@@ -197,9 +195,9 @@ export const ProfileDashboard = () => {
 
       </div>
       
-      <VisionModal isOpen={isVisionOpen} onClose={() => setIsVisionOpen(false)} />
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-      <GoogleConnectModal isOpen={isGoogleConnectOpen} onClose={() => setIsGoogleConnectOpen(false)} onSuccess={() => { setIsGoogleConnectOpen(false); showToast("Conta conectada com sucesso!"); }} />
+      <VisionModal isOpen={isVisionOpen} onClose={() => setVisionOpen(false)} />
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setSettingsOpen(false)} />
+      <GoogleConnectModal isOpen={isGoogleConnectOpen} onClose={() => setGoogleConnectOpen(false)} onSuccess={() => { setGoogleConnectOpen(false); showToast("Conta conectada com sucesso!"); }} />
 
       <AnimatePresence>
         {toastMessage && (
