@@ -5,15 +5,16 @@ import { useEconomyStore } from '../../store/useEconomyStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useHabitStore } from '../../store/useHabitStore';
 import { useConfigStore } from '../../store/useConfigStore';
-import { useReflectionStore } from '../../store/useReflectionStore'; // <-- NOVO
+import { useReflectionStore } from '../../store/useReflectionStore';
 import { format, subDays, startOfWeek, addDays, isSameDay } from 'date-fns';
 import type { Mood, Reflection } from '../../types';
 import { VisionModal } from '../vision/VisionModal';
 import { syncToCloud, syncFromCloud } from '../../lib/cloudSync';
 import { SettingsModal } from './SettingsModal';
 import { GoogleConnectModal } from './GoogleConnectModal';
-import { ReflectionCreatorModal } from '../reflections/ReflectionCreatorModal'; // <-- NOVO
-import { ReflectionViewerModal } from '../reflections/ReflectionViewerModal'; // <-- NOVO
+import { ReflectionCreatorModal } from '../reflections/ReflectionCreatorModal'; 
+import { ReflectionViewerModal } from '../reflections/ReflectionViewerModal';
+import { ChangelogModal } from './ChangelogModal'; // <-- IMPORTADO DE VUELTA
 
 const colorMap: Record<string, string> = {
   blue: 'border-blue-500 text-blue-500 bg-blue-500/10', emerald: 'border-emerald-500 text-emerald-500 bg-emerald-500/10',
@@ -27,15 +28,14 @@ export const ProfileDashboard = () => {
   const { tasks, moodHistory } = useTaskStore();
   const { habits, logs, modifiers } = useHabitStore();
   const { uid, e2eePin, isLocalMode } = useConfigStore();
-  const { reflections } = useReflectionStore(); // <-- NOVO
+  const { reflections } = useReflectionStore();
 
-  const { isVisionOpen, setVisionOpen, isSettingsOpen, setSettingsOpen, isGoogleConnectOpen, setGoogleConnectOpen } = useConfigStore();
+  const { isVisionOpen, setVisionOpen, isSettingsOpen, setSettingsOpen, isGoogleConnectOpen, setGoogleConnectOpen, isChangelogOpen, setChangelogOpen } = useConfigStore();
   const [gridMode, setGridMode] = useState<'perfect' | 'habits' | 'mood'>('perfect');
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Estados dos novos modais
   const [isCreatorOpen, setIsCreatorOpen] = useState(false);
   const [reflectionToEdit, setReflectionToEdit] = useState<Reflection | null>(null);
   const [viewerReflection, setViewerReflection] = useState<Reflection | null>(null);
@@ -43,10 +43,10 @@ export const ProfileDashboard = () => {
   const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); };
 
   const handleForceSync = async () => {
-    if (!uid || !e2eePin || !navigator.onLine) return showToast("Não foi possível sincronizar. Verifique a rede.");
+    if (!uid || !e2eePin || !navigator.onLine) return showToast("No fue posible sincronizar. Verifica tu red.");
     setIsSyncing(true);
-    try { await syncToCloud(); await syncFromCloud(uid, e2eePin); showToast("Sincronização concluída com sucesso!"); } 
-    catch (e) { showToast("Erro ao sincronizar dados."); } 
+    try { await syncToCloud(); await syncFromCloud(uid, e2eePin); showToast("¡Sincronización completada con éxito!"); } 
+    catch (e) { showToast("Error al sincronizar datos."); } 
     finally { setIsSyncing(false); }
   };
 
@@ -115,14 +115,13 @@ export const ProfileDashboard = () => {
       <div className="max-w-4xl mx-auto px-6 md:px-8 pt-12 space-y-8">
         
         <header className="pb-4 border-b border-zinc-100 dark:border-zinc-900 flex justify-between items-start">
-          <div><h1 className="text-3xl font-black tracking-tight">Perfil de Agente</h1><p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium mt-1">Seu progresso e evolução ao longo do tempo.</p></div>
+          <div><h1 className="text-3xl font-black tracking-tight">Perfil de Agente</h1><p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium mt-1">Tu progreso y evolución en el tiempo.</p></div>
           <div className="flex items-center gap-2">
-            {!isLocalMode && ( <button onClick={handleForceSync} disabled={isSyncing} className="p-2 px-4 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-xs font-bold text-zinc-500 dark:text-zinc-400 flex items-center gap-2 disabled:opacity-50"><RefreshCw size={14} className={isSyncing ? "animate-spin" : ""} /><span className="hidden md:inline">Forçar Sync</span></button> )}
+            {!isLocalMode && ( <button onClick={handleForceSync} disabled={isSyncing} className="p-2 px-4 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-xs font-bold text-zinc-500 dark:text-zinc-400 flex items-center gap-2 disabled:opacity-50"><RefreshCw size={14} className={isSyncing ? "animate-spin" : ""} /><span className="hidden md:inline">Forzar Sync</span></button> )}
             <button onClick={() => setSettingsOpen(true)} className="p-2 px-4 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-xs font-bold text-zinc-500 dark:text-zinc-400 flex items-center gap-2"><Settings size={14} /><span className="hidden md:inline">Ajustes</span></button>
           </div>
         </header>
 
-        {/* FILEIRA DE REFLEXÕES (Stories) */}
         <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide py-2">
           <button onClick={() => { setReflectionToEdit(null); setIsCreatorOpen(true); }} className="shrink-0 w-[72px] h-[72px] rounded-full border-2 border-dashed border-zinc-300 dark:border-zinc-700 flex flex-col items-center justify-center text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
             <Plus size={28} />
@@ -136,22 +135,22 @@ export const ProfileDashboard = () => {
 
         {isLocalMode && (
           <div className="bg-blue-500/10 border border-blue-500/20 p-6 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
-             <div><h3 className="text-blue-600 dark:text-blue-400 font-black text-lg tracking-tight">Modo Local Ativo</h3><p className="text-sm text-blue-600/80 dark:text-blue-400/80 font-medium mt-1">Seus dados estão apenas neste navegador. Conecte-se para protegê-los com criptografia de ponta-a-ponta na nuvem.</p></div>
-             <button onClick={() => setGoogleConnectOpen(true)} className="w-full md:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-colors shrink-0 shadow-lg shadow-blue-500/20">Conectar ao Google</button>
+             <div><h3 className="text-blue-600 dark:text-blue-400 font-black text-lg tracking-tight">Modo Local Activo</h3><p className="text-sm text-blue-600/80 dark:text-blue-400/80 font-medium mt-1">Tus datos están solo en este navegador. Conéctate para protegerlos con encriptación en la nube.</p></div>
+             <button onClick={() => setGoogleConnectOpen(true)} className="w-full md:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-colors shrink-0 shadow-lg shadow-blue-500/20">Conectar a Google</button>
           </div>
         )}
 
         <button onClick={() => setVisionOpen(true)} className="w-full relative p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/50 flex flex-col md:flex-row items-start md:items-center gap-6 overflow-hidden hover:border-blue-500/50 transition-colors group shadow-sm text-left">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent to-zinc-50/50 dark:to-zinc-950/50 pointer-events-none" />
           <div className="p-4 bg-zinc-200 dark:bg-zinc-800 rounded-2xl group-hover:bg-blue-500/10 transition-colors shrink-0"><Eye size={32} className="text-zinc-500 dark:text-zinc-400 group-hover:text-blue-500 transition-colors" /></div>
-          <div className="flex-1"><div className="flex flex-wrap items-center gap-3 mb-1"><h3 className="text-xl font-black text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors tracking-tight">Módulo Visão</h3><span className="px-3 py-1 bg-blue-500/10 text-blue-500 text-[10px] font-black uppercase tracking-widest rounded-full">Acessar</span></div><p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">Seu plano mestre de longo prazo. Metas, características e o propósito da sua jornada.</p></div>
+          <div className="flex-1"><div className="flex flex-wrap items-center gap-3 mb-1"><h3 className="text-xl font-black text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors tracking-tight">Módulo Visión</h3><span className="px-3 py-1 bg-blue-500/10 text-blue-500 text-[10px] font-black uppercase tracking-widest rounded-full">Acceder</span></div><p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">Tu plan maestro a largo plazo. Metas, características y el propósito de tu viaje.</p></div>
         </button>
 
         <div className="bg-zinc-50 dark:bg-zinc-900/30 p-6 md:p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 relative overflow-hidden shadow-sm">
           <div className="absolute top-0 right-0 p-8 opacity-5"><Medal size={120} /></div>
           <div className="relative z-10">
             <div className="flex justify-between items-end mb-4">
-              <div><span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Nível Atual</span><div className="text-4xl font-black text-zinc-900 dark:text-zinc-100">Lvl. {level}</div></div>
+              <div><span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Nivel Actual</span><div className="text-4xl font-black text-zinc-900 dark:text-zinc-100">Lvl. {level}</div></div>
               <div className="text-right"><span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">XP Restante</span><div className="text-xl font-black text-zinc-400">{xpRequired - xpProgress} XP</div></div>
             </div>
             <div className="w-full h-4 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden mb-2 shadow-inner"><motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} transition={{ duration: 1, ease: 'easeOut' }} className="h-full bg-gradient-to-r from-emerald-500 to-teal-400" /></div>
@@ -160,32 +159,32 @@ export const ProfileDashboard = () => {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-orange-500/10 border border-orange-500/20 p-5 rounded-3xl flex flex-col justify-between"><Flame size={24} className="text-orange-500 mb-3" /><span className="text-[10px] font-bold uppercase tracking-widest text-orange-600 dark:text-orange-400 mb-1">Ofensiva Global</span><span className="text-3xl font-black text-orange-500">{activeStreak} dias</span></div>
-          <div className="bg-yellow-500/10 border border-yellow-500/20 p-5 rounded-3xl flex flex-col justify-between"><Coins size={24} className="text-yellow-600 dark:text-yellow-500 mb-3" /><span className="text-[10px] font-bold uppercase tracking-widest text-yellow-600 dark:text-yellow-400 mb-1">Ouro Acumulado</span><span className="text-3xl font-black text-yellow-600 dark:text-yellow-500">{gold}</span></div>
+          <div className="bg-orange-500/10 border border-orange-500/20 p-5 rounded-3xl flex flex-col justify-between"><Flame size={24} className="text-orange-500 mb-3" /><span className="text-[10px] font-bold uppercase tracking-widest text-orange-600 dark:text-orange-400 mb-1">Ofensiva Global</span><span className="text-3xl font-black text-orange-500">{activeStreak} días</span></div>
+          <div className="bg-yellow-500/10 border border-yellow-500/20 p-5 rounded-3xl flex flex-col justify-between"><Coins size={24} className="text-yellow-600 dark:text-yellow-500 mb-3" /><span className="text-[10px] font-bold uppercase tracking-widest text-yellow-600 dark:text-yellow-400 mb-1">Oro Acumulado</span><span className="text-3xl font-black text-yellow-600 dark:text-yellow-500">{gold}</span></div>
           <div className="bg-purple-500/10 border border-purple-500/20 p-5 rounded-3xl flex flex-col justify-between"><Star size={24} className="text-purple-500 mb-3" /><span className="text-[10px] font-bold uppercase tracking-widest text-purple-600 dark:text-purple-400 mb-1">XP Total</span><span className="text-3xl font-black text-purple-500">{xp}</span></div>
-          <div className="bg-blue-500/10 border border-blue-500/20 p-5 rounded-3xl flex flex-col justify-between relative overflow-hidden"><CheckCircle2 size={24} className="text-blue-500 mb-3" /><span className="text-[10px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-1">Feitas Hoje</span><div className="flex items-baseline gap-2"><span className="text-3xl font-black text-blue-500">{todayTasksCount}</span><span className={`text-xs font-bold flex items-center ${tasksDiff >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{tasksDiff > 0 ? <TrendingUp size={12}/> : tasksDiff < 0 ? <TrendingUp size={12} className="rotate-180"/> : ''} {Math.abs(tasksDiff)} vs ontem</span></div></div>
+          <div className="bg-blue-500/10 border border-blue-500/20 p-5 rounded-3xl flex flex-col justify-between relative overflow-hidden"><CheckCircle2 size={24} className="text-blue-500 mb-3" /><span className="text-[10px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-1">Completadas Hoy</span><div className="flex items-baseline gap-2"><span className="text-3xl font-black text-blue-500">{todayTasksCount}</span><span className={`text-xs font-bold flex items-center ${tasksDiff >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{tasksDiff > 0 ? <TrendingUp size={12}/> : tasksDiff < 0 ? <TrendingUp size={12} className="rotate-180"/> : ''} {Math.abs(tasksDiff)} vs ayer</span></div></div>
         </div>
 
         <div className="p-5 md:p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 overflow-hidden shadow-sm">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
-            <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500 flex items-center gap-2"><Activity size={16}/> Histórico Analítico</h3>
+            <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500 flex items-center gap-2"><Activity size={16}/> Historial Analítico</h3>
             <div className="flex p-1 bg-zinc-200 dark:bg-zinc-800/80 rounded-xl w-full md:w-auto">
-              <button onClick={() => setGridMode('perfect')} className={`flex-1 md:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${gridMode === 'perfect' ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400'}`}>Dias Perfeitos</button>
+              <button onClick={() => setGridMode('perfect')} className={`flex-1 md:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${gridMode === 'perfect' ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400'}`}>Días Perfectos</button>
               <button onClick={() => setGridMode('habits')} className={`flex-1 md:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${gridMode === 'habits' ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400'}`}>Hábitos</button>
               <button onClick={() => setGridMode('mood')} className={`flex-1 md:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${gridMode === 'mood' ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400'}`}>Humor</button>
             </div>
           </div>
           <div className="flex gap-1 md:gap-1.5 overflow-x-auto scrollbar-hide pb-2 justify-end">{generateGlobalGrid()}</div>
-          <div className="flex items-center gap-1 text-[10px] uppercase font-bold tracking-widest text-zinc-400 mt-4 justify-end"><Info size={12}/> Modos mostram métricas de foco, consistência ou estado de espírito</div>
+          <div className="flex items-center gap-1 text-[10px] uppercase font-bold tracking-widest text-zinc-400 mt-4 justify-end"><Info size={12}/> Modos muestran métricas de foco, consistencia o estado de ánimo</div>
         </div>
 
       </div>
       
       <VisionModal isOpen={isVisionOpen} onClose={() => setVisionOpen(false)} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setSettingsOpen(false)} />
-      <GoogleConnectModal isOpen={isGoogleConnectOpen} onClose={() => setGoogleConnectOpen(false)} onSuccess={() => { setGoogleConnectOpen(false); showToast("Conta conectada com sucesso!"); }} />
-      
-      {/* MODAIS DA REFLEXÃO */}
+      <GoogleConnectModal isOpen={isGoogleConnectOpen} onClose={() => setGoogleConnectOpen(false)} onSuccess={() => { setGoogleConnectOpen(false); showToast("¡Cuenta conectada con éxito!"); }} />
+      <ChangelogModal isOpen={isChangelogOpen} onClose={() => setChangelogOpen(false)} />
+
       <ReflectionCreatorModal isOpen={isCreatorOpen} onClose={() => setIsCreatorOpen(false)} reflectionToEdit={reflectionToEdit} />
       <ReflectionViewerModal reflection={viewerReflection} onClose={() => setViewerReflection(null)} onEdit={() => { setViewerReflection(null); setReflectionToEdit(viewerReflection); setIsCreatorOpen(true); }} />
 

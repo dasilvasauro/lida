@@ -4,11 +4,8 @@ import type { Task, Mood, Folder } from '../types';
 import { format, addDays, addMonths } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 
-// MOTOR DE RECORRÊNCIA: Calcula a próxima data baseado na regra da tarefa
 const calculateNextRecurrence = (currentDateStr: string | undefined, recurrence: Task['recurrence']): string | null => {
   if (!recurrence || recurrence.type === 'none') return null;
-
-  // Cria a data localmente evitando bugs de fuso horário (UTC vs GMT-3)
   const baseDate = currentDateStr 
     ? new Date(Number(currentDateStr.split('-')[0]), Number(currentDateStr.split('-')[1]) - 1, Number(currentDateStr.split('-')[2])) 
     : new Date();
@@ -42,56 +39,31 @@ const calculateNextRecurrence = (currentDateStr: string | undefined, recurrence:
     const targetDay = Math.min(recurrence.dayOfMonth, daysInTargetMonth);
     return format(new Date(year, recurrence.monthOfYear, targetDay), 'yyyy-MM-dd');
   }
-
   return null;
 };
 
 interface TaskState {
-  tasks: Task[];
-  folders: Folder[];
-  dailyMood: Mood | null;
-  moodHistory: Record<string, Mood>;
-  selectedFilter: 'today' | 'week' | 'month' | 'all';
-  selectedFolderId: string;
+  tasks: Task[]; folders: Folder[]; dailyMood: Mood | null; moodHistory: Record<string, Mood>;
+  selectedFilter: 'today' | 'week' | 'month' | 'all'; selectedFolderId: string;
   activeFocusSession: { taskId: string; startTime: number; duration: number } | null;
-  isFocusModeOpen: boolean;
-  isGlobalModalOpen: boolean;
-  
-  setGlobalModalOpen: (isOpen: boolean) => void;
-  addTask: (task: Task) => void;
-  toggleTaskCompletion: (taskId: string) => void;
-  deleteTask: (taskId: string) => void;
-  
-  addFolder: (folder: Folder) => void;
-  deleteFolder: (folderId: string) => void;
-  setFolderId: (folderId: string) => void;
-
-  setDailyMood: (mood: Mood) => void;
-  setFilter: (filter: 'today' | 'week' | 'month' | 'all') => void;
+  isFocusModeOpen: boolean; isGlobalModalOpen: boolean;
+  setGlobalModalOpen: (isOpen: boolean) => void; addTask: (task: Task) => void;
+  toggleTaskCompletion: (taskId: string) => void; deleteTask: (taskId: string) => void;
+  addFolder: (folder: Folder) => void; deleteFolder: (folderId: string) => void; setFolderId: (folderId: string) => void;
+  setDailyMood: (mood: Mood) => void; setFilter: (filter: 'today' | 'week' | 'month' | 'all') => void;
   toggleSubtask: (taskId: string, subtaskId: string) => void;
-
-  startFocus: (taskId: string, durationMinutes: number) => void;
-  stopFocus: () => void;
-  toggleFocusMode: (isOpen: boolean) => void;
-  updateTask: (taskId: string, updatedTask: Partial<Task>) => void;
-  markTaskFailed: (taskId: string) => void;
-  clearCompletedTasks: () => void;
+  startFocus: (taskId: string, durationMinutes: number) => void; stopFocus: () => void;
+  toggleFocusMode: (isOpen: boolean) => void; updateTask: (taskId: string, updatedTask: Partial<Task>) => void;
+  markTaskFailed: (taskId: string) => void; clearCompletedTasks: () => void;
   applyPowerUp: (taskId: string, type: 'respite' | 'relief' | 'magicDice') => void;
-  failPastDailyChallenges: (todayStr: string) => void;
+  processNewDay: (todayStr: string) => void;
 }
 
 export const useTaskStore = create<TaskState>()(
   persist(
-    (set) => ({
-      tasks: [],
-      folders: [{ id: 'default', name: 'Geral' }],
-      dailyMood: null,
-      moodHistory: {},
-      selectedFilter: 'today',
-      selectedFolderId: 'all',
-      activeFocusSession: null,
-      isFocusModeOpen: false,
-      isGlobalModalOpen: false,
+    (set, get) => ({
+      tasks: [], folders: [{ id: 'default', name: 'Geral' }], dailyMood: null, moodHistory: {},
+      selectedFilter: 'today', selectedFolderId: 'all', activeFocusSession: null, isFocusModeOpen: false, isGlobalModalOpen: false,
 
       setGlobalModalOpen: (isOpen) => set({ isGlobalModalOpen: isOpen }),
       addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
@@ -99,56 +71,18 @@ export const useTaskStore = create<TaskState>()(
       toggleTaskCompletion: (taskId) => set((state) => {
         const task = state.tasks.find(t => t.id === taskId);
         if (!task) return state;
-
         const isCompleting = !task.isCompleted;
         const isCompletingActive = state.activeFocusSession?.taskId === taskId;
 
-        const newTasks = state.tasks.map((t) =>
-          t.id === taskId
-            ? { ...t, isCompleted: isCompleting, completedAt: isCompleting ? Date.now() : undefined }
-            : t
-        );
-
-        // GERAÇÃO DA PRÓXIMA RECORRÊNCIA SE A TAREFA FOI MARCADA COMO FEITA
-        if (isCompleting && task.recurrence && task.recurrence.type !== 'none') {
-          const nextDateStr = calculateNextRecurrence(task.deadlineDate, task.recurrence);
-          
-          if (nextDateStr) {
-            // Escudo de duplicação: evita gerar 2x se o usuário clicar muito rápido
-            const futureTaskExists = state.tasks.some(t => 
-              t.title === task.title && 
-              t.deadlineDate === nextDateStr && 
-              !t.isCompleted
-            );
-
-            if (!futureTaskExists) {
-              const nextTask: Task = {
-                ...task,
-                id: uuidv4(), // ID novo para a nova tarefa
-                createdAt: Date.now(),
-                isCompleted: false,
-                completedAt: undefined,
-                deadlineDate: nextDateStr,
-                // Reseta as subtarefas e powerups para a próxima rodada
-                subtasks: task.subtasks?.map(st => ({ ...st, completed: false })),
-                hasRespite: false,
-                hasRelief: false,
-                hasMagicDice: false,
-                isFailed: false,
-              };
-              newTasks.push(nextTask);
-            }
-          }
-        }
-
         return {
-          tasks: newTasks,
+          tasks: state.tasks.map((t) =>
+            t.id === taskId ? { ...t, isCompleted: isCompleting, completedAt: isCompleting ? Date.now() : undefined } : t
+          ),
           ...(isCompletingActive ? { activeFocusSession: null, isFocusModeOpen: false } : {})
         };
       }),
 
       deleteTask: (taskId) => set((state) => ({ tasks: state.tasks.filter((t) => t.id !== taskId) })),
-
       addFolder: (folder) => set((state) => ({ folders: [...state.folders, folder] })),
       setFolderId: (folderId) => set({ selectedFolderId: folderId }),
       deleteFolder: (folderId) => set((state) => ({
@@ -159,35 +93,24 @@ export const useTaskStore = create<TaskState>()(
 
       setDailyMood: (mood) => set((state) => {
         const todayStr = format(new Date(), 'yyyy-MM-dd');
-        return { 
-          dailyMood: mood,
-          moodHistory: { ...state.moodHistory, [todayStr]: mood }
-        };
+        return { dailyMood: mood, moodHistory: { ...state.moodHistory, [todayStr]: mood } };
       }),
-      
       setFilter: (selectedFilter) => set({ selectedFilter }),
-
       toggleSubtask: (taskId, subtaskId) => set((state) => ({
-        tasks: state.tasks.map((t) =>
-          t.id === taskId
-            ? { ...t, subtasks: t.subtasks?.map((st) => st.id === subtaskId ? { ...st, completed: !st.completed } : st) }
-            : t
-        )
+        tasks: state.tasks.map((t) => t.id === taskId ? { ...t, subtasks: t.subtasks?.map((st) => st.id === subtaskId ? { ...st, completed: !st.completed } : st) } : t)
       })),
-
       startFocus: (taskId, durationMinutes) => set((state) => {
         if (state.activeFocusSession?.taskId === taskId) return { isFocusModeOpen: true };
-        return {
-          activeFocusSession: { taskId, startTime: Date.now(), duration: durationMinutes * 60 },
-          isFocusModeOpen: true
-        };
+        return { activeFocusSession: { taskId, startTime: Date.now(), duration: durationMinutes * 60 }, isFocusModeOpen: true };
       }),
-
       stopFocus: () => set({ activeFocusSession: null, isFocusModeOpen: false }),
       toggleFocusMode: (isOpen) => set({ isFocusModeOpen: isOpen }),
       updateTask: (taskId, updatedTask) => set((state) => ({ tasks: state.tasks.map((t) => t.id === taskId ? { ...t, ...updatedTask } : t) })),
       markTaskFailed: (taskId) => set((state) => ({ tasks: state.tasks.map((t) => t.id === taskId ? { ...t, isFailed: true } : t) })),
-      clearCompletedTasks: () => set((state) => ({ tasks: state.tasks.filter((t) => !t.isCompleted) })),
+      
+      clearCompletedTasks: () => set((state) => ({ 
+        tasks: state.tasks.map((t) => t.isCompleted ? { ...t, isArchived: true } : t) 
+      })),
 
       applyPowerUp: (taskId, type) => set((state) => ({
         tasks: state.tasks.map(t => {
@@ -196,8 +119,7 @@ export const useTaskStore = create<TaskState>()(
           if (type === 'respite') {
             let newTime = t.deadlineTime;
             if (newTime) {
-              const [h, m] = newTime.split(':').map(Number);
-              const newH = Math.min(23, h + 3);
+              const [h, m] = newTime.split(':').map(Number); const newH = Math.min(23, h + 3);
               newTime = `${newH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
             }
             return { ...t, hasRespite: true, deadlineTime: newTime };
@@ -205,8 +127,7 @@ export const useTaskStore = create<TaskState>()(
           if (type === 'relief') {
             let newDate = t.deadlineDate;
             if (newDate) {
-              const dateObj = new Date(newDate + 'T12:00:00');
-              dateObj.setDate(dateObj.getDate() + 1);
+              const dateObj = new Date(newDate + 'T12:00:00'); dateObj.setDate(dateObj.getDate() + 1);
               newDate = dateObj.toISOString().split('T')[0];
             }
             return { ...t, hasRelief: true, deadlineDate: newDate };
@@ -215,17 +136,34 @@ export const useTaskStore = create<TaskState>()(
         })
       })),
 
-      failPastDailyChallenges: (todayStr) => set((state) => ({
-        tasks: state.tasks.map((t) => {
+      processNewDay: (todayStr) => {
+        const { tasks } = get();
+        const newTasks = [...tasks];
+        let changed = false;
+
+        for (let i = 0; i < newTasks.length; i++) {
+          const t = newTasks[i];
+          
           if (t.type === 'daily_challenge' && !t.isCompleted && !t.isFailed) {
             const createdAtStr = format(new Date(t.createdAt), 'yyyy-MM-dd');
-            if (createdAtStr < todayStr) {
-              return { ...t, isFailed: true };
+            if (createdAtStr < todayStr) { newTasks[i] = { ...t, isFailed: true }; changed = true; }
+          }
+
+          if (t.isCompleted && t.recurrence && t.recurrence.type !== 'none' && !t.nextRecurrenceGenerated) {
+            const completedDateStr = t.completedAt ? format(new Date(t.completedAt), 'yyyy-MM-dd') : '';
+            if (completedDateStr && completedDateStr < todayStr) {
+              const nextDateStr = calculateNextRecurrence(t.deadlineDate, t.recurrence);
+              if (nextDateStr) {
+                newTasks.push({ ...t, id: uuidv4(), isCompleted: false, completedAt: undefined, deadlineDate: nextDateStr, isArchived: false, nextRecurrenceGenerated: false, isFailed: false, subtasks: t.subtasks?.map(st => ({ ...st, completed: false })) });
+                newTasks[i] = { ...t, nextRecurrenceGenerated: true };
+                changed = true;
+              }
             }
           }
-          return t;
-        })
-      }))
+        }
+
+        if (changed) set({ tasks: newTasks });
+      }
     }),
     { name: 'lida-tasks' }
   )

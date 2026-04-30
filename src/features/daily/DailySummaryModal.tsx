@@ -23,7 +23,7 @@ const quotes = [
 export const DailySummaryModal = () => {
   const { isOnboarded, userName, lastLoginDate, setLastLoginDate } = useConfigStore();
   const { dailyHistory } = useEconomyStore();
-  const { tasks, failPastDailyChallenges } = useTaskStore(); // <-- Importada a nova função
+  const { tasks, processNewDay } = useTaskStore(); 
   const { habits, logs, modifiers } = useHabitStore();
 
   const [currentDateStr, setCurrentDateStr] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -37,16 +37,11 @@ export const DailySummaryModal = () => {
     const handleFocus = () => setCurrentDateStr(format(new Date(), 'yyyy-MM-dd'));
     window.addEventListener('focus', handleFocus);
 
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('focus', handleFocus);
-    };
+    return () => { clearInterval(interval); window.removeEventListener('focus', handleFocus); };
   }, [currentDateStr]);
 
   useEffect(() => {
-    if (isOnboarded && !lastLoginDate) {
-      setLastLoginDate(currentDateStr);
-    }
+    if (isOnboarded && !lastLoginDate) { setLastLoginDate(currentDateStr); }
   }, [isOnboarded, lastLoginDate, currentDateStr, setLastLoginDate]);
 
   const quote = useMemo(() => quotes[Math.floor(Math.random() * quotes.length)], [currentDateStr]);
@@ -59,14 +54,12 @@ export const DailySummaryModal = () => {
   const yesterdayStr = format(subDays(new Date(currentDateStr + 'T12:00:00'), 1), 'yyyy-MM-dd');
 
   const yesterdayTasks = tasks.filter(t => t.completedAt && format(new Date(t.completedAt), 'yyyy-MM-dd') === yesterdayStr).length;
-  const yesterdayHabits = habits.filter(h => {
-    return (logs[h.id]?.[yesterdayStr] || 0) >= (h.goal || 1) || modifiers[h.id]?.[yesterdayStr];
-  }).length;
+  const yesterdayHabits = habits.filter(h => { return (logs[h.id]?.[yesterdayStr] || 0) >= (h.goal || 1) || modifiers[h.id]?.[yesterdayStr]; }).length;
   const yesterdayXp = dailyHistory[yesterdayStr]?.xp || 0;
   const yesterdayGold = dailyHistory[yesterdayStr]?.gold || 0;
 
   const handleStartDay = () => {
-    failPastDailyChallenges(currentDateStr); // <-- Roda a varredura ao iniciar o dia
+    processNewDay(currentDateStr);
     setLastLoginDate(currentDateStr);
   };
 

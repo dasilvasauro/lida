@@ -37,6 +37,8 @@ export interface Task {
   hasRespite?: boolean; 
   hasRelief?: boolean;  
   hasMagicDice?: boolean;
+  isArchived?: boolean; 
+  nextRecurrenceGenerated?: boolean; 
 }
 
 export interface Habit {
@@ -59,7 +61,7 @@ export interface Vision {
   traitsToDevelop: string[];
   traitsToAbandon: string[];
   goals: BigGoal[];
-  checkpoints: string[]; // Formato YYYY-MM-DD
+  checkpoints: string[]; 
   createdAt: number;
 }
 
