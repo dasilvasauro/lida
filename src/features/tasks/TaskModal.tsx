@@ -79,7 +79,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
     onClose();
   };
 
-  const taskTypes: { id: TaskType; label: string; icon: any; color: string; isLocked?: boolean }[] = [ { id: 'normal', label: 'Normal', icon: CheckCircle2, color: 'text-zinc-500' }, { id: 'daily_challenge', label: 'Desafío', icon: Zap, color: 'text-amber-500', isLocked: hasDailyChallengeToday }, { id: 'sprint', label: 'Sprint', icon: Target, color: 'text-purple-500', isLocked: hasActiveSprint }, { id: 'time', label: 'Tiempo', icon: Timer, color: 'text-blue-500' }, { id: 'bonus', label: 'Bono', icon: Gift, color: 'text-emerald-500', isLocked: isBonusLocked } ];
+  const taskTypes: { id: TaskType; label: string; icon: any; color: string; isLocked?: boolean }[] = [ { id: 'normal', label: 'Normal', icon: CheckCircle2, color: 'text-zinc-500' }, { id: 'daily_challenge', label: 'Desafío', icon: Zap, color: 'text-amber-500', isLocked: hasDailyChallengeToday }, { id: 'sprint', label: 'Sprint', icon: Target, color: 'text-purple-500', isLocked: hasActiveSprint }, { id: 'time', label: 'Tempo', icon: Timer, color: 'text-blue-500' }, { id: 'bonus', label: 'Bônus', icon: Gift, color: 'text-emerald-500', isLocked: isBonusLocked } ];
 
   return (
     <AnimatePresence>
@@ -90,17 +90,17 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
             <div className="flex justify-between items-center p-6 border-b border-zinc-200 dark:border-zinc-800"><h3 className="text-xl font-bold">{taskToEdit ? 'Editar Tarea' : 'Nueva Tarea'}</h3><button onClick={onClose} className="p-2 rounded-full bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"><X size={20} /></button></div>
             <div className="p-6 overflow-y-auto flex-1 space-y-8 scrollbar-hide">
               <div className="space-y-2">
-                <input type="text" maxLength={120} placeholder="¿Qué necesitas hacer?" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full text-2xl font-bold bg-transparent border-none outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-600" autoFocus />
-                <textarea maxLength={500} placeholder="Detalles (Opcional)..." value={description} onChange={(e) => setDescription(e.target.value)} className="w-full resize-none bg-transparent border-none outline-none text-sm text-zinc-600 dark:text-zinc-400 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 h-16" />
+                <input type="text" maxLength={120} placeholder="O que precisa ser feito?" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full text-2xl font-bold bg-transparent border-none outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-600" autoFocus />
+                <textarea maxLength={500} placeholder="Detalhes (Opcional)..." value={description} onChange={(e) => setDescription(e.target.value)} className="w-full resize-none bg-transparent border-none outline-none text-sm text-zinc-600 dark:text-zinc-400 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 h-16" />
               </div>
 
               {canBeRecurrent && (
                 <div className="space-y-4">
-                  <span className="text-xs uppercase tracking-widest text-zinc-500 font-bold flex items-center gap-2"><RotateCcw size={14} /> Repetir Tarea</span>
+                  <span className="text-xs uppercase tracking-widest text-zinc-500 font-bold flex items-center gap-2"><RotateCcw size={14} /> Recorrência</span>
                   <div className="flex gap-2">
                     {['none', 'weekly', 'monthly', 'yearly'].map((r) => (
                       <button key={r} onClick={(e) => { e.preventDefault(); setRecurrenceType(r as any); }} className={`flex-1 py-2 rounded-lg text-[10px] font-bold border transition-all ${recurrenceType === r ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black border-transparent' : 'border-zinc-200 dark:border-zinc-800 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
-                        {r === 'none' ? 'No' : r === 'weekly' ? 'Semanal' : r === 'monthly' ? 'Mensual' : 'Anual'}
+                        {r === 'none' ? 'Não' : r === 'weekly' ? 'Semanal' : r === 'monthly' ? 'Mensal' : 'Anual'}
                       </button>
                     ))}
                   </div>
@@ -109,7 +109,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
                     {recurrenceType !== 'none' && (
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-3 overflow-hidden">
                         {recurrenceType === 'weekly' && (<div className="flex justify-between pt-2">{['D', 'L', 'M', 'X', 'J', 'V', 'S'].map((day, i) => (<button key={i} onClick={(e) => { e.preventDefault(); toggleWeekday(i); }} className={`w-8 h-8 rounded-full text-[10px] font-bold border transition-all ${selectedWeekdays.includes(i) ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black border-transparent' : 'border-zinc-200 dark:border-zinc-800 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>{day}</button>))}</div>)}
-                        {(recurrenceType === 'monthly' || recurrenceType === 'yearly') && (<div className="bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 p-3 rounded-xl text-[11px] flex items-start gap-2 italic"><Info size={14} className="mt-0.5 shrink-0" /><p>La tarea se repetirá basada en el día definido en <b>"Fecha Límite"</b> abajo.</p></div>)}
+                        {(recurrenceType === 'monthly' || recurrenceType === 'yearly') && (<div className="bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 p-3 rounded-xl text-[11px] flex items-start gap-2 italic"><Info size={14} className="mt-0.5 shrink-0" /><p>A tarefa irá se repetir com base no dia definido na <b>"Data Límite"</b> abaixo.</p></div>)}
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -132,8 +132,8 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
 
               {(type === 'normal' || type === 'bonus') && (
                 <div className="flex gap-4">
-                  <div className="flex-1 space-y-3"><span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold flex items-center gap-1"><Calendar size={14} /> Fecha Límite</span><button onClick={(e) => { e.preventDefault(); setActiveDateField('deadline'); setShowDatePicker(!showDatePicker); setShowTimePicker(false); }} className={`w-full p-3 rounded-lg border text-sm transition-all ${deadlineDate ? 'border-zinc-900 dark:border-zinc-100 font-bold' : 'border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}>{deadlineDate ? format(new Date(deadlineDate + 'T12:00:00'), "dd 'de' MMM", { locale: ptBR }) : 'Seleccionar'}</button></div>
-                  <div className={`flex-1 space-y-3 ${!deadlineDate ? 'opacity-30 pointer-events-none' : ''}`}><span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold flex items-center gap-1"><Clock size={14} /> Hora</span><button onClick={(e) => { e.preventDefault(); setShowTimePicker(!showTimePicker); setShowDatePicker(false); }} className={`w-full p-3 rounded-lg border text-sm transition-all ${deadlineTime ? 'border-zinc-900 dark:border-zinc-100 font-bold' : 'border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}>{deadlineTime || 'Sin hora'}</button></div>
+                  <div className="flex-1 space-y-3"><span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold flex items-center gap-1"><Calendar size={14} /> Data Limite </span><button onClick={(e) => { e.preventDefault(); setActiveDateField('deadline'); setShowDatePicker(!showDatePicker); setShowTimePicker(false); }} className={`w-full p-3 rounded-lg border text-sm transition-all ${deadlineDate ? 'border-zinc-900 dark:border-zinc-100 font-bold' : 'border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}>{deadlineDate ? format(new Date(deadlineDate + 'T12:00:00'), "dd 'de' MMM", { locale: ptBR }) : 'Selecionar'}</button></div>
+                  <div className={`flex-1 space-y-3 ${!deadlineDate ? 'opacity-30 pointer-events-none' : ''}`}><span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold flex items-center gap-1"><Clock size={14} /> Hora</span><button onClick={(e) => { e.preventDefault(); setShowTimePicker(!showTimePicker); setShowDatePicker(false); }} className={`w-full p-3 rounded-lg border text-sm transition-all ${deadlineTime ? 'border-zinc-900 dark:border-zinc-100 font-bold' : 'border-zinc-200 dark:border-zinc-800 text-zinc-400'}`}>{deadlineTime || 'Sem hora'}</button></div>
                 </div>
               )}
 
@@ -156,24 +156,24 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
               {type === 'daily_challenge' && (<div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 p-4 rounded-xl text-xs flex items-center gap-3"><Zap size={20} className="shrink-0" /><p>Este desafío es válido solo por hoy y expira a la medianoche.</p></div>)}
 
               <div className="space-y-3 pt-2">
-                <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold">Subtareas {type === 'sprint' ? '(Obligatorio)' : '(Opcional)'}</span>
-                <div className="flex gap-2"><input type="text" maxLength={120} value={subtaskInput} onChange={(e) => setSubtaskInput(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter'){ e.preventDefault(); addSubtask(); } }} placeholder="Ej: Definir alcance" className="flex-1 bg-zinc-100 dark:bg-zinc-800 p-3 rounded-lg text-sm outline-none" /><button onClick={(e) => { e.preventDefault(); addSubtask(); }} className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-black p-3 rounded-lg"><Plus size={20} /></button></div>
+                <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold">Subtarefas {type === 'sprint' ? '(Obligatório)' : '(Opcional)'}</span>
+                <div className="flex gap-2"><input type="text" maxLength={120} value={subtaskInput} onChange={(e) => setSubtaskInput(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter'){ e.preventDefault(); addSubtask(); } }} placeholder="Ex: Checar Pré-requisitos" className="flex-1 bg-zinc-100 dark:bg-zinc-800 p-3 rounded-lg text-sm outline-none" /><button onClick={(e) => { e.preventDefault(); addSubtask(); }} className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-black p-3 rounded-lg"><Plus size={20} /></button></div>
                 <div className="space-y-2">{subtasks.map((st) => (<div key={st.id} className="flex items-center justify-between bg-zinc-100 dark:bg-zinc-800/50 p-2 pl-4 rounded-lg"><span className="text-sm text-zinc-900 dark:text-zinc-100">{st.title}</span><button onClick={(e) => { e.preventDefault(); removeSubtask(st.id); }} className="p-1 text-zinc-400 hover:text-red-500 transition-colors"><X size={16} /></button></div>))}</div>
               </div>
 
               <div>
-                <span className="text-xs uppercase tracking-widest text-zinc-500 mb-3 block font-bold">Carpeta</span>
+                <span className="text-xs uppercase tracking-widest text-zinc-500 mb-3 block font-bold">Pasta</span>
                 <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
                   {folders.map((f) => {
                     const isSelected = folderId === f.id;
                     return (<button key={f.id} onClick={(e) => { e.preventDefault(); setFolderId(f.id); }} className={`px-4 py-2 rounded-xl border font-bold text-xs transition-all whitespace-nowrap ${isSelected ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black border-transparent shadow-md' : 'bg-transparent border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>{f.name}</button>)
                   })}
-                  {isCreatingFolder ? (<div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl px-2 shadow-inner border border-zinc-200 dark:border-zinc-700"><input autoFocus type="text" maxLength={30} value={newFolderName} onChange={e=>setNewFolderName(e.target.value)} onKeyDown={e=>{ if(e.key === 'Enter'){ e.preventDefault(); handleCreateFolder(); } }} placeholder="Nombre" className="bg-transparent text-xs font-bold outline-none w-28 px-2 placeholder:text-zinc-400" /><button onClick={(e) => { e.preventDefault(); handleCreateFolder(); }} className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors"><Check size={14}/></button><button onClick={(e) => { e.preventDefault(); setIsCreatingFolder(false); }} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><X size={14}/></button></div>) : (<button onClick={(e) => { e.preventDefault(); setIsCreatingFolder(true); }} className="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border border-dashed border-zinc-300 text-zinc-500 dark:border-zinc-700 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all">+ Nueva Carpeta</button>)}
+                  {isCreatingFolder ? (<div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl px-2 shadow-inner border border-zinc-200 dark:border-zinc-700"><input autoFocus type="text" maxLength={30} value={newFolderName} onChange={e=>setNewFolderName(e.target.value)} onKeyDown={e=>{ if(e.key === 'Enter'){ e.preventDefault(); handleCreateFolder(); } }} placeholder="Nombre" className="bg-transparent text-xs font-bold outline-none w-28 px-2 placeholder:text-zinc-400" /><button onClick={(e) => { e.preventDefault(); handleCreateFolder(); }} className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors"><Check size={14}/></button><button onClick={(e) => { e.preventDefault(); setIsCreatingFolder(false); }} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><X size={14}/></button></div>) : (<button onClick={(e) => { e.preventDefault(); setIsCreatingFolder(true); }} className="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap border border-dashed border-zinc-300 text-zinc-500 dark:border-zinc-700 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all">+ Nova Pasta</button>)}
                 </div>
               </div>
 
               <div>
-                <span className="text-xs uppercase tracking-widest text-zinc-500 mb-3 block font-bold">Prioridad</span>
+                <span className="text-xs uppercase tracking-widest text-zinc-500 mb-3 block font-bold">Prioridade</span>
                 <div className="flex gap-2">
                   {(['P0', 'P1', 'P2', 'P3', 'P4'] as Priority[]).map((p) => {
                     const isSelected = priority === p; const isLocked = (p === 'P0' && isP0Locked && !isSelected) || (p === 'P1' && isP1Locked && !isSelected);
@@ -191,7 +191,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
             </div>
 
             <div className="p-6 bg-zinc-100 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800">
-              <button onClick={handleSave} disabled={!title.trim() || (type === 'sprint' && (!startDate || !endDate || subtasks.length === 0))} className="w-full py-4 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black font-bold text-lg disabled:opacity-50 transition-opacity hover:opacity-90">{taskToEdit ? 'Guardar Cambios' : 'Crear Tarea'}</button>
+              <button onClick={handleSave} disabled={!title.trim() || (type === 'sprint' && (!startDate || !endDate || subtasks.length === 0))} className="w-full py-4 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black font-bold text-lg disabled:opacity-50 transition-opacity hover:opacity-90">{taskToEdit ? 'Guardar Cambios' : 'Criar Tarefa'}</button>
             </div>
 
           </motion.div>

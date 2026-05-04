@@ -96,15 +96,15 @@ export const TaskDashboard = () => {
 
   const hasCompletedTasks = filteredTasks.some(t => t.isCompleted);
 
-  const moods: { value: Mood; icon: any; label: string }[] = [ { value: 'disappointed', icon: CloudRain, label: 'Decepcionado' }, { value: 'annoyed', icon: Frown, label: 'Molesto' }, { value: 'normal', icon: Meh, label: 'Normal' }, { value: 'happy', icon: Smile, label: 'Feliz' }, { value: 'radiant', icon: Sparkles, label: 'Radiante' } ];
-  const filters: { id: typeof selectedFilter; label: string }[] = [ { id: 'today', label: 'Hoy' }, { id: 'week', label: 'Semana' }, { id: 'month', label: 'Mes' }, { id: 'all', label: 'Todo' } ];
+  const moods: { value: Mood; icon: any; label: string }[] = [ { value: 'disappointed', icon: CloudRain, label: 'Decepcionado' }, { value: 'annoyed', icon: Frown, label: 'Incomodado' }, { value: 'normal', icon: Meh, label: 'Normal' }, { value: 'happy', icon: Smile, label: 'Feliz' }, { value: 'radiant', icon: Sparkles, label: 'Radiante' } ];
+  const filters: { id: typeof selectedFilter; label: string }[] = [ { id: 'today', label: 'Hoje' }, { id: 'week', label: 'Semana' }, { id: 'month', label: 'Mês' }, { id: 'all', label: 'Tudo' } ];
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 pb-32 transition-colors">
       <div className="max-w-4xl mx-auto px-6 md:px-8 pt-12 space-y-6">
 
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-zinc-100 dark:border-zinc-900">
-          <div><h1 className="text-3xl font-black tracking-tight">Tus tareas</h1><p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium mt-1">¿Cómo estás y qué vamos a lograr hoy?</p></div>
+          <div><h1 className="text-3xl font-black tracking-tight">Tarefas</h1><p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium mt-1">Como vai? E o que tem pra hoje?</p></div>
           <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
             <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900/80 rounded-xl w-full md:w-auto">
               {filters.map((f) => ( <button key={f.id} onClick={() => setFilter(f.id)} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${selectedFilter === f.id ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}`}>{f.label}</button> ))}
@@ -129,22 +129,22 @@ export const TaskDashboard = () => {
               <button onClick={handleCreateFolder} className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded-full transition-colors"><Check size={14}/></button>
               <button onClick={() => setIsCreatingFolder(false)} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-full transition-colors"><X size={14}/></button>
             </div>
-          ) : ( <button onClick={() => setIsCreatingFolder(true)} className="px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap border border-dashed border-zinc-300 text-zinc-500 dark:border-zinc-700 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all">+ Nueva Carpeta</button> )}
+          ) : ( <button onClick={() => setIsCreatingFolder(true)} className="px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap border border-dashed border-zinc-300 text-zinc-500 dark:border-zinc-700 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all">+ Nova Pasta</button> )}
           <div className="flex-1" />
           <button onClick={() => setIsSortedByPriority(!isSortedByPriority)} className={`p-2 rounded-full transition-all shrink-0 ${isSortedByPriority ? 'bg-blue-500 text-white shadow-md' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`} title="Ordenar por Prioridad"><ArrowDownUp size={16} /></button>
         </div>
 
         {(isXpBoosted || isGoldBoosted) && (
           <div className="flex flex-col md:flex-row gap-3">
-            {isXpBoosted && <div className="flex-1 bg-orange-500/10 border border-orange-500/30 text-orange-600 dark:text-orange-400 p-3 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm animate-pulse"><TrendingUp size={18}/> 2x XP Activo (24h)</div>}
-            {isGoldBoosted && <div className="flex-1 bg-yellow-500/10 border border-yellow-500/30 text-yellow-600 dark:text-yellow-400 p-3 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm animate-pulse"><Coins size={18}/> 2x Oro Activo (24h)</div>}
+            {isXpBoosted && <div className="flex-1 bg-orange-500/10 border border-orange-500/30 text-orange-600 dark:text-orange-400 p-3 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm animate-pulse"><TrendingUp size={18}/> 2x XP Ativo (24h)</div>}
+            {isGoldBoosted && <div className="flex-1 bg-yellow-500/10 border border-yellow-500/30 text-yellow-600 dark:text-yellow-400 p-3 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm animate-pulse"><Coins size={18}/> 2x Oro Ativo (24h)</div>}
           </div>
         )}
 
         <main>
           <AnimatePresence mode="popLayout">
             {filteredTasks.length === 0 ? (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-zinc-500 mt-20">Ninguna tarea por aquí. ¡Aprovecha el momento!</motion.div>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-zinc-500 mt-20">Sem tarefas por enquanto</motion.div>
             ) : (
               filteredTasks.map((task) => ( <TaskItem key={task.id} task={task} onToggle={requestToggle} onEdit={() => { setTaskToEdit(task); setIsModalOpen(true); }} onDelete={() => requestDelete(task.id)} /> ))
             )}
@@ -152,8 +152,8 @@ export const TaskDashboard = () => {
 
           {hasCompletedTasks && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center mt-8">
-              <button onClick={() => setConfirmDialog({ type: 'clear_completed', taskId: 'all', title: '¿Archivar Concluidas?', subtitle: 'Las tareas se archivarán para mantener tu historial limpio.' })} className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all">
-                <Trash2 size={14} /> Archivar tareas concluidas
+              <button onClick={() => setConfirmDialog({ type: 'clear_completed', taskId: 'all', title: 'Arquivar Concluídas?', subtitle: 'As tarefas serão arquivadas para manter seu histórico limpo.' })} className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all">
+                <Trash2 size={14} /> Arquivar tarefas concluídas
               </button>
             </motion.div>
           )}

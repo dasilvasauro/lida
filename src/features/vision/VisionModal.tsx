@@ -124,7 +124,7 @@ export const VisionModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () 
        <div className="max-w-4xl w-full mx-auto p-6 md:p-12 h-full overflow-y-auto scrollbar-hide pt-24 md:pt-20">
          <header className="flex flex-col md:flex-row justify-between md:items-end mb-12 gap-6">
             <div>
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight">Módulo Visão</h2>
+              <h2 className="text-4xl md:text-5xl font-black tracking-tight">Visão</h2>
               <p className="text-zinc-500 mt-2 font-medium">Acompanhe seu alinhamento com a realidade que você exige.</p>
             </div>
             {nextCheckpoint && (
