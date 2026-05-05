@@ -9,14 +9,14 @@ O objetivo do Lida é ser um hub de gestão pessoal de produtividade, incorporan
 ## Principais Recursos
 
 * **Módulo Visão:** Estruturação de metas de longo prazo. Permite registrar características a serem desenvolvidas ou abandonadas e classificar grandes objetivos em estados de maturidade (de Inativo a Consistente);
-* **Offline-First e Criptografia (E2EE):** A aplicação funciona integralmente sem conexão com a internet, utilizando armazenamento local (`localStorage`). Na opção de sincronização em nuvem via conta Google, os dados são criptografados localmente com uma Chave Mestra definida pelo usuário antes de serem enviados ao banco de dados, garantindo *zero-knowledge*;
+* **Offline-First e Criptografia (E2EE):** A aplicação funciona integralmente sem conexão com a internet (uma vez que carregada previamente), utilizando armazenamento local (`localStorage`). Na opção de sincronização em nuvem via conta Google, os dados são criptografados localmente com uma Chave Mestra definida pelo usuário antes de serem enviados ao banco de dados, garantindo *zero-knowledge*;
 * **Foco e Priorização Estrita:** Sistema de prioridades hierárquicas (P0 a P4) com travas sistêmicas que limitam a criação de tarefas P0 e P1 no mesmo dia;
 * **Tipos diversos de tarefas:** Tarefas de Tempo (com timer integrado), Sprints para projetos de curto prazo;
 * **Gestão de Hábitos e Histórico Analítico:** Rastreamento de execução diária (visualização em grid de contribuições). Possui mecânicas de manutenção de histórico, como a aplicação de pausas programadas ("Congelamentos" ou "Dias de Folga"), para gerenciamento realista da rotina;
 * **Reflexões (Micro-Journaling):** Sistema de anotações em formato de cards, para axiomas e lembretes diários importantes;
 * **Portabilidade de Dados:** Ferramenta nativa para exportação e importação de todo o banco de dados do usuário em formato `.json`, útil para backups manuais ou transições entre dispositivos offline.
 
-## Stack Tecnológico
+## O que foi usado para construí-la?
 
 A aplicação foi construída com foco em performance e fluidez, permitindo instalação nativa em dispositivos móveis e desktops via navegador.
 
