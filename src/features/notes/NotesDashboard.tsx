@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, List, ListOrdered, FileText, Trash2, Settings2, Palette } from 'lucide-react';
+import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, List, ListOrdered, FileText, Trash2 } from 'lucide-react';
 import { useNoteStore } from '../../store/useNoteStore';
 import type { Notebook, Note, ItemColor, NoteFont, NoteFormat } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
