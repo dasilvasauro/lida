@@ -65,62 +65,64 @@ export const DailySummaryModal = () => {
 
   return (
     <AnimatePresence>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-white dark:bg-black flex items-center justify-center p-6 text-zinc-900 dark:text-zinc-100 overflow-y-auto">
-        <div className="max-w-2xl w-full mx-auto space-y-12">
-          
-          <div className="text-center space-y-4">
-            <Sunrise size={48} className="mx-auto text-blue-500 mb-6" />
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight">Um Novo Dia, {userName || 'Agente'}</h2>
-            <p className="text-zinc-500 dark:text-zinc-400 font-medium">Revisão das métricas antes de prosseguirmos.</p>
-          </div>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 overflow-y-auto">
+        <div className="min-h-[100dvh] flex flex-col justify-center px-6 py-12 md:py-20">
+          <div className="max-w-2xl w-full mx-auto space-y-10 md:space-y-12">
+            
+            <div className="text-center space-y-4">
+              <Sunrise size={48} className="mx-auto text-blue-500 mb-6" />
+              <h2 className="text-4xl md:text-5xl font-black tracking-tight">Um Novo Dia, {userName || 'Agente'}</h2>
+              <p className="text-zinc-500 dark:text-zinc-400 font-medium">Revisão das métricas antes de prosseguirmos.</p>
+            </div>
 
-          {diffDays > 1 && (
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="p-6 bg-red-500/10 border border-red-500/30 rounded-3xl flex gap-5 items-start text-red-600 dark:text-red-400">
-              <AlertTriangle className="shrink-0 mt-1" size={28} />
-              <div>
-                <h4 className="text-xl font-black tracking-tight">Ofensivas Rompidas</h4>
-                <p className="text-sm opacity-90 mt-2 leading-relaxed font-medium">Você esteve ausente por <b>{diffDays} dias</b>. Como consequência, seus ciclos de constância não protegidos por folgas foram perdidos. Use essa quebra não como punição, mas como oportunidade de um recomeço mais forte.</p>
-              </div>
-            </motion.div>
-          )}
+            {diffDays > 1 && (
+              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="p-6 bg-red-500/10 border border-red-500/30 rounded-3xl flex gap-5 items-start text-red-600 dark:text-red-400">
+                <AlertTriangle className="shrink-0 mt-1" size={28} />
+                <div>
+                  <h4 className="text-xl font-black tracking-tight">Ofensivas Rompidas</h4>
+                  <p className="text-sm opacity-90 mt-2 leading-relaxed font-medium">Você esteve ausente por <b>{diffDays} dias</b>. Como consequência, seus ciclos de constância não protegidos por folgas foram perdidos. Use essa quebra não como punição, mas como oportunidade de um recomeço mais forte.</p>
+                </div>
+              </motion.div>
+            )}
 
-          <div className="space-y-4">
-            <h3 className="text-xs uppercase tracking-widest font-bold text-zinc-400 flex justify-center">Seu rendimento no último dia</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center text-center">
-                <CheckCircle2 className="text-blue-500 mb-2" size={24} />
-                <span className="text-2xl font-black">{yesterdayTasks}</span>
-                <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 mt-1">Tarefas</span>
-              </div>
-              <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center text-center">
-                <Flame className="text-orange-500 mb-2" size={24} />
-                <span className="text-2xl font-black">{yesterdayHabits}</span>
-                <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 mt-1">Hábitos</span>
-              </div>
-              <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center text-center">
-                <TrendingUp className="text-purple-500 mb-2" size={24} />
-                <span className="text-2xl font-black">{yesterdayXp}</span>
-                <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 mt-1">XP Ganho</span>
-              </div>
-              <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center text-center">
-                <Coins className="text-yellow-500 mb-2" size={24} />
-                <span className="text-2xl font-black">{yesterdayGold}</span>
-                <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 mt-1">Ouro Ganho</span>
+            <div className="space-y-4">
+              <h3 className="text-xs uppercase tracking-widest font-bold text-zinc-400 flex justify-center">Seu rendimento no último dia</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center text-center">
+                  <CheckCircle2 className="text-blue-500 mb-2" size={24} />
+                  <span className="text-2xl font-black">{yesterdayTasks}</span>
+                  <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 mt-1">Tarefas</span>
+                </div>
+                <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center text-center">
+                  <Flame className="text-orange-500 mb-2" size={24} />
+                  <span className="text-2xl font-black">{yesterdayHabits}</span>
+                  <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 mt-1">Hábitos</span>
+                </div>
+                <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center text-center">
+                  <TrendingUp className="text-purple-500 mb-2" size={24} />
+                  <span className="text-2xl font-black">{yesterdayXp}</span>
+                  <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 mt-1">XP Ganho</span>
+                </div>
+                <div className="p-5 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center text-center">
+                  <Coins className="text-yellow-500 mb-2" size={24} />
+                  <span className="text-2xl font-black">{yesterdayGold}</span>
+                  <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 mt-1">Ouro Ganho</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="text-center px-4 md:px-12">
-            <p className="text-xl md:text-2xl font-serif italic text-zinc-700 dark:text-zinc-300 leading-relaxed">"{quote.text}"</p>
-            <p className="text-sm font-bold text-zinc-400 mt-4">— {quote.author}</p>
-          </div>
+            <div className="text-center px-4 md:px-12">
+              <p className="text-xl md:text-2xl font-serif italic text-zinc-700 dark:text-zinc-300 leading-relaxed">"{quote.text}"</p>
+              <p className="text-sm font-bold text-zinc-400 mt-4">— {quote.author}</p>
+            </div>
 
-          <div className="flex justify-center pt-8">
-            <button onClick={handleStartDay} className="px-10 py-5 bg-blue-600 text-white rounded-full font-black text-lg hover:bg-blue-500 hover:scale-105 transition-all shadow-[0_0_40px_rgba(37,99,235,0.4)]">
-              Iniciar o Dia
-            </button>
-          </div>
+            <div className="flex justify-center pt-8">
+              <button onClick={handleStartDay} className="px-10 py-5 bg-blue-600 text-white rounded-full font-black text-lg hover:bg-blue-500 hover:scale-105 transition-all shadow-[0_0_40px_rgba(37,99,235,0.4)]">
+                Iniciar o Dia
+              </button>
+            </div>
 
+          </div>
         </div>
       </motion.div>
     </AnimatePresence>

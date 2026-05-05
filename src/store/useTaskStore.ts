@@ -154,7 +154,28 @@ export const useTaskStore = create<TaskState>()(
             if (completedDateStr && completedDateStr < todayStr) {
               const nextDateStr = calculateNextRecurrence(t.deadlineDate, t.recurrence);
               if (nextDateStr) {
-                newTasks.push({ ...t, id: uuidv4(), isCompleted: false, completedAt: undefined, deadlineDate: nextDateStr, isArchived: false, nextRecurrenceGenerated: false, isFailed: false, subtasks: t.subtasks?.map(st => ({ ...st, completed: false })) });
+                
+                // ESCUDO ANTI-DUPLICAÇÃO
+                const isDuplicate = newTasks.some(existing => 
+                  existing.title === t.title && 
+                  existing.deadlineDate === nextDateStr &&
+                  existing.id !== t.id
+                );
+
+                if (!isDuplicate) {
+                  newTasks.push({ 
+                    ...t, 
+                    id: uuidv4(), 
+                    isCompleted: false, 
+                    completedAt: undefined, 
+                    deadlineDate: nextDateStr, 
+                    isArchived: false, 
+                    nextRecurrenceGenerated: false, 
+                    isFailed: false, 
+                    subtasks: t.subtasks?.map(st => ({ ...st, completed: false })) 
+                  });
+                }
+                
                 newTasks[i] = { ...t, nextRecurrenceGenerated: true };
                 changed = true;
               }
