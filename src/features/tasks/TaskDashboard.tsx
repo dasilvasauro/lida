@@ -24,7 +24,7 @@ export const TaskDashboard = () => {
   const setRoutineModalOpen = useTaskStore((state) => state.setRoutineModalOpen);
 
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
-  const [routineToEdit, setRoutineToEdit] = useState<RoutineTemplate | null>(null); // <-- NOVO
+  const [routineToEdit, setRoutineToEdit] = useState<RoutineTemplate | null>(null); 
 
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -120,6 +120,10 @@ export const TaskDashboard = () => {
   });
 
   const hasCompletedTasks = filteredTasks.some(t => t.isCompleted);
+  
+  // SEPARANDO ROTINAS DAS TAREFAS
+  const routineTasks = filteredTasks.filter(t => t.type === 'routine');
+  const regularTasks = filteredTasks.filter(t => t.type !== 'routine');
 
   const moods: { value: Mood; icon: any; label: string }[] = [ { value: 'disappointed', icon: CloudRain, label: 'Desapontado' }, { value: 'annoyed', icon: Frown, label: 'Incomodado' }, { value: 'normal', icon: Meh, label: 'Normal' }, { value: 'happy', icon: Smile, label: 'Feliz' }, { value: 'radiant', icon: Sparkles, label: 'Radiante' } ];
   const filters: { id: typeof selectedFilter; label: string }[] = [ { id: 'today', label: 'Hoje' }, { id: 'week', label: 'Semana' }, { id: 'month', label: 'Mês' }, { id: 'all', label: 'Tudo' } ];
@@ -186,27 +190,35 @@ export const TaskDashboard = () => {
             {filteredTasks.length === 0 ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-zinc-500 mt-20">Sem tarefas por enquanto</motion.div>
             ) : (
-              filteredTasks.map((task) => ( 
-                <TaskItem 
-                  key={task.id} 
-                  task={task} 
-                  onToggle={requestToggle} 
-                  onEdit={() => { setTaskToEdit(task); setIsModalOpen(true); }} 
-                  onDelete={() => requestDelete(task.id)} 
-                  onEditRoutine={() => {
-                      const routine = routines.find(r => r.id === task.routineTemplateId);
-                      if (routine) {
-                          setRoutineToEdit(routine);
-                          setRoutineModalOpen(true);
-                      }
-                  }}
-                  onDeleteRoutine={() => {
-                      if (task.routineTemplateId) {
-                          setConfirmDialog({ type: 'delete_routine', taskId: task.routineTemplateId, title: 'Excluir Rotina?', subtitle: 'Isso apagará o molde desta rotina permanentemente. Deseja continuar?' });
-                      }
-                  }}
-                /> 
-              ))
+              <>
+                {routineTasks.length > 0 && (
+                  <div className="mb-8">
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-4 flex items-center gap-2 ml-1"><Repeat size={14} /> Rotinas</h3>
+                    {routineTasks.map((task) => (
+                       <TaskItem key={task.id} task={task} onToggle={requestToggle} 
+                         onEditRoutine={() => {
+                           const routine = routines.find(r => r.id === task.routineTemplateId);
+                           if (routine) { setRoutineToEdit(routine); setRoutineModalOpen(true); }
+                         }}
+                         onDeleteRoutine={() => {
+                           if (task.routineTemplateId) {
+                             setConfirmDialog({ type: 'delete_routine', taskId: task.routineTemplateId, title: 'Excluir Rotina?', subtitle: 'Isso apagará o molde desta rotina permanentemente. Deseja continuar?' });
+                           }
+                         }}
+                       />
+                    ))}
+                  </div>
+                )}
+
+                {regularTasks.length > 0 && (
+                  <div>
+                    {routineTasks.length > 0 && <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-4 flex items-center gap-2 ml-1"><CheckCircle2 size={14} /> Tarefas</h3>}
+                    {regularTasks.map((task) => (
+                       <TaskItem key={task.id} task={task} onToggle={requestToggle} onEdit={() => { setTaskToEdit(task); setIsModalOpen(true); }} onDelete={() => requestDelete(task.id)} />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </AnimatePresence>
 

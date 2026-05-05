@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, AlertTriangle, Repeat, Trash2 } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
-import type { RoutineTemplate } from '../../types';
+import type { RoutineTemplate, ItemColor } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 
 interface RoutineModalProps {
@@ -17,19 +17,29 @@ export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: Rout
 
   const [title, setTitle] = useState('');
   const [items, setItems] = useState<string[]>(['']);
-  const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([1, 2, 3, 4, 5]); // Seg a Sex como Padrão
+  const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([1, 2, 3, 4, 5]); 
+  const [color, setColor] = useState<ItemColor>('indigo'); // <-- NOVO ESTADO
   
   const [showConfirmClose, setShowConfirmClose] = useState(false);
+
+  const colors: { id: ItemColor; class: string }[] = [
+    { id: 'indigo', class: 'bg-indigo-500' }, { id: 'blue', class: 'bg-blue-500' },
+    { id: 'emerald', class: 'bg-emerald-500' }, { id: 'amber', class: 'bg-amber-500' },
+    { id: 'rose', class: 'bg-rose-500' }, { id: 'purple', class: 'bg-purple-500' },
+    { id: 'cyan', class: 'bg-cyan-500' }, { id: 'zinc', class: 'bg-zinc-500' },
+  ];
 
   useEffect(() => {
     if (routineToEdit && isOpen) {
       setTitle(routineToEdit.title);
       setItems(routineToEdit.items.length > 0 ? routineToEdit.items : ['']);
       setSelectedWeekdays(routineToEdit.weekdays);
+      setColor(routineToEdit.color || 'indigo');
     } else if (isOpen) {
       setTitle('');
       setItems(['']);
       setSelectedWeekdays([1, 2, 3, 4, 5]);
+      setColor('indigo');
     }
     if (isOpen) setShowConfirmClose(false);
   }, [routineToEdit, isOpen]);
@@ -38,7 +48,8 @@ export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: Rout
     if (routineToEdit) {
       return title !== routineToEdit.title || 
              JSON.stringify(items) !== JSON.stringify(routineToEdit.items) ||
-             JSON.stringify(selectedWeekdays) !== JSON.stringify(routineToEdit.weekdays);
+             JSON.stringify(selectedWeekdays) !== JSON.stringify(routineToEdit.weekdays) ||
+             color !== routineToEdit.color;
     }
     return title.trim().length > 0 || items.some(i => i.trim().length > 0);
   };
@@ -49,7 +60,7 @@ export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: Rout
     const handleGlobalClose = () => { if (isOpen) handleRequestClose(); };
     window.addEventListener('request-modal-close', handleGlobalClose);
     return () => window.removeEventListener('request-modal-close', handleGlobalClose);
-  }, [isOpen, title, items, selectedWeekdays, routineToEdit]);
+  }, [isOpen, title, items, selectedWeekdays, color, routineToEdit]);
 
   const toggleWeekday = (day: number) => {
       setSelectedWeekdays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
@@ -60,7 +71,7 @@ export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: Rout
     if (!title.trim() || validItems.length === 0 || selectedWeekdays.length === 0) return;
 
     if (routineToEdit) {
-      updateRoutine(routineToEdit.id, { title, items: validItems, weekdays: selectedWeekdays });
+      updateRoutine(routineToEdit.id, { title, items: validItems, weekdays: selectedWeekdays, color });
       onSuccess?.('Rotina atualizada!');
     } else {
       addRoutine({
@@ -68,6 +79,7 @@ export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: Rout
         title,
         items: validItems,
         weekdays: selectedWeekdays,
+        color,
         createdAt: Date.now()
       });
       onSuccess?.('Rotina forjada!');
@@ -94,6 +106,16 @@ export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: Rout
               <div className="p-6 overflow-y-auto flex-1 space-y-8 scrollbar-hide">
                 <div className="space-y-2">
                   <input type="text" maxLength={120} placeholder="Nome da Rotina (Ex: Manhã Focada)" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full text-2xl font-bold bg-transparent border-none outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-600" autoFocus />
+                </div>
+
+                {/* SELETOR DE COR */}
+                <div>
+                  <span className="text-xs font-bold uppercase text-zinc-500 mb-3 block">Cor da Rotina</span>
+                  <div className="flex gap-2">
+                    {colors.map(c => (
+                      <button key={c.id} onClick={() => setColor(c.id)} className={`w-8 h-8 rounded-full transition-transform ${c.class} ${color === c.id ? 'scale-125 ring-2 ring-offset-2 ring-offset-zinc-50 dark:ring-offset-zinc-900 ring-zinc-900 dark:ring-zinc-100' : 'hover:scale-110 opacity-70'}`} />
+                    ))}
+                  </div>
                 </div>
 
                 <div className="space-y-4">

@@ -43,45 +43,25 @@ const calculateNextRecurrence = (currentDateStr: string | undefined, recurrence:
 };
 
 interface TaskState {
-  tasks: Task[]; 
-  folders: Folder[]; 
-  routines: RoutineTemplate[]; // <-- ARMAZÉM DE ROTINAS
-  dailyMood: Mood | null; 
-  moodHistory: Record<string, Mood>;
-  selectedFilter: 'today' | 'week' | 'month' | 'all'; 
-  selectedFolderId: string;
+  tasks: Task[]; folders: Folder[]; routines: RoutineTemplate[]; dailyMood: Mood | null; moodHistory: Record<string, Mood>;
+  selectedFilter: 'today' | 'week' | 'month' | 'all'; selectedFolderId: string;
   activeFocusSession: { taskId: string; startTime: number; duration: number } | null;
-  
-  isFocusModeOpen: boolean; 
-  isGlobalModalOpen: boolean;
-  isRoutineModalOpen: boolean; // <-- ESTADO DO MODAL DE ROTINA
+  isFocusModeOpen: boolean; isGlobalModalOpen: boolean; isRoutineModalOpen: boolean;
 
-  setGlobalModalOpen: (isOpen: boolean) => void; 
-  setRoutineModalOpen: (isOpen: boolean) => void; 
-  
-  addTask: (task: Task) => void;
-  toggleTaskCompletion: (taskId: string) => void; 
-  deleteTask: (taskId: string) => void;
+  setGlobalModalOpen: (isOpen: boolean) => void; setRoutineModalOpen: (isOpen: boolean) => void; 
+  addTask: (task: Task) => void; toggleTaskCompletion: (taskId: string) => void; deleteTask: (taskId: string) => void;
   updateTask: (taskId: string, updatedTask: Partial<Task>) => void;
-  
-  addFolder: (folder: Folder) => void; 
-  deleteFolder: (folderId: string) => void; 
-  setFolderId: (folderId: string) => void;
+  addFolder: (folder: Folder) => void; deleteFolder: (folderId: string) => void; setFolderId: (folderId: string) => void;
   
   addRoutine: (routine: RoutineTemplate) => void;
   updateRoutine: (id: string, updated: Partial<RoutineTemplate>) => void;
   deleteRoutine: (id: string) => void;
 
-  setDailyMood: (mood: Mood) => void; 
-  setFilter: (filter: 'today' | 'week' | 'month' | 'all') => void;
+  setDailyMood: (mood: Mood) => void; setFilter: (filter: 'today' | 'week' | 'month' | 'all') => void;
   toggleSubtask: (taskId: string, subtaskId: string) => void;
-  
-  startFocus: (taskId: string, durationMinutes: number) => void; 
-  stopFocus: () => void;
+  startFocus: (taskId: string, durationMinutes: number) => void; stopFocus: () => void;
   toggleFocusMode: (isOpen: boolean) => void; 
-  
-  markTaskFailed: (taskId: string) => void; 
-  clearCompletedTasks: () => void;
+  markTaskFailed: (taskId: string) => void; clearCompletedTasks: () => void;
   applyPowerUp: (taskId: string, type: 'respite' | 'relief' | 'magicDice') => void;
   processNewDay: (todayStr: string) => void;
 }
@@ -95,7 +75,6 @@ export const useTaskStore = create<TaskState>()(
 
       setGlobalModalOpen: (isOpen) => set({ isGlobalModalOpen: isOpen }),
       setRoutineModalOpen: (isOpen) => set({ isRoutineModalOpen: isOpen }),
-      
       addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
       
       toggleTaskCompletion: (taskId) => set((state) => {
@@ -123,53 +102,41 @@ export const useTaskStore = create<TaskState>()(
         selectedFolderId: state.selectedFolderId === folderId ? 'all' : state.selectedFolderId
       })),
 
-      // LÓGICA DAS ROTINAS
       addRoutine: (routine) => set((state) => {
         const todayObj = new Date();
         const todayStr = format(todayObj, 'yyyy-MM-dd');
         const dayOfWeek = todayObj.getDay();
-        
         let newTasks = [...state.tasks];
         
-        // Se a rotina deve acontecer hoje, já criamos a tarefa dela imediatamente!
         if (routine.weekdays.includes(dayOfWeek)) {
             newTasks.push({
-                id: uuidv4(),
-                title: routine.title,
-                type: 'routine',
-                priority: 'P4', // Rotinas não afetam P0/P1
-                folderId: 'default',
-                createdAt: Date.now(),
-                deadlineDate: todayStr,
-                isCompleted: false,
+                id: uuidv4(), title: routine.title, type: 'routine', priority: 'P4',
+                color: routine.color, // <-- COR
+                folderId: 'default', createdAt: Date.now(), deadlineDate: todayStr, isCompleted: false,
                 subtasks: routine.items.map(title => ({ id: uuidv4(), title, completed: false })),
                 routineTemplateId: routine.id
             });
         }
         return { routines: [...state.routines, routine], tasks: newTasks };
       }),
+
       updateRoutine: (id, updated) => set((state) => {
         const todayStr = format(new Date(), 'yyyy-MM-dd');
         return {
           routines: state.routines.map(r => r.id === id ? { ...r, ...updated } : r),
           tasks: state.tasks.map(t => {
-            // Se editarmos a rotina, atualiza a de hoje (se ainda não foi concluída)
             if (t.routineTemplateId === id && t.deadlineDate === todayStr && !t.isCompleted) {
-              return {
-                ...t,
-                title: updated.title || t.title,
-                subtasks: updated.items ? updated.items.map(title => ({ id: uuidv4(), title, completed: false })) : t.subtasks
-              };
+              return { ...t, title: updated.title || t.title, color: updated.color || t.color, subtasks: updated.items ? updated.items.map(title => ({ id: uuidv4(), title, completed: false })) : t.subtasks };
             }
             return t;
           })
         };
       }),
+
       deleteRoutine: (id) => set((state) => {
         const todayStr = format(new Date(), 'yyyy-MM-dd');
         return {
           routines: state.routines.filter(r => r.id !== id),
-          // Apaga a instância de hoje se ainda não foi feita (para sumir da tela)
           tasks: state.tasks.filter(t => !(t.routineTemplateId === id && t.deadlineDate === todayStr && !t.isCompleted))
         };
       }),
@@ -196,22 +163,8 @@ export const useTaskStore = create<TaskState>()(
         tasks: state.tasks.map(t => {
           if (t.id !== taskId) return t;
           if (type === 'magicDice') return { ...t, hasMagicDice: true };
-          if (type === 'respite') {
-            let newTime = t.deadlineTime;
-            if (newTime) {
-              const [h, m] = newTime.split(':').map(Number); const newH = Math.min(23, h + 3);
-              newTime = `${newH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-            }
-            return { ...t, hasRespite: true, deadlineTime: newTime };
-          }
-          if (type === 'relief') {
-            let newDate = t.deadlineDate;
-            if (newDate) {
-              const dateObj = new Date(newDate + 'T12:00:00'); dateObj.setDate(dateObj.getDate() + 1);
-              newDate = dateObj.toISOString().split('T')[0];
-            }
-            return { ...t, hasRelief: true, deadlineDate: newDate };
-          }
+          if (type === 'respite') { let newTime = t.deadlineTime; if (newTime) { const [h, m] = newTime.split(':').map(Number); const newH = Math.min(23, h + 3); newTime = `${newH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`; } return { ...t, hasRespite: true, deadlineTime: newTime }; }
+          if (type === 'relief') { let newDate = t.deadlineDate; if (newDate) { const dateObj = new Date(newDate + 'T12:00:00'); dateObj.setDate(dateObj.getDate() + 1); newDate = dateObj.toISOString().split('T')[0]; } return { ...t, hasRelief: true, deadlineDate: newDate }; }
           return t;
         })
       })),
@@ -248,21 +201,15 @@ export const useTaskStore = create<TaskState>()(
           }
         }
 
-        // GERADOR DE ROTINAS DIÁRIAS
         const currentDayOfWeek = new Date(todayStr + 'T12:00:00').getDay();
         routines.forEach(routine => {
             if (routine.weekdays.includes(currentDayOfWeek)) {
                 const exists = newTasks.some(t => t.routineTemplateId === routine.id && t.deadlineDate === todayStr);
                 if (!exists) {
                     newTasks.push({
-                        id: uuidv4(),
-                        title: routine.title,
-                        type: 'routine',
-                        priority: 'P4',
-                        folderId: 'default',
-                        createdAt: Date.now(),
-                        deadlineDate: todayStr,
-                        isCompleted: false,
+                        id: uuidv4(), title: routine.title, type: 'routine', priority: 'P4',
+                        color: routine.color, // <-- COR
+                        folderId: 'default', createdAt: Date.now(), deadlineDate: todayStr, isCompleted: false,
                         subtasks: routine.items.map(title => ({ id: uuidv4(), title, completed: false })),
                         routineTemplateId: routine.id
                     });

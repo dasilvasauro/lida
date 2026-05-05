@@ -1,6 +1,7 @@
 export type Priority = 'P0' | 'P1' | 'P2' | 'P3' | 'P4';
-export type TaskType = 'normal' | 'daily_challenge' | 'sprint' | 'time' | 'bonus' | 'surprise' | 'routine'; // <-- NOVO TIPO
+export type TaskType = 'normal' | 'daily_challenge' | 'sprint' | 'time' | 'bonus' | 'surprise' | 'routine';
 export type Mood = 'radiant' | 'happy' | 'normal' | 'annoyed' | 'disappointed';
+export type ItemColor = 'blue' | 'emerald' | 'amber' | 'rose' | 'purple' | 'cyan' | 'indigo' | 'zinc'; // <-- Centralizado para uso geral
 
 export interface SubTask {
   id: string;
@@ -18,6 +19,7 @@ export interface RoutineTemplate {
   title: string;
   items: string[];
   weekdays: number[];
+  color: ItemColor; // <-- NOVO: Cor da Rotina
   createdAt: number;
 }
 
@@ -28,12 +30,13 @@ export interface Task {
   status?: string; 
   type: TaskType;
   priority: Priority;
+  color?: ItemColor; // <-- NOVO: A tarefa vai herdar a cor da rotina
   subtasks?: SubTask[];
   createdAt: number;
   deadlineDate?: string;
   deadlineTime?: string;
   duration?: number;
-  routineTemplateId?: string; // <-- ID de ligação com a Rotina
+  routineTemplateId?: string; 
   recurrence?: {
     type: 'none' | 'weekly' | 'monthly' | 'yearly';
     weekdays?: number[];
@@ -75,7 +78,7 @@ export interface Vision {
   createdAt: number;
 }
 
-export type ReflectionColor = 'blue' | 'emerald' | 'amber' | 'rose' | 'purple' | 'cyan' | 'indigo' | 'zinc';
+export type ReflectionColor = ItemColor;
 
 export interface Reflection {
   id: string;

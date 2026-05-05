@@ -12,8 +12,8 @@ interface TaskItemProps {
     onToggle: (id: string) => void;
     onEdit?: () => void; 
     onDelete?: () => void;
-    onEditRoutine?: () => void;   // <-- NOVO
-    onDeleteRoutine?: () => void; // <-- NOVO
+    onEditRoutine?: () => void;   
+    onDeleteRoutine?: () => void; 
 }
 
 export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDeleteRoutine }: TaskItemProps) => {
@@ -52,9 +52,13 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
     const icons = { normal: CheckCircle2, daily_challenge: Zap, sprint: Target, time: Timer, bonus: Gift, surprise: Sparkles, routine: Repeat };
     const Icon = icons[task.type as keyof typeof icons] || CheckCircle2;
 
+    // ESTILOS DE PRIORIDADE (TAREFAS NORMAIS: OUTLINE + BG LEVE)
     const priorityStyles = {
-        P0: 'border-red-500/50 dark:border-red-500/40 bg-red-500/5 dark:bg-red-950/20', P1: 'border-orange-500/50 dark:border-orange-500/40',
-        P2: 'border-zinc-300 dark:border-zinc-700', P3: 'border-blue-500/50 dark:border-blue-500/40', P4: 'border-purple-500/50 dark:border-purple-500/40',
+        P0: 'border-red-500/50 dark:border-red-500/40 bg-red-500/5 dark:bg-red-950/20 text-zinc-900 dark:text-zinc-100', 
+        P1: 'border-orange-500/50 dark:border-orange-500/40 bg-transparent text-zinc-900 dark:text-zinc-100',
+        P2: 'border-zinc-300 dark:border-zinc-700 bg-transparent text-zinc-900 dark:text-zinc-100', 
+        P3: 'border-blue-500/50 dark:border-blue-500/40 bg-transparent text-zinc-900 dark:text-zinc-100', 
+        P4: 'border-purple-500/50 dark:border-purple-500/40 bg-transparent text-zinc-900 dark:text-zinc-100',
     };
 
     const priorityBadgeStyles = {
@@ -63,6 +67,18 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         P2: 'bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
         P3: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50',
         P4: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50',
+    };
+
+    // ESTILOS SÓLIDOS/PREENCHIDOS PARA AS ROTINAS
+    const routineColors: Record<string, { bg: string, text: string, bar: string, buttonHover: string, statusBg: string }> = {
+        blue: { bg: 'bg-blue-100/60 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700', text: 'text-blue-900 dark:text-blue-100', bar: 'bg-blue-500', buttonHover: 'hover:bg-blue-200 dark:hover:bg-blue-800', statusBg: 'bg-blue-500/10 border-blue-500/20' },
+        emerald: { bg: 'bg-emerald-100/60 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700', text: 'text-emerald-900 dark:text-emerald-100', bar: 'bg-emerald-500', buttonHover: 'hover:bg-emerald-200 dark:hover:bg-emerald-800', statusBg: 'bg-emerald-500/10 border-emerald-500/20' },
+        amber: { bg: 'bg-amber-100/60 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700', text: 'text-amber-900 dark:text-amber-100', bar: 'bg-amber-500', buttonHover: 'hover:bg-amber-200 dark:hover:bg-amber-800', statusBg: 'bg-amber-500/10 border-amber-500/20' },
+        rose: { bg: 'bg-rose-100/60 dark:bg-rose-900/40 border-rose-300 dark:border-rose-700', text: 'text-rose-900 dark:text-rose-100', bar: 'bg-rose-500', buttonHover: 'hover:bg-rose-200 dark:hover:bg-rose-800', statusBg: 'bg-rose-500/10 border-rose-500/20' },
+        purple: { bg: 'bg-purple-100/60 dark:bg-purple-900/40 border-purple-300 dark:border-purple-700', text: 'text-purple-900 dark:text-purple-100', bar: 'bg-purple-500', buttonHover: 'hover:bg-purple-200 dark:hover:bg-purple-800', statusBg: 'bg-purple-500/10 border-purple-500/20' },
+        cyan: { bg: 'bg-cyan-100/60 dark:bg-cyan-900/40 border-cyan-300 dark:border-cyan-700', text: 'text-cyan-900 dark:text-cyan-100', bar: 'bg-cyan-500', buttonHover: 'hover:bg-cyan-200 dark:hover:bg-cyan-800', statusBg: 'bg-cyan-500/10 border-cyan-500/20' },
+        indigo: { bg: 'bg-indigo-100/60 dark:bg-indigo-900/40 border-indigo-300 dark:border-indigo-700', text: 'text-indigo-900 dark:text-indigo-100', bar: 'bg-indigo-500', buttonHover: 'hover:bg-indigo-200 dark:hover:bg-indigo-800', statusBg: 'bg-indigo-500/10 border-indigo-500/20' },
+        zinc: { bg: 'bg-zinc-200/80 dark:bg-zinc-800/80 border-zinc-300 dark:border-zinc-700', text: 'text-zinc-900 dark:text-zinc-100', bar: 'bg-zinc-500', buttonHover: 'hover:bg-zinc-300 dark:hover:bg-zinc-700', statusBg: 'bg-zinc-500/10 border-zinc-500/20' },
     };
 
     const hasSubtasks = task.subtasks && task.subtasks.length > 0;
@@ -82,6 +98,8 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
     const recurrenceLabel = getRecurrenceLabel();
 
     const isRoutine = task.type === 'routine';
+    const rColorData = routineColors[task.color || 'indigo'];
+
     let routineStreak = 0;
     let isRoutineHot = false;
 
@@ -108,8 +126,11 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
     }
 
     const finalBorderClass = isRoutine 
-        ? 'border-indigo-500/50 dark:border-indigo-500/40 bg-indigo-500/5 dark:bg-indigo-950/20' 
+        ? rColorData.bg
         : priorityStyles[task.priority];
+
+    const textColorClass = isRoutine ? rColorData.text : 'text-zinc-900 dark:text-zinc-100';
+    const subtextColorClass = isRoutine ? 'opacity-70' : 'text-zinc-500 dark:text-zinc-400';
 
     return (
         <motion.div layout className={`relative overflow-hidden flex flex-col p-4 mb-3 rounded-2xl border transition-all shadow-sm ${finalBorderClass} ${task.isCompleted ? 'opacity-50 grayscale' : ''}`}>
@@ -119,22 +140,22 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         )}
 
         <div className="flex items-start gap-4">
-        <button onClick={(e) => { e.stopPropagation(); onToggle(task.id); }} className={`mt-1 shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${task.isCompleted ? 'bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-100 dark:border-zinc-100 dark:text-black' : 'border-zinc-400 dark:border-zinc-500 hover:border-zinc-900 dark:hover:border-zinc-100'}`}>
+        <button onClick={(e) => { e.stopPropagation(); onToggle(task.id); }} className={`mt-1 shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${task.isCompleted ? 'bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-100 dark:border-zinc-100 dark:text-black' : isRoutine ? 'border-current opacity-50 hover:opacity-100' : 'border-zinc-400 dark:border-zinc-500 hover:border-zinc-900 dark:hover:border-zinc-100'}`}>
         {task.isCompleted && <Check size={14} strokeWidth={3} />}
         </button>
 
         <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
-        <h4 className={`text-base font-bold truncate ${task.isCompleted ? 'line-through text-zinc-500' : 'text-zinc-900 dark:text-zinc-100'}`}>{task.title}</h4>
-        {task.description && !isExpanded && (<p className="text-sm text-zinc-500 dark:text-zinc-400 truncate mt-0.5 italic">{task.description}</p>)}
+        <h4 className={`text-base font-bold truncate ${task.isCompleted ? 'line-through opacity-60' : textColorClass}`}>{task.title}</h4>
+        {task.description && !isExpanded && (<p className={`text-sm truncate mt-0.5 italic ${subtextColorClass}`}>{task.description}</p>)}
 
         {task.status && (
-            <div className="mt-2.5 bg-blue-500/5 border border-blue-500/10 text-blue-700 dark:text-blue-400 px-3 py-2 rounded-lg text-xs leading-relaxed">
+            <div className={`mt-2.5 px-3 py-2 rounded-lg text-xs leading-relaxed border ${isRoutine ? rColorData.statusBg : 'bg-blue-500/5 border-blue-500/10 text-blue-700 dark:text-blue-400'}`}>
                 <span className="font-bold uppercase tracking-widest text-[9px] opacity-70 block mb-0.5">Status</span>
-                <span className="line-clamp-3">{task.status}</span>
+                <span className={`line-clamp-3 ${isRoutine ? 'opacity-90' : ''}`}>{task.status}</span>
             </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-3 mt-3 text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+        <div className={`flex flex-wrap items-center gap-3 mt-3 text-[10px] font-bold uppercase tracking-wider ${subtextColorClass}`}>
         <span className="flex items-center gap-1"><Icon size={12} />{task.type.replace('_', ' ')}</span>
         
         {task.hasMagicDice && (
@@ -158,23 +179,22 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
 
         {task.deadlineDate && <span className="flex items-center gap-1"><Calendar size={12} />{format(new Date(task.deadlineDate + 'T12:00:00'), "dd/MM", { locale: ptBR })}</span>}
         {task.deadlineTime && <span className="flex items-center gap-1"><Clock size={12} />{task.deadlineTime}</span>}
-        {hasSubtasks && <span className={`flex items-center gap-1 ${isRoutine ? 'text-indigo-500' : 'text-purple-500'}`}><Target size={12} />{completedSubtasks}/{task.subtasks?.length}</span>}
+        {hasSubtasks && <span className="flex items-center gap-1"><Target size={12} />{completedSubtasks}/{task.subtasks?.length}</span>}
         </div>
         </div>
 
         <div className="flex flex-col items-end gap-2">
         {isRoutine ? (
-            <div className="flex items-center gap-2">
-                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black ${isRoutineHot ? 'bg-orange-500/10 text-orange-500' : 'bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'}`}>
+            <div className={`flex items-center gap-2 ${textColorClass}`}>
+                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black border border-current opacity-80 ${isRoutineHot ? 'opacity-100' : ''}`}>
                     <Flame size={12} className={isRoutineHot ? 'animate-pulse' : ''} /> {routineStreak}
                 </div>
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50">ROTINA</span>
             </div>
         ) : (
             <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${priorityBadgeStyles[task.priority]}`}>{task.priority}</span>
         )}
 
-        <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} className="text-zinc-400 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}><ChevronDown size={20} /></motion.div>
+        <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} className={`cursor-pointer ${subtextColorClass}`} onClick={() => setIsExpanded(!isExpanded)}><ChevronDown size={20} /></motion.div>
         
         {task.type === 'time' && !task.isCompleted && (
             <div className="flex gap-1 mt-1">
@@ -192,19 +212,19 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         <AnimatePresence>
         {isExpanded && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <div className="pt-4 mt-4 border-t border-zinc-200 dark:border-zinc-800 space-y-4">
-            {task.description && (<p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">{task.description}</p>)}
+            <div className={`pt-4 mt-4 border-t space-y-4 ${isRoutine ? 'border-current opacity-90' : 'border-zinc-200 dark:border-zinc-800'}`}>
+            {task.description && (<p className={`text-sm leading-relaxed ${subtextColorClass}`}>{task.description}</p>)}
 
             {hasSubtasks && (
                 <>
-                <div className="space-y-1.5"><div className="flex justify-between text-[10px] font-black uppercase text-zinc-500"><span>{isRoutine ? 'Itens da Rotina' : 'Progresso da Tarefa'}</span><span>{Math.round(progress)}%</span></div><div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className={`h-full ${task.type === 'sprint' ? 'bg-purple-500' : isRoutine ? 'bg-indigo-500' : 'bg-zinc-900 dark:bg-zinc-100'}`} /></div></div>
+                <div className="space-y-1.5"><div className={`flex justify-between text-[10px] font-black uppercase ${subtextColorClass}`}><span>{isRoutine ? 'Itens da Rotina' : 'Progresso da Tarefa'}</span><span>{Math.round(progress)}%</span></div><div className={`w-full h-1.5 rounded-full overflow-hidden ${isRoutine ? 'bg-black/10 dark:bg-white/10' : 'bg-zinc-200 dark:bg-zinc-800'}`}><motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className={`h-full ${task.type === 'sprint' ? 'bg-purple-500' : isRoutine ? rColorData.bar : 'bg-zinc-900 dark:bg-zinc-100'}`} /></div></div>
                 <div className="space-y-2">
                 {task.subtasks?.map((st) => (
-                    <button key={st.id} onClick={() => toggleSubtask(task.id, st.id)} className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group">
-                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${st.completed ? 'bg-zinc-900 border-zinc-900 dark:bg-zinc-100 dark:border-zinc-100 text-white dark:text-black' : 'border-zinc-300 dark:border-zinc-700 group-hover:border-zinc-400'}`}>
+                    <button key={st.id} onClick={() => toggleSubtask(task.id, st.id)} className={`w-full flex items-center gap-3 p-2 rounded-xl transition-colors group ${isRoutine ? rColorData.buttonHover : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${st.completed ? (isRoutine ? `${rColorData.bar} border-transparent text-white` : 'bg-zinc-900 border-zinc-900 dark:bg-zinc-100 dark:border-zinc-100 text-white dark:text-black') : (isRoutine ? 'border-current opacity-50 group-hover:opacity-100' : 'border-zinc-300 dark:border-zinc-700 group-hover:border-zinc-400')}`}>
                     {st.completed && <Check size={12} strokeWidth={4} />}
                     </div>
-                    <span className={`text-sm text-left ${st.completed ? 'line-through text-zinc-400' : 'text-zinc-700 dark:text-zinc-300'}`}>{st.title}</span>
+                    <span className={`text-sm text-left ${st.completed ? 'line-through opacity-50' : ''}`}>{st.title}</span>
                     </button>
                 ))}
                 </div>
@@ -212,7 +232,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
             )}
 
             <div className="flex flex-wrap items-center justify-between pt-2 gap-2">
-              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-md">
+              <div className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md ${isRoutine ? 'bg-black/5 dark:bg-white/5 opacity-80' : 'text-zinc-400 bg-zinc-100 dark:bg-zinc-800'}`}>
                 <Folder size={12} /> {folderName}
               </div>
 
@@ -228,7 +248,6 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
                     </button>
                 )}
 
-                {/* BOTÕES EXCLUSIVOS PARA TAREFAS NORMAIS */}
                 {onEdit && !task.isCompleted && !isRoutine && (
                     <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"><Edit2 size={14} /> Editar</button>
                 )}
@@ -236,9 +255,8 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
                     <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-red-500 hover:bg-red-500/10 transition-colors"><Trash2 size={14} /> Excluir</button>
                 )}
 
-                {/* BOTÕES EXCLUSIVOS PARA ROTINAS */}
                 {onEditRoutine && !task.isCompleted && isRoutine && (
-                    <button onClick={(e) => { e.stopPropagation(); onEditRoutine(); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-indigo-500 hover:bg-indigo-500/10 transition-colors"><Edit2 size={14} /> Editar Rotina</button>
+                    <button onClick={(e) => { e.stopPropagation(); onEditRoutine(); }} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${rColorData.buttonHover}`}><Edit2 size={14} /> Editar Rotina</button>
                 )}
                 {onDeleteRoutine && isRoutine && (
                     <button onClick={(e) => { e.stopPropagation(); onDeleteRoutine(); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-red-500 hover:bg-red-500/10 transition-colors"><Trash2 size={14} /> Excluir Rotina</button>
