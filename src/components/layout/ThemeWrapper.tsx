@@ -6,23 +6,24 @@ export const ThemeWrapper = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const root = document.documentElement;
+    root.setAttribute('data-theme', theme);
 
-    if (theme === 'dark-amoled') {
+    if (['dark-amoled', 'soft-dark', 'navy', 'darcula'].includes(theme)) {
       root.classList.add('dark');
-      document.body.style.backgroundColor = '#000000'; 
-    } else if (theme === 'light') {
-      root.classList.remove('dark');
-      document.body.style.backgroundColor = '#fafafa'; 
+      if (theme === 'dark-amoled') document.body.style.backgroundColor = '#000000';
+      else if (theme === 'soft-dark') document.body.style.backgroundColor = '#18181b';
+      else if (theme === 'navy') document.body.style.backgroundColor = '#0a192f';
+      else if (theme === 'darcula') document.body.style.backgroundColor = '#282a36';
     } else {
-      root.classList.add('dark');
-      document.body.style.backgroundColor = '#09090b'; 
+      root.classList.remove('dark');
+      if (theme === 'butter') document.body.style.backgroundColor = '#fdf6e3';
+      else document.body.style.backgroundColor = '#fafafa'; 
     }
 
     if (font === 'serif') {
       root.style.fontFamily = 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif';
       root.style.fontSize = '16px';
     } else if (font === 'special') {
-      // <-- Ajuste de tamanho para compensar a escala da VT323
       root.style.fontFamily = '"VT323", monospace';
       root.style.fontSize = '18px'; 
     } else {

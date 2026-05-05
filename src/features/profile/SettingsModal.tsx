@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, LogOut, Trash2, History, AlertTriangle, Download, Upload } from 'lucide-react';
-import { useConfigStore } from '../../store/useConfigStore';
+import { X, LogOut, Trash2, History, AlertTriangle, Download, Upload, Lock } from 'lucide-react';
+import { useConfigStore, type Theme } from '../../store/useConfigStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useHabitStore } from '../../store/useHabitStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
@@ -10,6 +10,7 @@ import { deleteCloudVault, syncToCloud } from '../../lib/cloudSync';
 
 export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const { theme, font, setTheme, setFont, uid, e2eePin, setChangelogOpen, isLocalMode, defaultDaysOff, setDefaultDaysOff } = useConfigStore();
+  const { level } = useEconomyStore(); // <-- Pegando o nível para os bloqueios
   
   const [confirmAction, setConfirmAction] = useState<'logout' | 'wipe' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -76,6 +77,16 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
     reader.readAsText(file);
   };
 
+  // PALETAS DE CORES E EXIGÊNCIAS
+  const themesList: { id: Theme; name: string; color1: string; color2: string; req: number }[] = [
+    { id: 'light', name: 'Claro', color1: '#fafafa', color2: '#e4e4e7', req: 1 },
+    { id: 'dark-amoled', name: 'AMOLED', color1: '#000000', color2: '#27272a', req: 1 },
+    { id: 'soft-dark', name: 'Suave', color1: '#18181b', color2: '#3f3f46', req: 10 },
+    { id: 'butter', name: 'Manteiga', color1: '#fdf6e3', color2: '#f5dfac', req: 20 },
+    { id: 'navy', name: 'Marinho', color1: '#0a192f', color2: '#233554', req: 35 },
+    { id: 'darcula', name: 'Darcula', color1: '#282a36', color2: '#6272a4', req: 50 },
+  ];
+
   return (
     <AnimatePresence>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4">
@@ -88,15 +99,36 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
           <div className="p-6 space-y-8 overflow-y-auto scrollbar-hide flex-1">
             
-            <div className="space-y-3">
+            {/* SEÇÃO DE TEMAS DESBLOQUEÁVEIS */}
+            <div className="space-y-4">
               <span className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Estética Visual</span>
-              <div className="flex gap-3">
-                <button onClick={() => setTheme('light')} className={`flex-1 py-3 border rounded-xl font-bold transition-all ${theme === 'light' ? 'bg-zinc-900 text-white border-transparent' : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}>Claro</button>
-                <button onClick={() => setTheme('dark-amoled')} className={`flex-1 py-3 border rounded-xl font-bold transition-all ${theme === 'dark-amoled' ? 'bg-zinc-900 text-white border-transparent dark:bg-zinc-100 dark:text-black' : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}>AMOLED</button>
+              <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2 px-1">
+                {themesList.map(t => {
+                  const isUnlocked = level >= t.req;
+                  const isSelected = theme === t.id;
+
+                  return (
+                    <div key={t.id} className="relative group flex flex-col items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => isUnlocked && setTheme(t.id)}
+                        disabled={!isUnlocked}
+                        title={isUnlocked ? t.name : `Desbloqueia no Nível ${t.req}`}
+                        className={`w-12 h-12 rounded-full border-2 overflow-hidden relative transition-transform ${isSelected ? 'border-blue-500 scale-110 shadow-md' : 'border-zinc-300 dark:border-zinc-700'} ${!isUnlocked ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:scale-105'}`}
+                      >
+                         <div className="w-full h-1/2" style={{ backgroundColor: t.color1 }} />
+                         <div className="w-full h-1/2" style={{ backgroundColor: t.color2 }} />
+                         {!isUnlocked && <Lock size={16} className="absolute inset-0 m-auto text-zinc-900 dark:text-zinc-100 drop-shadow-md" />}
+                      </button>
+                      <span className="text-[10px] font-bold text-zinc-500 text-center whitespace-nowrap">
+                        {isUnlocked ? t.name : `Nível ${t.req}`}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
               <span className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Tipografia</span>
               <div className="flex flex-col gap-2">
                 <button onClick={() => setFont('sans')} className={`p-3 rounded-xl border text-left font-sans transition-all ${font === 'sans' ? 'border-zinc-900 dark:border-zinc-100 font-bold' : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}>Moderna (Sem Serifa)</button>
@@ -105,7 +137,6 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
               </div>
             </div>
 
-            {/* SEÇÃO DE DIAS DE FOLGA */}
             <div className="space-y-4 pt-6 border-t border-zinc-200 dark:border-zinc-800">
               <div>
                 <span className="text-xs uppercase tracking-widest text-amber-500 font-bold">Dias de Folga Regulares</span>
@@ -168,7 +199,6 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
           </div>
         </motion.div>
 
-        {/* MODAL SOBREPOSTO DE CONFIRMAÇÃO (LOGOUT / WIPE) */}
         <AnimatePresence>
           {confirmAction && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-6 backdrop-blur-sm">

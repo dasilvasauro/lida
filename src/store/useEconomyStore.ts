@@ -18,6 +18,7 @@ interface EconomyState {
   dailyHistory: Record<string, { xp: number; gold: number }>;
   
   levelUpData: { level: number; hasReward: boolean } | null;
+  claimedMilestones: number[]; // Rastreia as recompensas únicas (níveis 15 e 50)
 
   addReward: (baseXp: number, baseGold: number) => void;
   removeReward: (baseXp: number, baseGold: number) => void; 
@@ -40,6 +41,7 @@ export const useEconomyStore = create<EconomyState>()(
       activeXpBoostUntil: null, activeGoldBoostUntil: null,
       dailyHistory: {},
       levelUpData: null,
+      claimedMilestones: [],
 
       clearLevelUp: () => set({ levelUpData: null }),
 
@@ -55,15 +57,36 @@ export const useEconomyStore = create<EconomyState>()(
         const newLevel = calculateLevel(newXp);
         
         let newInventory = state.inventory;
+        let newVouchers = state.vouchers;
+        let newClaimed = [...(state.claimedMilestones || [])];
         let levelUpInfo = null;
 
         if (newLevel > state.level) {
-          const hasReward = newLevel % 5 === 0;
-          if (hasReward) {
-            // FIX: Adiciona diretamente a Carta de Sorte ao invés do pacote genérico
-            newInventory = { ...state.inventory, luckyCard: state.inventory.luckyCard + 1 };
+          let luckyCardsToAdd = 0;
+          let hasReward = false;
+
+          for (let l = state.level + 1; l <= newLevel; l++) {
+            // A cada 5 níveis
+            if (l % 5 === 0) luckyCardsToAdd++;
+            // A partir do nível 25 ganha uma em TODO nível (se for múltiplo de 5, ganha as duas!)
+            if (l >= 25) luckyCardsToAdd++;
+          }
+
+          if (luckyCardsToAdd > 0) {
+            newInventory = { ...state.inventory, luckyCard: state.inventory.luckyCard + luckyCardsToAdd };
+            hasReward = true;
           }
           levelUpInfo = { level: newLevel, hasReward };
+        }
+
+        // CHECAGEM DE MARCOS ÚNICOS (Retroativa, se a pessoa upar e bater o nível)
+        if (newLevel >= 15 && !newClaimed.includes(15)) {
+          newVouchers += 15;
+          newClaimed.push(15);
+        }
+        if (newLevel >= 50 && !newClaimed.includes(50)) {
+          newVouchers += 40;
+          newClaimed.push(50);
         }
 
         const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -74,6 +97,8 @@ export const useEconomyStore = create<EconomyState>()(
           level: newLevel, 
           gold: state.gold + finalGold, 
           inventory: newInventory,
+          vouchers: newVouchers,
+          claimedMilestones: newClaimed,
           ...(levelUpInfo ? { levelUpData: levelUpInfo } : {}),
           dailyHistory: { ...state.dailyHistory, [todayStr]: { xp: currentHistory.xp + finalXp, gold: currentHistory.gold + finalGold } } 
         };
@@ -86,13 +111,14 @@ export const useEconomyStore = create<EconomyState>()(
         
         let newInventory = state.inventory;
         
+        // ANTI-TRAPAÇA para as novas recompensas
         if (newLevel < state.level) {
           let lostItems = 0;
           for (let l = state.level; l > newLevel; l--) {
             if (l % 5 === 0) lostItems++;
+            if (l >= 25) lostItems++;
           }
           if (lostItems > 0) {
-            // FIX: Confisca a Carta de Sorte do inventário em caso de trapaça
             newInventory = { ...state.inventory, luckyCard: Math.max(0, state.inventory.luckyCard - lostItems) };
           }
         }

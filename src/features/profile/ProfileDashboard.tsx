@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Coins, Flame, CheckCircle2, TrendingUp, Eye, Medal, Info, Activity, RefreshCw, Settings, Plus } from 'lucide-react';
+import { Star, Coins, Flame, CheckCircle2, TrendingUp, Eye, Medal, Info, Activity, RefreshCw, Settings, Plus, Palette, Ticket, Clover, Target, Crown } from 'lucide-react';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useHabitStore } from '../../store/useHabitStore';
@@ -73,7 +73,7 @@ export const ProfileDashboard = () => {
            streak++; 
            checkDate = subDays(checkDate, 1); 
        } else if (isDayOff) {
-           checkDate = subDays(checkDate, 1); // Dia de folga = Pula o dia sem quebrar
+           checkDate = subDays(checkDate, 1); 
        } else { 
            if (isSameDay(checkDate, today)) checkDate = subDays(checkDate, 1); 
            else break; 
@@ -119,6 +119,18 @@ export const ProfileDashboard = () => {
     return weeks;
   };
 
+  // LINHA DE PROGRESSÃO - MARCOS
+  const milestones = [
+    { level: 10, label: 'Tema Suave', icon: Palette },
+    { level: 15, label: '15 Vouchers', icon: Ticket },
+    { level: 20, label: 'Tema Manteiga', icon: Palette },
+    { level: 25, label: 'Sorte Diária', icon: Clover },
+    { level: 30, label: 'P0 Ilimitada', icon: Flame },
+    { level: 35, label: 'Tema Marinho', icon: Palette },
+    { level: 40, label: 'P1 Ilimitada', icon: Target },
+    { level: 50, label: 'Darcula + 40V', icon: Crown },
+  ];
+
   return (
     <div className="min-h-screen bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 pb-32 transition-colors">
       <div className="max-w-4xl mx-auto px-6 md:px-8 pt-12 space-y-8">
@@ -162,8 +174,31 @@ export const ProfileDashboard = () => {
               <div><span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Nível Atual</span><div className="text-4xl font-black text-zinc-900 dark:text-zinc-100">Lvl. {level}</div></div>
               <div className="text-right"><span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">XP Restante</span><div className="text-xl font-black text-zinc-400">{xpRequired - xpProgress} XP</div></div>
             </div>
-            <div className="w-full h-4 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden mb-2 shadow-inner"><motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} transition={{ duration: 1, ease: 'easeOut' }} className="h-full bg-gradient-to-r from-emerald-500 to-teal-400" /></div>
-            <div className="flex justify-between text-xs font-bold text-zinc-400"><span>{currentLevelXp} XP</span><span>{nextLevelXp} XP</span></div>
+            <div className="w-full h-4 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden mb-8 shadow-inner"><motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} transition={{ duration: 1, ease: 'easeOut' }} className="h-full bg-gradient-to-r from-emerald-500 to-teal-400" /></div>
+            
+            {/* JORNADA DE DESBLOQUEIOS (TIMELINE) */}
+            <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800">
+               <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-6">Jornada de Desbloqueios</h3>
+               <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2 relative w-full">
+                  {/* Linha conectora */}
+                  <div className="absolute top-5 left-0 h-1 bg-zinc-200 dark:bg-zinc-800 w-[800px] z-0" />
+                  
+                  {milestones.map((m) => {
+                     const isReached = level >= m.level;
+                     return (
+                       <div key={m.level} className="relative z-10 flex flex-col items-center shrink-0 w-[72px] gap-3">
+                          <div className={`w-10 h-10 rounded-full border-4 flex items-center justify-center shadow-sm transition-colors duration-500 ${isReached ? 'border-blue-500 bg-white dark:bg-zinc-900 text-blue-500' : 'border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-950 text-zinc-300 dark:text-zinc-700'}`}>
+                             <m.icon size={16} />
+                          </div>
+                          <div className="text-center">
+                            <span className={`block text-[9px] font-black uppercase tracking-widest ${isReached ? 'text-blue-500' : 'text-zinc-400 dark:text-zinc-600'}`}>Nível {m.level}</span>
+                            <span className={`block text-[10px] font-bold leading-tight mt-0.5 ${isReached ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 dark:text-zinc-600'}`}>{m.label}</span>
+                          </div>
+                       </div>
+                     )
+                  })}
+               </div>
+            </div>
           </div>
         </div>
 

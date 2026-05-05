@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-type Theme = 'light' | 'dark-amoled';
+export type Theme = 'light' | 'dark-amoled' | 'soft-dark' | 'butter' | 'navy' | 'darcula';
 type Font = 'sans' | 'serif' | 'special';
 type ModusOperandi = 'multitask' | 'minimalist' | 'punctual' | 'ambitious' | null;
 
@@ -10,8 +10,8 @@ interface ConfigState {
   isOnboarded: boolean; lastLoginDate: string | null;
   uid: string | null; e2eePin: string | null; isLocalMode: boolean;
   
-  defaultDaysOff: number[]; // <-- NOVO: 0 = Dom, 1 = Seg, ..., 6 = Sab
-  hasDismissedDayOffWarning: boolean; // <-- NOVO
+  defaultDaysOff: number[];
+  hasDismissedDayOffWarning: boolean;
 
   showExitWarning: boolean;
   isExitModalOpen: boolean;
@@ -26,8 +26,8 @@ interface ConfigState {
   setAuth: (uid: string, pin: string) => void; setLocalMode: (isLocal: boolean) => void;
   logout: () => void;
 
-  setDefaultDaysOff: (days: number[]) => void; // <-- NOVO
-  dismissDayOffWarning: () => void; // <-- NOVO
+  setDefaultDaysOff: (days: number[]) => void; 
+  dismissDayOffWarning: () => void; 
 
   setShowExitWarning: (show: boolean) => void;
   setExitModalOpen: (open: boolean) => void;
