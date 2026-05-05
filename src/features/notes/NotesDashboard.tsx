@@ -1,24 +1,37 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, List, ListOrdered, FileText, Trash2, Save, Check } from 'lucide-react';
+import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, List, ListOrdered, FileText, Trash2, Save, Check, Eye, PenLine } from 'lucide-react';
 import { useNoteStore } from '../../store/useNoteStore';
 import type { Notebook, Note, ItemColor, NoteFont, NoteFormat } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
 
+// 1. AUMENTO DE CONTRASTE PARA AMOLED (Classes dark: mais intensas)
 const colorStyles: Record<ItemColor, { nb: string; note: string; hex: string }> = {
-  blue: { nb: 'bg-blue-500/20 border-blue-500/30 text-blue-600 dark:text-blue-400', note: 'bg-blue-500/5 border-blue-500/10', hex: 'text-blue-500' },
-  emerald: { nb: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-600 dark:text-emerald-400', note: 'bg-emerald-500/5 border-emerald-500/10', hex: 'text-emerald-500' },
-  amber: { nb: 'bg-amber-500/20 border-amber-500/30 text-amber-600 dark:text-amber-400', note: 'bg-amber-500/5 border-amber-500/10', hex: 'text-amber-500' },
-  rose: { nb: 'bg-rose-500/20 border-rose-500/30 text-rose-600 dark:text-rose-400', note: 'bg-rose-500/5 border-rose-500/10', hex: 'text-rose-500' },
-  purple: { nb: 'bg-purple-500/20 border-purple-500/30 text-purple-600 dark:text-purple-400', note: 'bg-purple-500/5 border-purple-500/10', hex: 'text-purple-500' },
-  cyan: { nb: 'bg-cyan-500/20 border-cyan-500/30 text-cyan-600 dark:text-cyan-400', note: 'bg-cyan-500/5 border-cyan-500/10', hex: 'text-cyan-500' },
-  indigo: { nb: 'bg-indigo-500/20 border-indigo-500/30 text-indigo-600 dark:text-indigo-400', note: 'bg-indigo-500/5 border-indigo-500/10', hex: 'text-indigo-500' },
-  zinc: { nb: 'bg-zinc-500/20 border-zinc-500/30 text-zinc-600 dark:text-zinc-400', note: 'bg-zinc-500/5 border-zinc-500/10', hex: 'text-zinc-500' }
+  blue: { nb: 'bg-blue-500/20 dark:bg-blue-500/30 border-blue-500/30 dark:border-blue-400/50 text-blue-600 dark:text-blue-300', note: 'bg-blue-500/5 dark:bg-blue-500/10 border-blue-500/10 dark:border-blue-400/30', hex: 'text-blue-500 dark:text-blue-400' },
+  emerald: { nb: 'bg-emerald-500/20 dark:bg-emerald-500/30 border-emerald-500/30 dark:border-emerald-400/50 text-emerald-600 dark:text-emerald-300', note: 'bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/10 dark:border-emerald-400/30', hex: 'text-emerald-500 dark:text-emerald-400' },
+  amber: { nb: 'bg-amber-500/20 dark:bg-amber-500/30 border-amber-500/30 dark:border-amber-400/50 text-amber-600 dark:text-amber-300', note: 'bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/10 dark:border-amber-400/30', hex: 'text-amber-500 dark:text-amber-400' },
+  rose: { nb: 'bg-rose-500/20 dark:bg-rose-500/30 border-rose-500/30 dark:border-rose-400/50 text-rose-600 dark:text-rose-300', note: 'bg-rose-500/5 dark:bg-rose-500/10 border-rose-500/10 dark:border-rose-400/30', hex: 'text-rose-500 dark:text-rose-400' },
+  purple: { nb: 'bg-purple-500/20 dark:bg-purple-500/30 border-purple-500/30 dark:border-purple-400/50 text-purple-600 dark:text-purple-300', note: 'bg-purple-500/5 dark:bg-purple-500/10 border-purple-500/10 dark:border-purple-400/30', hex: 'text-purple-500 dark:text-purple-400' },
+  cyan: { nb: 'bg-cyan-500/20 dark:bg-cyan-500/30 border-cyan-500/30 dark:border-cyan-400/50 text-cyan-600 dark:text-cyan-300', note: 'bg-cyan-500/5 dark:bg-cyan-500/10 border-cyan-500/10 dark:border-cyan-400/30', hex: 'text-cyan-500 dark:text-cyan-400' },
+  indigo: { nb: 'bg-indigo-500/20 dark:bg-indigo-500/30 border-indigo-500/30 dark:border-indigo-400/50 text-indigo-600 dark:text-indigo-300', note: 'bg-indigo-500/5 dark:bg-indigo-500/10 border-indigo-500/10 dark:border-indigo-400/30', hex: 'text-indigo-500 dark:text-indigo-400' },
+  zinc: { nb: 'bg-zinc-500/20 dark:bg-zinc-500/30 border-zinc-500/30 dark:border-zinc-400/50 text-zinc-600 dark:text-zinc-300', note: 'bg-zinc-500/5 dark:bg-zinc-500/10 border-zinc-500/10 dark:border-zinc-400/30', hex: 'text-zinc-500 dark:text-zinc-400' }
+};
+
+// Mini-motor de renderização Markdown
+const parseMarkdown = (text: string) => {
+  return text
+    .replace(/^### (.*$)/gim, '<h3 class="text-xl font-bold mt-4 mb-2">$1</h3>')
+    .replace(/^## (.*$)/gim, '<h2 class="text-2xl font-bold mt-4 mb-2">$1</h2>')
+    .replace(/^# (.*$)/gim, '<h1 class="text-3xl font-black mt-4 mb-2">$1</h1>')
+    .replace(/^\> (.*$)/gim, '<blockquote class="border-l-4 border-current pl-4 italic opacity-80 my-2">$1</blockquote>')
+    .replace(/\*\*(.*?)\*\*/gim, '<b>$1</b>')
+    .replace(/\*(.*?)\*/gim, '<i>$1</i>')
+    .replace(/\n/gim, '<br />');
 };
 
 export const NotesDashboard = () => {
-  const { notebooks, notes, unlockedNotebooks, unlockedNotes, addNotebook, updateNotebook, deleteNotebook, addNote, updateNote, deleteNote, unlockNotebook, unlockNote } = useNoteStore();
+  const { notebooks, notes, unlockedNotebooks, unlockedNotes, addNotebook, updateNotebook, deleteNotebook, addNote, updateNote, deleteNote, unlockNotebook, unlockNote, lockAll } = useNoteStore();
 
   const [view, setView] = useState<'notebooks' | 'notes' | 'editor'>('notebooks');
   const [activeNotebook, setActiveNotebook] = useState<Notebook | null>(null);
@@ -40,10 +53,11 @@ export const NotesDashboard = () => {
   const [noteFormat, setNoteFormat] = useState<NoteFormat>('richtext');
   const [noteFont, setNoteFont] = useState<NoteFont>('sans');
   const [noteLines, setNoteLines] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle'); // <-- FEEDBACK DE SALVAMENTO
+  const [mdPreview, setMdPreview] = useState(false); // Estado do Preview do Markdown
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle'); 
   const editorRef = useRef<HTMLDivElement>(null);
 
-  // --- NAVEGAÇÃO E FILTROS ---
+  // Filtros
   const filteredNotebooks = notebooks.filter(nb => nb.name.toLowerCase().includes(search.toLowerCase()));
   const filteredNotes = activeNotebook ? notes.filter(n => n.notebookId === activeNotebook.id && (n.title.toLowerCase().includes(search.toLowerCase()) || n.content.toLowerCase().includes(search.toLowerCase()))) : [];
 
@@ -59,7 +73,7 @@ export const NotesDashboard = () => {
     if (note.isLocked && !unlockedNotes.includes(note.id)) {
       setPasswordModal({ isOpen: true, type: 'unlock_note', targetId: note.id });
     } else {
-      setActiveNote(note); setNoteTitle(note.title); setNoteContent(note.content); setNoteFormat(note.format); setNoteFont(note.font); setNoteLines(note.hasLines); setView('editor');
+      setActiveNote(note); setNoteTitle(note.title); setNoteContent(note.content); setNoteFormat(note.format); setNoteFont(note.font); setNoteLines(note.hasLines); setMdPreview(false); setView('editor');
     }
   };
 
@@ -71,19 +85,17 @@ export const NotesDashboard = () => {
     }
   };
 
-  // --- CRIAR CADERNO ---
   const handleCreateNotebook = () => {
     if (!nbName.trim()) return;
     addNotebook({ id: uuidv4(), name: nbName, color: nbColor, isLocked: false, createdAt: Date.now() });
     setNbModalOpen(false); setNbName(''); setNbColor('zinc');
   };
 
-  // --- CRIAR / SALVAR NOTA ---
   const handleCreateNote = () => {
     if (!activeNotebook) return;
     const newNote: Note = { id: uuidv4(), notebookId: activeNotebook.id, title: '', content: '', format: 'richtext', font: 'sans', hasLines: false, isLocked: false, createdAt: Date.now(), updatedAt: Date.now() };
     addNote(newNote);
-    setActiveNote(newNote); setNoteTitle(''); setNoteContent(''); setNoteFormat('richtext'); setNoteFont('sans'); setNoteLines(false); setView('editor');
+    setActiveNote(newNote); setNoteTitle(''); setNoteContent(''); setNoteFormat('richtext'); setNoteFont('sans'); setNoteLines(false); setMdPreview(false); setView('editor');
   };
 
   const saveNote = () => {
@@ -95,25 +107,31 @@ export const NotesDashboard = () => {
     updateNote(activeNote.id, { title: noteTitle, content: currentHtml, format: noteFormat, font: noteFont, hasLines: noteLines });
   };
 
+  // 2. AUTOSAVE COM DEBOUNCE
+  useEffect(() => {
+    if (view !== 'editor' || !activeNote) return;
+    setSaveStatus('saving');
+    const timer = setTimeout(() => {
+      saveNote();
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [noteTitle, noteContent, noteFormat, noteFont, noteLines]);
+
   const handleManualSave = () => {
     saveNote();
     setSaveStatus('saved');
     setTimeout(() => setSaveStatus('idle'), 2000);
   };
 
-  // Autosalvar ao desmontar
-  useEffect(() => {
-    return () => { if (view === 'editor') saveNote(); };
-  }, [view, noteTitle, noteContent, noteFormat, noteFont, noteLines]);
-
-  // Sincronizar editor de Rich Text quando abre a nota
   useEffect(() => {
     if (view === 'editor' && noteFormat === 'richtext' && editorRef.current) {
       if (editorRef.current.innerHTML !== noteContent) editorRef.current.innerHTML = noteContent;
     }
   }, [view, noteFormat]);
 
-  // --- SISTEMA DE SENHAS ---
+  // SISTEMA DE SENHAS
   const submitPassword = () => {
     if (!passwordModal) return;
     const { type, targetId } = passwordModal;
@@ -142,15 +160,13 @@ export const NotesDashboard = () => {
     else updateNote(id, { isLocked: false, password: '' });
   };
 
-  // --- FERRAMENTAS DO EDITOR (RICH TEXT) ---
   const execCmd = (cmd: string) => { document.execCommand(cmd, false); editorRef.current?.focus(); };
 
-  // --- RENDERIZAÇÃO ---
   return (
     <div className="min-h-screen bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 pb-32 transition-colors">
       <div className="max-w-4xl mx-auto px-6 md:px-8 pt-12 space-y-6">
 
-        {/* HEADER & PESQUISA (Oculto no modo Editor) */}
+        {/* HEADER & PESQUISA */}
         {view !== 'editor' && (
           <header className="space-y-6">
             <div className="flex items-center justify-between">
@@ -158,6 +174,13 @@ export const NotesDashboard = () => {
                 {view === 'notes' && <button onClick={handleBack} className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"><ChevronLeft size={24}/></button>}
                 <h1 className="text-3xl font-black tracking-tight">{view === 'notebooks' ? 'Seus Cadernos' : activeNotebook?.name}</h1>
               </div>
+              
+              {/* BOTÃO TRANCAR SESSÃO */}
+              {view === 'notebooks' && (unlockedNotebooks.length > 0 || unlockedNotes.length > 0) && (
+                <button onClick={lockAll} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-500 text-xs font-bold hover:bg-amber-500/20 transition-colors">
+                  <Lock size={14} /> Trancar Sessão
+                </button>
+              )}
             </div>
             
             <div className="relative">
@@ -167,7 +190,7 @@ export const NotesDashboard = () => {
           </header>
         )}
 
-        {/* 1. VISUALIZAÇÃO DE CADERNOS */}
+        {/* VISUALIZAÇÃO DE CADERNOS */}
         {view === 'notebooks' && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <button onClick={() => setNbModalOpen(true)} className="flex flex-col items-center justify-center gap-3 p-6 rounded-3xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all h-40">
@@ -208,12 +231,12 @@ export const NotesDashboard = () => {
           </div>
         )}
 
-        {/* 2. VISUALIZAÇÃO DE NOTAS DO CADERNO */}
+        {/* VISUALIZAÇÃO DE NOTAS DO CADERNO */}
         {view === 'notes' && activeNotebook && (
           <div className="space-y-4">
              <div className="flex justify-between items-center mb-6">
                 <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">{filteredNotes.length} Notas Encontradas</span>
-                <button onClick={handleCreateNote} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-md ${colorStyles[activeNotebook.color].nb.split(' ')[0].replace('/20', '')}`}>
+                <button onClick={handleCreateNote} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-md ${colorStyles[activeNotebook.color].nb.split(' ')[0].replace('/20', '').replace('/30', '')}`}>
                   <Plus size={16}/> Criar Nota
                 </button>
              </div>
@@ -247,22 +270,19 @@ export const NotesDashboard = () => {
           </div>
         )}
 
-        {/* 3. VISUALIZAÇÃO DO EDITOR */}
+        {/* VISUALIZAÇÃO DO EDITOR */}
         {view === 'editor' && activeNote && activeNotebook && (
           <div className="flex flex-col h-[75vh]">
-            {/* Editor Toolbar */}
             <div className={`flex flex-wrap items-center justify-between gap-4 p-2 mb-4 rounded-2xl border ${colorStyles[activeNotebook.color].note}`}>
                <div className="flex items-center gap-1">
                  <button onClick={handleBack} className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><ChevronLeft size={20}/></button>
                  <div className="w-px h-6 bg-zinc-300 dark:bg-zinc-700 mx-1" />
                  
-                 {/* Format Toggle */}
-                 <button onClick={() => setNoteFormat(noteFormat === 'richtext' ? 'markdown' : 'richtext')} className="px-3 py-1.5 text-xs font-bold uppercase tracking-widest rounded-lg bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 shadow-sm text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white">
+                 <button onClick={() => { setNoteFormat(noteFormat === 'richtext' ? 'markdown' : 'richtext'); setMdPreview(false); }} className="px-3 py-1.5 text-xs font-bold uppercase tracking-widest rounded-lg bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 shadow-sm text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white">
                    {noteFormat === 'richtext' ? 'Rich Text' : 'Markdown'}
                  </button>
                  
-                 {/* Font Select */}
-                 <select value={noteFont} onChange={(e) => setNoteFont(e.target.value as NoteFont)} className="bg-transparent text-sm font-bold outline-none text-zinc-600 dark:text-zinc-300 cursor-pointer">
+                 <select value={noteFont} onChange={(e) => setNoteFont(e.target.value as NoteFont)} className="bg-transparent text-sm font-bold outline-none text-zinc-600 dark:text-zinc-300 cursor-pointer ml-2">
                    <option value="sans">Sans</option>
                    <option value="serif">Serif</option>
                    <option value="handwriting">Manual</option>
@@ -270,25 +290,21 @@ export const NotesDashboard = () => {
                </div>
 
                <div className="flex items-center gap-1 pr-2">
-                 {/* NOVO: Botão de Salvar Manual */}
-                 <button onClick={handleManualSave} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${saveStatus === 'saved' ? 'bg-emerald-500 text-white' : 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:opacity-90'}`}>
+                 <button onClick={handleManualSave} disabled={saveStatus === 'saving'} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${saveStatus === 'saved' ? 'bg-emerald-500 text-white' : 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:opacity-90'}`}>
                    {saveStatus === 'saved' ? <Check size={14} /> : <Save size={14} />}
                    <span className="hidden sm:inline">{saveStatus === 'saved' ? 'Salvo' : 'Salvar'}</span>
                  </button>
 
                  <div className="w-px h-6 bg-zinc-300 dark:bg-zinc-700 mx-1" />
 
-                 {/* Lined Paper Toggle */}
                  <button onClick={() => setNoteLines(!noteLines)} className={`p-2 rounded-lg transition-colors ${noteLines ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} title="Pautas"><AlignLeft size={18}/></button>
                  
-                 {/* Lock Toggle */}
                  <button onClick={() => { activeNote.isLocked ? removeLock(activeNote.id, false) : setPasswordModal({ isOpen: true, type: 'set_note_lock', targetId: activeNote.id }) }} className={`p-2 rounded-lg transition-colors ${activeNote.isLocked ? 'text-amber-500 bg-amber-500/10' : 'text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} title={activeNote.isLocked ? 'Remover Senha' : 'Proteger com Senha'}>
                    {activeNote.isLocked ? <Lock size={18}/> : <Unlock size={18}/>}
                  </button>
                </div>
             </div>
 
-            {/* Rich Text Controls */}
             <AnimatePresence>
               {noteFormat === 'richtext' && (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="flex gap-1 mb-4 overflow-x-auto scrollbar-hide border-b border-zinc-100 dark:border-zinc-900 pb-2">
@@ -300,19 +316,29 @@ export const NotesDashboard = () => {
                   <button onClick={() => execCmd('insertOrderedList')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg"><ListOrdered size={16}/></button>
                 </motion.div>
               )}
+              {noteFormat === 'markdown' && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="flex justify-end mb-4 border-b border-zinc-100 dark:border-zinc-900 pb-2">
+                  <button onClick={() => setMdPreview(!mdPreview)} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${mdPreview ? 'bg-blue-500/10 text-blue-500' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                    {mdPreview ? <PenLine size={16}/> : <Eye size={16}/>}
+                    {mdPreview ? 'Editar' : 'Visualizar'}
+                  </button>
+                </motion.div>
+              )}
             </AnimatePresence>
 
-            {/* Editor Area */}
-            <div className={`flex-1 flex flex-col rounded-3xl overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-inner ${colorStyles[activeNotebook.color].note} ${noteLines ? 'bg-lined-paper' : ''}`}>
+            <div className={`flex-1 flex flex-col rounded-3xl overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-inner editor-content ${colorStyles[activeNotebook.color].note} ${noteLines ? 'bg-lined-paper' : ''}`}>
               <input type="text" placeholder="Título da Nota" value={noteTitle} onChange={(e) => setNoteTitle(e.target.value)} className={`w-full px-8 pt-8 pb-4 bg-transparent outline-none text-3xl font-black placeholder:text-zinc-300 dark:placeholder:text-zinc-700 ${noteFont === 'handwriting' ? 'font-handwriting' : noteFont === 'serif' ? 'font-serif' : 'font-sans'}`} />
               
               <div className="flex-1 px-8 pb-8 relative">
                 {noteFormat === 'markdown' ? (
-                  <textarea value={noteContent} onChange={(e) => setNoteContent(e.target.value)} placeholder="Escreva aqui em Markdown..." className={`w-full h-full bg-transparent outline-none resize-none leading-relaxed text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'} ${noteLines ? 'leading-[32px]' : ''}`} />
+                  mdPreview ? (
+                     <div dangerouslySetInnerHTML={{ __html: parseMarkdown(noteContent) }} className={`w-full h-full bg-transparent outline-none leading-relaxed text-zinc-700 dark:text-zinc-300 overflow-y-auto ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
+                  ) : (
+                     <textarea value={noteContent} onChange={(e) => setNoteContent(e.target.value)} placeholder="Escreva aqui em Markdown (# para Título, ** para Negrito)..." className={`w-full h-full bg-transparent outline-none resize-none leading-relaxed text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
+                  )
                 ) : (
-                  <div ref={editorRef} onBlur={() => { if(editorRef.current) setNoteContent(editorRef.current.innerHTML); }} contentEditable suppressContentEditableWarning className={`w-full h-full bg-transparent outline-none leading-relaxed text-zinc-700 dark:text-zinc-300 overflow-y-auto ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'} ${noteLines ? 'leading-[32px]' : ''}`} />
+                  <div ref={editorRef} onInput={() => { if(editorRef.current) setNoteContent(editorRef.current.innerHTML); }} contentEditable suppressContentEditableWarning className={`w-full h-full bg-transparent outline-none text-zinc-700 dark:text-zinc-300 overflow-y-auto ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
                 )}
-                {/* Placeholder para Rich Text Vazio */}
                 {noteFormat === 'richtext' && noteContent === '' && (
                   <div className="absolute top-0 left-8 pointer-events-none text-zinc-300 dark:text-zinc-700 font-medium">Comece a escrever...</div>
                 )}
@@ -347,7 +373,7 @@ export const NotesDashboard = () => {
         )}
       </AnimatePresence>
 
-      {/* MODAL DE SENHAS (UNLOCK / SET LOCK) */}
+      {/* MODAL DE SENHAS */}
       <AnimatePresence>
         {passwordModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4 backdrop-blur-md">
