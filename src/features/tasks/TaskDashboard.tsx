@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, AlertTriangle, Frown, CloudRain, Meh, Smile, Sparkles, Trash2, TrendingUp, Coins, X, Check, ArrowDownUp } from 'lucide-react';
+import { Plus, AlertTriangle, Frown, CloudRain, Meh, Smile, Sparkles, Trash2, TrendingUp, Coins, X, Check, ArrowDownUp, Info } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useConfigStore } from '../../store/useConfigStore';
@@ -12,7 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
 
 export const TaskDashboard = () => {
-  const { userClass } = useConfigStore();
+  const { userClass, defaultDaysOff, hasDismissedDayOffWarning, dismissDayOffWarning } = useConfigStore();
   const { tasks, folders, selectedFolderId, setFolderId, addFolder, deleteFolder, toggleTaskCompletion, deleteTask, clearCompletedTasks, selectedFilter, setFilter, dailyMood, setDailyMood } = useTaskStore();
   const { activeXpBoostUntil, activeGoldBoostUntil, addReward, removeReward } = useEconomyStore();
 
@@ -66,24 +66,24 @@ export const TaskDashboard = () => {
   const requestToggle = (taskId: string) => {
     const task = tasks.find(t => t.id === taskId); if (!task) return;
     if (!task.isCompleted && task.subtasks && task.subtasks.some(st => !st.completed)) {
-      setConfirmDialog({ type: 'complete', taskId, title: '¿Concluir con pendientes?', subtitle: 'Aún existen subtareas no finalizadas. ¿Deseas marcar la tarea como concluida de todos modos?' });
+      setConfirmDialog({ type: 'complete', taskId, title: 'Concluir com pendências?', subtitle: 'Ainda existem subtarefas não finalizadas. Deseja marcar a tarefa como concluída mesmo assim?' });
     } else { executeToggle(taskId); }
   };
 
-  const requestDelete = (taskId: string) => { setConfirmDialog({ type: 'delete', taskId, title: '¿Excluir Tarea?', subtitle: 'Esta acción no se puede deshacer y la tarea será removida permanentemente.' }); };
+  const requestDelete = (taskId: string) => { setConfirmDialog({ type: 'delete', taskId, title: 'Excluir Tarefa?', subtitle: 'Essa ação não pode ser desfeita e a tarefa será removida permanentemente.' }); };
 
   const handleConfirmAction = () => {
     if (!confirmDialog) return;
     if (confirmDialog.type === 'complete') executeToggle(confirmDialog.taskId);
-    else if (confirmDialog.type === 'delete') { deleteTask(confirmDialog.taskId); showToast('Tarea excluida con éxito.'); }
-    else if (confirmDialog.type === 'clear_completed') { clearCompletedTasks(); showToast('Tareas archivadas con éxito.'); }
+    else if (confirmDialog.type === 'delete') { deleteTask(confirmDialog.taskId); showToast('Tarefa excluída com sucesso.'); }
+    else if (confirmDialog.type === 'clear_completed') { clearCompletedTasks(); showToast('Tarefas arquivadas com sucesso.'); }
     setConfirmDialog(null);
   };
 
   const priorityWeight: Record<Priority, number> = { P0: 0, P1: 1, P2: 2, P3: 3, P4: 4 };
 
   const filteredTasks = tasks.filter((task) => {
-    if (task.isArchived) return false; // ¡OCULTA TAREAS ARCHIVADAS!
+    if (task.isArchived) return false; 
     if (selectedFolderId !== 'all' && task.folderId !== selectedFolderId) return false;
     if (selectedFilter === 'all') return true;
     if (selectedFilter === 'today') return !task.deadlineDate || task.deadlineDate === format(new Date(), 'yyyy-MM-dd');
@@ -96,7 +96,7 @@ export const TaskDashboard = () => {
 
   const hasCompletedTasks = filteredTasks.some(t => t.isCompleted);
 
-  const moods: { value: Mood; icon: any; label: string }[] = [ { value: 'disappointed', icon: CloudRain, label: 'Decepcionado' }, { value: 'annoyed', icon: Frown, label: 'Incomodado' }, { value: 'normal', icon: Meh, label: 'Normal' }, { value: 'happy', icon: Smile, label: 'Feliz' }, { value: 'radiant', icon: Sparkles, label: 'Radiante' } ];
+  const moods: { value: Mood; icon: any; label: string }[] = [ { value: 'disappointed', icon: CloudRain, label: 'Desapontado' }, { value: 'annoyed', icon: Frown, label: 'Incomodado' }, { value: 'normal', icon: Meh, label: 'Normal' }, { value: 'happy', icon: Smile, label: 'Feliz' }, { value: 'radiant', icon: Sparkles, label: 'Radiante' } ];
   const filters: { id: typeof selectedFilter; label: string }[] = [ { id: 'today', label: 'Hoje' }, { id: 'week', label: 'Semana' }, { id: 'month', label: 'Mês' }, { id: 'all', label: 'Tudo' } ];
 
   return (
@@ -115,6 +115,22 @@ export const TaskDashboard = () => {
           </div>
         </header>
 
+        {/* BANNER AVISO DE FOLGA */}
+        <AnimatePresence>
+          {defaultDaysOff.length === 0 && !hasDismissedDayOffWarning && (
+             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+               <div className="bg-blue-500/10 border border-blue-500/20 p-5 rounded-2xl flex items-start gap-4 text-blue-600 dark:text-blue-400 relative mb-2">
+                 <Info className="shrink-0 mt-0.5" size={20} />
+                 <div className="pr-6">
+                   <h4 className="font-bold text-sm">Configure seus Dias de Folga</h4>
+                   <p className="text-xs opacity-90 mt-1">Sabia que você pode escolher dias da semana para descansar sem perder suas ofensivas? Configure isso na aba de Perfil, clicando em Ajustes.</p>
+                 </div>
+                 <button onClick={dismissDayOffWarning} className="absolute top-4 right-4 text-blue-500/50 hover:text-blue-500 transition-colors"><X size={16}/></button>
+               </div>
+             </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="flex gap-2 overflow-x-auto scrollbar-hide py-2 items-center">
           <button onClick={() => setFolderId('all')} className={`px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${selectedFolderId === 'all' ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black shadow-md' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'}`}>Todas</button>
           {folders.map(f => (
@@ -125,19 +141,19 @@ export const TaskDashboard = () => {
           ))}
           {isCreatingFolder ? (
             <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-full px-2 shadow-inner">
-              <input autoFocus type="text" maxLength={30} value={newFolderName} onChange={e=>setNewFolderName(e.target.value)} onKeyDown={e=>e.key === 'Enter' && handleCreateFolder()} placeholder="Nombre de la carpeta" className="bg-transparent text-xs font-bold outline-none w-28 px-2 placeholder:text-zinc-400" />
+              <input autoFocus type="text" maxLength={30} value={newFolderName} onChange={e=>setNewFolderName(e.target.value)} onKeyDown={e=>e.key === 'Enter' && handleCreateFolder()} placeholder="Nome da pasta" className="bg-transparent text-xs font-bold outline-none w-28 px-2 placeholder:text-zinc-400" />
               <button onClick={handleCreateFolder} className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded-full transition-colors"><Check size={14}/></button>
               <button onClick={() => setIsCreatingFolder(false)} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-full transition-colors"><X size={14}/></button>
             </div>
           ) : ( <button onClick={() => setIsCreatingFolder(true)} className="px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap border border-dashed border-zinc-300 text-zinc-500 dark:border-zinc-700 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all">+ Nova Pasta</button> )}
           <div className="flex-1" />
-          <button onClick={() => setIsSortedByPriority(!isSortedByPriority)} className={`p-2 rounded-full transition-all shrink-0 ${isSortedByPriority ? 'bg-blue-500 text-white shadow-md' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`} title="Ordenar por Prioridad"><ArrowDownUp size={16} /></button>
+          <button onClick={() => setIsSortedByPriority(!isSortedByPriority)} className={`p-2 rounded-full transition-all shrink-0 ${isSortedByPriority ? 'bg-blue-500 text-white shadow-md' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`} title="Ordenar por Prioridade"><ArrowDownUp size={16} /></button>
         </div>
 
         {(isXpBoosted || isGoldBoosted) && (
           <div className="flex flex-col md:flex-row gap-3">
             {isXpBoosted && <div className="flex-1 bg-orange-500/10 border border-orange-500/30 text-orange-600 dark:text-orange-400 p-3 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm animate-pulse"><TrendingUp size={18}/> 2x XP Ativo (24h)</div>}
-            {isGoldBoosted && <div className="flex-1 bg-yellow-500/10 border border-yellow-500/30 text-yellow-600 dark:text-yellow-400 p-3 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm animate-pulse"><Coins size={18}/> 2x Oro Ativo (24h)</div>}
+            {isGoldBoosted && <div className="flex-1 bg-yellow-500/10 border border-yellow-500/30 text-yellow-600 dark:text-yellow-400 p-3 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm animate-pulse"><Coins size={18}/> 2x Ouro Ativo (24h)</div>}
           </div>
         )}
 

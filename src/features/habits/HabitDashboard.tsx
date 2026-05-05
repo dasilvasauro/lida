@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Info, Coffee, Ticket } from 'lucide-react';
 import { useHabitStore } from '../../store/useHabitStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
-import { useTaskStore } from '../../store/useTaskStore'; // <-- Adicionado para a Navbar
+import { useTaskStore } from '../../store/useTaskStore'; 
 import { HabitModal } from './HabitModal';
 import { HabitItem } from './HabitItem';
 import type { Habit } from '../../types';
@@ -13,7 +13,6 @@ export const HabitDashboard = () => {
   const { habits, logs, modifiers, setLog, deleteHabit, applyGlobalDayOff, applyModifier } = useHabitStore();
   const { inventory, useItem, voucherProgress, addVoucherProgress, removeVoucherProgress } = useEconomyStore();
   
-  // Usando o estado global para ocultar a Navbar corretamente
   const isModalOpen = useTaskStore((state) => state.isGlobalModalOpen);
   const setIsModalOpen = useTaskStore((state) => state.setGlobalModalOpen);
   
@@ -40,7 +39,6 @@ export const HabitDashboard = () => {
       else if (currentStreak === 6) showToast("Uma semana perfeita! Inparável! 🚀", "motivational");
       else if (currentStreak === 20) showToast("Dizem que leva 21 dias para criar um hábito. Falta 1! 👀", "motivational");
     } else {
-      // Reverte o Voucher se ele desmarcar um hábito que já estava concluído
       if (wasCompleted) {
         removeVoucherProgress();
       }
@@ -104,10 +102,10 @@ export const HabitDashboard = () => {
             <button onClick={() => { 
                 if(useItem('dayOff')) { 
                     applyGlobalDayOff(format(new Date(), 'yyyy-MM-dd')); 
-                    showToast('Dia de Folga aplicado a todos os hábitos!'); 
+                    showToast('Folga Extra aplicada a todos os hábitos!'); 
                 } 
             }} className="flex items-center justify-center gap-2 bg-amber-500 text-white px-4 py-3 rounded-xl font-bold shadow-lg shadow-amber-500/20 hover:scale-105 transition-transform text-sm">
-              <Coffee size={18} /> Usar Dia de Folga
+              <Coffee size={18} /> Usar Folga Extra
             </button>
           )}
         </header>

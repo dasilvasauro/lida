@@ -14,7 +14,7 @@ import { SettingsModal } from './SettingsModal';
 import { GoogleConnectModal } from './GoogleConnectModal';
 import { ReflectionCreatorModal } from '../reflections/ReflectionCreatorModal'; 
 import { ReflectionViewerModal } from '../reflections/ReflectionViewerModal';
-import { ChangelogModal } from './ChangelogModal'; // <-- IMPORTADO DE VUELTA
+import { ChangelogModal } from './ChangelogModal';
 
 const colorMap: Record<string, string> = {
   blue: 'border-blue-500 text-blue-500 bg-blue-500/10', emerald: 'border-emerald-500 text-emerald-500 bg-emerald-500/10',
@@ -27,7 +27,7 @@ export const ProfileDashboard = () => {
   const { xp, level, gold } = useEconomyStore();
   const { tasks, moodHistory } = useTaskStore();
   const { habits, logs, modifiers } = useHabitStore();
-  const { uid, e2eePin, isLocalMode } = useConfigStore();
+  const { uid, e2eePin, isLocalMode, defaultDaysOff } = useConfigStore();
   const { reflections } = useReflectionStore();
 
   const { isVisionOpen, setVisionOpen, isSettingsOpen, setSettingsOpen, isGoogleConnectOpen, setGoogleConnectOpen, isChangelogOpen, setChangelogOpen } = useConfigStore();
@@ -43,10 +43,10 @@ export const ProfileDashboard = () => {
   const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); };
 
   const handleForceSync = async () => {
-    if (!uid || !e2eePin || !navigator.onLine) return showToast("No fue posible sincronizar. Verifica tu red.");
+    if (!uid || !e2eePin || !navigator.onLine) return showToast("Não foi possível sincronizar. Verifique a rede.");
     setIsSyncing(true);
-    try { await syncToCloud(); await syncFromCloud(uid, e2eePin); showToast("Sincronização realizada"); } 
-    catch (e) { showToast("Error al sincronizar datos."); } 
+    try { await syncToCloud(); await syncFromCloud(uid, e2eePin); showToast("Sincronização realizada com sucesso!"); } 
+    catch (e) { showToast("Erro ao sincronizar dados."); } 
     finally { setIsSyncing(false); }
   };
 
@@ -67,8 +67,17 @@ export const ProfileDashboard = () => {
        let hasHabit = false;
        habits.forEach(h => { if ((logs[h.id]?.[dStr] || 0) >= (h.goal || 1) || modifiers[h.id]?.[dStr]) hasHabit = true; });
 
-       if (hasTask || hasHabit) { streak++; checkDate = subDays(checkDate, 1); } 
-       else { if (isSameDay(checkDate, today)) checkDate = subDays(checkDate, 1); else break; }
+       const isDayOff = defaultDaysOff.includes(checkDate.getDay());
+
+       if (hasTask || hasHabit) { 
+           streak++; 
+           checkDate = subDays(checkDate, 1); 
+       } else if (isDayOff) {
+           checkDate = subDays(checkDate, 1); // Dia de folga = Pula o dia sem quebrar
+       } else { 
+           if (isSameDay(checkDate, today)) checkDate = subDays(checkDate, 1); 
+           else break; 
+       }
     }
     return streak;
   };
@@ -135,22 +144,22 @@ export const ProfileDashboard = () => {
 
         {isLocalMode && (
           <div className="bg-blue-500/10 border border-blue-500/20 p-6 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
-             <div><h3 className="text-blue-600 dark:text-blue-400 font-black text-lg tracking-tight">Modo Local Activo</h3><p className="text-sm text-blue-600/80 dark:text-blue-400/80 font-medium mt-1">Tus datos están solo en este navegador. Conéctate para protegerlos con encriptación en la nube.</p></div>
-             <button onClick={() => setGoogleConnectOpen(true)} className="w-full md:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-colors shrink-0 shadow-lg shadow-blue-500/20">Conectar a Google</button>
+             <div><h3 className="text-blue-600 dark:text-blue-400 font-black text-lg tracking-tight">Modo Local Ativo</h3><p className="text-sm text-blue-600/80 dark:text-blue-400/80 font-medium mt-1">Seus dados estão apenas neste navegador. Conecte-se para protegê-los com criptografia de ponta a ponta na nuvem.</p></div>
+             <button onClick={() => setGoogleConnectOpen(true)} className="w-full md:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-colors shrink-0 shadow-lg shadow-blue-500/20">Conectar ao Google</button>
           </div>
         )}
 
         <button onClick={() => setVisionOpen(true)} className="w-full relative p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/50 flex flex-col md:flex-row items-start md:items-center gap-6 overflow-hidden hover:border-blue-500/50 transition-colors group shadow-sm text-left">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent to-zinc-50/50 dark:to-zinc-950/50 pointer-events-none" />
           <div className="p-4 bg-zinc-200 dark:bg-zinc-800 rounded-2xl group-hover:bg-blue-500/10 transition-colors shrink-0"><Eye size={32} className="text-zinc-500 dark:text-zinc-400 group-hover:text-blue-500 transition-colors" /></div>
-          <div className="flex-1"><div className="flex flex-wrap items-center gap-3 mb-1"><h3 className="text-xl font-black text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors tracking-tight">Visão</h3><span className="px-3 py-1 bg-blue-500/10 text-blue-500 text-[10px] font-black uppercase tracking-widest rounded-full">Acessar</span></div><p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">Quem você <b>quer</b> ser? O que precisa deixar pra trás?.</p></div>
+          <div className="flex-1"><div className="flex flex-wrap items-center gap-3 mb-1"><h3 className="text-xl font-black text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-zinc-100 transition-colors tracking-tight">Visão</h3><span className="px-3 py-1 bg-blue-500/10 text-blue-500 text-[10px] font-black uppercase tracking-widest rounded-full">Acessar</span></div><p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">Quem você <b>quer</b> ser? O que precisa deixar pra trás?</p></div>
         </button>
 
         <div className="bg-zinc-50 dark:bg-zinc-900/30 p-6 md:p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 relative overflow-hidden shadow-sm">
           <div className="absolute top-0 right-0 p-8 opacity-5"><Medal size={120} /></div>
           <div className="relative z-10">
             <div className="flex justify-between items-end mb-4">
-              <div><span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Nivel Atual</span><div className="text-4xl font-black text-zinc-900 dark:text-zinc-100">Lvl. {level}</div></div>
+              <div><span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Nível Atual</span><div className="text-4xl font-black text-zinc-900 dark:text-zinc-100">Lvl. {level}</div></div>
               <div className="text-right"><span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">XP Restante</span><div className="text-xl font-black text-zinc-400">{xpRequired - xpProgress} XP</div></div>
             </div>
             <div className="w-full h-4 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden mb-2 shadow-inner"><motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} transition={{ duration: 1, ease: 'easeOut' }} className="h-full bg-gradient-to-r from-emerald-500 to-teal-400" /></div>
@@ -159,15 +168,15 @@ export const ProfileDashboard = () => {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-orange-500/10 border border-orange-500/20 p-5 rounded-3xl flex flex-col justify-between"><Flame size={24} className="text-orange-500 mb-3" /><span className="text-[10px] font-bold uppercase tracking-widest text-orange-600 dark:text-orange-400 mb-1">Ofensiva Global</span><span className="text-3xl font-black text-orange-500">{activeStreak} días</span></div>
+          <div className="bg-orange-500/10 border border-orange-500/20 p-5 rounded-3xl flex flex-col justify-between"><Flame size={24} className="text-orange-500 mb-3" /><span className="text-[10px] font-bold uppercase tracking-widest text-orange-600 dark:text-orange-400 mb-1">Ofensiva Global</span><span className="text-3xl font-black text-orange-500">{activeStreak} dias</span></div>
           <div className="bg-yellow-500/10 border border-yellow-500/20 p-5 rounded-3xl flex flex-col justify-between"><Coins size={24} className="text-yellow-600 dark:text-yellow-500 mb-3" /><span className="text-[10px] font-bold uppercase tracking-widest text-yellow-600 dark:text-yellow-400 mb-1">Ouro Acumulado</span><span className="text-3xl font-black text-yellow-600 dark:text-yellow-500">{gold}</span></div>
           <div className="bg-purple-500/10 border border-purple-500/20 p-5 rounded-3xl flex flex-col justify-between"><Star size={24} className="text-purple-500 mb-3" /><span className="text-[10px] font-bold uppercase tracking-widest text-purple-600 dark:text-purple-400 mb-1">XP Total</span><span className="text-3xl font-black text-purple-500">{xp}</span></div>
-          <div className="bg-blue-500/10 border border-blue-500/20 p-5 rounded-3xl flex flex-col justify-between relative overflow-hidden"><CheckCircle2 size={24} className="text-blue-500 mb-3" /><span className="text-[10px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-1">Concluídas Hoje</span><div className="flex items-baseline gap-2"><span className="text-3xl font-black text-blue-500">{todayTasksCount}</span><span className={`text-xs font-bold flex items-center ${tasksDiff >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{tasksDiff > 0 ? <TrendingUp size={12}/> : tasksDiff < 0 ? <TrendingUp size={12} className="rotate-180"/> : ''} {Math.abs(tasksDiff)} vs ayer</span></div></div>
+          <div className="bg-blue-500/10 border border-blue-500/20 p-5 rounded-3xl flex flex-col justify-between relative overflow-hidden"><CheckCircle2 size={24} className="text-blue-500 mb-3" /><span className="text-[10px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-1">Concluídas Hoje</span><div className="flex items-baseline gap-2"><span className="text-3xl font-black text-blue-500">{todayTasksCount}</span><span className={`text-xs font-bold flex items-center ${tasksDiff >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{tasksDiff > 0 ? <TrendingUp size={12}/> : tasksDiff < 0 ? <TrendingUp size={12} className="rotate-180"/> : ''} {Math.abs(tasksDiff)} vs ontem</span></div></div>
         </div>
 
         <div className="p-5 md:p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 overflow-hidden shadow-sm">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
-            <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500 flex items-center gap-2"><Activity size={16}/> Resumo</h3>
+            <h3 className="font-bold uppercase tracking-widest text-xs text-zinc-500 flex items-center gap-2"><Activity size={16}/> Resumo Analítico</h3>
             <div className="flex p-1 bg-zinc-200 dark:bg-zinc-800/80 rounded-xl w-full md:w-auto">
               <button onClick={() => setGridMode('perfect')} className={`flex-1 md:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${gridMode === 'perfect' ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400'}`}>Dias Perfeitos</button>
               <button onClick={() => setGridMode('habits')} className={`flex-1 md:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${gridMode === 'habits' ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400'}`}>Hábitos</button>
@@ -175,14 +184,14 @@ export const ProfileDashboard = () => {
             </div>
           </div>
           <div className="flex gap-1 md:gap-1.5 overflow-x-auto scrollbar-hide pb-2 justify-end">{generateGlobalGrid()}</div>
-          <div className="flex items-center gap-1 text-[10px] uppercase font-bold tracking-widest text-zinc-400 mt-4 justify-end"><Info size={12}/> Visualize métricas de foco, consistencia ou nível de humor</div>
+          <div className="flex items-center gap-1 text-[10px] uppercase font-bold tracking-widest text-zinc-400 mt-4 justify-end"><Info size={12}/> Visualize métricas de foco, consistência ou nível de humor</div>
         </div>
 
       </div>
       
       <VisionModal isOpen={isVisionOpen} onClose={() => setVisionOpen(false)} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setSettingsOpen(false)} />
-      <GoogleConnectModal isOpen={isGoogleConnectOpen} onClose={() => setGoogleConnectOpen(false)} onSuccess={() => { setGoogleConnectOpen(false); showToast("¡Cuenta conectada con éxito!"); }} />
+      <GoogleConnectModal isOpen={isGoogleConnectOpen} onClose={() => setGoogleConnectOpen(false)} onSuccess={() => { setGoogleConnectOpen(false); showToast("Conta conectada com sucesso!"); }} />
       <ChangelogModal isOpen={isChangelogOpen} onClose={() => setChangelogOpen(false)} />
 
       <ReflectionCreatorModal isOpen={isCreatorOpen} onClose={() => setIsCreatorOpen(false)} reflectionToEdit={reflectionToEdit} />

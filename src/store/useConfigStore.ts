@@ -10,7 +10,9 @@ interface ConfigState {
   isOnboarded: boolean; lastLoginDate: string | null;
   uid: string | null; e2eePin: string | null; isLocalMode: boolean;
   
-  // Modais Globais e de Perfil
+  defaultDaysOff: number[]; // <-- NOVO: 0 = Dom, 1 = Seg, ..., 6 = Sab
+  hasDismissedDayOffWarning: boolean; // <-- NOVO
+
   showExitWarning: boolean;
   isExitModalOpen: boolean;
   isVisionOpen: boolean;
@@ -24,6 +26,9 @@ interface ConfigState {
   setAuth: (uid: string, pin: string) => void; setLocalMode: (isLocal: boolean) => void;
   logout: () => void;
 
+  setDefaultDaysOff: (days: number[]) => void; // <-- NOVO
+  dismissDayOffWarning: () => void; // <-- NOVO
+
   setShowExitWarning: (show: boolean) => void;
   setExitModalOpen: (open: boolean) => void;
   setVisionOpen: (open: boolean) => void;
@@ -36,6 +41,9 @@ export const useConfigStore = create<ConfigState>()(persist((set) => ({
   theme: 'dark-amoled', font: 'sans', userClass: null, userName: '',
   isOnboarded: false, lastLoginDate: null, uid: null, e2eePin: null, isLocalMode: false,
   
+  defaultDaysOff: [],
+  hasDismissedDayOffWarning: false,
+
   showExitWarning: true, isExitModalOpen: false, isVisionOpen: false,
   isSettingsOpen: false, isGoogleConnectOpen: false, isChangelogOpen: false,
   
@@ -45,6 +53,9 @@ export const useConfigStore = create<ConfigState>()(persist((set) => ({
   setAuth: (uid, pin) => set({ uid, e2eePin: pin, isLocalMode: false }),
   setLocalMode: (isLocalMode) => set({ isLocalMode }),
   logout: () => set({ uid: null, e2eePin: null, isOnboarded: false, isLocalMode: false }),
+
+  setDefaultDaysOff: (days) => set({ defaultDaysOff: days }),
+  dismissDayOffWarning: () => set({ hasDismissedDayOffWarning: true }),
 
   setShowExitWarning: (show) => set({ showExitWarning: show }),
   setExitModalOpen: (open) => set({ isExitModalOpen: open }),

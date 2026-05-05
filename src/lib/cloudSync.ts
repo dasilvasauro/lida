@@ -32,6 +32,8 @@ export const syncToCloud = async () => {
       userName: useConfigStore.getState().userName,
       isOnboarded: useConfigStore.getState().isOnboarded,
       lastLoginDate: useConfigStore.getState().lastLoginDate,
+      defaultDaysOff: useConfigStore.getState().defaultDaysOff, // <-- NOVO
+      hasDismissedDayOffWarning: useConfigStore.getState().hasDismissedDayOffWarning, // <-- NOVO
     }), e2eePin),
     updatedAt: timestamp
   };
@@ -45,7 +47,6 @@ export const syncToCloud = async () => {
 
 const applyCloudData = (data: any, pin: string) => {
   try {
-    // Se a atualização da nuvem for mais velha ou igual à nossa ação local, a ignoramos!
     if (!data.updatedAt || data.updatedAt <= lastSyncTime) return 'ignored';
     
     isApplyingCloudData = true;
@@ -62,7 +63,6 @@ const applyCloudData = (data: any, pin: string) => {
     
     lastSyncTime = data.updatedAt;
 
-    // Libera a trava após o React renderizar a tela
     setTimeout(() => { isApplyingCloudData = false; }, 500);
     return 'success';
   } catch (e) {
@@ -81,7 +81,6 @@ export const startCloudListener = (uid: string, pin: string) => {
   if (unsubscribeSnapshot) unsubscribeSnapshot(); 
   
   unsubscribeSnapshot = onSnapshot(doc(db, 'users', uid), (doc) => {
-    // Ignora se a mudança veio de nós mesmos (PendingWrites)
     if (doc.exists() && !doc.metadata.hasPendingWrites) {
       applyCloudData(doc.data(), pin);
     }

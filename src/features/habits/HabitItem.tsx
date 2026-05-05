@@ -4,6 +4,7 @@ import type { Habit } from '../../types';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useEconomyStore } from '../../store/useEconomyStore';
+import { useConfigStore } from '../../store/useConfigStore';
 
 interface HabitItemProps {
   habit: Habit;
@@ -21,6 +22,7 @@ export const HabitItem = ({ habit, logs, modifiers, onLogChange, onApplyModifier
   const goal = habit.goal || 1;
   const inventory = useEconomyStore((state) => state.inventory);
   const useItem = useEconomyStore((state) => state.useItem);
+  const { defaultDaysOff } = useConfigStore();
   
   const last7Days = Array.from({ length: 7 }, (_, i) => {
     const d = subDays(today, 6 - i);
@@ -29,14 +31,29 @@ export const HabitItem = ({ habit, logs, modifiers, onLogChange, onApplyModifier
 
   const calculateStreak = () => {
     let streak = 0; let checkDate = new Date();
-    const tStr = format(checkDate, 'yyyy-MM-dd'); const yStr = format(subDays(checkDate, 1), 'yyyy-MM-dd');
-    const isCompleted = (date: string) => (logs[date] || 0) >= goal || modifiers[date] !== undefined;
+    
+    const isCompleted = (dateStr: string) => (logs[dateStr] || 0) >= goal || modifiers[dateStr] !== undefined;
+    const isDayOff = (dateObj: Date) => defaultDaysOff.includes(dateObj.getDay());
 
-    if (!isCompleted(tStr) && !isCompleted(yStr)) return 0;
-    if (!isCompleted(tStr)) checkDate = subDays(checkDate, 1);
+    const tStr = format(checkDate, 'yyyy-MM-dd'); 
+    const yStr = format(subDays(checkDate, 1), 'yyyy-MM-dd');
 
-    while (isCompleted(format(checkDate, 'yyyy-MM-dd'))) {
-      streak++; checkDate = subDays(checkDate, 1);
+    // Se a ofensiva morreu
+    if (!isCompleted(tStr) && !isDayOff(checkDate) && !isCompleted(yStr) && !isDayOff(subDays(checkDate, 1))) return 0;
+    
+    // Se não completou hoje, e não é folga, começa checando ontem
+    if (!isCompleted(tStr) && !isDayOff(checkDate)) checkDate = subDays(checkDate, 1);
+
+    while (true) {
+      const dateStr = format(checkDate, 'yyyy-MM-dd');
+      if (isCompleted(dateStr)) {
+        streak++;
+      } else if (isDayOff(checkDate)) {
+        // Dia de folga regular: Pula o dia sem quebrar, a ofensiva fica pausada (não incrementa)
+      } else {
+        break; // Quebrou a ofensiva de vez
+      }
+      checkDate = subDays(checkDate, 1);
     }
     return streak;
   };

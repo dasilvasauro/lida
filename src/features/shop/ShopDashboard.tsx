@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Coins, Star, Ticket, Dices, TrendingUp, AlertOctagon, AlertTriangle, Wind, CalendarHeart, Gift, Snowflake, Coffee, Clover, Play, Sparkles } from 'lucide-react';
 import { useEconomyStore } from '../../store/useEconomyStore';
-import { useTaskStore } from '../../store/useTaskStore'; // <-- Adicionado
+import { useTaskStore } from '../../store/useTaskStore'; 
 
 export const ShopDashboard = () => {
   const { level, xp, gold, vouchers, inventory, buyItem, useItem, setBoost, addReward } = useEconomyStore();
-  const { tasks, applyPowerUp } = useTaskStore(); // <-- Conectando Tarefas
+  const { tasks, applyPowerUp } = useTaskStore(); 
   
   const [toastMessage, setToastMessage] = useState<{ msg: string, type: 'success' | 'error' | 'rare' } | null>(null);
   
@@ -28,7 +28,7 @@ export const ShopDashboard = () => {
     const activeTasks = tasks.filter(t => !t.isCompleted);
     if (activeTasks.length === 0) {
       showToast('Nenhuma tarefa ativa para impulsionar!', 'error');
-      return; // Trava o uso do dado se não houver tarefas
+      return; 
     }
 
     if (useItem('magicDice')) {
@@ -39,7 +39,6 @@ export const ShopDashboard = () => {
         
         let targetTask = activeTasks[Math.floor(Math.random() * activeTasks.length)];
         
-        // Se rolou alto, tenta forçar cair numa tarefa importante P0/P1
         if (roll >= 5) {
           const highPriority = activeTasks.filter(t => t.priority === 'P0' || t.priority === 'P1');
           if (highPriority.length > 0) targetTask = highPriority[Math.floor(Math.random() * highPriority.length)];
@@ -48,7 +47,7 @@ export const ShopDashboard = () => {
           showToast(`Tirou um ${roll}. A tarefa "${targetTask.title}" foi impulsionada.`, 'success');
         }
 
-        applyPowerUp(targetTask.id, 'magicDice'); // Aplica na Store
+        applyPowerUp(targetTask.id, 'magicDice'); 
       }, 1500);
     }
   };
@@ -68,7 +67,7 @@ export const ShopDashboard = () => {
 
   const voucherItems = [
     { id: 'freeze', name: 'Congelamento', desc: 'Congela um hábito. A ofensiva não é perdida.', cost: 3, icon: Snowflake },
-    { id: 'dayOff', name: 'Dia de Folga', desc: 'Não precisa completar hábitos hoje.', cost: 7, icon: Coffee },
+    { id: 'dayOff', name: 'Folga Extra', desc: 'Não precisa completar hábitos hoje.', cost: 7, icon: Coffee },
     { id: 'instantLuck', name: 'Sorte Instantânea', desc: 'Ganha Carta de Sorte na hora.', cost: 5, icon: Clover },
   ];
   const goldItems = [
@@ -101,14 +100,13 @@ export const ShopDashboard = () => {
           <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Inventário Rápido</h2>
           <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-4">
             
-            {/* AGORA EXIBINDO OS VOUCHERS TAMBÉM */}
             <div className="min-w-[140px] p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 flex flex-col justify-between">
               <div className="flex items-center gap-2 mb-4 text-cyan-500"><Snowflake size={20} /><span className="font-bold text-sm">Congelamento</span></div>
               <div className="flex justify-between items-end"><span className="font-black text-2xl">{inventory.freeze}</span></div>
             </div>
             
             <div className="min-w-[140px] p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 flex flex-col justify-between">
-              <div className="flex items-center gap-2 mb-4 text-amber-600"><Coffee size={20} /><span className="font-bold text-sm">Dias de Folga</span></div>
+              <div className="flex items-center gap-2 mb-4 text-amber-600"><Coffee size={20} /><span className="font-bold text-sm">Folgas Extras</span></div>
               <div className="flex justify-between items-end"><span className="font-black text-2xl">{inventory.dayOff}</span></div>
             </div>
 

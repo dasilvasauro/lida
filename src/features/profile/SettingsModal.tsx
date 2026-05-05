@@ -9,7 +9,7 @@ import { useVisionStore } from '../../store/useVisionStore';
 import { deleteCloudVault, syncToCloud } from '../../lib/cloudSync';
 
 export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
-  const { theme, font, setTheme, setFont, uid, e2eePin, setChangelogOpen, isLocalMode } = useConfigStore();
+  const { theme, font, setTheme, setFont, uid, e2eePin, setChangelogOpen, isLocalMode, defaultDaysOff, setDefaultDaysOff } = useConfigStore();
   
   const [confirmAction, setConfirmAction] = useState<'logout' | 'wipe' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -27,7 +27,6 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
     window.location.reload();
   };
 
-  // --- LÓGICA DE EXPORTAÇÃO ---
   const handleExport = () => {
     const data = {
       tasks: localStorage.getItem('lida-tasks'),
@@ -46,7 +45,6 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
     URL.revokeObjectURL(url);
   };
 
-  // --- LÓGICA DE IMPORTAÇÃO SEGURA ---
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -61,13 +59,11 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
         if (data.economy) useEconomyStore.setState(JSON.parse(data.economy).state);
         if (data.vision) useVisionStore.setState(JSON.parse(data.vision).state);
         
-        // Cuidado especial com a Configuração: Preserva o Login, PIN e Modo Local atuais!
         if (data.config) {
           const importedConfig = JSON.parse(data.config).state;
           useConfigStore.setState({ ...importedConfig, uid, e2eePin, isLocalMode });
         }
 
-        // Se estiver conectado ao Google, força a nuvem a aceitar o backup na mesma hora
         if (uid && e2eePin && navigator.onLine) {
           await syncToCloud();
         }
@@ -109,7 +105,33 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
               </div>
             </div>
 
-            {/* SEÇÃO DE BACKUP */}
+            {/* SEÇÃO DE DIAS DE FOLGA */}
+            <div className="space-y-4 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+              <div>
+                <span className="text-xs uppercase tracking-widest text-amber-500 font-bold">Dias de Folga Regulares</span>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 font-medium leading-relaxed">
+                  Selecione os dias da semana onde suas ofensivas não serão rompidas, mesmo se você não concluir seus hábitos.
+                </p>
+              </div>
+              <div className="flex justify-between gap-2">
+                 {['D','S','T','Q','Q','S','S'].map((dayStr, i) => {
+                    const isSelected = defaultDaysOff.includes(i);
+                    return (
+                      <button 
+                         key={i} 
+                         onClick={() => {
+                            if (isSelected) setDefaultDaysOff(defaultDaysOff.filter(d => d !== i));
+                            else setDefaultDaysOff([...defaultDaysOff, i]);
+                         }} 
+                         className={`w-10 h-10 rounded-full font-bold transition-all text-sm flex items-center justify-center ${isSelected ? 'bg-amber-500 text-white shadow-md' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
+                      >
+                         {dayStr}
+                      </button>
+                    )
+                 })}
+              </div>
+            </div>
+
             <div className="space-y-3 pt-6 border-t border-zinc-200 dark:border-zinc-800">
               <span className="text-xs uppercase tracking-widest text-emerald-500 font-bold">Backup e Restauração</span>
               <div className="flex gap-3">
@@ -122,12 +144,8 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
                   <Upload size={24} className="mb-2 group-hover:-translate-y-1 transition-transform" />
                   <span className="font-bold text-sm">Importar</span>
                 </button>
-                {/* Input Invisível para abrir arquivo */}
                 <input type="file" accept=".json" ref={fileInputRef} onChange={handleImport} className="hidden" />
               </div>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-2 font-medium leading-relaxed">
-                Guarde seu arquivo `.json` em um local seguro. Caso você importe um backup com sua conta do Google conectada, a nuvem adotará o novo arquivo automaticamente.
-              </p>
             </div>
 
             <div className="space-y-3 pt-6 border-t border-zinc-200 dark:border-zinc-800">
