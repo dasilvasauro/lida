@@ -1,32 +1,39 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, AlertTriangle, Frown, CloudRain, Meh, Smile, Sparkles, Trash2, TrendingUp, Coins, X, Check, ArrowDownUp, Info } from 'lucide-react';
+import { Plus, AlertTriangle, Frown, CloudRain, Meh, Smile, Sparkles, Trash2, TrendingUp, Coins, X, Check, ArrowDownUp, Info, Repeat, CheckCircle2 } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useConfigStore } from '../../store/useConfigStore';
 import { TaskModal } from './TaskModal';
+import { RoutineModal } from './RoutineModal';
 import { TaskItem } from './TaskItem';
 import { RewardToast } from '../../components/ui/RewardToast';
-import type { Task, Mood, Priority } from '../../types';
+import type { Task, Mood, Priority, RoutineTemplate } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
 
 export const TaskDashboard = () => {
   const { userClass, defaultDaysOff, hasDismissedDayOffWarning, dismissDayOffWarning } = useConfigStore();
-  const { tasks, folders, selectedFolderId, setFolderId, addFolder, deleteFolder, toggleTaskCompletion, deleteTask, clearCompletedTasks, selectedFilter, setFilter, dailyMood, setDailyMood } = useTaskStore();
+  const { tasks, folders, routines, selectedFolderId, setFolderId, addFolder, deleteFolder, toggleTaskCompletion, deleteTask, deleteRoutine, clearCompletedTasks, selectedFilter, setFilter, dailyMood, setDailyMood } = useTaskStore();
   const { activeXpBoostUntil, activeGoldBoostUntil, addReward, removeReward } = useEconomyStore();
 
   const isModalOpen = useTaskStore((state) => state.isGlobalModalOpen);
   const setIsModalOpen = useTaskStore((state) => state.setGlobalModalOpen);
+  
+  const isRoutineModalOpen = useTaskStore((state) => state.isRoutineModalOpen);
+  const setRoutineModalOpen = useTaskStore((state) => state.setRoutineModalOpen);
+
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
+  const [routineToEdit, setRoutineToEdit] = useState<RoutineTemplate | null>(null); // <-- NOVO
 
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [isSortedByPriority, setIsSortedByPriority] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const [reward, setReward] = useState<{ xp: number; gold: number; isFailed?: boolean } | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [confirmDialog, setConfirmDialog] = useState<{ type: 'delete' | 'complete' | 'clear_completed'; taskId: string; title: string; subtitle: string } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ type: 'delete' | 'complete' | 'clear_completed' | 'delete_routine'; taskId: string; title: string; subtitle: string } | null>(null);
 
   const isXpBoosted = activeXpBoostUntil && Date.now() < activeXpBoostUntil;
   const isGoldBoosted = activeGoldBoostUntil && Date.now() < activeGoldBoostUntil;
@@ -37,8 +44,25 @@ export const TaskDashboard = () => {
     if (newFolderName.trim()) { addFolder({ id: uuidv4(), name: newFolderName }); setNewFolderName(''); setIsCreatingFolder(false); }
   };
 
+  const handleOpenRoutineForm = () => {
+      if (routines.length >= 5) {
+          showToast('Limite máximo de 5 rotinas atingido.');
+      } else {
+          setRoutineToEdit(null);
+          setRoutineModalOpen(true);
+      }
+      setIsMenuOpen(false);
+  };
+
   const calculateTaskReward = (task: Task) => {
     let baseGold = 15; let baseXp = 45;
+    
+    if (task.type === 'routine') {
+       const itemsCount = task.subtasks?.length || 1;
+       const routineReward = Math.min(200, Math.round(50 + (itemsCount - 1) * 37.5));
+       return { xpAmount: routineReward, goldAmount: routineReward };
+    }
+
     switch (task.priority) { case 'P0': baseGold = 50; baseXp = 150; break; case 'P1': baseGold = 40; baseXp = 100; break; case 'P2': baseGold = 30; baseXp = 75; break; case 'P3': baseGold = 20; baseXp = 50; break; case 'P4': baseGold = 10; baseXp = 25; break; }
     let modusGoldMulti = 1; let modusXpMulti = 1;
     if (userClass === 'multitask') { modusGoldMulti = 1.2; modusXpMulti = 1.2; }
@@ -66,7 +90,7 @@ export const TaskDashboard = () => {
   const requestToggle = (taskId: string) => {
     const task = tasks.find(t => t.id === taskId); if (!task) return;
     if (!task.isCompleted && task.subtasks && task.subtasks.some(st => !st.completed)) {
-      setConfirmDialog({ type: 'complete', taskId, title: 'Concluir com pendências?', subtitle: 'Ainda existem subtarefas não finalizadas. Deseja marcar a tarefa como concluída mesmo assim?' });
+      setConfirmDialog({ type: 'complete', taskId, title: 'Concluir com pendências?', subtitle: 'Ainda existem subtarefas não finalizadas. Deseja marcar como concluída mesmo assim?' });
     } else { executeToggle(taskId); }
   };
 
@@ -76,6 +100,7 @@ export const TaskDashboard = () => {
     if (!confirmDialog) return;
     if (confirmDialog.type === 'complete') executeToggle(confirmDialog.taskId);
     else if (confirmDialog.type === 'delete') { deleteTask(confirmDialog.taskId); showToast('Tarefa excluída com sucesso.'); }
+    else if (confirmDialog.type === 'delete_routine') { deleteRoutine(confirmDialog.taskId); showToast('Rotina excluída com sucesso.'); }
     else if (confirmDialog.type === 'clear_completed') { clearCompletedTasks(); showToast('Tarefas arquivadas com sucesso.'); }
     setConfirmDialog(null);
   };
@@ -115,7 +140,6 @@ export const TaskDashboard = () => {
           </div>
         </header>
 
-        {/* BANNER AVISO DE FOLGA */}
         <AnimatePresence>
           {defaultDaysOff.length === 0 && !hasDismissedDayOffWarning && (
              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
@@ -162,7 +186,27 @@ export const TaskDashboard = () => {
             {filteredTasks.length === 0 ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center text-zinc-500 mt-20">Sem tarefas por enquanto</motion.div>
             ) : (
-              filteredTasks.map((task) => ( <TaskItem key={task.id} task={task} onToggle={requestToggle} onEdit={() => { setTaskToEdit(task); setIsModalOpen(true); }} onDelete={() => requestDelete(task.id)} /> ))
+              filteredTasks.map((task) => ( 
+                <TaskItem 
+                  key={task.id} 
+                  task={task} 
+                  onToggle={requestToggle} 
+                  onEdit={() => { setTaskToEdit(task); setIsModalOpen(true); }} 
+                  onDelete={() => requestDelete(task.id)} 
+                  onEditRoutine={() => {
+                      const routine = routines.find(r => r.id === task.routineTemplateId);
+                      if (routine) {
+                          setRoutineToEdit(routine);
+                          setRoutineModalOpen(true);
+                      }
+                  }}
+                  onDeleteRoutine={() => {
+                      if (task.routineTemplateId) {
+                          setConfirmDialog({ type: 'delete_routine', taskId: task.routineTemplateId, title: 'Excluir Rotina?', subtitle: 'Isso apagará o molde desta rotina permanentemente. Deseja continuar?' });
+                      }
+                  }}
+                /> 
+              ))
             )}
           </AnimatePresence>
 
@@ -176,8 +220,27 @@ export const TaskDashboard = () => {
         </main>
       </div>
 
-      <button onClick={() => { setTaskToEdit(null); setIsModalOpen(true); }} className="fixed bottom-28 right-6 md:right-12 md:bottom-12 p-4 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:scale-105 shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] z-40 flex items-center justify-center"><Plus size={28} strokeWidth={3} /></button>
+      <div className="fixed bottom-28 right-6 md:right-12 md:bottom-12 z-40 flex flex-col items-end gap-3">
+         <AnimatePresence>
+            {isMenuOpen && (
+               <motion.div initial={{ opacity: 0, y: 10, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.9 }} className="flex flex-col items-end gap-3 mb-2 origin-bottom-right">
+                  <button onClick={handleOpenRoutineForm} className="flex items-center gap-3 bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold shadow-xl hover:scale-105 transition-transform shadow-indigo-500/20">
+                     Nova Rotina <Repeat size={18}/>
+                  </button>
+                  <button onClick={() => { setTaskToEdit(null); setIsModalOpen(true); setIsMenuOpen(false); }} className="flex items-center gap-3 bg-zinc-800 text-white dark:bg-zinc-200 dark:text-black px-5 py-3 rounded-xl font-bold shadow-xl hover:scale-105 transition-transform">
+                     Nova Tarefa <CheckCircle2 size={18}/>
+                  </button>
+               </motion.div>
+            )}
+         </AnimatePresence>
+         
+         <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-4 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] flex items-center justify-center transition-transform hover:scale-105">
+            <motion.div animate={{ rotate: isMenuOpen ? 45 : 0 }} transition={{ duration: 0.2 }}><Plus size={28} strokeWidth={3} /></motion.div>
+         </button>
+      </div>
+
       <TaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} taskToEdit={taskToEdit} onSuccess={showToast} />
+      <RoutineModal isOpen={isRoutineModalOpen} onClose={() => setRoutineModalOpen(false)} routineToEdit={routineToEdit} onSuccess={showToast} />
       <RewardToast isVisible={!!reward} xp={reward?.xp || 0} gold={reward?.gold || 0} isFailed={reward?.isFailed} />
 
       <AnimatePresence>
@@ -188,12 +251,12 @@ export const TaskDashboard = () => {
         {confirmDialog && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-zinc-50 dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800">
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${confirmDialog.type === 'delete' || confirmDialog.type === 'clear_completed' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}><AlertTriangle size={24} /></div>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${confirmDialog.type === 'delete' || confirmDialog.type === 'clear_completed' || confirmDialog.type === 'delete_routine' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}><AlertTriangle size={24} /></div>
               <h3 className="text-xl font-bold mb-2 text-zinc-900 dark:text-zinc-100">{confirmDialog.title}</h3>
               <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-8 leading-relaxed">{confirmDialog.subtitle}</p>
               <div className="flex gap-3">
                 <button onClick={() => setConfirmDialog(null)} className="flex-1 py-3 rounded-xl font-bold bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
-                <button onClick={handleConfirmAction} className={`flex-1 py-3 rounded-xl font-bold text-white transition-colors ${confirmDialog.type === 'delete' || confirmDialog.type === 'clear_completed' ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600 text-zinc-900'}`}>Confirmar</button>
+                <button onClick={handleConfirmAction} className={`flex-1 py-3 rounded-xl font-bold text-white transition-colors ${confirmDialog.type === 'delete' || confirmDialog.type === 'clear_completed' || confirmDialog.type === 'delete_routine' ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600 text-zinc-900'}`}>Confirmar</button>
               </div>
             </motion.div>
           </motion.div>

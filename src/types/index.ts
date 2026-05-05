@@ -1,5 +1,5 @@
 export type Priority = 'P0' | 'P1' | 'P2' | 'P3' | 'P4';
-export type TaskType = 'normal' | 'daily_challenge' | 'sprint' | 'time' | 'bonus' | 'surprise';
+export type TaskType = 'normal' | 'daily_challenge' | 'sprint' | 'time' | 'bonus' | 'surprise' | 'routine'; // <-- NOVO TIPO
 export type Mood = 'radiant' | 'happy' | 'normal' | 'annoyed' | 'disappointed';
 
 export interface SubTask {
@@ -13,11 +13,19 @@ export interface Folder {
   name: string;
 }
 
+export interface RoutineTemplate {
+  id: string;
+  title: string;
+  items: string[];
+  weekdays: number[];
+  createdAt: number;
+}
+
 export interface Task {
   id: string;
   title: string;
   description?: string;
-  status?: string; // <-- NOVO CAMPO
+  status?: string; 
   type: TaskType;
   priority: Priority;
   subtasks?: SubTask[];
@@ -25,6 +33,7 @@ export interface Task {
   deadlineDate?: string;
   deadlineTime?: string;
   duration?: number;
+  routineTemplateId?: string; // <-- ID de ligação com a Rotina
   recurrence?: {
     type: 'none' | 'weekly' | 'monthly' | 'yearly';
     weekdays?: number[];
