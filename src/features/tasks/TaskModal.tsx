@@ -24,13 +24,13 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
   const hasActiveSprint = tasks.some(t => t.type === 'sprint' && !t.isCompleted && t.id !== taskToEdit?.id);
   const hasDailyChallengeToday = tasks.some(t => t.type === 'daily_challenge' && format(new Date(t.createdAt), 'yyyy-MM-dd') === todayStr && t.id !== taskToEdit?.id);
 
-  // LÓGICA DE PROGRESSÃO: P0 é liberada no nível 30, P1 é liberada no nível 40
   const isP0Locked = level < 30 && countP0 >= 1 && inventory.extraP0 <= 0;
   const isP1Locked = level < 40 && countP1 >= 2 && inventory.extraP1 <= 0;
-  
   const isBonusLocked = inventory.bonusTask <= 0 && taskToEdit?.type !== 'bonus';
 
+  // Estados Agrupados
   const [title, setTitle] = useState(''); const [description, setDescription] = useState('');
+  const [status, setStatus] = useState(''); // <-- NOVO CAMPO DE STATUS
   const [priority, setPriority] = useState<Priority>('P4'); const [type, setType] = useState<TaskType>('normal');
   const [folderId, setFolderId] = useState<string>('default');
   const [isCreatingFolder, setIsCreatingFolder] = useState(false); const [newFolderName, setNewFolderName] = useState('');
@@ -49,14 +49,14 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
 
   useEffect(() => {
     if (taskToEdit && isOpen) {
-      setTitle(taskToEdit.title); setDescription(taskToEdit.description || '');
+      setTitle(taskToEdit.title); setDescription(taskToEdit.description || ''); setStatus(taskToEdit.status || '');
       setPriority(taskToEdit.priority); setType(taskToEdit.type); setFolderId(taskToEdit.folderId || 'default'); 
       setDeadlineDate(taskToEdit.deadlineDate || ''); setDeadlineTime(taskToEdit.deadlineTime || '');
       if (taskToEdit.type === 'sprint') { setEndDate(taskToEdit.deadlineDate || ''); setStartDate(format(new Date(taskToEdit.createdAt), 'yyyy-MM-dd')); }
       setSubtasks(taskToEdit.subtasks || []); setDuration(taskToEdit.duration || 30);
       setRecurrenceType(taskToEdit.recurrence?.type || 'none'); setSelectedWeekdays(taskToEdit.recurrence?.weekdays || []);
     } else if (isOpen) {
-      setTitle(''); setDescription(''); setPriority('P4'); setType('normal'); setFolderId('default'); 
+      setTitle(''); setDescription(''); setStatus(''); setPriority('P4'); setType('normal'); setFolderId('default'); 
       setDeadlineDate(''); setDeadlineTime(''); setStartDate(''); setEndDate('');
       setSubtasks([]); setDuration(30); setRecurrenceType('none'); setSelectedWeekdays([]);
       setShowDatePicker(false); setShowTimePicker(false); setIsCreatingFolder(false); setNewFolderName('');
@@ -66,9 +66,9 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
 
   const checkIsDirty = () => {
     if (taskToEdit) {
-      return title !== taskToEdit.title || description !== (taskToEdit.description || '') || priority !== taskToEdit.priority || type !== taskToEdit.type || folderId !== (taskToEdit.folderId || 'default');
+      return title !== taskToEdit.title || description !== (taskToEdit.description || '') || status !== (taskToEdit.status || '') || priority !== taskToEdit.priority || type !== taskToEdit.type || folderId !== (taskToEdit.folderId || 'default');
     }
-    return title.trim().length > 0 || description.trim().length > 0 || subtasks.length > 0;
+    return title.trim().length > 0 || description.trim().length > 0 || status.trim().length > 0 || subtasks.length > 0;
   };
 
   const handleRequestClose = () => checkIsDirty() ? setShowConfirmClose(true) : onClose();
@@ -77,7 +77,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
     const handleGlobalClose = () => { if (isOpen) handleRequestClose(); };
     window.addEventListener('request-modal-close', handleGlobalClose);
     return () => window.removeEventListener('request-modal-close', handleGlobalClose);
-  }, [isOpen, title, description, priority, type, folderId, subtasks, taskToEdit]);
+  }, [isOpen, title, description, status, priority, type, folderId, subtasks, taskToEdit]);
 
   const addSubtask = () => { if (!subtaskInput.trim()) return; setSubtasks([...subtasks, { id: uuidv4(), title: subtaskInput, completed: false }]); setSubtaskInput(''); };
   const toggleWeekday = (day: number) => setSelectedWeekdays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
@@ -86,7 +86,6 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
   const handleSave = () => {
     if (!title.trim() || (type === 'sprint' && subtasks.length === 0)) return;
     
-    // Não cobra vouchers extra de P0/P1 se o usuário já tiver desbloqueado elas nos níveis 30 e 40
     if (!taskToEdit) {
       if (type === 'bonus') useItem('bonusTask');
       if (level < 30 && priority === 'P0' && countP0 >= 1) useItem('extraP0');
@@ -95,7 +94,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
 
     const dateObj = deadlineDate ? new Date(deadlineDate + 'T12:00:00') : new Date();
     const taskData: Partial<Task> = {
-      title, description, type, priority, folderId,
+      title, description, status: status.trim() || undefined, type, priority, folderId,
       deadlineDate: type === 'sprint' ? endDate : (deadlineDate || undefined), deadlineTime: deadlineTime || undefined, duration: type === 'time' ? duration : undefined,
       subtasks: subtasks.length > 0 ? subtasks : undefined,
       recurrence: (canBeRecurrent && recurrenceType !== 'none') ? { type: recurrenceType, weekdays: recurrenceType === 'weekly' ? selectedWeekdays : undefined, dayOfMonth: (recurrenceType === 'monthly' || recurrenceType === 'yearly') ? dateObj.getDate() : undefined, monthOfYear: recurrenceType === 'yearly' ? dateObj.getMonth() : undefined } : undefined,
@@ -131,6 +130,11 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
                 <div className="space-y-2">
                   <input type="text" maxLength={120} placeholder="O que precisa ser feito?" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full text-2xl font-bold bg-transparent border-none outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-600" autoFocus />
                   <textarea maxLength={500} placeholder="Detalhes (Opcional)..." value={description} onChange={(e) => setDescription(e.target.value)} className="w-full resize-none bg-transparent border-none outline-none text-sm text-zinc-600 dark:text-zinc-400 h-16" />
+                  
+                  <div className="bg-blue-500/5 border border-blue-500/20 p-3 rounded-xl mt-2">
+                    <span className="text-[10px] uppercase font-bold text-blue-500 tracking-widest mb-1 block">Status (Opcional)</span>
+                    <textarea maxLength={500} placeholder="Ex: Aguardando retorno do cliente..." value={status} onChange={(e) => setStatus(e.target.value)} className="w-full resize-none bg-transparent border-none outline-none text-sm text-blue-900 dark:text-blue-100 placeholder:text-blue-500/50 h-12" />
+                  </div>
                 </div>
 
                 {canBeRecurrent && (
@@ -197,7 +201,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
                   <div className="space-y-3"><span className="text-xs uppercase text-zinc-500 block font-bold flex items-center gap-1"><Timer size={14} /> Duração: <span className="text-blue-500 ml-1">{duration} min</span></span><input type="range" min="5" max="120" step="5" value={duration} onChange={(e) => setDuration(Number(e.target.value))} className="w-full accent-blue-500" /></div>
                 )}
 
-                {type === 'daily_challenge' && (<div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 p-4 rounded-xl text-xs flex items-center gap-3"><Zap size={20} className="shrink-0" /><p>Este desafio é válido apenas para hoje.</p></div>)}
+                {type === 'daily_challenge' && (<div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 p-4 rounded-xl text-xs flex items-center gap-3"><Zap size={20} className="shrink-0" /><p>Este desafio é válido apenas para hoje e expira à meia-noite.</p></div>)}
 
                 <div className="space-y-3 pt-2">
                   <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold">Subtarefas {type === 'sprint' ? '(Obrigatório)' : '(Opcional)'}</span>

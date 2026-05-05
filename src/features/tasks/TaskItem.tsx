@@ -101,6 +101,14 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete }: TaskItemProps) =>
         <h4 className={`text-base font-bold truncate ${task.isCompleted ? 'line-through text-zinc-500' : 'text-zinc-900 dark:text-zinc-100'}`}>{task.title}</h4>
         {task.description && !isExpanded && (<p className="text-sm text-zinc-500 dark:text-zinc-400 truncate mt-0.5 italic">{task.description}</p>)}
 
+        {/* STATUS DA TAREFA */}
+        {task.status && (
+            <div className="mt-2.5 bg-blue-500/5 border border-blue-500/10 text-blue-700 dark:text-blue-400 px-3 py-2 rounded-lg text-xs leading-relaxed">
+                <span className="font-bold uppercase tracking-widest text-[9px] opacity-70 block mb-0.5">Status</span>
+                <span className="line-clamp-3">{task.status}</span>
+            </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-3 mt-3 text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
         <span className="flex items-center gap-1"><Icon size={12} />{task.type.replace('_', ' ')}</span>
         

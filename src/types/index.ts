@@ -17,6 +17,7 @@ export interface Task {
   id: string;
   title: string;
   description?: string;
+  status?: string; // <-- NOVO CAMPO
   type: TaskType;
   priority: Priority;
   subtasks?: SubTask[];
