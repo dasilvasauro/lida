@@ -6,6 +6,7 @@ import { AuthScreen } from './features/auth/AuthScreen';
 import { OnboardingFlow } from './features/onboarding/OnboardingFlow';
 import { TaskDashboard } from './features/tasks/TaskDashboard';
 import { HabitDashboard } from './features/habits/HabitDashboard';
+import { NotesDashboard } from './features/notes/NotesDashboard'; // <-- NOVA IMPORTAÇÃO
 import { ShopDashboard } from './features/shop/ShopDashboard';
 import { ProfileDashboard } from './features/profile/ProfileDashboard';
 import { FocusMode } from './features/tasks/FocusMode';
@@ -29,17 +30,14 @@ function App() {
   const currentTabRef = useRef(currentTab);
   useEffect(() => { currentTabRef.current = currentTab; }, [currentTab]);
 
-  // LÓGICA DE TROCA DE ABAS E FECHAMENTO DE MODAIS GLOBAIS
   const handleTabSwitch = (tab: Tab) => {
     setCurrentTab(tab);
-    // Força o fechamento de qualquer pop-up de configuração ao mudar de área
     config.setVisionOpen(false);
     config.setSettingsOpen(false);
     config.setGoogleConnectOpen(false);
     config.setChangelogOpen(false);
   };
 
-  // INTERCEPTADOR DEL BOTÓN VOLTAR - VERSIÓN HASH (INQUEBRANTABLE EN PWA/SAMSUNG INTERNET)
   useEffect(() => {
     if (window.location.hash !== '#app') {
       window.history.replaceState(null, '', window.location.pathname + '#app');
@@ -54,7 +52,6 @@ function App() {
         c.setExitModalOpen(false);
         didHandle = true;
       } else if (t.isGlobalModalOpen) {
-        // Envia um aviso para o Modal perguntando se ele pode ser fechado (Trava Anti-perda)
         window.dispatchEvent(new CustomEvent('request-modal-close'));
         didHandle = true;
       } else if (t.isFocusModeOpen || c.isVisionOpen || c.isSettingsOpen || c.isGoogleConnectOpen || c.isChangelogOpen) {
@@ -92,15 +89,14 @@ function App() {
     };
   }, []);
 
-  // LÓGICA DE SINCRONIZACIÓN POST-OFFLINE
   useEffect(() => {
     const handleOnline = async () => {
       setIsOffline(false);
       const { uid, e2eePin, isLocalMode } = useConfigStore.getState();
       if (!isLocalMode && uid && e2eePin) {
-        setSyncMessage("Conexión restaurada. Sincronizando datos...");
+        setSyncMessage("Conexão restaurada. Sincronizando dados...");
         await syncToCloud(); 
-        setSyncMessage("¡Nube actualizada con éxito!");
+        setSyncMessage("Nuvem atualizada com sucesso!");
         setTimeout(() => setSyncMessage(null), 4000);
       }
     };
@@ -126,7 +122,7 @@ function App() {
       <AnimatePresence>
         {isOffline && !config.isLocalMode && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-amber-500 text-white dark:bg-amber-600 font-bold text-xs py-2 px-4 flex justify-center items-center gap-2 z-[999] relative">
-            <WifiOff size={14} /> Estás desconectado. Tus acciones se guardarán localmente.
+            <WifiOff size={14} /> Você está offline. Suas ações serão salvas localmente.
           </motion.div>
         )}
         
@@ -148,6 +144,7 @@ function App() {
           <motion.div key="dashboard" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }} className="relative min-h-screen pb-24">
             {currentTab === 'tasks' && <TaskDashboard />}
             {currentTab === 'habits' && <HabitDashboard />}
+            {currentTab === 'notes' && <NotesDashboard />} {/* <--- NOVA ROTA RENDERIZADA AQUI */}
             {currentTab === 'shop' && <ShopDashboard />}
             {currentTab === 'profile' && <ProfileDashboard />}
             {!tasks.isGlobalModalOpen && !tasks.isFocusModeOpen && <Navbar currentTab={currentTab} setCurrentTab={handleTabSwitch} />}
@@ -156,26 +153,25 @@ function App() {
         )}
       </AnimatePresence>
 
-      {/* MODAL DE SALIDA DE LA APP */}
       <AnimatePresence>
         {config.isExitModalOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1000] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 text-center">
               <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4"><LogOut size={32} className="ml-1" /></div>
-              <h3 className="text-xl font-black mb-2 dark:text-white">¿Salir de Lida?</h3>
-              <p className="text-zinc-500 dark:text-zinc-400 mb-6 text-sm">¿Deseas cerrar la aplicación?</p>
+              <h3 className="text-xl font-black mb-2 dark:text-white">Sair do Lida?</h3>
+              <p className="text-zinc-500 dark:text-zinc-400 mb-6 text-sm">Deseja fechar o aplicativo?</p>
               
               <label className="flex items-center justify-center gap-3 mb-6 cursor-pointer group">
                 <div className="relative flex items-center justify-center">
                   <input type="checkbox" className="peer appearance-none w-5 h-5 rounded border-2 border-zinc-300 dark:border-zinc-700 checked:bg-blue-500 checked:border-blue-500 transition-colors cursor-pointer" onChange={(e) => config.setShowExitWarning(!e.target.checked)} />
                   <Check size={14} strokeWidth={4} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" />
                 </div>
-                <span className="text-sm font-bold text-zinc-600 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">No volver a preguntar</span>
+                <span className="text-sm font-bold text-zinc-600 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">Não perguntar novamente</span>
               </label>
 
               <div className="flex gap-3">
                 <button onClick={() => config.setExitModalOpen(false)} className="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
-                <button onClick={() => { config.setExitModalOpen(false); window.dispatchEvent(new CustomEvent('force-app-exit')); }} className="flex-1 p-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-colors">Salir</button>
+                <button onClick={() => { config.setExitModalOpen(false); window.dispatchEvent(new CustomEvent('force-app-exit')); }} className="flex-1 p-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-colors">Sair</button>
               </div>
             </motion.div>
           </motion.div>

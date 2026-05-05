@@ -1,7 +1,7 @@
 export type Priority = 'P0' | 'P1' | 'P2' | 'P3' | 'P4';
 export type TaskType = 'normal' | 'daily_challenge' | 'sprint' | 'time' | 'bonus' | 'surprise' | 'routine';
 export type Mood = 'radiant' | 'happy' | 'normal' | 'annoyed' | 'disappointed';
-export type ItemColor = 'blue' | 'emerald' | 'amber' | 'rose' | 'purple' | 'cyan' | 'indigo' | 'zinc'; // <-- Centralizado para uso geral
+export type ItemColor = 'blue' | 'emerald' | 'amber' | 'rose' | 'purple' | 'cyan' | 'indigo' | 'zinc'; 
 
 export interface SubTask {
   id: string;
@@ -19,7 +19,7 @@ export interface RoutineTemplate {
   title: string;
   items: string[];
   weekdays: number[];
-  color: ItemColor; // <-- NOVO: Cor da Rotina
+  color: ItemColor;
   createdAt: number;
 }
 
@@ -30,7 +30,7 @@ export interface Task {
   status?: string; 
   type: TaskType;
   priority: Priority;
-  color?: ItemColor; // <-- NOVO: A tarefa vai herdar a cor da rotina
+  color?: ItemColor; 
   subtasks?: SubTask[];
   createdAt: number;
   deadlineDate?: string;
@@ -86,4 +86,32 @@ export interface Reflection {
   color: ReflectionColor;
   cards: string[];
   createdAt: number;
+}
+
+// === NOVAS TIPAGENS DAS NOTAS ===
+
+export type NoteFont = 'sans' | 'serif' | 'handwriting';
+export type NoteFormat = 'richtext' | 'markdown';
+
+export interface Notebook {
+  id: string;
+  name: string;
+  color: ItemColor;
+  isLocked: boolean;
+  password?: string;
+  createdAt: number;
+}
+
+export interface Note {
+  id: string;
+  notebookId: string;
+  title: string;
+  content: string;
+  format: NoteFormat;
+  font: NoteFont;
+  hasLines: boolean;
+  isLocked: boolean;
+  password?: string;
+  createdAt: number;
+  updatedAt: number;
 }

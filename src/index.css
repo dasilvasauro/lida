@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Architects+Daughter&display=swap');
 @import "tailwindcss";
 @custom-variant dark (&:is(.dark *));
 
@@ -28,6 +29,30 @@
 }
 .dark ::-webkit-scrollbar-thumb:hover {
     background-color: #3f3f46; 
+}
+
+/* === Módulo de Notas Rápidas === */
+.font-handwriting {
+    font-family: 'Architects Daughter', cursive;
+}
+
+.bg-lined-paper {
+    background-image: repeating-linear-gradient(
+        transparent,
+        transparent 31px,
+        rgba(0, 0, 0, 0.06) 31px,
+        rgba(0, 0, 0, 0.06) 32px
+    );
+    background-attachment: local;
+}
+
+.dark .bg-lined-paper {
+    background-image: repeating-linear-gradient(
+        transparent,
+        transparent 31px,
+        rgba(255, 255, 255, 0.04) 31px,
+        rgba(255, 255, 255, 0.04) 32px
+    );
 }
 
 /* =======================================

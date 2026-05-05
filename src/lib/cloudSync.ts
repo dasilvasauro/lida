@@ -6,6 +6,7 @@ import { useEconomyStore } from '../store/useEconomyStore';
 import { useVisionStore } from '../store/useVisionStore';
 import { useConfigStore } from '../store/useConfigStore';
 import { useReflectionStore } from '../store/useReflectionStore';
+import { useNoteStore } from '../store/useNoteStore'; // <-- NOVO
 
 let unsubscribeSnapshot: (() => void) | null = null;
 let lastSyncTime = 0; 
@@ -25,6 +26,7 @@ export const syncToCloud = async () => {
     economy: encryptData(JSON.stringify(useEconomyStore.getState()), e2eePin),
     vision: encryptData(JSON.stringify(useVisionStore.getState()), e2eePin),
     reflections: encryptData(JSON.stringify(useReflectionStore.getState()), e2eePin),
+    notes: encryptData(JSON.stringify(useNoteStore.getState()), e2eePin), // <-- NOVO
     config: encryptData(JSON.stringify({
       theme: useConfigStore.getState().theme,
       font: useConfigStore.getState().font,
@@ -32,8 +34,8 @@ export const syncToCloud = async () => {
       userName: useConfigStore.getState().userName,
       isOnboarded: useConfigStore.getState().isOnboarded,
       lastLoginDate: useConfigStore.getState().lastLoginDate,
-      defaultDaysOff: useConfigStore.getState().defaultDaysOff, // <-- NOVO
-      hasDismissedDayOffWarning: useConfigStore.getState().hasDismissedDayOffWarning, // <-- NOVO
+      defaultDaysOff: useConfigStore.getState().defaultDaysOff, 
+      hasDismissedDayOffWarning: useConfigStore.getState().hasDismissedDayOffWarning, 
     }), e2eePin),
     updatedAt: timestamp
   };
@@ -56,6 +58,8 @@ const applyCloudData = (data: any, pin: string) => {
     if (data.economy) useEconomyStore.setState(JSON.parse(decryptData(data.economy, pin)));
     if (data.vision) useVisionStore.setState(JSON.parse(decryptData(data.vision, pin)));
     if (data.reflections) useReflectionStore.setState(JSON.parse(decryptData(data.reflections, pin)));
+    if (data.notes) useNoteStore.setState(JSON.parse(decryptData(data.notes, pin))); // <-- NOVO
+    
     if (data.config) {
       const conf = JSON.parse(decryptData(data.config, pin));
       useConfigStore.setState(conf);
@@ -113,9 +117,10 @@ export const setupAutoSync = () => {
   const unsub4 = useVisionStore.subscribe(handleStoreChange);
   const unsub5 = useConfigStore.subscribe(handleStoreChange);
   const unsub6 = useReflectionStore.subscribe(handleStoreChange);
+  const unsub7 = useNoteStore.subscribe(handleStoreChange); // <-- NOVO
 
   return () => {
-    unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6();
+    unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); unsub7();
   };
 };
 
