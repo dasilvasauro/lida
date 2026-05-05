@@ -10,7 +10,7 @@ import { deleteCloudVault, syncToCloud } from '../../lib/cloudSync';
 
 export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const { theme, font, setTheme, setFont, uid, e2eePin, setChangelogOpen, isLocalMode, defaultDaysOff, setDefaultDaysOff } = useConfigStore();
-  const { level } = useEconomyStore(); // <-- Pegando o nível para os bloqueios
+  const { level } = useEconomyStore();
   
   const [confirmAction, setConfirmAction] = useState<'logout' | 'wipe' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,7 +102,8 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
             {/* SEÇÃO DE TEMAS DESBLOQUEÁVEIS */}
             <div className="space-y-4">
               <span className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Estética Visual</span>
-              <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2 px-1">
+              {/* O py-3 e px-2 abaixo corrigem o corte do scale-110 */}
+              <div className="flex gap-4 overflow-x-auto scrollbar-hide py-3 px-2">
                 {themesList.map(t => {
                   const isUnlocked = level >= t.req;
                   const isSelected = theme === t.id;
