@@ -248,7 +248,7 @@ export const NotesDashboard = () => {
                     <div key={note.id} className="relative group">
                       <button onClick={() => handleOpenNote(note)} className={`w-full p-5 rounded-2xl border text-left transition-all hover:border-current shadow-sm ${colorStyles[activeNotebook.color].note}`}>
                         <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-bold text-lg text-zinc-900 dark:text-zinc-100 line-clamp-1">{isLocked ? 'Nota Protegida' : (note.title || 'Sem Título')}</h4>
+                          <h4 className="font-bold text-lg text-zinc-900 dark:text-zinc-100 line-clamp-1">{note.title || 'Sem Título'}</h4>
                           {note.isLocked && <Lock size={14} className="text-amber-500 shrink-0 mt-1" />}
                         </div>
                         <p className="text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2 min-h-[2.5rem]">
