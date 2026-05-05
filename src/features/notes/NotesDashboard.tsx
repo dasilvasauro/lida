@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, List, ListOrdered, FileText, Trash2 } from 'lucide-react';
+import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, List, ListOrdered, FileText, Trash2, Save, Check } from 'lucide-react';
 import { useNoteStore } from '../../store/useNoteStore';
 import type { Notebook, Note, ItemColor, NoteFont, NoteFormat } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
@@ -40,6 +40,7 @@ export const NotesDashboard = () => {
   const [noteFormat, setNoteFormat] = useState<NoteFormat>('richtext');
   const [noteFont, setNoteFont] = useState<NoteFont>('sans');
   const [noteLines, setNoteLines] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle'); // <-- FEEDBACK DE SALVAMENTO
   const editorRef = useRef<HTMLDivElement>(null);
 
   // --- NAVEGAÇÃO E FILTROS ---
@@ -89,9 +90,15 @@ export const NotesDashboard = () => {
     if (!activeNote) return;
     const currentHtml = noteFormat === 'richtext' && editorRef.current ? editorRef.current.innerHTML : noteContent;
     if (!noteTitle.trim() && !currentHtml.trim()) {
-      deleteNote(activeNote.id); return; // Deleta nota vazia
+      deleteNote(activeNote.id); return; 
     }
     updateNote(activeNote.id, { title: noteTitle, content: currentHtml, format: noteFormat, font: noteFont, hasLines: noteLines });
+  };
+
+  const handleManualSave = () => {
+    saveNote();
+    setSaveStatus('saved');
+    setTimeout(() => setSaveStatus('idle'), 2000);
   };
 
   // Autosalvar ao desmontar
@@ -120,12 +127,12 @@ export const NotesDashboard = () => {
     } else if (type === 'set_nb_lock') {
       if (passInput.length < 4) { setPassError('Mínimo de 4 caracteres.'); return; }
       updateNotebook(targetId, { isLocked: true, password: passInput });
-      unlockNotebook(targetId, passInput); // Auto-desbloqueia ao criar
+      unlockNotebook(targetId, passInput); 
       setPasswordModal(null); setPassInput('');
     } else if (type === 'set_note_lock') {
       if (passInput.length < 4) { setPassError('Mínimo de 4 caracteres.'); return; }
       updateNote(targetId, { isLocked: true, password: passInput });
-      unlockNote(targetId, passInput); // Auto-desbloqueia ao criar
+      unlockNote(targetId, passInput); 
       setPasswordModal(null); setPassInput('');
     }
   };
@@ -183,7 +190,6 @@ export const NotesDashboard = () => {
                       <span className="text-[10px] uppercase tracking-widest opacity-70 font-bold">{notes.filter(n => n.notebookId === nb.id).length} notas</span>
                     </div>
                   </button>
-                  {/* Menu Contextual do Caderno (Aparece no hover no Desktop, ou fixo no topo direito) */}
                   <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {!isLocked && (
                       <>
@@ -264,6 +270,14 @@ export const NotesDashboard = () => {
                </div>
 
                <div className="flex items-center gap-1 pr-2">
+                 {/* NOVO: Botão de Salvar Manual */}
+                 <button onClick={handleManualSave} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${saveStatus === 'saved' ? 'bg-emerald-500 text-white' : 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black hover:opacity-90'}`}>
+                   {saveStatus === 'saved' ? <Check size={14} /> : <Save size={14} />}
+                   <span className="hidden sm:inline">{saveStatus === 'saved' ? 'Salvo' : 'Salvar'}</span>
+                 </button>
+
+                 <div className="w-px h-6 bg-zinc-300 dark:bg-zinc-700 mx-1" />
+
                  {/* Lined Paper Toggle */}
                  <button onClick={() => setNoteLines(!noteLines)} className={`p-2 rounded-lg transition-colors ${noteLines ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} title="Pautas"><AlignLeft size={18}/></button>
                  
