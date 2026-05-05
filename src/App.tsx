@@ -29,6 +29,16 @@ function App() {
   const currentTabRef = useRef(currentTab);
   useEffect(() => { currentTabRef.current = currentTab; }, [currentTab]);
 
+  // LÓGICA DE TROCA DE ABAS E FECHAMENTO DE MODAIS GLOBAIS
+  const handleTabSwitch = (tab: Tab) => {
+    setCurrentTab(tab);
+    // Força o fechamento de qualquer pop-up de configuração ao mudar de área
+    config.setVisionOpen(false);
+    config.setSettingsOpen(false);
+    config.setGoogleConnectOpen(false);
+    config.setChangelogOpen(false);
+  };
+
   // INTERCEPTADOR DEL BOTÓN VOLTAR - VERSIÓN HASH (INQUEBRANTABLE EN PWA/SAMSUNG INTERNET)
   useEffect(() => {
     if (window.location.hash !== '#app') {
@@ -43,8 +53,11 @@ function App() {
       if (c.isExitModalOpen) {
         c.setExitModalOpen(false);
         didHandle = true;
-      } else if (t.isGlobalModalOpen || t.isFocusModeOpen || c.isVisionOpen || c.isSettingsOpen || c.isGoogleConnectOpen || c.isChangelogOpen) {
-        t.setGlobalModalOpen(false);
+      } else if (t.isGlobalModalOpen) {
+        // Envia um aviso para o Modal perguntando se ele pode ser fechado (Trava Anti-perda)
+        window.dispatchEvent(new CustomEvent('request-modal-close'));
+        didHandle = true;
+      } else if (t.isFocusModeOpen || c.isVisionOpen || c.isSettingsOpen || c.isGoogleConnectOpen || c.isChangelogOpen) {
         t.toggleFocusMode(false);
         c.setVisionOpen(false);
         c.setSettingsOpen(false);
@@ -137,7 +150,7 @@ function App() {
             {currentTab === 'habits' && <HabitDashboard />}
             {currentTab === 'shop' && <ShopDashboard />}
             {currentTab === 'profile' && <ProfileDashboard />}
-            {!tasks.isGlobalModalOpen && !tasks.isFocusModeOpen && <Navbar currentTab={currentTab} setCurrentTab={setCurrentTab} />}
+            {!tasks.isGlobalModalOpen && !tasks.isFocusModeOpen && <Navbar currentTab={currentTab} setCurrentTab={handleTabSwitch} />}
             <FocusMode />
           </motion.div>
         )}
