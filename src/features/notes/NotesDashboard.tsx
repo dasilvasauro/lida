@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, Strikethrough, Link as LinkIcon, Code, List, ListOrdered, FileText, Trash2, Check, Eye, PenLine, Maximize2, Minimize2 } from 'lucide-react';
+import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, Strikethrough, Link as LinkIcon, Code, List, ListOrdered, FileText, Trash2, Save, Check, Eye, PenLine, Maximize2, Minimize2 } from 'lucide-react';
 import { useNoteStore } from '../../store/useNoteStore';
 import type { Notebook, Note, ItemColor, NoteFont, NoteFormat } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
@@ -72,24 +72,15 @@ export const NotesDashboard = () => {
     if (note.isLocked && !unlockedNotes.includes(note.id)) {
       setPasswordModal({ isOpen: true, type: 'unlock_note', targetId: note.id });
     } else {
-      setActiveNote(note); 
-      setNoteTitle(note.title); 
-      setNoteContent(note.content); 
-      setNoteFormat(note.format); 
-      setNoteFont(note.font); 
-      setNoteLines(note.hasLines); 
-      setIsEditing(false); 
-      setIsFullscreen(false); 
-      setView('editor');
+      setActiveNote(note); setNoteTitle(note.title); setNoteContent(note.content); setNoteFormat(note.format); setNoteFont(note.font); setNoteLines(note.hasLines); 
+      setIsEditing(false); setIsFullscreen(false); setView('editor');
     }
   };
 
   const handleBack = () => {
     if (view === 'editor') {
-      saveNote(); 
-      setActiveNote(null); 
-      setView('notes'); 
-      setIsFullscreen(false);
+      saveNote(true); // isClosing = true (aqui ele permite deletar se estiver vazio)
+      setActiveNote(null); setView('notes'); setIsFullscreen(false);
     } else if (view === 'notes') {
       setActiveNotebook(null); setView('notebooks'); setSearch('');
     }
@@ -109,40 +100,40 @@ export const NotesDashboard = () => {
     setIsEditing(true); setIsFullscreen(false); setView('editor');
   };
 
-  // Motor de Salvamento Reforçado (Sempre extrai do DOM caso seja Rich Text)
-  const saveNote = () => {
+  // LÓGICA DE SALVAMENTO CORRIGIDA
+  const saveNote = (isClosing = false) => {
     if (!activeNote) return;
     const currentHtml = noteFormat === 'richtext' && editorRef.current ? editorRef.current.innerHTML : noteContent;
     
-    if (!noteTitle.trim() && !currentHtml.trim()) { 
+    const isEmpty = !noteTitle.trim() && (!currentHtml.trim() || currentHtml === '<br>' || currentHtml === '<div><br></div>');
+
+    // A nota SOMENTE é deletada se estiver vazia E o usuário estiver saindo dela
+    if (isClosing && isEmpty) { 
         deleteNote(activeNote.id); 
         return; 
     }
     
-    updateNote(activeNote.id, { 
-        title: noteTitle, 
-        content: currentHtml, 
-        format: noteFormat, 
-        font: noteFont, 
-        hasLines: noteLines 
-    });
+    updateNote(activeNote.id, { title: noteTitle, content: currentHtml, format: noteFormat, font: noteFont, hasLines: noteLines });
   };
 
-  // AUTOSAVE INTELIGENTE (Debounce)
+  // AUTOSAVE INTELIGENTE
   useEffect(() => {
-    if (view !== 'editor' || !activeNote) return;
-    
+    if (view !== 'editor' || !activeNote || !isEditing) return;
     setSaveStatus('saving');
     const timer = setTimeout(() => {
-      saveNote();
+      saveNote(false); // isClosing = false (apenas salva, nunca deleta pelo autosave)
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
     }, 1000);
-    
     return () => clearTimeout(timer);
-  }, [noteTitle, noteContent, noteFormat, noteFont, noteLines, activeNote?.id]);
+  }, [noteTitle, noteContent, noteFormat, noteFont, noteLines, isEditing, activeNote?.id]);
 
-  // Sincronização inicial do Rich Text
+  const handleManualSave = () => {
+    saveNote(false);
+    setSaveStatus('saved');
+    setTimeout(() => setSaveStatus('idle'), 2000);
+  };
+
   useEffect(() => {
     if (view === 'editor' && noteFormat === 'richtext' && editorRef.current) {
       if (editorRef.current.innerHTML !== noteContent) {
@@ -312,6 +303,9 @@ export const NotesDashboard = () => {
                           <div className="w-px h-5 bg-current opacity-20" />
                           <h4 className="text-xs font-black uppercase tracking-widest max-w-[120px] truncate">{activeNote.title || 'Nota'}</h4>
                           <div className="w-px h-5 bg-current opacity-20" />
+                          <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-colors ${isEditing ? 'bg-blue-500 text-white' : 'bg-transparent border border-current opacity-70'}`}>
+                             {isEditing ? <Eye size={12}/> : <PenLine size={12}/>} {isEditing ? 'Visualizar' : 'Editar'}
+                          </button>
                           <button onClick={() => setIsFullscreen(false)} className="p-1 hover:opacity-70" title="Sair da Tela Cheia"><Minimize2 size={20}/></button>
                       </motion.div>
                   )}
@@ -365,7 +359,7 @@ export const NotesDashboard = () => {
                        <textarea value={noteContent} onChange={(e) => setNoteContent(e.target.value)} placeholder="Escreva aqui em Markdown..." className={`w-full min-h-full bg-transparent outline-none resize-none leading-relaxed text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
                     )
                   ) : (
-                    <div ref={editorRef} contentEditable={isEditing} suppressContentEditableWarning onInput={() => { if(editorRef.current) setNoteContent(editorRef.current.innerHTML); }} onBlur={saveNote} className={`w-full min-h-full bg-transparent outline-none text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
+                    <div ref={editorRef} contentEditable={isEditing} suppressContentEditableWarning onInput={() => { if(editorRef.current) setNoteContent(editorRef.current.innerHTML); }} className={`w-full min-h-full bg-transparent outline-none text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
                   )}
                   {isEditing && noteContent === '' && (
                     <div className="absolute top-0 left-8 pointer-events-none text-zinc-300 dark:text-zinc-700 font-medium">Comece a escrever...</div>
