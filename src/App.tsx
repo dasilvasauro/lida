@@ -6,7 +6,7 @@ import { AuthScreen } from './features/auth/AuthScreen';
 import { OnboardingFlow } from './features/onboarding/OnboardingFlow';
 import { TaskDashboard } from './features/tasks/TaskDashboard';
 import { HabitDashboard } from './features/habits/HabitDashboard';
-import { NotesDashboard } from './features/notes/NotesDashboard'; // <-- NOVA IMPORTAÇÃO
+import { NotesDashboard } from './features/notes/NotesDashboard';
 import { ShopDashboard } from './features/shop/ShopDashboard';
 import { ProfileDashboard } from './features/profile/ProfileDashboard';
 import { FocusMode } from './features/tasks/FocusMode';
@@ -51,7 +51,7 @@ function App() {
       if (c.isExitModalOpen) {
         c.setExitModalOpen(false);
         didHandle = true;
-      } else if (t.isGlobalModalOpen) {
+      } else if (t.isGlobalModalOpen || t.isRoutineModalOpen) { // <-- CORREÇÃO AQUI
         window.dispatchEvent(new CustomEvent('request-modal-close'));
         didHandle = true;
       } else if (t.isFocusModeOpen || c.isVisionOpen || c.isSettingsOpen || c.isGoogleConnectOpen || c.isChangelogOpen) {
@@ -144,10 +144,15 @@ function App() {
           <motion.div key="dashboard" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }} className="relative min-h-screen pb-24">
             {currentTab === 'tasks' && <TaskDashboard />}
             {currentTab === 'habits' && <HabitDashboard />}
-            {currentTab === 'notes' && <NotesDashboard />} {/* <--- NOVA ROTA RENDERIZADA AQUI */}
+            {currentTab === 'notes' && <NotesDashboard />}
             {currentTab === 'shop' && <ShopDashboard />}
             {currentTab === 'profile' && <ProfileDashboard />}
-            {!tasks.isGlobalModalOpen && !tasks.isFocusModeOpen && <Navbar currentTab={currentTab} setCurrentTab={handleTabSwitch} />}
+            
+            {/* CORREÇÃO AQUI: Navbar agora se esconde também quando isRoutineModalOpen é true */}
+            {!tasks.isGlobalModalOpen && !tasks.isRoutineModalOpen && !tasks.isFocusModeOpen && (
+              <Navbar currentTab={currentTab} setCurrentTab={handleTabSwitch} />
+            )}
+            
             <FocusMode />
           </motion.div>
         )}
