@@ -111,7 +111,7 @@ export const useTaskStore = create<TaskState>()(
         if (routine.weekdays.includes(dayOfWeek)) {
             newTasks.push({
                 id: uuidv4(), title: routine.title, type: 'routine', priority: 'P4',
-                color: routine.color, // <-- COR
+                color: routine.color,
                 folderId: 'default', createdAt: Date.now(), deadlineDate: todayStr, isCompleted: false,
                 subtasks: routine.items.map(title => ({ id: uuidv4(), title, completed: false })),
                 routineTemplateId: routine.id
@@ -182,6 +182,19 @@ export const useTaskStore = create<TaskState>()(
             if (createdAtStr < todayStr) { newTasks[i] = { ...t, isFailed: true }; changed = true; }
           }
 
+          // LÓGICA DE ROTINAS NO VIRAR DO DIA
+          if (t.type === 'routine' && t.deadlineDate && t.deadlineDate < todayStr && !t.isArchived) {
+            if (t.isCompleted) {
+              // Arquiva rotinas completas de dias anteriores
+              newTasks[i] = { ...t, isArchived: true };
+              changed = true;
+            } else {
+              // Puxa as rotinas incompletas para o dia atual e reseta as subtarefas
+              newTasks[i] = { ...t, deadlineDate: todayStr, subtasks: t.subtasks?.map(st => ({ ...st, completed: false })) };
+              changed = true;
+            }
+          }
+
           if (t.isCompleted && t.recurrence && t.recurrence.type !== 'none' && !t.nextRecurrenceGenerated) {
             const completedDateStr = t.completedAt ? format(new Date(t.completedAt), 'yyyy-MM-dd') : '';
             if (completedDateStr && completedDateStr < todayStr) {
@@ -204,11 +217,11 @@ export const useTaskStore = create<TaskState>()(
         const currentDayOfWeek = new Date(todayStr + 'T12:00:00').getDay();
         routines.forEach(routine => {
             if (routine.weekdays.includes(currentDayOfWeek)) {
-                const exists = newTasks.some(t => t.routineTemplateId === routine.id && t.deadlineDate === todayStr);
+                const exists = newTasks.some(t => t.routineTemplateId === routine.id && t.deadlineDate === todayStr && !t.isArchived);
                 if (!exists) {
                     newTasks.push({
                         id: uuidv4(), title: routine.title, type: 'routine', priority: 'P4',
-                        color: routine.color, // <-- COR
+                        color: routine.color,
                         folderId: 'default', createdAt: Date.now(), deadlineDate: todayStr, isCompleted: false,
                         subtasks: routine.items.map(title => ({ id: uuidv4(), title, completed: false })),
                         routineTemplateId: routine.id

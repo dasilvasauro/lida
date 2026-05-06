@@ -18,7 +18,7 @@ export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: Rout
   const [title, setTitle] = useState('');
   const [items, setItems] = useState<string[]>(['']);
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([1, 2, 3, 4, 5]); 
-  const [color, setColor] = useState<ItemColor>('indigo'); // <-- NOVO ESTADO
+  const [color, setColor] = useState<ItemColor>('indigo'); 
   
   const [showConfirmClose, setShowConfirmClose] = useState(false);
 
@@ -108,7 +108,6 @@ export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: Rout
                   <input type="text" maxLength={120} placeholder="Nome da Rotina (Ex: Manhã Focada)" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full text-2xl font-bold bg-transparent border-none outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-600" autoFocus />
                 </div>
 
-                {/* SELETOR DE COR */}
                 <div>
                   <span className="text-xs font-bold uppercase text-zinc-500 mb-3 block">Cor da Rotina</span>
                   <div className="flex gap-2">
@@ -156,7 +155,8 @@ export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: Rout
                 </div>
               </div>
 
-              <div className="p-6 bg-zinc-100 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800">
+              {/* CORREÇÃO DO PADDING INFERIOR PARA NÃO BATER NA NAVBAR */}
+              <div className="p-6 pb-28 md:pb-6 bg-zinc-100 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800">
                 <button onClick={handleSave} disabled={!title.trim() || items.filter(i => i.trim().length > 0).length === 0 || selectedWeekdays.length === 0} className="w-full py-4 rounded-xl bg-indigo-600 text-white font-bold text-lg disabled:opacity-50 transition-all hover:bg-indigo-500 shadow-lg shadow-indigo-600/20">
                   {routineToEdit ? 'Salvar Alterações' : 'Forjar Rotina'}
                 </button>
