@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, Strikethrough, Link as LinkIcon, Code, List, ListOrdered, FileText, Trash2, Save, Check, Eye, PenLine, Maximize2, Minimize2 } from 'lucide-react';
+import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, Strikethrough, Link as LinkIcon, Code, List, ListOrdered, FileText, Trash2, Check, Eye, PenLine, Maximize2, Minimize2 } from 'lucide-react';
 import { useNoteStore } from '../../store/useNoteStore';
 import type { Notebook, Note, ItemColor, NoteFont, NoteFormat } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
@@ -127,12 +127,6 @@ export const NotesDashboard = () => {
     }, 1000);
     return () => clearTimeout(timer);
   }, [noteTitle, noteContent, noteFormat, noteFont, noteLines, isEditing, activeNote?.id]);
-
-  const handleManualSave = () => {
-    saveNote(false);
-    setSaveStatus('saved');
-    setTimeout(() => setSaveStatus('idle'), 2000);
-  };
 
   useEffect(() => {
     if (view === 'editor' && noteFormat === 'richtext' && editorRef.current) {
