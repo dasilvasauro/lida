@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, Strikethrough, Link as LinkIcon, Code, List, ListOrdered, FileText, Trash2, Check, Eye, PenLine, Maximize2, Minimize2 } from 'lucide-react';
+import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, Strikethrough, Link as LinkIcon, Code, List, ListOrdered, FileText, Trash2, Save, Check, Eye, PenLine, Maximize2, Minimize2 } from 'lucide-react';
 import { useNoteStore } from '../../store/useNoteStore';
 import type { Notebook, Note, ItemColor, NoteFont, NoteFormat } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
@@ -72,14 +72,21 @@ export const NotesDashboard = () => {
     if (note.isLocked && !unlockedNotes.includes(note.id)) {
       setPasswordModal({ isOpen: true, type: 'unlock_note', targetId: note.id });
     } else {
-      setActiveNote(note); setNoteTitle(note.title); setNoteContent(note.content); setNoteFormat(note.format); setNoteFont(note.font); setNoteLines(note.hasLines); 
-      setIsEditing(false); setIsFullscreen(false); setView('editor');
+      setActiveNote(note); 
+      setNoteTitle(note.title); 
+      setNoteContent(note.content); 
+      setNoteFormat(note.format); 
+      setNoteFont(note.font); 
+      setNoteLines(note.hasLines); 
+      setIsEditing(false); 
+      setIsFullscreen(false); 
+      setView('editor');
     }
   };
 
   const handleBack = () => {
     if (view === 'editor') {
-      saveNote(true); // isClosing = true (aqui ele permite deletar se estiver vazio)
+      saveNote(true);
       setActiveNote(null); setView('notes'); setIsFullscreen(false);
     } else if (view === 'notes') {
       setActiveNotebook(null); setView('notebooks'); setSearch('');
@@ -100,14 +107,12 @@ export const NotesDashboard = () => {
     setIsEditing(true); setIsFullscreen(false); setView('editor');
   };
 
-  // LÓGICA DE SALVAMENTO CORRIGIDA
   const saveNote = (isClosing = false) => {
     if (!activeNote) return;
     const currentHtml = noteFormat === 'richtext' && editorRef.current ? editorRef.current.innerHTML : noteContent;
     
     const isEmpty = !noteTitle.trim() && (!currentHtml.trim() || currentHtml === '<br>' || currentHtml === '<div><br></div>');
 
-    // A nota SOMENTE é deletada se estiver vazia E o usuário estiver saindo dela
     if (isClosing && isEmpty) { 
         deleteNote(activeNote.id); 
         return; 
@@ -116,12 +121,11 @@ export const NotesDashboard = () => {
     updateNote(activeNote.id, { title: noteTitle, content: currentHtml, format: noteFormat, font: noteFont, hasLines: noteLines });
   };
 
-  // AUTOSAVE INTELIGENTE
   useEffect(() => {
     if (view !== 'editor' || !activeNote || !isEditing) return;
     setSaveStatus('saving');
     const timer = setTimeout(() => {
-      saveNote(false); // isClosing = false (apenas salva, nunca deleta pelo autosave)
+      saveNote(false);
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
     }, 1000);
@@ -289,18 +293,18 @@ export const NotesDashboard = () => {
                   </div>
               )}
 
-              {/* CONTROLES FLUTUANTES NO FULLSCREEN */}
+              {/* CONTROLES FLUTUANTES NO FULLSCREEN - CORRIGIDOS CORES */}
               <AnimatePresence>
                   {isFullscreen && (
-                      <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -50, opacity: 0 }} className="absolute top-4 left-1/2 -translate-x-1/2 z-[1100] flex items-center gap-4 bg-zinc-900/90 dark:bg-zinc-100/90 text-white dark:text-black px-6 py-2.5 rounded-full shadow-2xl backdrop-blur-xl border border-white/20 dark:border-black/20">
-                          <button onClick={handleBack} className="p-1 hover:opacity-70"><ChevronLeft size={22}/></button>
-                          <div className="w-px h-5 bg-current opacity-20" />
+                      <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -50, opacity: 0 }} className="absolute top-4 left-1/2 -translate-x-1/2 z-[1100] flex items-center gap-4 bg-white/90 dark:bg-zinc-900/90 text-zinc-900 dark:text-zinc-100 px-6 py-2.5 rounded-full shadow-2xl backdrop-blur-xl border border-zinc-200 dark:border-zinc-800">
+                          <button onClick={handleBack} className="p-1 hover:opacity-70 transition-opacity"><ChevronLeft size={22}/></button>
+                          <div className="w-px h-5 bg-zinc-300 dark:bg-zinc-700" />
                           <h4 className="text-xs font-black uppercase tracking-widest max-w-[120px] truncate">{activeNote.title || 'Nota'}</h4>
-                          <div className="w-px h-5 bg-current opacity-20" />
-                          <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-colors ${isEditing ? 'bg-blue-500 text-white' : 'bg-transparent border border-current opacity-70'}`}>
+                          <div className="w-px h-5 bg-zinc-300 dark:bg-zinc-700" />
+                          <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider transition-colors ${isEditing ? 'bg-blue-500 text-white' : 'bg-transparent border border-zinc-300 dark:border-zinc-700 opacity-80 hover:opacity-100'}`}>
                              {isEditing ? <Eye size={12}/> : <PenLine size={12}/>} {isEditing ? 'Visualizar' : 'Editar'}
                           </button>
-                          <button onClick={() => setIsFullscreen(false)} className="p-1 hover:opacity-70" title="Sair da Tela Cheia"><Minimize2 size={20}/></button>
+                          <button onClick={() => setIsFullscreen(false)} className="p-1 hover:opacity-70 transition-opacity" title="Sair da Tela Cheia"><Minimize2 size={20}/></button>
                       </motion.div>
                   )}
               </AnimatePresence>
@@ -308,13 +312,15 @@ export const NotesDashboard = () => {
               {/* BARRA DE EDIÇÃO (SEMPRE VISÍVEL no topo da nota) */}
               <div className={`flex items-center justify-between border-b border-zinc-100 dark:border-zinc-900 mb-4 pb-2 px-2 ${isFullscreen ? 'pt-20' : ''}`}>
                  <div className="flex gap-1 overflow-x-auto scrollbar-hide">
-                    <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${!isEditing ? 'bg-blue-500/10 text-blue-500' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
-                      {isEditing ? <Eye size={16}/> : <PenLine size={16}/>} {isEditing ? 'Ver' : 'Editar'}
-                    </button>
+                    {!isFullscreen && (
+                       <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${!isEditing ? 'bg-blue-500/10 text-blue-500' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                         {isEditing ? <Eye size={16}/> : <PenLine size={16}/>} {isEditing ? 'Ver' : 'Editar'}
+                       </button>
+                    )}
                     
                     {noteFormat === 'richtext' && isEditing && (
                         <>
-                          <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
+                          {!isFullscreen && <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />}
                           <button onClick={() => execCmd('bold')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Negrito"><Bold size={16}/></button>
                           <button onClick={() => execCmd('italic')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Itálico"><Italic size={16}/></button>
                           <button onClick={() => execCmd('underline')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Sublinhado"><Underline size={16}/></button>
