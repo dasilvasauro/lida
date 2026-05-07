@@ -14,7 +14,7 @@ import { DailySummaryModal } from './features/daily/DailySummaryModal';
 import { Navbar, type Tab } from './components/layout/Navbar';
 import { AnimatePresence, motion } from 'framer-motion';
 import { startCloudListener, stopCloudListener, setupAutoSync, syncToCloud } from './lib/cloudSync';
-import { WifiOff, LogOut, CloudLightning } from 'lucide-react';
+import { WifiOff, LogOut, Check, CloudLightning } from 'lucide-react';
 import { LevelUpModal } from './components/ui/LevelUpModal';
 
 function App() {
@@ -36,25 +36,38 @@ function App() {
     config.setGoogleConnectOpen(false); config.setChangelogOpen(false);
   };
 
-  // === SISTEMA DE NAVEGAÇÃO UNIFICADO (TRAP + GESTO NAVBAR) ===
+  // === SISTEMA DE NAVEGAÇÃO PWA UNIFICADO ===
   useEffect(() => {
     const TRAP_HASH = '#app';
-    const lockHistory = () => { if (window.location.hash !== TRAP_HASH) window.history.pushState({ trap: true }, '', window.location.pathname + TRAP_HASH); };
+
+    // Comando mestre para encerrar o PWA
+    const handleForceExit = () => {
+      // Recua 10 estados para garantir que limpa qualquer trava de hash e sai do container PWA
+      window.history.go(-10);
+      setTimeout(() => {
+        window.close();
+        // Fallback caso o window.close seja bloqueado
+        window.location.href = "about:blank"; 
+      }, 100); 
+    };
+
+    const lockHistory = () => { 
+      if (window.location.hash !== TRAP_HASH) {
+        window.history.pushState({ trap: true }, '', window.location.pathname + TRAP_HASH); 
+      }
+    };
     
     lockHistory();
     const forceLock = () => lockHistory();
     document.addEventListener('click', forceLock, { passive: true });
     document.addEventListener('touchstart', forceLock, { passive: true });
 
-    // Função Mestra de Execução do "Voltar"
     const executeBackAction = (): boolean => {
-      // 1. Tenta fechar estados locais (Editor de Notas, Fullscreen, etc)
       if (triggerBack()) return true;
 
       const c = useConfigStore.getState();
       const t = useTaskStore.getState();
 
-      // 2. Modais Globais
       if (t.isGlobalModalOpen || t.isRoutineModalOpen) { window.dispatchEvent(new CustomEvent('request-modal-close')); return true; }
       if (t.isFocusModeOpen) { t.toggleFocusMode(false); return true; }
       if (c.isVisionOpen) { c.setVisionOpen(false); return true; }
@@ -62,29 +75,37 @@ function App() {
       if (c.isGoogleConnectOpen) { c.setGoogleConnectOpen(false); return true; }
       if (c.isChangelogOpen) { c.setChangelogOpen(false); return true; }
 
-      // 3. Navegação entre abas (Sempre volta para Tarefas antes de sair)
       if (currentTabRef.current !== 'tasks') {
         setCurrentTab('tasks');
         return true;
       }
 
-      // 4. Fluxo de Saída
-      if (c.isExitModalOpen) { c.setExitModalOpen(false); return false; }
-      if (c.showExitWarning) { c.setExitModalOpen(true); return true; }
+      if (c.isExitModalOpen) { 
+        c.setExitModalOpen(false); 
+        return false; // Indica que deve sair agora
+      }
+
+      if (c.showExitWarning) {
+        c.setExitModalOpen(true);
+        return true; 
+      }
       
       return false; 
     };
 
-    // Escuta o botão físico do celular (e o Esc do desktop)
     const handlePopState = () => {
       const handled = executeBackAction();
-      if (handled) lockHistory();
-      else window.history.back();
+      if (handled) {
+        lockHistory();
+      } else {
+        handleForceExit();
+      }
     };
 
-    // Escuta o GESTO da Navbar (Disparado pelo CustomEvent)
     const handleInternalBack = () => {
-        executeBackAction();
+        const handled = executeBackAction();
+        // CORREÇÃO: Se o gesto for feito em Tarefas e retornar false, fecha o app
+        if (!handled) handleForceExit();
     };
 
     const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') executeBackAction(); };
@@ -92,18 +113,18 @@ function App() {
     window.addEventListener('popstate', handlePopState);
     window.addEventListener('lida-internal-back', handleInternalBack);
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('force-app-exit', () => { window.history.back(); setTimeout(() => window.close(), 100); });
+    window.addEventListener('force-app-exit', handleForceExit);
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('lida-internal-back', handleInternalBack);
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('force-app-exit', handleForceExit);
       window.removeEventListener('click', forceLock);
       window.removeEventListener('touchstart', forceLock);
     };
   }, []);
 
-  // Sync e outros efeitos mantidos...
   useEffect(() => {
     const handleOnline = async () => {
       setIsOffline(false);
@@ -122,13 +143,12 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const config = useConfigStore.getState();
     if (!config.isLocalMode && config.uid && config.e2eePin && config.isOnboarded) {
       startCloudListener(config.uid, config.e2eePin); 
       const stopAutoSync = setupAutoSync(); 
       return () => { stopCloudListener(); stopAutoSync(); };
     }
-  }, []);
+  }, [config.uid, config.e2eePin, config.isOnboarded, config.isLocalMode]);
 
   return (
     <ThemeWrapper>
@@ -173,7 +193,6 @@ function App() {
         )}
       </AnimatePresence>
 
-      {/* MODAL DE SAÍDA INTEGRADO */}
       <AnimatePresence>
         {config.isExitModalOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1000] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
@@ -183,7 +202,12 @@ function App() {
               <p className="text-zinc-500 dark:text-zinc-400 mb-6 text-sm font-medium">Deseja fechar o aplicativo?</p>
               
               <label className="flex items-center justify-center gap-3 mb-6 cursor-pointer group">
-                <input type="checkbox" className="w-5 h-5 rounded border-2 border-zinc-300 dark:border-zinc-700 accent-blue-500 transition-colors cursor-pointer" onChange={(e) => config.setShowExitWarning(!e.target.checked)} />
+                <input 
+                  type="checkbox" 
+                  checked={!config.showExitWarning}
+                  className="w-5 h-5 rounded border-2 border-zinc-300 dark:border-zinc-700 accent-blue-500 transition-colors cursor-pointer" 
+                  onChange={(e) => config.setShowExitWarning(!e.target.checked)} 
+                />
                 <span className="text-sm font-bold text-zinc-600 dark:text-zinc-300">Não perguntar novamente</span>
               </label>
 
