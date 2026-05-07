@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, Strikethrough, Link as LinkIcon, Code, List, ListOrdered, FileText, Trash2, Check, Eye, PenLine, Maximize2, Minimize2 } from 'lucide-react';
+// Adicionado o 'X' na linha de importação abaixo:
+import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, Strikethrough, Link as LinkIcon, Code, List, ListOrdered, FileText, Trash2, Check, Eye, PenLine, Maximize2, Minimize2, Undo, Redo, FileSearch, FolderInput, Edit2, AlertTriangle, X } from 'lucide-react';
 import { useNoteStore } from '../../store/useNoteStore';
 import type { Notebook, Note, ItemColor, NoteFont, NoteFormat } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
@@ -42,9 +43,14 @@ export const NotesDashboard = () => {
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [search, setSearch] = useState('');
 
+  // Modais de Criação/Edição
   const [isNbModalOpen, setNbModalOpen] = useState(false);
+  const [nbToEdit, setNbToEdit] = useState<Notebook | null>(null);
   const [nbName, setNbName] = useState('');
   const [nbColor, setNbColor] = useState<ItemColor>('zinc');
+
+  // Modal de Confirmação de Exclusão
+  const [confirmDialog, setConfirmDialog] = useState<{ type: 'notebook' | 'note'; id: string } | null>(null);
 
   const [passwordModal, setPasswordModal] = useState<{ isOpen: boolean; type: 'unlock_nb' | 'unlock_note' | 'set_nb_lock' | 'set_note_lock'; targetId: string } | null>(null);
   const [passInput, setPassInput] = useState('');
@@ -58,6 +64,7 @@ export const NotesDashboard = () => {
   const [isEditing, setIsEditing] = useState(false); 
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle'); 
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showInNoteSearch, setShowInNoteSearch] = useState(false);
 
   const editorRef = useRef<HTMLDivElement>(null);
 
@@ -77,23 +84,30 @@ export const NotesDashboard = () => {
       setPasswordModal({ isOpen: true, type: 'unlock_note', targetId: note.id });
     } else {
       setActiveNote(note); setNoteTitle(note.title); setNoteContent(note.content); setNoteFormat(note.format); setNoteFont(note.font); setNoteLines(note.hasLines); 
-      setIsEditing(false); setIsFullscreen(false); setView('editor');
+      setIsEditing(false); setIsFullscreen(false); setShowInNoteSearch(false); setView('editor');
     }
   };
 
   const handleBack = () => {
     if (view === 'editor') {
       saveNote(true);
-      setActiveNote(null); setView('notes'); setIsFullscreen(false);
+      setActiveNote(null); setView('notes'); setIsFullscreen(false); setShowInNoteSearch(false);
     } else if (view === 'notes') {
       setActiveNotebook(null); setView('notebooks'); setSearch('');
     }
   };
 
-  const handleCreateNotebook = () => {
+  const openNbModal = (nb?: Notebook) => {
+    if (nb) { setNbToEdit(nb); setNbName(nb.name); setNbColor(nb.color); } 
+    else { setNbToEdit(null); setNbName(''); setNbColor('zinc'); }
+    setNbModalOpen(true);
+  };
+
+  const handleSaveNotebook = () => {
     if (!nbName.trim()) return;
-    addNotebook({ id: uuidv4(), name: nbName, color: nbColor, isLocked: false, createdAt: Date.now() });
-    setNbModalOpen(false); setNbName(''); setNbColor('zinc');
+    if (nbToEdit) { updateNotebook(nbToEdit.id, { name: nbName, color: nbColor }); } 
+    else { addNotebook({ id: uuidv4(), name: nbName, color: nbColor, isLocked: false, createdAt: Date.now() }); }
+    setNbModalOpen(false); setNbName(''); setNbColor('zinc'); setNbToEdit(null);
   };
 
   const handleCreateNote = () => {
@@ -101,19 +115,18 @@ export const NotesDashboard = () => {
     const newNote: Note = { id: uuidv4(), notebookId: activeNotebook.id, title: '', content: '', format: 'richtext', font: 'sans', hasLines: false, isLocked: false, createdAt: Date.now(), updatedAt: Date.now() };
     addNote(newNote);
     setActiveNote(newNote); setNoteTitle(''); setNoteContent(''); setNoteFormat('richtext'); setNoteFont('sans'); setNoteLines(false); 
-    setIsEditing(true); setIsFullscreen(false); setView('editor');
+    setIsEditing(true); setIsFullscreen(false); setShowInNoteSearch(false); setView('editor');
   };
 
   const saveNote = (isClosing = false) => {
     if (!activeNote) return;
-    const currentHtml = noteFormat === 'richtext' && editorRef.current ? editorRef.current.innerHTML : noteContent;
+    const currentHtml = noteContent;
     const isEmpty = !noteTitle.trim() && (!currentHtml.trim() || currentHtml === '<br>' || currentHtml === '<div><br></div>');
 
     if (isClosing && isEmpty) { deleteNote(activeNote.id); return; }
     updateNote(activeNote.id, { title: noteTitle, content: currentHtml, format: noteFormat, font: noteFont, hasLines: noteLines });
   };
 
-  // AUTOSAVE BLINDADO: Só atualiza com debounce contínuo enquanto digita
   useEffect(() => {
     if (view !== 'editor' || !activeNote || !isEditing) return;
     setSaveStatus('saving');
@@ -125,14 +138,24 @@ export const NotesDashboard = () => {
     return () => clearTimeout(timer);
   }, [noteTitle, noteContent, noteFormat, noteFont, noteLines, isEditing, activeNote?.id]);
 
-  // CORREÇÃO DO BUG DE CURSOR E RECRIAMENTO: Injeta texto APENAS se o editor não estiver em uso ativo
   useEffect(() => {
     if (view === 'editor' && noteFormat === 'richtext' && editorRef.current) {
-        if (document.activeElement !== editorRef.current) {
-            editorRef.current.innerHTML = noteContent;
-        }
+      if (editorRef.current.innerHTML !== noteContent) {
+          editorRef.current.innerHTML = noteContent;
+      }
     }
-  }, [view, noteFormat, activeNote?.id, noteContent]);
+  }, [view, noteFormat, activeNote?.id, isFullscreen]);
+
+  const confirmDelete = () => {
+    if (confirmDialog?.type === 'notebook') {
+      deleteNotebook(confirmDialog.id);
+      if (activeNotebook?.id === confirmDialog.id) { setActiveNotebook(null); setView('notebooks'); }
+    } else if (confirmDialog?.type === 'note') {
+      deleteNote(confirmDialog.id);
+      if (activeNote?.id === confirmDialog.id) { setActiveNote(null); setView('notes'); setIsFullscreen(false); }
+    }
+    setConfirmDialog(null);
+  };
 
   const submitPassword = () => {
     if (!passwordModal) return;
@@ -155,11 +178,7 @@ export const NotesDashboard = () => {
     else updateNote(id, { isLocked: false, password: '' });
   };
 
-  // e.preventDefault evita que o botão roube o foco do ContentEditable, preservando a seleção do texto!
-  const execCmd = (cmd: string, value: string | null = null) => { 
-      document.execCommand(cmd, false, value || undefined); 
-      editorRef.current?.focus(); 
-  };
+  const execCmd = (cmd: string, value: string | null = null) => { document.execCommand(cmd, false, value || undefined); editorRef.current?.focus(); };
 
   return (
     <>
@@ -171,7 +190,6 @@ export const NotesDashboard = () => {
       
       <div className={`transition-colors duration-500 ${isFullscreen ? 'fixed inset-0 z-[1000] bg-white dark:bg-black flex flex-col' : 'min-h-screen bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 pb-32'}`}>
         
-        {/* A CHAVE DO BUG RESOLVIDA: "view" ao invés de "view-isFullscreen" previne a destruição da div! */}
         <AnimatePresence mode="wait">
           <motion.div 
             key={view}
@@ -202,9 +220,10 @@ export const NotesDashboard = () => {
               </header>
             )}
 
+            {/* VISÃO DE CADERNOS */}
             {view === 'notebooks' && (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                <button onClick={() => setNbModalOpen(true)} className="flex flex-col items-center justify-center gap-3 p-6 rounded-3xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all h-40">
+                <button onClick={() => openNbModal()} className="flex flex-col items-center justify-center gap-3 p-6 rounded-3xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all h-40">
                   <Plus size={32} /><span className="font-bold text-sm">Novo Caderno</span>
                 </button>
                 {filteredNotebooks.map(nb => {
@@ -216,7 +235,13 @@ export const NotesDashboard = () => {
                         <div className="text-left"><h4 className="font-black text-lg truncate w-full">{isLocked ? 'Cadeado' : nb.name}</h4><span className="text-[10px] uppercase tracking-widest opacity-70 font-bold">{notes.filter(n => n.notebookId === nb.id).length} notas</span></div>
                       </button>
                       <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {!isLocked && (<><button onClick={(e) => { e.stopPropagation(); nb.isLocked ? removeLock(nb.id, true) : setPasswordModal({ isOpen: true, type: 'set_nb_lock', targetId: nb.id }); }} className="p-2 bg-white/80 dark:bg-black/50 backdrop-blur-md rounded-full text-zinc-600 dark:text-zinc-300 hover:text-amber-500 transition-colors">{nb.isLocked ? <Unlock size={14}/> : <Lock size={14}/>}</button>{nb.id !== 'default' && (<button onClick={(e) => { e.stopPropagation(); deleteNotebook(nb.id); }} className="p-2 bg-white/80 dark:bg-black/50 backdrop-blur-md rounded-full text-red-500 hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={14}/></button>)}</>)}
+                        {!isLocked && (
+                           <>
+                             <button onClick={(e) => { e.stopPropagation(); nb.isLocked ? removeLock(nb.id, true) : setPasswordModal({ isOpen: true, type: 'set_nb_lock', targetId: nb.id }); }} className="p-2 bg-white/80 dark:bg-black/50 backdrop-blur-md rounded-full text-zinc-600 dark:text-zinc-300 hover:text-amber-500 transition-colors">{nb.isLocked ? <Unlock size={14}/> : <Lock size={14}/>}</button>
+                             <button onClick={(e) => { e.stopPropagation(); openNbModal(nb); }} className="p-2 bg-white/80 dark:bg-black/50 backdrop-blur-md rounded-full text-blue-500 hover:bg-blue-500 hover:text-white transition-colors"><Edit2 size={14}/></button>
+                             {nb.id !== 'default' && (<button onClick={(e) => { e.stopPropagation(); setConfirmDialog({ type: 'notebook', id: nb.id }); }} className="p-2 bg-white/80 dark:bg-black/50 backdrop-blur-md rounded-full text-red-500 hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={14}/></button>)}
+                           </>
+                        )}
                       </div>
                     </div>
                   )
@@ -224,6 +249,7 @@ export const NotesDashboard = () => {
               </div>
             )}
 
+            {/* VISÃO DE NOTAS DO CADERNO */}
             {view === 'notes' && activeNotebook && (
               <div className="space-y-4">
                  <div className="flex justify-between items-center mb-6">
@@ -241,7 +267,7 @@ export const NotesDashboard = () => {
                             <span className="text-[10px] font-bold text-zinc-400 mt-4 block uppercase tracking-widest">{format(note.updatedAt, "dd/MM/yyyy HH:mm")}</span>
                           </button>
                           <div className="absolute bottom-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {!isLocked && (<button onClick={(e) => { e.stopPropagation(); deleteNote(note.id); }} className="p-2 bg-red-100 text-red-500 dark:bg-red-900/30 rounded-lg hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={14}/></button>)}
+                            {!isLocked && (<button onClick={(e) => { e.stopPropagation(); setConfirmDialog({ type: 'note', id: note.id }); }} className="p-2 bg-red-100 text-red-500 dark:bg-red-900/30 rounded-lg hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={14}/></button>)}
                           </div>
                         </div>
                       )
@@ -259,6 +285,24 @@ export const NotesDashboard = () => {
                     <div className={`flex flex-wrap items-center justify-between gap-4 p-2 mb-4 rounded-2xl border ${colorStyles[activeNotebook.color].note}`}>
                        <div className="flex items-center gap-1">
                          <button onClick={handleBack} className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><ChevronLeft size={20}/></button>
+                         <div className="w-px h-6 bg-zinc-300 dark:bg-zinc-700 mx-1" />
+                         
+                         {/* Mover Nota */}
+                         <div className="flex items-center gap-2 px-2 py-1.5 bg-zinc-100 dark:bg-zinc-800/50 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                           <FolderInput size={14} className="text-zinc-500 shrink-0" />
+                           <select 
+                             value={activeNote.notebookId} 
+                             onChange={(e) => {
+                               const newNbId = e.target.value;
+                               updateNote(activeNote.id, { notebookId: newNbId });
+                               setActiveNote({ ...activeNote, notebookId: newNbId });
+                             }}
+                             className="bg-transparent text-xs font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-300 outline-none cursor-pointer max-w-[100px] md:max-w-[150px] truncate"
+                           >
+                             {notebooks.map(nb => <option key={nb.id} value={nb.id}>{nb.name}</option>)}
+                           </select>
+                         </div>
+                         
                          <div className="w-px h-6 bg-zinc-300 dark:bg-zinc-700 mx-1" />
                          <button onClick={() => { setNoteFormat(noteFormat === 'richtext' ? 'markdown' : 'richtext'); setIsEditing(true); }} className="px-3 py-1.5 text-xs font-bold uppercase tracking-widest rounded-lg bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 shadow-sm text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white">{noteFormat === 'richtext' ? 'Rich Text' : 'Markdown'}</button>
                          <select value={noteFont} onChange={(e) => setNoteFont(e.target.value as NoteFont)} className="bg-transparent text-sm font-bold outline-none text-zinc-600 dark:text-zinc-300 cursor-pointer ml-2">
@@ -291,7 +335,20 @@ export const NotesDashboard = () => {
                     )}
                 </AnimatePresence>
 
-                {/* BARRA DE EDIÇÃO (SEMPRE VISÍVEL no topo da nota durante edição) */}
+                {/* BARRA DE PESQUISA (Se Ativa) */}
+                <AnimatePresence>
+                  {showInNoteSearch && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-4">
+                       <div className="flex items-center gap-3 px-4 py-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                          <Search size={16} className="text-zinc-400" />
+                          <input type="text" placeholder="Buscar texto na nota..." onChange={(e) => (window as any).find(e.target.value)} className="w-full bg-transparent outline-none text-sm font-bold placeholder:font-normal" autoFocus />
+                          <button onClick={() => setShowInNoteSearch(false)} className="p-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-white"><X size={16}/></button>
+                       </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* BARRA DE EDIÇÃO */}
                 <AnimatePresence>
                    <div className={`flex items-center justify-between border-b border-zinc-100 dark:border-zinc-900 mb-4 pb-2 px-2 ${isFullscreen ? 'pt-20' : ''}`}>
                      <div className="flex gap-1 overflow-x-auto scrollbar-hide flex-1 items-center">
@@ -304,6 +361,13 @@ export const NotesDashboard = () => {
                         {noteFormat === 'richtext' && isEditing && (
                             <div className="flex items-center gap-1 shrink-0">
                               {!isFullscreen && <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-2 self-center" />}
+                              
+                              {/* UNDO / REDO / SEARCH */}
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('undo')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Desfazer"><Undo size={16}/></button>
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('redo')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Refazer"><Redo size={16}/></button>
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => setShowInNoteSearch(!showInNoteSearch)} className={`p-2 rounded-lg transition-colors ${showInNoteSearch ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} title="Buscar na Nota"><FileSearch size={16}/></button>
+                              
+                              <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
                               <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('bold')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Negrito"><Bold size={16}/></button>
                               <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('italic')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Itálico"><Italic size={16}/></button>
                               <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('underline')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Sublinhado"><Underline size={16}/></button>
@@ -343,9 +407,9 @@ export const NotesDashboard = () => {
                          <textarea value={noteContent} onChange={(e) => setNoteContent(e.target.value)} placeholder="Escreva aqui em Markdown (# Título, **Negrito**)..." className={`w-full min-h-full bg-transparent outline-none resize-none leading-relaxed text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
                       )
                     ) : (
-                      <div ref={editorRef} contentEditable={isEditing} suppressContentEditableWarning onInput={() => { if(editorRef.current) setNoteContent(editorRef.current.innerHTML); }} className={`w-full min-h-full bg-transparent outline-none text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
+                      <div ref={editorRef} contentEditable={isEditing} suppressContentEditableWarning onInput={(e) => setNoteContent(e.currentTarget.innerHTML)} className={`w-full min-h-full bg-transparent outline-none text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
                     )}
-                    {isEditing && noteContent === '' && (
+                    {isEditing && !noteContent.trim() && (
                       <div className="absolute top-0 left-8 pointer-events-none text-zinc-300 dark:text-zinc-700 font-medium">Comece a escrever...</div>
                     )}
                   </div>
@@ -356,12 +420,12 @@ export const NotesDashboard = () => {
           </motion.div>
         </AnimatePresence>
 
-        {/* MODAL DE CRIAÇÃO DE CADERNO */}
+        {/* MODAL DE CRIAÇÃO/EDIÇÃO DE CADERNO */}
         <AnimatePresence>
           {isNbModalOpen && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
               <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800">
-                <h3 className="text-xl font-black mb-4">Novo Caderno</h3>
+                <h3 className="text-xl font-black mb-4">{nbToEdit ? 'Editar Caderno' : 'Novo Caderno'}</h3>
                 <input type="text" maxLength={20} placeholder="Nome do Caderno" value={nbName} onChange={e => setNbName(e.target.value)} className="w-full bg-zinc-100 dark:bg-zinc-800 p-4 rounded-xl outline-none font-bold mb-6" autoFocus />
                 <span className="text-xs font-bold uppercase text-zinc-500 mb-3 block">Cor Temática</span>
                 <div className="flex gap-2 mb-8">
@@ -370,8 +434,29 @@ export const NotesDashboard = () => {
                   ))}
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={() => setNbModalOpen(false)} className="flex-1 p-4 rounded-xl font-bold bg-zinc-100 dark:bg-zinc-800">Cancelar</button>
-                  <button onClick={handleCreateNotebook} disabled={!nbName.trim()} className="flex-1 p-4 rounded-xl font-bold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black disabled:opacity-50">Criar</button>
+                  <button onClick={() => { setNbModalOpen(false); setNbToEdit(null); }} className="flex-1 p-4 rounded-xl font-bold bg-zinc-100 dark:bg-zinc-800">Cancelar</button>
+                  <button onClick={handleSaveNotebook} disabled={!nbName.trim()} className="flex-1 p-4 rounded-xl font-bold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black disabled:opacity-50">Salvar</button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
+        <AnimatePresence>
+          {confirmDialog && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1200] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
+              <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 text-center">
+                <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4"><AlertTriangle size={32} /></div>
+                <h3 className="text-xl font-black mb-2 dark:text-white">Excluir Permanentemente?</h3>
+                <p className="text-zinc-500 dark:text-zinc-400 mb-6 text-sm">
+                  {confirmDialog.type === 'notebook' 
+                    ? 'Todas as notas dentro deste caderno também serão apagadas para sempre.' 
+                    : 'Esta nota será excluída permanentemente.'}
+                </p>
+                <div className="flex gap-3">
+                  <button onClick={() => setConfirmDialog(null)} className="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
+                  <button onClick={confirmDelete} className="flex-1 p-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-500 transition-colors">Excluir</button>
                 </div>
               </motion.div>
             </motion.div>
