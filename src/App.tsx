@@ -38,47 +38,41 @@ function App() {
     config.setChangelogOpen(false);
   };
 
-  // === SISTEMA DE NAVEGAÇÃO PWA BLINDADO (HASH TRAP) ===
+  // === SISTEMA DE NAVEGAÇÃO PWA HASH PING-PONG ===
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const TRAP_HASH = '#_';
-    let hasArmedWithGesture = false;
+    // A nossa âncora visual na URL
+    const TRAP_HASH = '#app';
+    let isTrapped = false;
 
-    // Injeta silenciosamente um estado no histórico para "trancar" o botão voltar do telemóvel
-    const armTrap = () => {
-      if (window.location.hash !== TRAP_HASH) {
-        window.history.pushState(null, '', TRAP_HASH);
+    // Função que empurra um estado fantasma para o histórico, criando a trava.
+    const lockHistory = () => {
+      if (!isTrapped && window.location.hash !== TRAP_HASH) {
+        window.history.pushState({ trap: true }, '', window.location.pathname + TRAP_HASH);
+        isTrapped = true;
       }
     };
 
-    // 1. Armadilha inicial (Funciona no Chrome PWA, Desktop, etc)
-    armTrap();
+    // Tenta aplicar imediatamente
+    lockHistory();
 
-    // 2. Reforço de armadilha obrigatório para o Samsung Internet / iOS
-    // Estes browsers só respeitam o history se houver interação humana prévia.
-    const onInteract = () => {
-      if (!hasArmedWithGesture) {
-        if (window.location.hash === TRAP_HASH) {
-          window.history.replaceState(null, '', window.location.pathname); 
-        }
-        window.history.pushState(null, '', TRAP_HASH);
-        hasArmedWithGesture = true;
-      }
-    };
+    // REGRA DE OURO DO SAMSUNG INTERNET: O navegador bloqueia o pushState inicial
+    // se não houver interação do usuário. Esse listener garante que no PRIMEIRO toque na tela,
+    // a trava de segurança seja forçada goela abaixo do navegador.
+    const forceLockOnInteract = () => lockHistory();
+    document.addEventListener('click', forceLockOnInteract, { passive: true });
+    document.addEventListener('touchstart', forceLockOnInteract, { passive: true });
 
-    document.addEventListener('click', onInteract, { passive: true });
-    document.addEventListener('touchstart', onInteract, { passive: true });
-
-    // O Cérebro Hierárquico do Lida
+    // O Cérebro Hierárquico do Botão Voltar
     const executeBackAction = (): boolean => {
-      // A. Tenta fechar algo local da tela ativa (Ex: Editor de Notas, Dropdowns, Fulscreen)
+      // 1. Modais locais da tela ativa (Ex: Editor de Notas, Dropdowns)
       if (triggerBack()) return true;
 
       const c = useConfigStore.getState();
       const t = useTaskStore.getState();
 
-      // B. Fecha Modais e Telas Secundárias Globais
+      // 2. Modais Globais
       if (t.isGlobalModalOpen || t.isRoutineModalOpen) {
         window.dispatchEvent(new CustomEvent('request-modal-close'));
         return true;
@@ -89,69 +83,71 @@ function App() {
       if (c.isGoogleConnectOpen) { c.setGoogleConnectOpen(false); return true; }
       if (c.isChangelogOpen) { c.setChangelogOpen(false); return true; }
 
-      // C. Devolve para a Tela Inicial se não estiver nela (Ex: Voltar do Perfil)
+      // 3. Retorno para a Tela Inicial (Tarefas) se estiver em outra aba
       if (currentTabRef.current !== 'tasks') {
         setCurrentTab('tasks');
         c.setVisionOpen(false); c.setSettingsOpen(false); c.setGoogleConnectOpen(false); c.setChangelogOpen(false);
         return true;
       }
 
-      // D. Estamos na Tela Inicial e nada mais está aberto
+      // 4. Fluxo da Tela Inicial -> Modal de Saída -> Sair
       if (c.isExitModalOpen) {
-        // Se o aviso JÁ ESTIVER na tela e apertar voltar, forçamos o encerramento nativo.
-        c.setExitModalOpen(false);
-        return false; 
+         // O Modal de Saída JÁ ESTÁ na tela. O usuário apertou Voltar novamente.
+         // Fecha o modal e permite que a aplicação seja encerrada.
+         c.setExitModalOpen(false);
+         return false; 
       }
 
       if (c.showExitWarning) {
-        // Mostra o Modal de Confirmação de Saída
-        c.setExitModalOpen(true);
-        return true; 
+         // Estamos em Tarefas e não há aviso na tela. Mostra o aviso.
+         c.setExitModalOpen(true);
+         return true; 
       }
 
-      // Se o aviso estiver desativado nas Configs, permite o fechamento nativo.
+      // Usuário desativou o aviso nas configurações. Permitir saída direta.
       return false; 
     };
 
     const handlePopState = () => {
-      if (window.location.hash !== TRAP_HASH) {
-        // RE-ARM IMEDIATO E SÍNCRONO: Executado milissegundos após o clique do Voltar,
-        // garantindo que se você clicar duas vezes muito rápido nas notas, o app não fecha!
-        armTrap();
+      // Quando o PopState dispara, o hash "#app" sumiu da URL. O PWA está pronto para fechar no próximo clique.
+      isTrapped = false;
 
-        const handled = executeBackAction();
-        
-        if (!handled) {
-          // A ação não foi interceptada -> O utilizador quer sair do app.
-          // Removemos o listener e puxamos o histórico nativo em -2 para matar o PWA container na raiz
-          window.removeEventListener('popstate', handlePopState);
-          window.history.go(-2);
-        }
+      const handled = executeBackAction();
+      
+      if (handled) {
+        // Nós interceptamos a ação (ex: fechamos uma nota).
+        // DEVOLVEMOS A TRAVA IMEDIATAMENTE para o próximo clique no botão Voltar.
+        lockHistory();
+      } else {
+        // Ação não interceptada (ex: Modal de saída aceito).
+        // Removemos os eventos para evitar loops e forçamos a saída.
+        window.removeEventListener('popstate', handlePopState);
+        window.history.back(); // Isso matará o PWA.
       }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Mantém a estabilidade no Desktop e atalhos de teclado (Esc)
       if (e.key === 'Escape') {
-        executeBackAction();
+         const handled = executeBackAction();
+         if (!handled) window.history.back();
       }
     };
 
-    const exitEvent = () => {
-      window.history.go(-2);
+    const handleForceExit = () => {
+      window.history.back();
       setTimeout(() => window.close(), 100); 
     };
 
     window.addEventListener('popstate', handlePopState);
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('force-app-exit', exitEvent);
+    window.addEventListener('force-app-exit', handleForceExit);
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('force-app-exit', exitEvent);
-      document.removeEventListener('click', onInteract);
-      document.removeEventListener('touchstart', onInteract);
+      window.removeEventListener('force-app-exit', handleForceExit);
+      document.removeEventListener('click', forceLockOnInteract);
+      document.removeEventListener('touchstart', forceLockOnInteract);
     };
   }, []);
 
@@ -252,6 +248,7 @@ function App() {
 
               <div className="flex gap-3">
                 <button onClick={() => config.setExitModalOpen(false)} className="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
+                {/* Modificado: Ao clicar em sair, força o fechamento nativo disparando o evento configurado */}
                 <button onClick={() => { config.setExitModalOpen(false); window.dispatchEvent(new CustomEvent('force-app-exit')); }} className="flex-1 p-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-colors">Sair</button>
               </div>
             </motion.div>
