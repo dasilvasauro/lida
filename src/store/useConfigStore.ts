@@ -10,12 +10,14 @@ export const unregisterBackHandler = (handler: () => boolean) => {
     if (index > -1) backHandlers.splice(index, 1);
 };
 export const triggerBack = () => {
+    // Percorre os interceptadores de trás para frente (respeitando a hierarquia visual mais recente)
     for (let i = backHandlers.length - 1; i >= 0; i--) {
         if (backHandlers[i]()) return true;
     }
     return false;
 };
 
+// O useRef sincronizado garante que a função execute sempre o estado mais recente, sem se perder nos re-renders
 export const useBackHandler = (isActive: boolean, handler: () => boolean) => {
     const handlerRef = useRef(handler);
     useEffect(() => { handlerRef.current = handler; }, [handler]);

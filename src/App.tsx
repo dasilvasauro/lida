@@ -40,30 +40,45 @@ function App() {
 
   // === SISTEMA DE NAVEGAÇÃO PWA BLINDADO (HASH TRAP) ===
   useEffect(() => {
-    const applyTrap = () => {
-      // Cria a âncora de segurança que não é bloqueada pelo Samsung Internet
-      if (window.location.hash !== '#lida') {
-        window.location.hash = 'lida';
+    if (typeof window === 'undefined') return;
+
+    const TRAP_HASH = '#_';
+    let hasArmedWithGesture = false;
+
+    // Injeta silenciosamente um estado no histórico para "trancar" o botão voltar do telemóvel
+    const armTrap = () => {
+      if (window.location.hash !== TRAP_HASH) {
+        window.history.pushState(null, '', TRAP_HASH);
       }
     };
 
-    // Aplica no momento em que o app carrega
-    applyTrap();
+    // 1. Armadilha inicial (Funciona no Chrome PWA, Desktop, etc)
+    armTrap();
 
-    // Reforça na primeira interação (Garantia de retenção no iOS)
-    const onInteract = () => applyTrap();
-    window.addEventListener('click', onInteract, { once: true });
-    window.addEventListener('touchstart', onInteract, { once: true });
+    // 2. Reforço de armadilha obrigatório para o Samsung Internet / iOS
+    // Estes browsers só respeitam o history se houver interação humana prévia.
+    const onInteract = () => {
+      if (!hasArmedWithGesture) {
+        if (window.location.hash === TRAP_HASH) {
+          window.history.replaceState(null, '', window.location.pathname); 
+        }
+        window.history.pushState(null, '', TRAP_HASH);
+        hasArmedWithGesture = true;
+      }
+    };
+
+    document.addEventListener('click', onInteract, { passive: true });
+    document.addEventListener('touchstart', onInteract, { passive: true });
 
     // O Cérebro Hierárquico do Lida
     const executeBackAction = (): boolean => {
-      // 1. Tenta fechar algo local da tela ativa (Ex: Notas Fullscreen, Dropdowns)
+      // A. Tenta fechar algo local da tela ativa (Ex: Editor de Notas, Dropdowns, Fulscreen)
       if (triggerBack()) return true;
 
       const c = useConfigStore.getState();
       const t = useTaskStore.getState();
 
-      // 2. Modais e Telas Secundárias Globais
+      // B. Fecha Modais e Telas Secundárias Globais
       if (t.isGlobalModalOpen || t.isRoutineModalOpen) {
         window.dispatchEvent(new CustomEvent('request-modal-close'));
         return true;
@@ -74,67 +89,69 @@ function App() {
       if (c.isGoogleConnectOpen) { c.setGoogleConnectOpen(false); return true; }
       if (c.isChangelogOpen) { c.setChangelogOpen(false); return true; }
 
-      // 3. Devolve para a Tela Inicial se não estiver nela
+      // C. Devolve para a Tela Inicial se não estiver nela (Ex: Voltar do Perfil)
       if (currentTabRef.current !== 'tasks') {
         setCurrentTab('tasks');
         c.setVisionOpen(false); c.setSettingsOpen(false); c.setGoogleConnectOpen(false); c.setChangelogOpen(false);
         return true;
       }
 
-      // 4. Estamos na Tela Inicial e nada mais está aberto
-      if (c.showExitWarning) {
-        if (c.isExitModalOpen) {
-           // Modal de Saída já visível. Usuário pressionou Voltar de novo = Sair do App
-           c.setExitModalOpen(false);
-           return false; 
-        } else {
-           // Invoca o Modal de Confirmação de Saída
-           c.setExitModalOpen(true);
-           return true; 
-        }
-      } else {
-        // Usuário desligou o aviso de saída. Pode fechar.
+      // D. Estamos na Tela Inicial e nada mais está aberto
+      if (c.isExitModalOpen) {
+        // Se o aviso JÁ ESTIVER na tela e apertar voltar, forçamos o encerramento nativo.
+        c.setExitModalOpen(false);
         return false; 
       }
+
+      if (c.showExitWarning) {
+        // Mostra o Modal de Confirmação de Saída
+        c.setExitModalOpen(true);
+        return true; 
+      }
+
+      // Se o aviso estiver desativado nas Configs, permite o fechamento nativo.
+      return false; 
     };
 
-    const handleHashChange = () => {
-      if (window.location.hash !== '#lida') {
-        // A trava caiu, o usuário pressionou voltar.
+    const handlePopState = () => {
+      if (window.location.hash !== TRAP_HASH) {
+        // RE-ARM IMEDIATO E SÍNCRONO: Executado milissegundos após o clique do Voltar,
+        // garantindo que se você clicar duas vezes muito rápido nas notas, o app não fecha!
+        armTrap();
+
         const handled = executeBackAction();
         
-        if (handled) {
-          // Se a ação foi interceptada (ex: fechou nota), reinstala a trava
-          applyTrap(); 
-        } else {
-          // O usuário confirmou a saída. Forçamos o recuo nativo para fechar o app de fato.
-          window.history.back();
+        if (!handled) {
+          // A ação não foi interceptada -> O utilizador quer sair do app.
+          // Removemos o listener e puxamos o histórico nativo em -2 para matar o PWA container na raiz
+          window.removeEventListener('popstate', handlePopState);
+          window.history.go(-2);
         }
       }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Mantém a estabilidade no Desktop e atalhos de teclado (Esc)
       if (e.key === 'Escape') {
-         const handled = executeBackAction();
-         if (!handled) window.history.back();
+        executeBackAction();
       }
     };
 
-    const handleForceExit = () => {
-      window.history.back();
+    const exitEvent = () => {
+      window.history.go(-2);
       setTimeout(() => window.close(), 100); 
     };
 
-    window.addEventListener('hashchange', handleHashChange);
+    window.addEventListener('popstate', handlePopState);
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('force-app-exit', handleForceExit);
+    window.addEventListener('force-app-exit', exitEvent);
 
     return () => {
-      window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('force-app-exit', handleForceExit);
-      window.removeEventListener('click', onInteract);
-      window.removeEventListener('touchstart', onInteract);
+      window.removeEventListener('force-app-exit', exitEvent);
+      document.removeEventListener('click', onInteract);
+      document.removeEventListener('touchstart', onInteract);
     };
   }, []);
 
