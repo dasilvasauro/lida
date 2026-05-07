@@ -1,5 +1,31 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useEffect } from 'react';
+
+// === MOTOR DE NAVEGAÇÃO NATIVA (BACKHANDLER) ===
+export const backHandlers: Array<() => boolean> = [];
+export const registerBackHandler = (handler: () => boolean) => backHandlers.push(handler);
+export const unregisterBackHandler = (handler: () => boolean) => {
+    const index = backHandlers.indexOf(handler);
+    if (index > -1) backHandlers.splice(index, 1);
+};
+export const triggerBack = () => {
+    // Roda do último registrado (mais recente) para o primeiro, respeitando a camada visual (z-index lógico)
+    for (let i = backHandlers.length - 1; i >= 0; i--) {
+        if (backHandlers[i]()) return true;
+    }
+    return false;
+};
+
+export const useBackHandler = (isActive: boolean, handler: () => boolean) => {
+    useEffect(() => {
+        if (isActive) {
+            registerBackHandler(handler);
+            return () => unregisterBackHandler(handler);
+        }
+    }, [isActive, handler]);
+};
+// ==============================================
 
 export type Theme = 'light' | 'dark-amoled' | 'soft-dark' | 'butter' | 'navy' | 'darcula';
 type Font = 'sans' | 'serif' | 'special';
@@ -13,7 +39,6 @@ interface ConfigState {
   defaultDaysOff: number[];
   hasDismissedDayOffWarning: boolean;
 
-  // --- NOVAS FEATURES DE HARDCORE ---
   enableEditWindow: boolean;
   enablePunishments: boolean;
   hasDismissedEditWarning: boolean;

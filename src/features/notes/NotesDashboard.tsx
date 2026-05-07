@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, Strikethrough, Link as LinkIcon, Code, List, ListOrdered, FileText, Trash2, Check, Eye, PenLine, Maximize2, Minimize2, Undo, Redo, FileSearch, FolderInput, Edit2, AlertTriangle, X, ChevronDown } from 'lucide-react';
 import { useNoteStore } from '../../store/useNoteStore';
+import { useTaskStore } from '../../store/useTaskStore';
+import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
 import type { Notebook, Note, ItemColor, NoteFont, NoteFormat } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
@@ -34,12 +36,10 @@ const parseMarkdown = (text: string) => {
     .replace(/\n/gim, '<br />');
 };
 
-// Motor de Destaque Regex Customizado
 const getHighlightedContent = (html: string, query: string) => {
     if (!query.trim()) return { html, count: 0 };
     try {
         const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        // Ignora tags HTML e destaca apenas o texto
         const regex = new RegExp(`(${safeQuery})(?![^<]*>)`, 'gi');
         const count = (html.match(regex) || []).length;
         const highlighted = html.replace(regex, '<mark style="background-color: #fbbf24; color: #451a03; font-weight: bold; padding: 0 2px; border-radius: 4px;">$1</mark>');
@@ -57,15 +57,12 @@ export const NotesDashboard = () => {
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [search, setSearch] = useState('');
 
-  // Modais de Criação/Edição
   const [isNbModalOpen, setNbModalOpen] = useState(false);
   const [nbToEdit, setNbToEdit] = useState<Notebook | null>(null);
   const [nbName, setNbName] = useState('');
   const [nbColor, setNbColor] = useState<ItemColor>('zinc');
 
-  // Modal de Confirmação de Exclusão
   const [confirmDialog, setConfirmDialog] = useState<{ type: 'notebook' | 'note'; id: string } | null>(null);
-
   const [passwordModal, setPasswordModal] = useState<{ isOpen: boolean; type: 'unlock_nb' | 'unlock_note' | 'set_nb_lock' | 'set_note_lock'; targetId: string } | null>(null);
   const [passInput, setPassInput] = useState('');
   const [passError, setPassError] = useState('');
@@ -79,15 +76,14 @@ export const NotesDashboard = () => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle'); 
   const [isFullscreen, setIsFullscreen] = useState(false);
   
-  // Sistema de Pesquisa Interna
   const [showInNoteSearch, setShowInNoteSearch] = useState(false);
   const [noteSearchQuery, setNoteSearchQuery] = useState('');
 
-  // Dropdowns UI States
   const [fontMenuOpen, setFontMenuOpen] = useState(false);
   const [folderMenuOpen, setFolderMenuOpen] = useState(false);
 
   const editorRef = useRef<HTMLDivElement>(null);
+  const noteSearchRef = useRef<HTMLInputElement>(null);
 
   const filteredNotebooks = notebooks.filter(nb => nb.name.toLowerCase().includes(search.toLowerCase()));
   const filteredNotes = activeNotebook ? notes.filter(n => n.notebookId === activeNotebook.id && (n.title.toLowerCase().includes(search.toLowerCase()) || n.content.toLowerCase().includes(search.toLowerCase()))) : [];
@@ -159,14 +155,13 @@ export const NotesDashboard = () => {
     return () => clearTimeout(timer);
   }, [noteTitle, noteContent, noteFormat, noteFont, noteLines, isEditing, activeNote?.id]);
 
-  // População inicial segura do Rich Text: Ignora as renderizações, foca-se apenas no momento em que entra no modo edição.
   useEffect(() => {
     if (view === 'editor' && noteFormat === 'richtext' && isEditing && editorRef.current) {
       if (document.activeElement !== editorRef.current) {
           editorRef.current.innerHTML = noteContent;
       }
     }
-  }, [view, noteFormat, isEditing, activeNote?.id]);
+  }, [view, noteFormat, isEditing, activeNote?.id, isFullscreen, noteContent]);
 
   const confirmDelete = () => {
     if (confirmDialog?.type === 'notebook') {
@@ -201,6 +196,7 @@ export const NotesDashboard = () => {
   };
 
   const execCmd = (cmd: string, value: string | null = null) => { 
+      if (showInNoteSearch && document.activeElement === noteSearchRef.current) return;
       editorRef.current?.focus();
       document.execCommand(cmd, false, value || undefined); 
   };
@@ -217,8 +213,6 @@ export const NotesDashboard = () => {
   };
 
   const { words, chars } = getWordCount();
-
-  // Processamento do conteúdo: Exibe Markdown processado, Rich Text limpo ou Rich Text com Highlight.
   let displayHtml = noteFormat === 'markdown' ? parseMarkdown(noteContent) : noteContent;
   let searchMatchCount = 0;
 
@@ -227,6 +221,26 @@ export const NotesDashboard = () => {
       displayHtml = result.html;
       searchMatchCount = result.count;
   }
+
+  // === INTERCEPTAÇÃO DE NAVEGAÇÃO ===
+  const hasLocalState = !!passwordModal || !!confirmDialog || isNbModalOpen || fontMenuOpen || folderMenuOpen || showInNoteSearch || isFullscreen || view !== 'notebooks';
+  
+  useBackHandler(hasLocalState, () => {
+      const tStore = useTaskStore.getState();
+      const cStore = useConfigStore.getState();
+      if (tStore.isGlobalModalOpen || tStore.isRoutineModalOpen || tStore.isFocusModeOpen || cStore.isSettingsOpen || cStore.isVisionOpen || cStore.isGoogleConnectOpen || cStore.isChangelogOpen || cStore.isExitModalOpen) return false;
+      
+      if (passwordModal) { setPasswordModal(null); setPassInput(''); setPassError(''); return true; }
+      if (confirmDialog) { setConfirmDialog(null); return true; }
+      if (isNbModalOpen) { setNbModalOpen(false); setNbToEdit(null); return true; }
+      if (fontMenuOpen) { setFontMenuOpen(false); return true; }
+      if (folderMenuOpen) { setFolderMenuOpen(false); return true; }
+      if (showInNoteSearch) { setShowInNoteSearch(false); setNoteSearchQuery(''); return true; }
+      if (isFullscreen) { setIsFullscreen(false); return true; }
+      if (view === 'editor') { handleBack(); return true; }
+      if (view === 'notes') { handleBack(); return true; }
+      return false;
+  });
 
   return (
     <>
@@ -435,7 +449,7 @@ export const NotesDashboard = () => {
                   )}
                 </AnimatePresence>
 
-                {/* BARRA DE EDIÇÃO (Também funciona para acionar pesquisa) */}
+                {/* BARRA DE EDIÇÃO */}
                 <AnimatePresence>
                    <div className={`flex items-center justify-between border-b border-zinc-100 dark:border-zinc-900 mb-4 pb-2 px-2 ${(isFullscreen && !showInNoteSearch) ? 'pt-20' : ''}`}>
                      <div className="flex gap-1 overflow-x-auto scrollbar-hide flex-1 items-center">
@@ -495,17 +509,15 @@ export const NotesDashboard = () => {
                   </div>
                 </AnimatePresence>
 
-                {/* TEXT AREA: Renderização Separada (Leitura vs Edição) para 100% de Confiabilidade */}
+                {/* TEXT AREA */}
                 <div className={`flex-1 flex flex-col rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-inner editor-content overflow-hidden ${colorStyles[activeNotebook.color].note}`}>
                   <input type="text" placeholder="Título da Nota" readOnly={!isEditing && !showInNoteSearch} value={noteTitle} onChange={(e) => setNoteTitle(e.target.value)} className={`w-full px-8 pt-8 pb-4 bg-transparent outline-none text-3xl font-black placeholder:text-zinc-300 dark:placeholder:text-zinc-700 ${noteFont === 'handwriting' ? 'font-handwriting' : noteFont === 'serif' ? 'font-serif' : 'font-sans'}`} />
                   
                   <div className={`flex-1 flex flex-col px-8 relative overflow-y-auto scrollbar-thin ${noteLines ? 'bg-lined-paper' : ''}`}>
                     
                     {(!isEditing || showInNoteSearch) ? (
-                        // MODO LEITURA (Também usado pela pesquisa para mostrar os highlights)
                         <div dangerouslySetInnerHTML={{ __html: displayHtml }} className={`w-full flex-1 bg-transparent outline-none leading-relaxed text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
                     ) : (
-                        // MODO EDIÇÃO
                         noteFormat === 'markdown' ? (
                            <textarea value={noteContent} onChange={(e) => setNoteContent(e.target.value)} placeholder="Escreva aqui em Markdown (# Título, **Negrito**)..." className={`w-full min-h-full bg-transparent outline-none resize-none leading-relaxed text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
                         ) : (

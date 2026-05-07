@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap, Target, Timer, Gift, CheckCircle2, Calendar, Clock, Plus, RotateCcw, Info, Lock, Check, AlertTriangle } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
-import { useConfigStore } from '../../store/useConfigStore';
+import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
 import type { Priority, TaskType, Task } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { CustomDatePicker } from '../../components/ui/CustomDatePicker';
@@ -79,6 +79,10 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
     window.addEventListener('request-modal-close', handleGlobalClose);
     return () => window.removeEventListener('request-modal-close', handleGlobalClose);
   }, [isOpen, title, description, status, priority, type, folderId, subtasks, taskToEdit]);
+
+  // === INTERCEPTAÇÃO DE NAVEGAÇÃO ===
+  useBackHandler(isOpen && !showConfirmClose, () => { handleRequestClose(); return true; });
+  useBackHandler(showConfirmClose, () => { setShowConfirmClose(false); return true; });
 
   const addSubtask = () => { if (!subtaskInput.trim()) return; setSubtasks([...subtasks, { id: uuidv4(), title: subtaskInput, completed: false }]); setSubtaskInput(''); };
   const toggleWeekday = (day: number) => setSelectedWeekdays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);

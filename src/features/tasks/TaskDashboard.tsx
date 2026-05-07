@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, AlertTriangle, Frown, CloudRain, Meh, Smile, Sparkles, Trash2, TrendingUp, Coins, X, Check, ArrowDownUp, Info, Repeat, CheckCircle2 } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
-import { useConfigStore } from '../../store/useConfigStore';
+import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
 import { TaskModal } from './TaskModal';
 import { RoutineModal } from './RoutineModal';
 import { TaskItem } from './TaskItem';
@@ -120,13 +120,24 @@ export const TaskDashboard = () => {
   });
 
   const hasCompletedTasks = filteredTasks.some(t => t.isCompleted);
-  
-  // SEPARANDO ROTINAS DAS TAREFAS
   const routineTasks = filteredTasks.filter(t => t.type === 'routine');
   const regularTasks = filteredTasks.filter(t => t.type !== 'routine');
 
   const moods: { value: Mood; icon: any; label: string }[] = [ { value: 'disappointed', icon: CloudRain, label: 'Desapontado' }, { value: 'annoyed', icon: Frown, label: 'Incomodado' }, { value: 'normal', icon: Meh, label: 'Normal' }, { value: 'happy', icon: Smile, label: 'Feliz' }, { value: 'radiant', icon: Sparkles, label: 'Radiante' } ];
   const filters: { id: typeof selectedFilter; label: string }[] = [ { id: 'today', label: 'Hoje' }, { id: 'week', label: 'Semana' }, { id: 'month', label: 'Mês' }, { id: 'all', label: 'Tudo' } ];
+
+  // === INTERCEPTAÇÃO DE NAVEGAÇÃO ===
+  const hasLocalState = !!confirmDialog || isMenuOpen || isCreatingFolder;
+  useBackHandler(hasLocalState, () => {
+      const tStore = useTaskStore.getState();
+      const cStore = useConfigStore.getState();
+      if (tStore.isGlobalModalOpen || tStore.isRoutineModalOpen || tStore.isFocusModeOpen || cStore.isSettingsOpen || cStore.isVisionOpen || cStore.isGoogleConnectOpen || cStore.isChangelogOpen || cStore.isExitModalOpen) return false;
+
+      if (confirmDialog) { setConfirmDialog(null); return true; }
+      if (isCreatingFolder) { setIsCreatingFolder(false); setNewFolderName(''); return true; }
+      if (isMenuOpen) { setIsMenuOpen(false); return true; }
+      return false;
+  });
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 pb-32 transition-colors">

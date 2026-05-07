@@ -4,7 +4,7 @@ import { Star, Coins, Flame, CheckCircle2, TrendingUp, Eye, Medal, Info, Activit
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useHabitStore } from '../../store/useHabitStore';
-import { useConfigStore } from '../../store/useConfigStore';
+import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
 import { useReflectionStore } from '../../store/useReflectionStore';
 import { format, subDays, startOfWeek, addDays, isSameDay } from 'date-fns';
 import type { Mood, Reflection } from '../../types';
@@ -119,7 +119,6 @@ export const ProfileDashboard = () => {
     return weeks;
   };
 
-  // LINHA DE PROGRESSÃO - MARCOS
   const milestones = [
     { level: 10, label: 'Tema Suave', icon: Palette },
     { level: 15, label: '15 Vouchers', icon: Ticket },
@@ -130,6 +129,18 @@ export const ProfileDashboard = () => {
     { level: 40, label: 'P1 Ilimitada', icon: Target },
     { level: 50, label: 'Darcula + 40V', icon: Crown },
   ];
+
+  // === INTERCEPTAÇÃO DE NAVEGAÇÃO ===
+  const hasLocalState = !!viewerReflection || isCreatorOpen;
+  useBackHandler(hasLocalState, () => {
+      const tStore = useTaskStore.getState();
+      const cStore = useConfigStore.getState();
+      if (tStore.isGlobalModalOpen || tStore.isRoutineModalOpen || tStore.isFocusModeOpen || cStore.isSettingsOpen || cStore.isVisionOpen || cStore.isGoogleConnectOpen || cStore.isChangelogOpen || cStore.isExitModalOpen) return false;
+
+      if (viewerReflection) { setViewerReflection(null); return true; }
+      if (isCreatorOpen) { setIsCreatorOpen(false); setReflectionToEdit(null); return true; }
+      return false;
+  });
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 pb-32 transition-colors">
@@ -176,11 +187,9 @@ export const ProfileDashboard = () => {
             </div>
             <div className="w-full h-4 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden mb-8 shadow-inner"><motion.div initial={{ width: 0 }} animate={{ width: `${percentage}%` }} transition={{ duration: 1, ease: 'easeOut' }} className="h-full bg-gradient-to-r from-emerald-500 to-teal-400" /></div>
             
-            {/* JORNADA DE DESBLOQUEIOS (TIMELINE) */}
             <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800">
                <h3 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-6">Jornada de Desbloqueios</h3>
                <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2 relative w-full">
-                  {/* Linha conectora */}
                   <div className="absolute top-5 left-0 h-1 bg-zinc-200 dark:bg-zinc-800 w-[800px] z-0" />
                   
                   {milestones.map((m) => {

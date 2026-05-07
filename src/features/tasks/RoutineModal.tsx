@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, AlertTriangle, Repeat, Trash2 } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
-import { useConfigStore } from '../../store/useConfigStore';
+import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
 import type { RoutineTemplate, ItemColor } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -63,6 +63,10 @@ export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: Rout
     window.addEventListener('request-modal-close', handleGlobalClose);
     return () => window.removeEventListener('request-modal-close', handleGlobalClose);
   }, [isOpen, title, items, selectedWeekdays, color, routineToEdit]);
+
+  // === INTERCEPTAÇÃO DE NAVEGAÇÃO ===
+  useBackHandler(isOpen && !showConfirmClose, () => { handleRequestClose(); return true; });
+  useBackHandler(showConfirmClose, () => { setShowConfirmClose(false); return true; });
 
   const toggleWeekday = (day: number) => {
       setSelectedWeekdays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
