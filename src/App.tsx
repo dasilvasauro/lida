@@ -38,33 +38,32 @@ function App() {
     config.setChangelogOpen(false);
   };
 
-  // SISTEMA DE NAVEGAÇÃO PWA (SAMSUNG INTERNET & SAFARI FIX)
+  // === SISTEMA DE NAVEGAÇÃO PWA BLINDADO (HASH TRAP) ===
   useEffect(() => {
-    let hasPushed = false;
-    
-    // Injeta silenciosamente um estado no histórico para "trancar" o botão voltar
-    const initHistoryTrap = () => {
-      if (!hasPushed) {
-        window.history.pushState({ isLidaApp: true }, '', window.location.href);
-        hasPushed = true;
+    const applyTrap = () => {
+      // Cria a âncora de segurança que não é bloqueada pelo Samsung Internet
+      if (window.location.hash !== '#lida') {
+        window.location.hash = 'lida';
       }
     };
-    
-    // Dispara logo no início, e reforça no 1º clique (Resolve as proteções do iOS/Samsung)
-    initHistoryTrap();
-    document.addEventListener('click', initHistoryTrap, { once: true });
-    document.addEventListener('touchstart', initHistoryTrap, { once: true });
 
-    // O Cérebro Hierárquico do App
+    // Aplica no momento em que o app carrega
+    applyTrap();
+
+    // Reforça na primeira interação (Garantia de retenção no iOS)
+    const onInteract = () => applyTrap();
+    window.addEventListener('click', onInteract, { once: true });
+    window.addEventListener('touchstart', onInteract, { once: true });
+
+    // O Cérebro Hierárquico do Lida
     const executeBackAction = (): boolean => {
-      // 1. Tenta fechar algo local na tela em que você está (Modal, Dropdown, Menu de Notas)
+      // 1. Tenta fechar algo local da tela ativa (Ex: Notas Fullscreen, Dropdowns)
       if (triggerBack()) return true;
 
       const c = useConfigStore.getState();
       const t = useTaskStore.getState();
 
-      // 2. Modais e Preferências Globais
-      if (c.isExitModalOpen) { c.setExitModalOpen(false); return true; }
+      // 2. Modais e Telas Secundárias Globais
       if (t.isGlobalModalOpen || t.isRoutineModalOpen) {
         window.dispatchEvent(new CustomEvent('request-modal-close'));
         return true;
@@ -75,50 +74,67 @@ function App() {
       if (c.isGoogleConnectOpen) { c.setGoogleConnectOpen(false); return true; }
       if (c.isChangelogOpen) { c.setChangelogOpen(false); return true; }
 
-      // 3. Se não houver modais, mas você não estiver na tela Inicial, volta pra ela.
+      // 3. Devolve para a Tela Inicial se não estiver nela
       if (currentTabRef.current !== 'tasks') {
         setCurrentTab('tasks');
         c.setVisionOpen(false); c.setSettingsOpen(false); c.setGoogleConnectOpen(false); c.setChangelogOpen(false);
         return true;
       }
 
-      // 4. Estando na tela inicial e sem nada aberto, exibe o aviso de saída.
+      // 4. Estamos na Tela Inicial e nada mais está aberto
       if (c.showExitWarning) {
-        c.setExitModalOpen(true);
-        return true;
+        if (c.isExitModalOpen) {
+           // Modal de Saída já visível. Usuário pressionou Voltar de novo = Sair do App
+           c.setExitModalOpen(false);
+           return false; 
+        } else {
+           // Invoca o Modal de Confirmação de Saída
+           c.setExitModalOpen(true);
+           return true; 
+        }
+      } else {
+        // Usuário desligou o aviso de saída. Pode fechar.
+        return false; 
       }
-
-      // 5. Permissão negada para interceptar, o app vai fechar.
-      return false;
     };
 
-    const handlePopState = () => {
-      const handled = executeBackAction();
-      if (handled) {
-        // Se alguma ação foi processada internamente, devolvemos a trava ao histórico.
-        window.history.pushState({ isLidaApp: true }, '', window.location.href);
+    const handleHashChange = () => {
+      if (window.location.hash !== '#lida') {
+        // A trava caiu, o usuário pressionou voltar.
+        const handled = executeBackAction();
+        
+        if (handled) {
+          // Se a ação foi interceptada (ex: fechou nota), reinstala a trava
+          applyTrap(); 
+        } else {
+          // O usuário confirmou a saída. Forçamos o recuo nativo para fechar o app de fato.
+          window.history.back();
+        }
       }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') executeBackAction();
+      if (e.key === 'Escape') {
+         const handled = executeBackAction();
+         if (!handled) window.history.back();
+      }
     };
 
     const handleForceExit = () => {
-      window.history.go(-2);
+      window.history.back();
       setTimeout(() => window.close(), 100); 
     };
 
-    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handleHashChange);
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('force-app-exit', handleForceExit);
 
     return () => {
-      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handleHashChange);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('force-app-exit', handleForceExit);
-      document.removeEventListener('click', initHistoryTrap);
-      document.removeEventListener('touchstart', initHistoryTrap);
+      window.removeEventListener('click', onInteract);
+      window.removeEventListener('touchstart', onInteract);
     };
   }, []);
 

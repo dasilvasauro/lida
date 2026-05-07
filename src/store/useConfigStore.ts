@@ -16,7 +16,6 @@ export const triggerBack = () => {
     return false;
 };
 
-// O useRef aqui salva a vida do app, impedindo que a interceção se perca no meio das animações
 export const useBackHandler = (isActive: boolean, handler: () => boolean) => {
     const handlerRef = useRef(handler);
     useEffect(() => { handlerRef.current = handler; }, [handler]);
