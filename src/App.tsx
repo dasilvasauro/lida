@@ -51,7 +51,7 @@ function App() {
       if (c.isExitModalOpen) {
         c.setExitModalOpen(false);
         didHandle = true;
-      } else if (t.isGlobalModalOpen || t.isRoutineModalOpen) { // <-- CORREÇÃO AQUI
+      } else if (t.isGlobalModalOpen || t.isRoutineModalOpen) {
         window.dispatchEvent(new CustomEvent('request-modal-close'));
         didHandle = true;
       } else if (t.isFocusModeOpen || c.isVisionOpen || c.isSettingsOpen || c.isGoogleConnectOpen || c.isChangelogOpen) {
@@ -142,13 +142,25 @@ function App() {
           <motion.div key="onboarding" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, filter: 'blur(10px)' }} transition={{ duration: 0.6, ease: "easeInOut" }}><OnboardingFlow /></motion.div>
         ) : (
           <motion.div key="dashboard" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }} className="relative min-h-screen pb-24">
-            {currentTab === 'tasks' && <TaskDashboard />}
-            {currentTab === 'habits' && <HabitDashboard />}
-            {currentTab === 'notes' && <NotesDashboard />}
-            {currentTab === 'shop' && <ShopDashboard />}
-            {currentTab === 'profile' && <ProfileDashboard />}
             
-            {/* CORREÇÃO AQUI: Navbar agora se esconde também quando isRoutineModalOpen é true */}
+            {/* ANIMAÇÃO DE TROCA DE ABAS COM VIGNETTE DE ALTA PERFORMANCE */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentTab}
+                initial={{ opacity: 0, scale: 0.97, filter: 'brightness(0.8)' }}
+                animate={{ opacity: 1, scale: 1, filter: 'brightness(1)' }}
+                exit={{ opacity: 0, scale: 0.97, filter: 'brightness(0.8)' }}
+                transition={{ duration: 0.25, ease: "easeInOut" }}
+                style={{ willChange: "opacity, transform, filter" }}
+              >
+                {currentTab === 'tasks' && <TaskDashboard />}
+                {currentTab === 'habits' && <HabitDashboard />}
+                {currentTab === 'notes' && <NotesDashboard />}
+                {currentTab === 'shop' && <ShopDashboard />}
+                {currentTab === 'profile' && <ProfileDashboard />}
+              </motion.div>
+            </AnimatePresence>
+
             {!tasks.isGlobalModalOpen && !tasks.isRoutineModalOpen && !tasks.isFocusModeOpen && (
               <Navbar currentTab={currentTab} setCurrentTab={handleTabSwitch} />
             )}
