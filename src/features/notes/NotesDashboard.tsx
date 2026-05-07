@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, Strikethrough, Link as LinkIcon, Code, List, ListOrdered, FileText, Trash2, Check, Eye, PenLine, Maximize2, Minimize2, Undo, Redo, FileSearch, FolderInput, Edit2, AlertTriangle, X, ChevronDown } from 'lucide-react';
+import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, Strikethrough, Link as LinkIcon, Code, List, ListOrdered, FileText, Trash2, Check, Eye, PenLine, Maximize2, Minimize2, Undo, Redo, FileSearch, FolderInput, Edit2, AlertTriangle, X, ChevronDown, Star, Pin } from 'lucide-react';
 import { useNoteStore } from '../../store/useNoteStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
@@ -86,7 +86,18 @@ export const NotesDashboard = () => {
   const noteSearchRef = useRef<HTMLInputElement>(null);
 
   const filteredNotebooks = notebooks.filter(nb => nb.name.toLowerCase().includes(search.toLowerCase()));
-  const filteredNotes = activeNotebook ? notes.filter(n => n.notebookId === activeNotebook.id && (n.title.toLowerCase().includes(search.toLowerCase()) || n.content.toLowerCase().includes(search.toLowerCase()))) : [];
+  
+  // Módulo de Notas do Caderno (Filtra e Ordena por Pinos primeiro, depois data)
+  const filteredNotes = activeNotebook ? notes.filter(n => n.notebookId === activeNotebook.id && (n.title.toLowerCase().includes(search.toLowerCase()) || n.content.toLowerCase().includes(search.toLowerCase())))
+    .sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return b.updatedAt - a.updatedAt;
+    }) : [];
+
+  // Módulo de Notas Favoritas (Para a Home)
+  const favoriteNotes = notes.filter(n => n.isFavorite && (n.title.toLowerCase().includes(search.toLowerCase()) || n.content.toLowerCase().includes(search.toLowerCase())))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
 
   const handleOpenNotebook = (nb: Notebook) => {
     if (nb.isLocked && !unlockedNotebooks.includes(nb.id)) {
@@ -103,6 +114,19 @@ export const NotesDashboard = () => {
       setActiveNote(note); setNoteTitle(note.title); setNoteContent(note.content); setNoteFormat(note.format); setNoteFont(note.font); setNoteLines(note.hasLines); 
       setIsEditing(false); setIsFullscreen(false); setShowInNoteSearch(false); setNoteSearchQuery(''); setView('editor');
     }
+  };
+
+  const handleOpenFavoriteNote = (note: Note) => {
+      const nb = notebooks.find(n => n.id === note.notebookId);
+      if (!nb) return;
+      if (nb.isLocked && !unlockedNotebooks.includes(nb.id)) {
+          // Se o caderno estiver trancado, o utilizador tem de colocar a senha. 
+          // O fluxo do password modal abrirá o caderno normalmente e ele verá a nota lá dentro.
+          setPasswordModal({ isOpen: true, type: 'unlock_nb', targetId: nb.id });
+          return;
+      }
+      setActiveNotebook(nb);
+      handleOpenNote(note);
   };
 
   const handleBack = () => {
@@ -242,6 +266,37 @@ export const NotesDashboard = () => {
       return false;
   });
 
+  const renderNoteCard = (note: Note, nbColorKey: ItemColor, isFromHome: boolean = false) => {
+    const isLocked = note.isLocked && !unlockedNotes.includes(note.id);
+    return (
+      <div key={note.id} className="relative group">
+        <button onClick={() => isFromHome ? handleOpenFavoriteNote(note) : handleOpenNote(note)} className={`w-full p-5 rounded-2xl border text-left transition-all hover:border-current shadow-sm ${colorStyles[nbColorKey].note}`}>
+          <div className="flex justify-between items-start mb-2">
+            <div className="flex items-center gap-2">
+               {note.isPinned && !isFromHome && <Pin size={14} className="text-zinc-400 rotate-45" />}
+               {isFromHome && <Star size={14} className="text-amber-500 fill-amber-500" />}
+               <h4 className="font-bold text-lg text-zinc-900 dark:text-zinc-100 line-clamp-1">{note.title || 'Sem Título'}</h4>
+            </div>
+            {note.isLocked && <Lock size={14} className="text-amber-500 shrink-0 mt-1" />}
+          </div>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2 min-h-[2.5rem]">{isLocked ? '••••••••••••••••' : (note.format === 'markdown' ? note.content : note.content.replace(/<[^>]*>?/gm, ''))}</p>
+          <span className="text-[10px] font-bold text-zinc-400 mt-4 block uppercase tracking-widest">{format(note.updatedAt, "dd/MM/yyyy HH:mm")}</span>
+        </button>
+        <div className="absolute bottom-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {!isLocked && (
+             <>
+               {!isFromHome && (
+                  <button onClick={(e) => { e.stopPropagation(); updateNote(note.id, { isPinned: !note.isPinned }); }} className={`p-2 rounded-lg transition-colors shadow-md ${note.isPinned ? 'bg-zinc-800 text-white dark:bg-zinc-200 dark:text-black' : 'bg-white/80 dark:bg-black/50 backdrop-blur-md text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white'}`}><Pin size={14}/></button>
+               )}
+               <button onClick={(e) => { e.stopPropagation(); updateNote(note.id, { isFavorite: !note.isFavorite }); }} className={`p-2 rounded-lg transition-colors shadow-md ${note.isFavorite ? 'bg-amber-100 text-amber-500 dark:bg-amber-900/30' : 'bg-white/80 dark:bg-black/50 backdrop-blur-md text-zinc-600 dark:text-zinc-300 hover:text-amber-500'}`}><Star size={14} fill={note.isFavorite ? 'currentColor' : 'none'}/></button>
+               <button onClick={(e) => { e.stopPropagation(); setConfirmDialog({ type: 'note', id: note.id }); }} className="p-2 bg-red-100 text-red-500 dark:bg-red-900/30 rounded-lg hover:bg-red-500 hover:text-white transition-colors shadow-md"><Trash2 size={14}/></button>
+             </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <style>{`
@@ -263,13 +318,13 @@ export const NotesDashboard = () => {
             className={`w-full h-full mx-auto flex flex-col ${isFullscreen ? 'max-w-6xl' : 'max-w-4xl px-6 md:px-8 pt-12'}`}
           >
 
-            {/* VISÃO DE CADERNOS/NOTAS */}
+            {/* HEADER GERAL */}
             {view !== 'editor' && !isFullscreen && (
               <header className="space-y-6 mb-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {view === 'notes' && <button onClick={handleBack} className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"><ChevronLeft size={24}/></button>}
-                    <h1 className="text-3xl font-black tracking-tight">{view === 'notebooks' ? 'Seus Cadernos' : activeNotebook?.name}</h1>
+                    <h1 className="text-3xl font-black tracking-tight">{view === 'notebooks' ? 'Notas & Cadernos' : activeNotebook?.name}</h1>
                   </div>
                   {view === 'notebooks' && (unlockedNotebooks.length > 0 || unlockedNotes.length > 0) && (
                     <button onClick={lockAll} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-500 text-xs font-bold hover:bg-amber-500/20 transition-colors"><Lock size={14} /> Trancar Sessão</button>
@@ -277,37 +332,55 @@ export const NotesDashboard = () => {
                 </div>
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={20} />
-                  <input type="text" placeholder={view === 'notebooks' ? "Pesquisar cadernos..." : "Pesquisar notas..."} value={search} onChange={(e) => setSearch(e.target.value)} className="w-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors font-medium" />
+                  <input type="text" placeholder={view === 'notebooks' ? "Pesquisar cadernos ou notas..." : "Pesquisar notas..."} value={search} onChange={(e) => setSearch(e.target.value)} className="w-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 transition-colors font-medium" />
                 </div>
               </header>
             )}
 
-            {/* VISÃO DE CADERNOS */}
+            {/* VISÃO DE CADERNOS & FAVORITOS */}
             {view === 'notebooks' && (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                <button onClick={() => openNbModal()} className="flex flex-col items-center justify-center gap-3 p-6 rounded-3xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all h-40">
-                  <Plus size={32} /><span className="font-bold text-sm">Novo Caderno</span>
-                </button>
-                {filteredNotebooks.map(nb => {
-                  const isLocked = nb.isLocked && !unlockedNotebooks.includes(nb.id);
-                  return (
-                    <div key={nb.id} className="relative group">
-                      <button onClick={() => handleOpenNotebook(nb)} className={`w-full h-40 flex flex-col items-start justify-between p-5 rounded-3xl border transition-all hover:scale-105 shadow-sm ${colorStyles[nb.color].nb}`}>
-                        <div className={`w-10 h-10 rounded-full bg-white/50 dark:bg-black/20 flex items-center justify-center backdrop-blur-sm shadow-sm ${colorStyles[nb.color].hex}`}>{nb.isLocked ? <Lock size={18} /> : <FileText size={18} />}</div>
-                        <div className="text-left"><h4 className="font-black text-lg truncate w-full">{isLocked ? 'Cadeado' : nb.name}</h4><span className="text-[10px] uppercase tracking-widest opacity-70 font-bold">{notes.filter(n => n.notebookId === nb.id).length} notas</span></div>
-                      </button>
-                      <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {!isLocked && (
-                           <>
-                             <button onClick={(e) => { e.stopPropagation(); nb.isLocked ? removeLock(nb.id, true) : setPasswordModal({ isOpen: true, type: 'set_nb_lock', targetId: nb.id }); }} className="p-2 bg-white/80 dark:bg-black/50 backdrop-blur-md rounded-full text-zinc-600 dark:text-zinc-300 hover:text-amber-500 transition-colors shadow-md">{nb.isLocked ? <Unlock size={14}/> : <Lock size={14}/>}</button>
-                             <button onClick={(e) => { e.stopPropagation(); openNbModal(nb); }} className="p-2 bg-white/80 dark:bg-black/50 backdrop-blur-md rounded-full text-blue-500 hover:bg-blue-500 hover:text-white transition-colors shadow-md"><Edit2 size={14}/></button>
-                             {nb.id !== 'default' && (<button onClick={(e) => { e.stopPropagation(); setConfirmDialog({ type: 'notebook', id: nb.id }); }} className="p-2 bg-white/80 dark:bg-black/50 backdrop-blur-md rounded-full text-red-500 hover:bg-red-500 hover:text-white transition-colors shadow-md"><Trash2 size={14}/></button>)}
-                           </>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
+              <div className="space-y-12">
+                
+                {favoriteNotes.length > 0 && (
+                   <div>
+                     <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-4 flex items-center gap-2 ml-1"><Star size={14} /> Notas Favoritas</h3>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {favoriteNotes.map(note => {
+                            const nb = notebooks.find(n => n.id === note.notebookId);
+                            return renderNoteCard(note, nb ? nb.color : 'zinc', true);
+                        })}
+                     </div>
+                   </div>
+                )}
+
+                <div>
+                   <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-4 flex items-center gap-2 ml-1"><FileText size={14} /> Seus Cadernos</h3>
+                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                     <button onClick={() => openNbModal()} className="flex flex-col items-center justify-center gap-3 p-6 rounded-3xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all h-40">
+                       <Plus size={32} /><span className="font-bold text-sm">Novo Caderno</span>
+                     </button>
+                     {filteredNotebooks.map(nb => {
+                       const isLocked = nb.isLocked && !unlockedNotebooks.includes(nb.id);
+                       return (
+                         <div key={nb.id} className="relative group">
+                           <button onClick={() => handleOpenNotebook(nb)} className={`w-full h-40 flex flex-col items-start justify-between p-5 rounded-3xl border transition-all hover:scale-105 shadow-sm ${colorStyles[nb.color].nb}`}>
+                             <div className={`w-10 h-10 rounded-full bg-white/50 dark:bg-black/20 flex items-center justify-center backdrop-blur-sm shadow-sm ${colorStyles[nb.color].hex}`}>{nb.isLocked ? <Lock size={18} /> : <FileText size={18} />}</div>
+                             <div className="text-left"><h4 className="font-black text-lg truncate w-full">{isLocked ? 'Cadeado' : nb.name}</h4><span className="text-[10px] uppercase tracking-widest opacity-70 font-bold">{notes.filter(n => n.notebookId === nb.id).length} notas</span></div>
+                           </button>
+                           <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                             {!isLocked && (
+                                <>
+                                  <button onClick={(e) => { e.stopPropagation(); nb.isLocked ? removeLock(nb.id, true) : setPasswordModal({ isOpen: true, type: 'set_nb_lock', targetId: nb.id }); }} className="p-2 bg-white/80 dark:bg-black/50 backdrop-blur-md rounded-full text-zinc-600 dark:text-zinc-300 hover:text-amber-500 transition-colors shadow-md">{nb.isLocked ? <Unlock size={14}/> : <Lock size={14}/>}</button>
+                                  <button onClick={(e) => { e.stopPropagation(); openNbModal(nb); }} className="p-2 bg-white/80 dark:bg-black/50 backdrop-blur-md rounded-full text-blue-500 hover:bg-blue-500 hover:text-white transition-colors shadow-md"><Edit2 size={14}/></button>
+                                  {nb.id !== 'default' && (<button onClick={(e) => { e.stopPropagation(); setConfirmDialog({ type: 'notebook', id: nb.id }); }} className="p-2 bg-white/80 dark:bg-black/50 backdrop-blur-md rounded-full text-red-500 hover:bg-red-500 hover:text-white transition-colors shadow-md"><Trash2 size={14}/></button>)}
+                                </>
+                             )}
+                           </div>
+                         </div>
+                       )
+                     })}
+                   </div>
+                </div>
               </div>
             )}
 
@@ -319,21 +392,7 @@ export const NotesDashboard = () => {
                     <button onClick={handleCreateNote} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-md ${colorStyles[activeNotebook.color].nb.split(' ')[0].replace('/20', '').replace('/30', '')}`}><Plus size={16}/> Criar Nota</button>
                  </div>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {filteredNotes.map(note => {
-                      const isLocked = note.isLocked && !unlockedNotes.includes(note.id);
-                      return (
-                        <div key={note.id} className="relative group">
-                          <button onClick={() => handleOpenNote(note)} className={`w-full p-5 rounded-2xl border text-left transition-all hover:border-current shadow-sm ${colorStyles[activeNotebook.color].note}`}>
-                            <div className="flex justify-between items-start mb-2"><h4 className="font-bold text-lg text-zinc-900 dark:text-zinc-100 line-clamp-1">{note.title || 'Sem Título'}</h4>{note.isLocked && <Lock size={14} className="text-amber-500 shrink-0 mt-1" />}</div>
-                            <p className="text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2 min-h-[2.5rem]">{isLocked ? '••••••••••••••••' : (note.format === 'markdown' ? note.content : note.content.replace(/<[^>]*>?/gm, ''))}</p>
-                            <span className="text-[10px] font-bold text-zinc-400 mt-4 block uppercase tracking-widest">{format(note.updatedAt, "dd/MM/yyyy HH:mm")}</span>
-                          </button>
-                          <div className="absolute bottom-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {!isLocked && (<button onClick={(e) => { e.stopPropagation(); setConfirmDialog({ type: 'note', id: note.id }); }} className="p-2 bg-red-100 text-red-500 dark:bg-red-900/30 rounded-lg hover:bg-red-500 hover:text-white transition-colors shadow-md"><Trash2 size={14}/></button>)}
-                          </div>
-                        </div>
-                      )
-                    })}
+                    {filteredNotes.map(note => renderNoteCard(note, activeNotebook.color))}
                  </div>
               </div>
             )}
@@ -342,18 +401,18 @@ export const NotesDashboard = () => {
             {view === 'editor' && activeNote && activeNotebook && (
               <div className="flex flex-col flex-1 h-full min-h-0 relative">
                 
-                {/* BARRA SUPERIOR MODO NORMAL */}
+                {/* BARRA SUPERIOR (RESPONSIVA) */}
                 {!isFullscreen && (
-                    <div className={`flex flex-wrap items-center justify-between gap-4 p-2 mb-4 rounded-2xl border ${colorStyles[activeNotebook.color].note}`}>
-                       <div className="flex items-center gap-1">
-                         <button onClick={handleBack} className="p-2 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><ChevronLeft size={20}/></button>
-                         <div className="w-px h-6 bg-zinc-300 dark:bg-zinc-700 mx-1" />
+                    <div className={`flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 p-3 mb-4 rounded-2xl border ${colorStyles[activeNotebook.color].note} w-full min-w-0`}>
+                       <div className="flex items-center gap-1 w-full md:w-auto overflow-x-auto scrollbar-hide shrink-0 pb-1 md:pb-0">
+                         <button onClick={handleBack} className="p-2 shrink-0 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><ChevronLeft size={20}/></button>
+                         <div className="w-px h-6 shrink-0 bg-zinc-300 dark:bg-zinc-700 mx-1" />
                          
                          {/* Dropdown Customizado: Mover Nota */}
-                         <div className="relative flex items-center gap-2 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800/50 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                         <div className="relative shrink-0 flex items-center gap-2 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800/50 rounded-lg border border-zinc-200 dark:border-zinc-800">
                            <FolderInput size={14} className="text-zinc-500 shrink-0" />
                            <button onClick={() => setFolderMenuOpen(!folderMenuOpen)} className="flex items-center gap-1 bg-transparent text-xs font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-300 outline-none max-w-[100px] md:max-w-[150px] truncate">
-                             {notebooks.find(nb => nb.id === activeNote?.notebookId)?.name || 'Caderno'} <ChevronDown size={14} className="opacity-50" />
+                             {notebooks.find(nb => nb.id === activeNote?.notebookId)?.name || 'Caderno'} <ChevronDown size={14} className="opacity-50 shrink-0" />
                            </button>
                            <AnimatePresence>
                              {folderMenuOpen && (
@@ -375,13 +434,13 @@ export const NotesDashboard = () => {
                            </AnimatePresence>
                          </div>
                          
-                         <div className="w-px h-6 bg-zinc-300 dark:bg-zinc-700 mx-1" />
-                         <button onClick={() => { setNoteFormat(noteFormat === 'richtext' ? 'markdown' : 'richtext'); setIsEditing(true); setShowInNoteSearch(false); setNoteSearchQuery(''); }} className="px-3 py-1.5 text-xs font-bold uppercase tracking-widest rounded-lg bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 shadow-sm text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white">{noteFormat === 'richtext' ? 'Rich Text' : 'Markdown'}</button>
+                         <div className="w-px h-6 shrink-0 bg-zinc-300 dark:bg-zinc-700 mx-1" />
+                         <button onClick={() => { setNoteFormat(noteFormat === 'richtext' ? 'markdown' : 'richtext'); setIsEditing(true); setShowInNoteSearch(false); setNoteSearchQuery(''); }} className="shrink-0 px-3 py-1.5 text-xs font-bold uppercase tracking-widest rounded-lg bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 shadow-sm text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white">{noteFormat === 'richtext' ? 'Rich Text' : 'Markdown'}</button>
                          
                          {/* Dropdown Customizado: Fonte */}
-                         <div className="relative">
+                         <div className="relative shrink-0">
                            <button onClick={() => setFontMenuOpen(!fontMenuOpen)} className="flex items-center gap-1 bg-transparent text-sm font-bold text-zinc-600 dark:text-zinc-300 ml-2 outline-none">
-                             {noteFont === 'sans' ? 'Sans' : noteFont === 'serif' ? 'Serif' : 'Manual'} <ChevronDown size={14} className="opacity-50"/>
+                             {noteFont === 'sans' ? 'Sans' : noteFont === 'serif' ? 'Serif' : 'Manual'} <ChevronDown size={14} className="opacity-50 shrink-0"/>
                            </button>
                            <AnimatePresence>
                              {fontMenuOpen && (
@@ -398,7 +457,8 @@ export const NotesDashboard = () => {
                          </div>
 
                        </div>
-                       <div className="flex items-center gap-1 pr-2">
+                       
+                       <div className="flex items-center justify-end w-full md:w-auto gap-1 shrink-0 border-t md:border-none border-zinc-200 dark:border-zinc-800 pt-2 md:pt-0">
                          <button onClick={() => setIsFullscreen(true)} className="p-2 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Tela Cheia"><Maximize2 size={18}/></button>
                          <button onClick={() => setNoteLines(!noteLines)} className={`p-2 rounded-lg transition-colors ${noteLines ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} title="Pautas"><AlignLeft size={18}/></button>
                          <button onClick={() => { activeNote.isLocked ? removeLock(activeNote.id, false) : setPasswordModal({ isOpen: true, type: 'set_note_lock', targetId: activeNote.id }) }} className={`p-2 rounded-lg ${activeNote.isLocked ? 'text-amber-500 bg-amber-500/10' : 'text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} title={activeNote.isLocked ? 'Remover Senha' : 'Proteger com Senha'}>
@@ -449,10 +509,10 @@ export const NotesDashboard = () => {
                   )}
                 </AnimatePresence>
 
-                {/* BARRA DE EDIÇÃO */}
+                {/* BARRA DE EDIÇÃO (Responsiva com overflow) */}
                 <AnimatePresence>
-                   <div className={`flex items-center justify-between border-b border-zinc-100 dark:border-zinc-900 mb-4 pb-2 px-2 ${(isFullscreen && !showInNoteSearch) ? 'pt-20' : ''}`}>
-                     <div className="flex gap-1 overflow-x-auto scrollbar-hide flex-1 items-center">
+                   <div className={`flex items-center justify-between border-b border-zinc-100 dark:border-zinc-900 mb-4 pb-2 px-2 gap-2 ${(isFullscreen && !showInNoteSearch) ? 'pt-20' : ''}`}>
+                     <div className="flex gap-1 overflow-x-auto scrollbar-hide flex-1 items-center min-w-0 w-full">
                         {!isFullscreen && (
                            <button onClick={() => { setIsEditing(!isEditing); setShowInNoteSearch(false); setNoteSearchQuery(''); }} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shrink-0 ${!isEditing ? 'bg-blue-500/10 text-blue-500' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
                              {isEditing ? <Eye size={16}/> : <PenLine size={16}/>} {isEditing ? 'Ver' : 'Editar'}
@@ -461,35 +521,35 @@ export const NotesDashboard = () => {
                         
                         {!isEditing && (
                            <>
-                             {!isFullscreen && <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-2 self-center" />}
-                             <button onClick={() => { setShowInNoteSearch(!showInNoteSearch); if(!showInNoteSearch) setNoteSearchQuery(''); }} className={`p-2 rounded-lg transition-colors ${showInNoteSearch ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} title="Buscar na Nota"><FileSearch size={16}/></button>
+                             {!isFullscreen && <div className="w-px h-6 shrink-0 bg-zinc-200 dark:bg-zinc-800 mx-2 self-center" />}
+                             <button onClick={() => { setShowInNoteSearch(!showInNoteSearch); if(!showInNoteSearch) setNoteSearchQuery(''); }} className={`shrink-0 p-2 rounded-lg transition-colors ${showInNoteSearch ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} title="Buscar na Nota"><FileSearch size={16}/></button>
                            </>
                         )}
                         
                         {noteFormat === 'richtext' && isEditing && (
                             <div className="flex items-center gap-1 shrink-0">
-                              {!isFullscreen && <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-2 self-center" />}
+                              {!isFullscreen && <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-2 self-center shrink-0" />}
                               
-                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('undo')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Desfazer"><Undo size={16}/></button>
-                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('redo')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Refazer"><Redo size={16}/></button>
-                              <button onMouseDown={e => e.preventDefault()} onClick={() => { setShowInNoteSearch(true); setIsEditing(false); }} className="p-2 rounded-lg transition-colors text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800" title="Buscar na Nota"><FileSearch size={16}/></button>
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('undo')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Desfazer"><Undo size={16}/></button>
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('redo')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Refazer"><Redo size={16}/></button>
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => { setShowInNoteSearch(true); setIsEditing(false); }} className="shrink-0 p-2 rounded-lg transition-colors text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800" title="Buscar na Nota"><FileSearch size={16}/></button>
                               
-                              <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
-                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('bold')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Negrito"><Bold size={16}/></button>
-                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('italic')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Itálico"><Italic size={16}/></button>
-                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('underline')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Sublinhado"><Underline size={16}/></button>
-                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('strikeThrough')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Tachado"><Strikethrough size={16}/></button>
+                              <div className="w-px h-6 shrink-0 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('bold')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Negrito"><Bold size={16}/></button>
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('italic')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Itálico"><Italic size={16}/></button>
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('underline')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Sublinhado"><Underline size={16}/></button>
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('strikeThrough')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Tachado"><Strikethrough size={16}/></button>
                               
-                              <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
-                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('insertUnorderedList')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Lista"><List size={16}/></button>
-                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('insertOrderedList')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Lista Numerada"><ListOrdered size={16}/></button>
+                              <div className="w-px h-6 shrink-0 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('insertUnorderedList')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Lista"><List size={16}/></button>
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('insertOrderedList')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Lista Numerada"><ListOrdered size={16}/></button>
                               
-                              <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
+                              <div className="w-px h-6 shrink-0 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
                               <button onMouseDown={e => e.preventDefault()} onClick={() => {
                                  const url = prompt('Digite a URL do link:');
                                  if (url) execCmd('createLink', url);
-                              }} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Inserir Link"><LinkIcon size={16}/></button>
-                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('formatBlock', 'PRE')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Bloco de Código"><Code size={16}/></button>
+                              }} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Inserir Link"><LinkIcon size={16}/></button>
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('formatBlock', 'PRE')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Bloco de Código"><Code size={16}/></button>
                             </div>
                         )}
 
@@ -509,15 +569,17 @@ export const NotesDashboard = () => {
                   </div>
                 </AnimatePresence>
 
-                {/* TEXT AREA */}
+                {/* TEXT AREA: Renderização Separada (Leitura vs Edição) para 100% de Confiabilidade */}
                 <div className={`flex-1 flex flex-col rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-inner editor-content overflow-hidden ${colorStyles[activeNotebook.color].note}`}>
                   <input type="text" placeholder="Título da Nota" readOnly={!isEditing && !showInNoteSearch} value={noteTitle} onChange={(e) => setNoteTitle(e.target.value)} className={`w-full px-8 pt-8 pb-4 bg-transparent outline-none text-3xl font-black placeholder:text-zinc-300 dark:placeholder:text-zinc-700 ${noteFont === 'handwriting' ? 'font-handwriting' : noteFont === 'serif' ? 'font-serif' : 'font-sans'}`} />
                   
                   <div className={`flex-1 flex flex-col px-8 relative overflow-y-auto scrollbar-thin ${noteLines ? 'bg-lined-paper' : ''}`}>
                     
                     {(!isEditing || showInNoteSearch) ? (
+                        // MODO LEITURA (Também usado pela pesquisa para mostrar os highlights)
                         <div dangerouslySetInnerHTML={{ __html: displayHtml }} className={`w-full flex-1 bg-transparent outline-none leading-relaxed text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
                     ) : (
+                        // MODO EDIÇÃO
                         noteFormat === 'markdown' ? (
                            <textarea value={noteContent} onChange={(e) => setNoteContent(e.target.value)} placeholder="Escreva aqui em Markdown (# Título, **Negrito**)..." className={`w-full min-h-full bg-transparent outline-none resize-none leading-relaxed text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
                         ) : (

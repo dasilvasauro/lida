@@ -9,7 +9,7 @@ export interface Folder { id: string; name: string; }
 export interface RoutineTemplate {
   id: string; title: string; items: string[]; weekdays: number[];
   color: ItemColor; createdAt: number;
-  isFreeEditExpired?: boolean; // <-- FLAG DE EDIÇÃO
+  isFreeEditExpired?: boolean;
 }
 
 export interface Task {
@@ -21,12 +21,12 @@ export interface Task {
   isCompleted: boolean; completedAt?: number; isFailed?: boolean;
   folderId: string; hasRespite?: boolean; hasRelief?: boolean;  
   hasMagicDice?: boolean; isArchived?: boolean; nextRecurrenceGenerated?: boolean; 
-  isFreeEditExpired?: boolean; // <-- FLAG DE EDIÇÃO
+  isFreeEditExpired?: boolean;
 }
 
 export interface Habit {
   id: string; title: string; description?: string; goal: number; createdAt: number;
-  isFreeEditExpired?: boolean; // <-- FLAG DE EDIÇÃO
+  isFreeEditExpired?: boolean;
 }
 
 export type GoalState = 1 | 2 | 3 | 4 | 5;
@@ -38,4 +38,19 @@ export interface Reflection { id: string; title: string; color: ReflectionColor;
 export type NoteFont = 'sans' | 'serif' | 'handwriting';
 export type NoteFormat = 'richtext' | 'markdown';
 export interface Notebook { id: string; name: string; color: ItemColor; isLocked: boolean; password?: string; createdAt: number; }
-export interface Note { id: string; notebookId: string; title: string; content: string; format: NoteFormat; font: NoteFont; hasLines: boolean; isLocked: boolean; password?: string; createdAt: number; updatedAt: number; }
+
+export interface Note { 
+    id: string; 
+    notebookId: string; 
+    title: string; 
+    content: string; 
+    format: NoteFormat; 
+    font: NoteFont; 
+    hasLines: boolean; 
+    isLocked: boolean; 
+    password?: string; 
+    createdAt: number; 
+    updatedAt: number;
+    isFavorite?: boolean; // <-- NOVO
+    isPinned?: boolean;   // <-- NOVO
+}
