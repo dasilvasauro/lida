@@ -34,14 +34,15 @@ const parseMarkdown = (text: string) => {
     .replace(/\n/gim, '<br />');
 };
 
-// Motor de Destaque Regex Customizado (Seguro para HTML)
+// Motor de Destaque Regex Customizado
 const getHighlightedContent = (html: string, query: string) => {
     if (!query.trim()) return { html, count: 0 };
     try {
         const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Ignora tags HTML e destaca apenas o texto
         const regex = new RegExp(`(${safeQuery})(?![^<]*>)`, 'gi');
         const count = (html.match(regex) || []).length;
-        const highlighted = html.replace(regex, '<mark class="bg-amber-400 text-amber-950 font-bold px-0.5 rounded-sm shadow-sm">$1</mark>');
+        const highlighted = html.replace(regex, '<mark style="background-color: #fbbf24; color: #451a03; font-weight: bold; padding: 0 2px; border-radius: 4px;">$1</mark>');
         return { html: highlighted, count };
     } catch (e) {
         return { html, count: 0 };
@@ -138,7 +139,6 @@ export const NotesDashboard = () => {
     setIsEditing(true); setIsFullscreen(false); setShowInNoteSearch(false); setNoteSearchQuery(''); setView('editor');
   };
 
-  // Motor de Salvamento Blindado
   const saveNote = (isClosing = false) => {
     if (!activeNote) return;
     const currentHtml = noteContent;
@@ -159,14 +159,14 @@ export const NotesDashboard = () => {
     return () => clearTimeout(timer);
   }, [noteTitle, noteContent, noteFormat, noteFont, noteLines, isEditing, activeNote?.id]);
 
-  // Bug do ecrã em branco corrigido: Injeta innerHTML de forma robusta e persistente
+  // População inicial segura do Rich Text: Ignora as renderizações, foca-se apenas no momento em que entra no modo edição.
   useEffect(() => {
-    if (view === 'editor' && noteFormat === 'richtext' && editorRef.current) {
-      if (editorRef.current.innerHTML !== noteContent && document.activeElement !== editorRef.current) {
+    if (view === 'editor' && noteFormat === 'richtext' && isEditing && editorRef.current) {
+      if (document.activeElement !== editorRef.current) {
           editorRef.current.innerHTML = noteContent;
       }
     }
-  }, [view, noteFormat, activeNote?.id, isFullscreen, noteContent]);
+  }, [view, noteFormat, isEditing, activeNote?.id]);
 
   const confirmDelete = () => {
     if (confirmDialog?.type === 'notebook') {
@@ -218,7 +218,7 @@ export const NotesDashboard = () => {
 
   const { words, chars } = getWordCount();
 
-  // Processamento do conteúdo (Normal ou com Hightlight de Pesquisa)
+  // Processamento do conteúdo: Exibe Markdown processado, Rich Text limpo ou Rich Text com Highlight.
   let displayHtml = noteFormat === 'markdown' ? parseMarkdown(noteContent) : noteContent;
   let searchMatchCount = 0;
 
@@ -425,7 +425,7 @@ export const NotesDashboard = () => {
                             autoFocus 
                           />
                           {noteSearchQuery && (
-                             <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 whitespace-nowrap bg-zinc-200 dark:bg-zinc-800 px-2 py-1 rounded-md">
+                             <span className={`text-[10px] font-black uppercase tracking-widest whitespace-nowrap px-2 py-1 rounded-md ${searchMatchCount === 0 ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/20 text-amber-600 dark:text-amber-500'}`}>
                                 {searchMatchCount} {searchMatchCount === 1 ? 'resultado' : 'resultados'}
                              </span>
                           )}
@@ -435,7 +435,7 @@ export const NotesDashboard = () => {
                   )}
                 </AnimatePresence>
 
-                {/* BARRA DE EDIÇÃO */}
+                {/* BARRA DE EDIÇÃO (Também funciona para acionar pesquisa) */}
                 <AnimatePresence>
                    <div className={`flex items-center justify-between border-b border-zinc-100 dark:border-zinc-900 mb-4 pb-2 px-2 ${(isFullscreen && !showInNoteSearch) ? 'pt-20' : ''}`}>
                      <div className="flex gap-1 overflow-x-auto scrollbar-hide flex-1 items-center">
@@ -445,13 +445,20 @@ export const NotesDashboard = () => {
                            </button>
                         )}
                         
+                        {!isEditing && (
+                           <>
+                             {!isFullscreen && <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-2 self-center" />}
+                             <button onClick={() => { setShowInNoteSearch(!showInNoteSearch); if(!showInNoteSearch) setNoteSearchQuery(''); }} className={`p-2 rounded-lg transition-colors ${showInNoteSearch ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} title="Buscar na Nota"><FileSearch size={16}/></button>
+                           </>
+                        )}
+                        
                         {noteFormat === 'richtext' && isEditing && (
                             <div className="flex items-center gap-1 shrink-0">
                               {!isFullscreen && <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-2 self-center" />}
                               
                               <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('undo')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Desfazer"><Undo size={16}/></button>
                               <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('redo')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Refazer"><Redo size={16}/></button>
-                              <button onMouseDown={e => e.preventDefault()} onClick={() => { setShowInNoteSearch(true); setIsEditing(false); }} className={`p-2 rounded-lg transition-colors ${showInNoteSearch ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} title="Buscar na Nota"><FileSearch size={16}/></button>
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => { setShowInNoteSearch(true); setIsEditing(false); }} className="p-2 rounded-lg transition-colors text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800" title="Buscar na Nota"><FileSearch size={16}/></button>
                               
                               <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
                               <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('bold')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Negrito"><Bold size={16}/></button>
@@ -471,10 +478,11 @@ export const NotesDashboard = () => {
                               <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('formatBlock', 'PRE')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Bloco de Código"><Code size={16}/></button>
                             </div>
                         )}
+
                         {noteFormat === 'markdown' && isEditing && (
                            <div className="flex items-center gap-1 shrink-0">
                              {!isFullscreen && <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-2 self-center" />}
-                             <button onClick={() => { setShowInNoteSearch(true); setIsEditing(false); }} className={`p-2 rounded-lg transition-colors text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800`} title="Buscar na Nota"><FileSearch size={16}/></button>
+                             <button onClick={() => { setShowInNoteSearch(true); setIsEditing(false); }} className="p-2 rounded-lg transition-colors text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800" title="Buscar na Nota"><FileSearch size={16}/></button>
                            </div>
                         )}
                      </div>
@@ -487,27 +495,24 @@ export const NotesDashboard = () => {
                   </div>
                 </AnimatePresence>
 
-                {/* TEXT AREA */}
+                {/* TEXT AREA: Renderização Separada (Leitura vs Edição) para 100% de Confiabilidade */}
                 <div className={`flex-1 flex flex-col rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-inner editor-content overflow-hidden ${colorStyles[activeNotebook.color].note}`}>
                   <input type="text" placeholder="Título da Nota" readOnly={!isEditing && !showInNoteSearch} value={noteTitle} onChange={(e) => setNoteTitle(e.target.value)} className={`w-full px-8 pt-8 pb-4 bg-transparent outline-none text-3xl font-black placeholder:text-zinc-300 dark:placeholder:text-zinc-700 ${noteFont === 'handwriting' ? 'font-handwriting' : noteFont === 'serif' ? 'font-serif' : 'font-sans'}`} />
                   
                   <div className={`flex-1 flex flex-col px-8 relative overflow-y-auto scrollbar-thin ${noteLines ? 'bg-lined-paper' : ''}`}>
-                    {showInNoteSearch ? (
-                       // MODO PESQUISA (Apenas Leitura com Destaques)
-                       <div dangerouslySetInnerHTML={{ __html: displayHtml }} className={`w-full flex-1 bg-transparent outline-none leading-relaxed text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
-                    ) : noteFormat === 'markdown' ? (
-                      !isEditing ? (
-                         // MODO MARKDOWN LEITURA
-                         <div dangerouslySetInnerHTML={{ __html: displayHtml }} className={`w-full flex-1 bg-transparent outline-none leading-relaxed text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
-                      ) : (
-                         // MODO MARKDOWN EDIÇÃO
-                         <textarea value={noteContent} onChange={(e) => setNoteContent(e.target.value)} placeholder="Escreva aqui em Markdown (# Título, **Negrito**)..." className={`w-full min-h-full bg-transparent outline-none resize-none leading-relaxed text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
-                      )
-                    ) : (
-                      // MODO RICH TEXT EDIÇÃO (O ref controla o conteúdo injectado no useEffect)
-                      <div ref={editorRef} contentEditable={isEditing} suppressContentEditableWarning onInput={(e) => setNoteContent(e.currentTarget.innerHTML)} className={`w-full flex-1 bg-transparent outline-none text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
-                    )}
                     
+                    {(!isEditing || showInNoteSearch) ? (
+                        // MODO LEITURA (Também usado pela pesquisa para mostrar os highlights)
+                        <div dangerouslySetInnerHTML={{ __html: displayHtml }} className={`w-full flex-1 bg-transparent outline-none leading-relaxed text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
+                    ) : (
+                        // MODO EDIÇÃO
+                        noteFormat === 'markdown' ? (
+                           <textarea value={noteContent} onChange={(e) => setNoteContent(e.target.value)} placeholder="Escreva aqui em Markdown (# Título, **Negrito**)..." className={`w-full min-h-full bg-transparent outline-none resize-none leading-relaxed text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
+                        ) : (
+                           <div ref={editorRef} contentEditable={true} suppressContentEditableWarning onInput={(e) => setNoteContent(e.currentTarget.innerHTML)} className={`w-full min-h-full bg-transparent outline-none text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
+                        )
+                    )}
+
                     {isEditing && !noteContent.trim() && !showInNoteSearch && (
                       <div className="absolute top-0 left-8 pointer-events-none text-zinc-300 dark:text-zinc-700 font-medium">Comece a escrever...</div>
                     )}
