@@ -57,6 +57,10 @@ export const DailySummaryModal = () => {
   const yesterdayHabits = habits.filter(h => { return (logs[h.id]?.[yesterdayStr] || 0) >= (h.goal || 1) || modifiers[h.id]?.[yesterdayStr]; }).length;
   const yesterdayXp = dailyHistory[yesterdayStr]?.xp || 0;
   const yesterdayGold = dailyHistory[yesterdayStr]?.gold || 0;
+  
+  // Capturando as Punições
+  const yesterdayLostXp = dailyHistory[yesterdayStr]?.lostXp || 0;
+  const yesterdayLostGold = dailyHistory[yesterdayStr]?.lostGold || 0;
 
   const handleStartDay = () => {
     processNewDay(currentDateStr);
@@ -109,6 +113,19 @@ export const DailySummaryModal = () => {
                   <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 mt-1">Ouro Ganho</span>
                 </div>
               </div>
+
+              {/* AVISO DE PUNIÇÕES */}
+              {(yesterdayLostXp > 0 || yesterdayLostGold > 0) && (
+                 <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="mt-4 p-5 bg-red-500/10 border border-red-500/30 rounded-2xl flex flex-col items-center justify-center text-center">
+                    <AlertTriangle className="text-red-500 mb-2" size={24} />
+                    <h4 className="text-red-500 font-black text-lg">Punições Aplicadas</h4>
+                    <p className="text-xs text-red-500/80 font-bold mb-3">O tempo não perdoa. Prazos de desafios, sprints ou tarefas estourados cobraram seu preço no seu progresso diário.</p>
+                    <div className="flex gap-4">
+                       <span className="text-red-500 font-black flex items-center gap-1">-{yesterdayLostXp} XP</span>
+                       <span className="text-red-500 font-black flex items-center gap-1">-{yesterdayLostGold} Ouro</span>
+                    </div>
+                 </motion.div>
+              )}
             </div>
 
             <div className="text-center px-4 md:px-12">

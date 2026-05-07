@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, AlertTriangle } from 'lucide-react';
 import { useHabitStore } from '../../store/useHabitStore';
+import { useConfigStore } from '../../store/useConfigStore';
 import type { Habit } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -9,6 +10,8 @@ interface HabitModalProps { isOpen: boolean; onClose: () => void; habitToEdit?: 
 
 export const HabitModal = ({ isOpen, onClose, habitToEdit, onSuccess }: HabitModalProps) => {
     const { addHabit, updateHabit } = useHabitStore();
+    const { enableEditWindow, hasDismissedEditWarning, dismissEditWarning } = useConfigStore();
+
     const [title, setTitle] = useState(''); const [description, setDescription] = useState(''); const [goal, setGoal] = useState<number>(1);
 
     useEffect(() => {
@@ -37,7 +40,20 @@ export const HabitModal = ({ isOpen, onClose, habitToEdit, onSuccess }: HabitMod
             <button onClick={onClose} className="p-2 rounded-full bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors"><X size={20} /></button>
             </div>
 
-            <div className="p-6 space-y-8">
+            <div className="p-6 space-y-8 overflow-y-auto max-h-[70vh]">
+            
+            {/* ALERTA DE EDIÇÃO E PUNIÇÕES (MODO HARDCORE) */}
+            {enableEditWindow && !hasDismissedEditWarning && !habitToEdit && (
+                <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl relative flex gap-3 items-start text-amber-600 dark:text-amber-500 mb-2">
+                    <AlertTriangle className="shrink-0 mt-0.5" size={20} />
+                    <div className="pr-6">
+                        <h4 className="font-bold text-sm mb-1">Custo da Desorganização</h4>
+                        <p className="text-xs opacity-90 leading-relaxed mb-3">Você tem exatos <b>10 minutos</b> após criar um item para editá-lo de graça. Após isso, custará Vouchers. Pense bem antes de criar!<br/><br/><i>(Desativável na aba de Perfil)</i></p>
+                        <button onClick={(e) => { e.preventDefault(); dismissEditWarning(); }} className="text-xs font-bold underline hover:opacity-70 transition-opacity">Entendido, não mostrar novamente.</button>
+                    </div>
+                </div>
+            )}
+
             <div className="space-y-2">
             <input type="text" maxLength={120} placeholder="Qual será o novo hábito?" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full text-2xl font-bold bg-transparent border-none outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-600" autoFocus />
             <textarea maxLength={500} placeholder="Detalhes ou motivação (Opcional)..." value={description} onChange={(e) => setDescription(e.target.value)} className="w-full resize-none bg-transparent border-none outline-none text-sm text-zinc-600 dark:text-zinc-400 placeholder:text-zinc-400 dark:placeholder:text-zinc-600 h-16" />

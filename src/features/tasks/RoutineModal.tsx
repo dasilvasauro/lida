@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, AlertTriangle, Repeat, Trash2 } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
+import { useConfigStore } from '../../store/useConfigStore';
 import type { RoutineTemplate, ItemColor } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -14,6 +15,7 @@ interface RoutineModalProps {
 
 export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: RoutineModalProps) => {
   const { addRoutine, updateRoutine } = useTaskStore();
+  const { enableEditWindow, hasDismissedEditWarning, dismissEditWarning } = useConfigStore();
 
   const [title, setTitle] = useState('');
   const [items, setItems] = useState<string[]>(['']);
@@ -104,6 +106,19 @@ export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: Rout
               </div>
 
               <div className="p-6 overflow-y-auto flex-1 space-y-8 scrollbar-hide">
+                
+                {/* ALERTA DE EDIÇÃO E PUNIÇÕES (MODO HARDCORE) */}
+                {enableEditWindow && !hasDismissedEditWarning && !routineToEdit && (
+                    <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl relative flex gap-3 items-start text-amber-600 dark:text-amber-500 mb-2">
+                        <AlertTriangle className="shrink-0 mt-0.5" size={20} />
+                        <div className="pr-6">
+                            <h4 className="font-bold text-sm mb-1">Custo da Desorganização</h4>
+                            <p className="text-xs opacity-90 leading-relaxed mb-3">Você tem exatos <b>10 minutos</b> após criar um item para editá-lo de graça. Após isso, custará Vouchers. Pense bem antes de criar!<br/><br/><i>(Desativável na aba de Perfil)</i></p>
+                            <button onClick={(e) => { e.preventDefault(); dismissEditWarning(); }} className="text-xs font-bold underline hover:opacity-70 transition-opacity">Entendido, não mostrar novamente.</button>
+                        </div>
+                    </div>
+                )}
+
                 <div className="space-y-2">
                   <input type="text" maxLength={120} placeholder="Nome da Rotina (Ex: Manhã Focada)" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full text-2xl font-bold bg-transparent border-none outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-600" autoFocus />
                 </div>
@@ -155,7 +170,6 @@ export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: Rout
                 </div>
               </div>
 
-              {/* CORREÇÃO DO PADDING INFERIOR PARA NÃO BATER NA NAVBAR */}
               <div className="p-6 pb-28 md:pb-6 bg-zinc-100 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800">
                 <button onClick={handleSave} disabled={!title.trim() || items.filter(i => i.trim().length > 0).length === 0 || selectedWeekdays.length === 0} className="w-full py-4 rounded-xl bg-indigo-600 text-white font-bold text-lg disabled:opacity-50 transition-all hover:bg-indigo-500 shadow-lg shadow-indigo-600/20">
                   {routineToEdit ? 'Salvar Alterações' : 'Forjar Rotina'}

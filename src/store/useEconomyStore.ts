@@ -7,22 +7,17 @@ export type EconomyItem =
   | 'magicDice' | 'xpBoost' | 'goldBoost' | 'extraP0' | 'extraP1' | 'respite' | 'relief' | 'bonusTask' | 'luckyCard';
 
 interface EconomyState {
-  xp: number;
-  level: number;
-  gold: number;
-  vouchers: number;
-  voucherProgress: number;
-  inventory: Record<EconomyItem, number>;
-  activeXpBoostUntil: number | null;
-  activeGoldBoostUntil: number | null;
-  dailyHistory: Record<string, { xp: number; gold: number }>;
-  
+  xp: number; level: number; gold: number; vouchers: number; voucherProgress: number;
+  inventory: Record<EconomyItem, number>; activeXpBoostUntil: number | null; activeGoldBoostUntil: number | null;
+  dailyHistory: Record<string, { xp: number; gold: number; lostXp?: number; lostGold?: number }>;
   levelUpData: { level: number; hasReward: boolean } | null;
-  claimedMilestones: number[]; // Rastreia as recompensas únicas (níveis 15 e 50)
+  claimedMilestones: number[]; 
 
   addReward: (baseXp: number, baseGold: number) => void;
   removeReward: (baseXp: number, baseGold: number) => void; 
+  applyPenalty: (baseXp: number, baseGold: number) => void; // <-- NOVO
   addVouchers: (amount: number) => void;
+  spendVouchers: (amount: number) => boolean; // <-- NOVO
   addVoucherProgress: () => void;
   removeVoucherProgress: () => void; 
   buyItem: (item: EconomyItem, cost: number, currency: 'gold' | 'vouchers') => boolean;
@@ -38,104 +33,75 @@ export const useEconomyStore = create<EconomyState>()(
     (set, get) => ({
       xp: 0, level: 1, gold: 1500, vouchers: 20, voucherProgress: 0,
       inventory: { freeze: 0, dayOff: 0, instantLuck: 0, magicDice: 0, xpBoost: 0, goldBoost: 0, extraP0: 0, extraP1: 0, respite: 0, relief: 0, bonusTask: 0, luckyCard: 0 },
-      activeXpBoostUntil: null, activeGoldBoostUntil: null,
-      dailyHistory: {},
-      levelUpData: null,
-      claimedMilestones: [],
+      activeXpBoostUntil: null, activeGoldBoostUntil: null, dailyHistory: {}, levelUpData: null, claimedMilestones: [],
 
       clearLevelUp: () => set({ levelUpData: null }),
 
       addReward: (baseXp, baseGold) => set((state) => {
         const isXpBoosted = state.activeXpBoostUntil && Date.now() < state.activeXpBoostUntil;
         const isGoldBoosted = state.activeGoldBoostUntil && Date.now() < state.activeGoldBoostUntil;
-        const xpMultiplier = isXpBoosted ? 1 + (Math.random() * 0.35 + 0.15) : 1;
-        const goldMultiplier = isGoldBoosted ? 1 + (Math.random() * 0.20 + 0.25) : 1;
-
-        const finalXp = Math.round(baseXp * xpMultiplier);
-        const finalGold = Math.round(baseGold * goldMultiplier);
-        const newXp = state.xp + finalXp;
-        const newLevel = calculateLevel(newXp);
+        const finalXp = Math.round(baseXp * (isXpBoosted ? 1 + (Math.random() * 0.35 + 0.15) : 1));
+        const finalGold = Math.round(baseGold * (isGoldBoosted ? 1 + (Math.random() * 0.20 + 0.25) : 1));
+        const newXp = state.xp + finalXp; const newLevel = calculateLevel(newXp);
         
-        let newInventory = state.inventory;
-        let newVouchers = state.vouchers;
-        let newClaimed = [...(state.claimedMilestones || [])];
-        let levelUpInfo = null;
+        let newInventory = state.inventory; let newVouchers = state.vouchers; let newClaimed = [...(state.claimedMilestones || [])]; let levelUpInfo = null;
 
         if (newLevel > state.level) {
-          let luckyCardsToAdd = 0;
-          let hasReward = false;
-
-          for (let l = state.level + 1; l <= newLevel; l++) {
-            // A cada 5 níveis
-            if (l % 5 === 0) luckyCardsToAdd++;
-            // A partir do nível 25 ganha uma em TODO nível (se for múltiplo de 5, ganha as duas!)
-            if (l >= 25) luckyCardsToAdd++;
-          }
-
-          if (luckyCardsToAdd > 0) {
-            newInventory = { ...state.inventory, luckyCard: state.inventory.luckyCard + luckyCardsToAdd };
-            hasReward = true;
-          }
+          let luckyCardsToAdd = 0; let hasReward = false;
+          for (let l = state.level + 1; l <= newLevel; l++) { if (l % 5 === 0) luckyCardsToAdd++; if (l >= 25) luckyCardsToAdd++; }
+          if (luckyCardsToAdd > 0) { newInventory = { ...state.inventory, luckyCard: state.inventory.luckyCard + luckyCardsToAdd }; hasReward = true; }
           levelUpInfo = { level: newLevel, hasReward };
         }
 
-        // CHECAGEM DE MARCOS ÚNICOS (Retroativa, se a pessoa upar e bater o nível)
-        if (newLevel >= 15 && !newClaimed.includes(15)) {
-          newVouchers += 15;
-          newClaimed.push(15);
-        }
-        if (newLevel >= 50 && !newClaimed.includes(50)) {
-          newVouchers += 40;
-          newClaimed.push(50);
-        }
+        if (newLevel >= 15 && !newClaimed.includes(15)) { newVouchers += 15; newClaimed.push(15); }
+        if (newLevel >= 50 && !newClaimed.includes(50)) { newVouchers += 40; newClaimed.push(50); }
 
         const todayStr = format(new Date(), 'yyyy-MM-dd');
         const currentHistory = state.dailyHistory[todayStr] || { xp: 0, gold: 0 };
 
-        return { 
-          xp: newXp, 
-          level: newLevel, 
-          gold: state.gold + finalGold, 
-          inventory: newInventory,
-          vouchers: newVouchers,
-          claimedMilestones: newClaimed,
-          ...(levelUpInfo ? { levelUpData: levelUpInfo } : {}),
-          dailyHistory: { ...state.dailyHistory, [todayStr]: { xp: currentHistory.xp + finalXp, gold: currentHistory.gold + finalGold } } 
-        };
+        return { xp: newXp, level: newLevel, gold: state.gold + finalGold, inventory: newInventory, vouchers: newVouchers, claimedMilestones: newClaimed, ...(levelUpInfo ? { levelUpData: levelUpInfo } : {}), dailyHistory: { ...state.dailyHistory, [todayStr]: { ...currentHistory, xp: currentHistory.xp + finalXp, gold: currentHistory.gold + finalGold } } };
       }),
 
       removeReward: (baseXp, baseGold) => set((state) => {
-        const newXp = Math.max(0, state.xp - baseXp);
-        const newGold = Math.max(0, state.gold - baseGold);
-        const newLevel = calculateLevel(newXp);
-        
+        const newXp = Math.max(0, state.xp - baseXp); const newGold = Math.max(0, state.gold - baseGold); const newLevel = calculateLevel(newXp);
         let newInventory = state.inventory;
-        
-        // ANTI-TRAPAÇA para as novas recompensas
         if (newLevel < state.level) {
           let lostItems = 0;
-          for (let l = state.level; l > newLevel; l--) {
-            if (l % 5 === 0) lostItems++;
-            if (l >= 25) lostItems++;
-          }
-          if (lostItems > 0) {
-            newInventory = { ...state.inventory, luckyCard: Math.max(0, state.inventory.luckyCard - lostItems) };
-          }
+          for (let l = state.level; l > newLevel; l--) { if (l % 5 === 0) lostItems++; if (l >= 25) lostItems++; }
+          if (lostItems > 0) { newInventory = { ...state.inventory, luckyCard: Math.max(0, state.inventory.luckyCard - lostItems) }; }
         }
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        const currentHistory = state.dailyHistory[todayStr] || { xp: 0, gold: 0 };
+        return { xp: newXp, level: newLevel, gold: newGold, inventory: newInventory, dailyHistory: { ...state.dailyHistory, [todayStr]: { ...currentHistory, xp: Math.max(0, currentHistory.xp - baseXp), gold: Math.max(0, currentHistory.gold - baseGold) } } };
+      }),
+
+      applyPenalty: (baseXp, baseGold) => set((state) => {
+        const currentLevelBaseXp = Math.pow(state.level - 1, 2) * 100; // XP do "chão" do nível atual
+        const newXp = Math.max(currentLevelBaseXp, state.xp - baseXp); // Nunca cai de nível
+        const actualLostXp = state.xp - newXp; 
+        const newGold = Math.max(0, state.gold - baseGold);
+        const actualLostGold = state.gold - newGold;
+
+        if (actualLostXp === 0 && actualLostGold === 0) return state;
 
         const todayStr = format(new Date(), 'yyyy-MM-dd');
         const currentHistory = state.dailyHistory[todayStr] || { xp: 0, gold: 0 };
 
-        return { 
-          xp: newXp, 
-          level: newLevel, 
-          gold: newGold, 
-          inventory: newInventory,
-          dailyHistory: { ...state.dailyHistory, [todayStr]: { xp: Math.max(0, currentHistory.xp - baseXp), gold: Math.max(0, currentHistory.gold - baseGold) } } 
+        return {
+            xp: newXp, gold: newGold,
+            dailyHistory: {
+                ...state.dailyHistory,
+                [todayStr]: { ...currentHistory, lostXp: (currentHistory.lostXp || 0) + actualLostXp, lostGold: (currentHistory.lostGold || 0) + actualLostGold }
+            }
         };
       }),
 
       addVouchers: (amount) => set((state) => ({ vouchers: state.vouchers + amount })),
+      spendVouchers: (amount) => {
+        const state = get();
+        if (state.vouchers >= amount) { set({ vouchers: state.vouchers - amount }); return true; }
+        return false;
+      },
       addVoucherProgress: () => set((state) => {
         const newProgress = state.voucherProgress + 1;
         if (newProgress >= 3) return { voucherProgress: 0, vouchers: state.vouchers + 1 };
@@ -147,26 +113,9 @@ export const useEconomyStore = create<EconomyState>()(
         return state; 
       }),
 
-      buyItem: (item, cost, currency) => {
-        const state = get();
-        if (state[currency] >= cost) {
-          set({ [currency]: state[currency] - cost, inventory: { ...state.inventory, [item]: state.inventory[item] + 1 } });
-          return true;
-        }
-        return false;
-      },
-      useItem: (item) => {
-        const state = get();
-        if (state.inventory[item] > 0) {
-          set({ inventory: { ...state.inventory, [item]: state.inventory[item] - 1 } });
-          return true;
-        }
-        return false;
-      },
-      setBoost: (type, hours) => {
-        const until = Date.now() + hours * 60 * 60 * 1000;
-        set(() => ({ ...(type === 'xp' ? { activeXpBoostUntil: until } : { activeGoldBoostUntil: until }) }));
-      },
+      buyItem: (item, cost, currency) => { const state = get(); if (state[currency] >= cost) { set({ [currency]: state[currency] - cost, inventory: { ...state.inventory, [item]: state.inventory[item] + 1 } }); return true; } return false; },
+      useItem: (item) => { const state = get(); if (state.inventory[item] > 0) { set({ inventory: { ...state.inventory, [item]: state.inventory[item] - 1 } }); return true; } return false; },
+      setBoost: (type, hours) => { const until = Date.now() + hours * 60 * 60 * 1000; set(() => ({ ...(type === 'xp' ? { activeXpBoostUntil: until } : { activeGoldBoostUntil: until }) })); },
     }),
     { name: 'lida-economy-v3' }
   )

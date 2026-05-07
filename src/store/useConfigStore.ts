@@ -13,12 +13,13 @@ interface ConfigState {
   defaultDaysOff: number[];
   hasDismissedDayOffWarning: boolean;
 
-  showExitWarning: boolean;
-  isExitModalOpen: boolean;
-  isVisionOpen: boolean;
-  isSettingsOpen: boolean;
-  isGoogleConnectOpen: boolean;
-  isChangelogOpen: boolean;
+  // --- NOVAS FEATURES DE HARDCORE ---
+  enableEditWindow: boolean;
+  enablePunishments: boolean;
+  hasDismissedEditWarning: boolean;
+
+  showExitWarning: boolean; isExitModalOpen: boolean; isVisionOpen: boolean;
+  isSettingsOpen: boolean; isGoogleConnectOpen: boolean; isChangelogOpen: boolean;
 
   setTheme: (theme: Theme) => void; setFont: (font: Font) => void;
   setUserName: (name: string) => void; setUserClass: (userClass: ModusOperandi) => void;
@@ -28,21 +29,23 @@ interface ConfigState {
 
   setDefaultDaysOff: (days: number[]) => void; 
   dismissDayOffWarning: () => void; 
+  
+  setEnableEditWindow: (val: boolean) => void;
+  setEnablePunishments: (val: boolean) => void;
+  dismissEditWarning: () => void;
 
-  setShowExitWarning: (show: boolean) => void;
-  setExitModalOpen: (open: boolean) => void;
-  setVisionOpen: (open: boolean) => void;
-  setSettingsOpen: (open: boolean) => void;
-  setGoogleConnectOpen: (open: boolean) => void;
-  setChangelogOpen: (open: boolean) => void;
+  setShowExitWarning: (show: boolean) => void; setExitModalOpen: (open: boolean) => void;
+  setVisionOpen: (open: boolean) => void; setSettingsOpen: (open: boolean) => void;
+  setGoogleConnectOpen: (open: boolean) => void; setChangelogOpen: (open: boolean) => void;
 }
 
 export const useConfigStore = create<ConfigState>()(persist((set) => ({
   theme: 'dark-amoled', font: 'sans', userClass: null, userName: '',
   isOnboarded: false, lastLoginDate: null, uid: null, e2eePin: null, isLocalMode: false,
   
-  defaultDaysOff: [],
-  hasDismissedDayOffWarning: false,
+  defaultDaysOff: [], hasDismissedDayOffWarning: false,
+
+  enableEditWindow: true, enablePunishments: true, hasDismissedEditWarning: false,
 
   showExitWarning: true, isExitModalOpen: false, isVisionOpen: false,
   isSettingsOpen: false, isGoogleConnectOpen: false, isChangelogOpen: false,
@@ -57,10 +60,11 @@ export const useConfigStore = create<ConfigState>()(persist((set) => ({
   setDefaultDaysOff: (days) => set({ defaultDaysOff: days }),
   dismissDayOffWarning: () => set({ hasDismissedDayOffWarning: true }),
 
-  setShowExitWarning: (show) => set({ showExitWarning: show }),
-  setExitModalOpen: (open) => set({ isExitModalOpen: open }),
-  setVisionOpen: (open) => set({ isVisionOpen: open }),
-  setSettingsOpen: (open) => set({ isSettingsOpen: open }),
-  setGoogleConnectOpen: (open) => set({ isGoogleConnectOpen: open }),
-  setChangelogOpen: (open) => set({ isChangelogOpen: open }),
+  setEnableEditWindow: (val) => set({ enableEditWindow: val }),
+  setEnablePunishments: (val) => set({ enablePunishments: val }),
+  dismissEditWarning: () => set({ hasDismissedEditWarning: true }),
+
+  setShowExitWarning: (show) => set({ showExitWarning: show }), setExitModalOpen: (open) => set({ isExitModalOpen: open }),
+  setVisionOpen: (open) => set({ isVisionOpen: open }), setSettingsOpen: (open) => set({ isSettingsOpen: open }),
+  setGoogleConnectOpen: (open) => set({ isGoogleConnectOpen: open }), setChangelogOpen: (open) => set({ isChangelogOpen: open }),
 }), { name: 'lida-config' }));

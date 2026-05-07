@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Clock, Calendar, Zap, Target, Timer, Gift, Sparkles, CheckCircle2, ChevronDown, Play, Maximize2, Trash2, Repeat, Edit2, Wind, CalendarHeart, Dices, Folder, Flame } from 'lucide-react';
+import { Check, Clock, Calendar, Zap, Target, Timer, Gift, Sparkles, CheckCircle2, ChevronDown, Play, Maximize2, Trash2, Repeat, Edit2, Wind, CalendarHeart, Dices, Folder, Flame, Ticket, AlertTriangle } from 'lucide-react';
 import type { Task } from '../../types';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
+import { useConfigStore } from '../../store/useConfigStore';
 
 interface TaskItemProps {
     task: Task; 
@@ -19,15 +20,40 @@ interface TaskItemProps {
 export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDeleteRoutine }: TaskItemProps) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const { toggleSubtask, activeFocusSession, startFocus, toggleFocusMode, markTaskFailed, applyPowerUp, folders, routines, tasks } = useTaskStore();
+    const { enableEditWindow } = useConfigStore();
+    const { inventory, useItem, spendVouchers } = useEconomyStore();
     
     const folder = folders.find(f => f.id === task.folderId);
     const folderName = folder ? folder.name : 'Geral';
 
-    const { inventory, useItem } = useEconomyStore();
-
     const isActiveSession = activeFocusSession?.taskId === task.id;
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
     const [isOvertime, setIsOvertime] = useState(false);
+
+    // Sistema de Janela de Edição (10 minutos)
+    const [freeEditTimeLeft, setFreeEditTimeLeft] = useState(0);
+    const [actionPrompt, setActionPrompt] = useState<{ type: 'edit' | 'delete' | 'editRoutine' | 'deleteRoutine', cost: number } | null>(null);
+    const [voucherError, setVoucherError] = useState(false);
+
+    useEffect(() => {
+        if (!enableEditWindow || task.isFreeEditExpired) return;
+        const calcFreeTime = () => {
+            const elapsedSeconds = Math.floor((Date.now() - task.createdAt) / 1000);
+            const remaining = (10 * 60) - elapsedSeconds;
+            if (remaining > 0) setFreeEditTimeLeft(remaining);
+            else setFreeEditTimeLeft(0);
+        };
+        calcFreeTime();
+        const interval = setInterval(calcFreeTime, 1000);
+        return () => clearInterval(interval);
+    }, [task.createdAt, task.isFreeEditExpired, enableEditWindow]);
+
+    const isFreeToEdit = !enableEditWindow || (!task.isFreeEditExpired && freeEditTimeLeft > 0);
+    const formatFreeTime = (seconds: number) => {
+        const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const s = (seconds % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+    };
 
     useEffect(() => {
         if (!isActiveSession || !activeFocusSession) { setTimeLeft(null); setIsOvertime(false); return; }
@@ -52,7 +78,6 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
     const icons = { normal: CheckCircle2, daily_challenge: Zap, sprint: Target, time: Timer, bonus: Gift, surprise: Sparkles, routine: Repeat };
     const Icon = icons[task.type as keyof typeof icons] || CheckCircle2;
 
-    // ESTILOS DE PRIORIDADE (TAREFAS NORMAIS: OUTLINE + BG LEVE)
     const priorityStyles = {
         P0: 'border-red-500/50 dark:border-red-500/40 bg-red-500/5 dark:bg-red-950/20 text-zinc-900 dark:text-zinc-100', 
         P1: 'border-orange-500/50 dark:border-orange-500/40 bg-transparent text-zinc-900 dark:text-zinc-100',
@@ -69,7 +94,6 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         P4: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50',
     };
 
-    // ESTILOS SÓLIDOS/PREENCHIDOS PARA AS ROTINAS
     const routineColors: Record<string, { bg: string, text: string, bar: string, buttonHover: string, statusBg: string }> = {
         blue: { bg: 'bg-blue-100/60 dark:bg-blue-900/40 border-blue-300 dark:border-blue-700', text: 'text-blue-900 dark:text-blue-100', bar: 'bg-blue-500', buttonHover: 'hover:bg-blue-200 dark:hover:bg-blue-800', statusBg: 'bg-blue-500/10 border-blue-500/20' },
         emerald: { bg: 'bg-emerald-100/60 dark:bg-emerald-900/40 border-emerald-300 dark:border-emerald-700', text: 'text-emerald-900 dark:text-emerald-100', bar: 'bg-emerald-500', buttonHover: 'hover:bg-emerald-200 dark:hover:bg-emerald-800', statusBg: 'bg-emerald-500/10 border-emerald-500/20' },
@@ -108,7 +132,6 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         if (routine) {
             const routineTasks = tasks.filter(t => t.routineTemplateId === routine.id && t.isCompleted);
             let checkDate = new Date();
-            
             while(true) {
                 const dateStr = format(checkDate, 'yyyy-MM-dd');
                 if (routine.weekdays.includes(checkDate.getDay())) {
@@ -125,12 +148,35 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         }
     }
 
-    const finalBorderClass = isRoutine 
-        ? rColorData.bg
-        : priorityStyles[task.priority];
-
+    const finalBorderClass = isRoutine ? rColorData.bg : priorityStyles[task.priority];
     const textColorClass = isRoutine ? rColorData.text : 'text-zinc-900 dark:text-zinc-100';
     const subtextColorClass = isRoutine ? 'opacity-70' : 'text-zinc-500 dark:text-zinc-400';
+
+    const handleActionRequest = (type: 'edit' | 'delete' | 'editRoutine' | 'deleteRoutine') => {
+        if (isFreeToEdit) {
+            if (type === 'edit' && onEdit) onEdit();
+            if (type === 'delete' && onDelete) onDelete();
+            if (type === 'editRoutine' && onEditRoutine) onEditRoutine();
+            if (type === 'deleteRoutine' && onDeleteRoutine) onDeleteRoutine();
+        } else {
+            const cost = (type === 'delete' || type === 'deleteRoutine') ? 2 : 1;
+            setActionPrompt({ type, cost });
+        }
+    };
+
+    const confirmPaidAction = () => {
+        if (!actionPrompt) return;
+        if (spendVouchers(actionPrompt.cost)) {
+            if (actionPrompt.type === 'edit' && onEdit) onEdit();
+            if (actionPrompt.type === 'delete' && onDelete) onDelete();
+            if (actionPrompt.type === 'editRoutine' && onEditRoutine) onEditRoutine();
+            if (actionPrompt.type === 'deleteRoutine' && onDeleteRoutine) onDeleteRoutine();
+            setActionPrompt(null);
+        } else {
+            setVoucherError(true);
+            setTimeout(() => setVoucherError(false), 3000);
+        }
+    };
 
     return (
         <motion.div layout className={`relative overflow-hidden flex flex-col p-4 mb-3 rounded-2xl border transition-all shadow-sm ${finalBorderClass} ${task.isCompleted ? 'opacity-50 grayscale' : ''}`}>
@@ -158,24 +204,10 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         <div className={`flex flex-wrap items-center gap-3 mt-3 text-[10px] font-bold uppercase tracking-wider ${subtextColorClass}`}>
         <span className="flex items-center gap-1"><Icon size={12} />{task.type.replace('_', ' ')}</span>
         
-        {task.hasMagicDice && (
-            <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded-md border border-purple-500/20 shadow-[0_0_10px_rgba(168,85,247,0.3)]">
-                <Dices size={12} /> Boost Mágico
-            </span>
-        )}
-
+        {task.hasMagicDice && ( <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded-md border border-purple-500/20 shadow-[0_0_10px_rgba(168,85,247,0.3)]"><Dices size={12} /> Boost Mágico</span> )}
         {recurrenceLabel && <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-md"><Repeat size={12} />{recurrenceLabel}</span>}
-        
-        {task.hasRespite && (
-            <span className="flex items-center gap-1 text-teal-600 dark:text-teal-400 bg-teal-500/10 px-1.5 py-0.5 rounded-md border border-teal-500/20 shadow-[0_0_10px_rgba(20,184,166,0.2)]">
-                <Wind size={12} /> Respiro (+3h)
-            </span>
-        )}
-        {task.hasRelief && (
-            <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded-md border border-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.2)]">
-                <CalendarHeart size={12} /> Alívio (+1 Dia)
-            </span>
-        )}
+        {task.hasRespite && ( <span className="flex items-center gap-1 text-teal-600 dark:text-teal-400 bg-teal-500/10 px-1.5 py-0.5 rounded-md border border-teal-500/20 shadow-[0_0_10px_rgba(20,184,166,0.2)]"><Wind size={12} /> Respiro (+3h)</span> )}
+        {task.hasRelief && ( <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400 bg-rose-500/10 px-1.5 py-0.5 rounded-md border border-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.2)]"><CalendarHeart size={12} /> Alívio (+1 Dia)</span> )}
 
         {task.deadlineDate && <span className="flex items-center gap-1"><Calendar size={12} />{format(new Date(task.deadlineDate + 'T12:00:00'), "dd/MM", { locale: ptBR })}</span>}
         {task.deadlineTime && <span className="flex items-center gap-1"><Clock size={12} />{task.deadlineTime}</span>}
@@ -231,7 +263,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
                 </>
             )}
 
-            <div className="flex flex-wrap items-center justify-between pt-2 gap-2">
+            <div className="flex flex-wrap items-center justify-between pt-2 gap-2 relative">
               <div className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md ${isRoutine ? 'bg-black/5 dark:bg-white/5 opacity-80' : 'text-zinc-400 bg-zinc-100 dark:bg-zinc-800'}`}>
                 <Folder size={12} /> {folderName}
               </div>
@@ -249,19 +281,43 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
                 )}
 
                 {onEdit && !task.isCompleted && !isRoutine && (
-                    <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"><Edit2 size={14} /> Editar</button>
+                    <button onClick={(e) => { e.stopPropagation(); handleActionRequest('edit'); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
+                        <Edit2 size={14} /> Editar {isFreeToEdit ? <span className="opacity-60">({formatFreeTime(freeEditTimeLeft)})</span> : <span className="flex items-center text-blue-500 gap-1 ml-1">1 <Ticket size={12}/></span>}
+                    </button>
                 )}
                 {onDelete && !isRoutine && (
-                    <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-red-500 hover:bg-red-500/10 transition-colors"><Trash2 size={14} /> Excluir</button>
+                    <button onClick={(e) => { e.stopPropagation(); handleActionRequest('delete'); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-red-500 hover:bg-red-500/10 transition-colors">
+                        <Trash2 size={14} /> Excluir {isFreeToEdit ? '' : <span className="flex items-center text-blue-500 gap-1 ml-1">2 <Ticket size={12}/></span>}
+                    </button>
                 )}
 
                 {onEditRoutine && !task.isCompleted && isRoutine && (
-                    <button onClick={(e) => { e.stopPropagation(); onEditRoutine(); }} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${rColorData.buttonHover}`}><Edit2 size={14} /> Editar Rotina</button>
+                    <button onClick={(e) => { e.stopPropagation(); handleActionRequest('editRoutine'); }} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${rColorData.buttonHover}`}>
+                        <Edit2 size={14} /> Editar Rotina {isFreeToEdit ? <span className="opacity-60">({formatFreeTime(freeEditTimeLeft)})</span> : <span className="flex items-center opacity-100 gap-1 ml-1">1 <Ticket size={12}/></span>}
+                    </button>
                 )}
                 {onDeleteRoutine && isRoutine && (
-                    <button onClick={(e) => { e.stopPropagation(); onDeleteRoutine(); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-red-500 hover:bg-red-500/10 transition-colors"><Trash2 size={14} /> Excluir Rotina</button>
+                    <button onClick={(e) => { e.stopPropagation(); handleActionRequest('deleteRoutine'); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-red-500 hover:bg-red-500/10 transition-colors">
+                        <Trash2 size={14} /> Excluir Rotina {isFreeToEdit ? '' : <span className="flex items-center text-blue-500 gap-1 ml-1">2 <Ticket size={12}/></span>}
+                    </button>
                 )}
               </div>
+
+              {/* OVERLAY DE PAGAMENTO (VOUCHERS) */}
+              <AnimatePresence>
+                {actionPrompt && (
+                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-full right-0 mb-2 p-4 bg-zinc-900 dark:bg-zinc-100 rounded-2xl shadow-xl z-50 text-white dark:text-black flex flex-col items-center min-w-[220px]">
+                      <AlertTriangle size={24} className="text-amber-500 mb-2"/>
+                      <span className="text-sm font-bold text-center mb-1">Acesso Restrito</span>
+                      <span className="text-xs text-center opacity-80 mb-4">O tempo de edição gratuita expirou. Custo: {actionPrompt.cost} Vouchers.</span>
+                      <div className="flex gap-2 w-full">
+                         <button onClick={() => setActionPrompt(null)} className="flex-1 py-2 rounded-lg bg-zinc-800 dark:bg-zinc-200 text-xs font-bold transition-colors">Cancelar</button>
+                         <button onClick={confirmPaidAction} className="flex-1 py-2 rounded-lg bg-blue-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1">Pagar <Ticket size={12}/></button>
+                      </div>
+                      {voucherError && <span className="text-[10px] text-red-400 font-bold mt-2 uppercase tracking-widest">Saldo Insuficiente</span>}
+                   </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             </div>

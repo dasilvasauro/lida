@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap, Target, Timer, Gift, CheckCircle2, Calendar, Clock, Plus, RotateCcw, Info, Lock, Check, AlertTriangle } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
+import { useConfigStore } from '../../store/useConfigStore';
 import type { Priority, TaskType, Task } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { CustomDatePicker } from '../../components/ui/CustomDatePicker';
@@ -15,6 +16,7 @@ interface TaskModalProps { isOpen: boolean; onClose: () => void; taskToEdit?: Ta
 export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalProps) => {
   const { addTask, updateTask, tasks, folders, addFolder } = useTaskStore();
   const { inventory, useItem, level } = useEconomyStore();
+  const { enableEditWindow, hasDismissedEditWarning, dismissEditWarning } = useConfigStore();
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const todaysTasks = tasks.filter(t => t.deadlineDate === todayStr || !t.deadlineDate);
@@ -28,9 +30,8 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
   const isP1Locked = level < 40 && countP1 >= 2 && inventory.extraP1 <= 0;
   const isBonusLocked = inventory.bonusTask <= 0 && taskToEdit?.type !== 'bonus';
 
-  // Estados Agrupados
   const [title, setTitle] = useState(''); const [description, setDescription] = useState('');
-  const [status, setStatus] = useState(''); // <-- NOVO CAMPO DE STATUS
+  const [status, setStatus] = useState(''); 
   const [priority, setPriority] = useState<Priority>('P4'); const [type, setType] = useState<TaskType>('normal');
   const [folderId, setFolderId] = useState<string>('default');
   const [isCreatingFolder, setIsCreatingFolder] = useState(false); const [newFolderName, setNewFolderName] = useState('');
@@ -127,6 +128,19 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
               </div>
 
               <div className="p-6 overflow-y-auto flex-1 space-y-8 scrollbar-hide">
+                
+                {/* ALERTA DE EDIÇÃO E PUNIÇÕES (MODO HARDCORE) */}
+                {enableEditWindow && !hasDismissedEditWarning && !taskToEdit && (
+                    <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl relative flex gap-3 items-start text-amber-600 dark:text-amber-500 mb-2">
+                        <AlertTriangle className="shrink-0 mt-0.5" size={20} />
+                        <div className="pr-6">
+                            <h4 className="font-bold text-sm mb-1">Custo da Desorganização</h4>
+                            <p className="text-xs opacity-90 leading-relaxed mb-3">Você tem exatos <b>10 minutos</b> após criar um item para editá-lo de graça. Após isso, custará Vouchers. Pense bem antes de criar!<br/><br/><i>(Desativável na aba de Perfil)</i></p>
+                            <button onClick={(e) => { e.preventDefault(); dismissEditWarning(); }} className="text-xs font-bold underline hover:opacity-70 transition-opacity">Entendido, não mostrar novamente.</button>
+                        </div>
+                    </div>
+                )}
+
                 <div className="space-y-2">
                   <input type="text" maxLength={120} placeholder="O que precisa ser feito?" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full text-2xl font-bold bg-transparent border-none outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-600" autoFocus />
                   <textarea maxLength={500} placeholder="Detalhes (Opcional)..." value={description} onChange={(e) => setDescription(e.target.value)} className="w-full resize-none bg-transparent border-none outline-none text-sm text-zinc-600 dark:text-zinc-400 h-16" />

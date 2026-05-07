@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, LogOut, Trash2, History, AlertTriangle, Download, Upload, Lock } from 'lucide-react';
+import { X, LogOut, Trash2, History, AlertTriangle, Download, Upload, Lock, ShieldAlert } from 'lucide-react';
 import { useConfigStore, type Theme } from '../../store/useConfigStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useHabitStore } from '../../store/useHabitStore';
@@ -9,7 +9,7 @@ import { useVisionStore } from '../../store/useVisionStore';
 import { deleteCloudVault, syncToCloud } from '../../lib/cloudSync';
 
 export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
-  const { theme, font, setTheme, setFont, uid, e2eePin, setChangelogOpen, isLocalMode, defaultDaysOff, setDefaultDaysOff } = useConfigStore();
+  const { theme, font, setTheme, setFont, uid, e2eePin, setChangelogOpen, isLocalMode, defaultDaysOff, setDefaultDaysOff, enableEditWindow, setEnableEditWindow, enablePunishments, setEnablePunishments } = useConfigStore();
   const { level } = useEconomyStore();
   
   const [confirmAction, setConfirmAction] = useState<'logout' | 'wipe' | null>(null);
@@ -77,7 +77,6 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
     reader.readAsText(file);
   };
 
-  // PALETAS DE CORES E EXIGÊNCIAS
   const themesList: { id: Theme; name: string; color1: string; color2: string; req: number }[] = [
     { id: 'light', name: 'Claro', color1: '#fafafa', color2: '#e4e4e7', req: 1 },
     { id: 'dark-amoled', name: 'AMOLED', color1: '#000000', color2: '#27272a', req: 1 },
@@ -99,10 +98,9 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
           <div className="p-6 space-y-8 overflow-y-auto scrollbar-hide flex-1">
             
-            {/* SEÇÃO DE TEMAS DESBLOQUEÁVEIS */}
+            {/* TEMA E FONTE */}
             <div className="space-y-4">
               <span className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Estética Visual</span>
-              {/* O py-3 e px-2 abaixo corrigem o corte do scale-110 */}
               <div className="flex gap-4 overflow-x-auto scrollbar-hide py-3 px-2">
                 {themesList.map(t => {
                   const isUnlocked = level >= t.req;
@@ -138,6 +136,43 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
               </div>
             </div>
 
+            {/* MODO HARDCORE (NOVAS CONFIGURAÇÕES) */}
+            <div className="space-y-4 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+               <div>
+                  <span className="text-xs uppercase tracking-widest text-red-500 font-bold flex items-center gap-1.5"><ShieldAlert size={14}/> Modo Hardcore</span>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 font-medium leading-relaxed">
+                    Personalize o peso da sua jornada. A intencionalidade é forjada através de consequências reais.
+                  </p>
+               </div>
+               
+               <div className="space-y-3">
+                  <label className="flex items-center justify-between p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
+                     <div className="pr-4">
+                        <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100 block">Janela de Edição de 10 min</span>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 block leading-tight">Exige vouchers para editar ou excluir itens após os primeiros 10 minutos de criação.</span>
+                     </div>
+                     <div className="relative shrink-0">
+                        <input type="checkbox" className="peer sr-only" checked={enableEditWindow} onChange={(e) => setEnableEditWindow(e.target.checked)} />
+                        <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 rounded-full peer-checked:bg-red-500 transition-colors"></div>
+                        <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+                     </div>
+                  </label>
+
+                  <label className="flex items-center justify-between p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
+                     <div className="pr-4">
+                        <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100 block">Punição por Omissão</span>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 block leading-tight">Falhar desafios, sprints e tarefas com data-limite subtrai XP e Ouro durante a virada do dia.</span>
+                     </div>
+                     <div className="relative shrink-0">
+                        <input type="checkbox" className="peer sr-only" checked={enablePunishments} onChange={(e) => setEnablePunishments(e.target.checked)} />
+                        <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 rounded-full peer-checked:bg-red-500 transition-colors"></div>
+                        <div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
+                     </div>
+                  </label>
+               </div>
+            </div>
+
+            {/* DIAS DE FOLGA */}
             <div className="space-y-4 pt-6 border-t border-zinc-200 dark:border-zinc-800">
               <div>
                 <span className="text-xs uppercase tracking-widest text-amber-500 font-bold">Dias de Folga Regulares</span>
