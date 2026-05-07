@@ -179,10 +179,11 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
     };
 
     return (
-        <motion.div layout className={`relative overflow-hidden flex flex-col p-4 mb-3 rounded-2xl border transition-all shadow-sm ${finalBorderClass} ${task.isCompleted ? 'opacity-50 grayscale' : ''}`}>
+        <motion.div layout className={`relative flex flex-col p-4 mb-3 rounded-2xl border transition-all shadow-sm ${finalBorderClass} ${task.isCompleted ? 'opacity-50 grayscale' : ''}`}>
         
+        {/* CORREÇÃO DO SPRINT: rounded-t-2xl adicionado para não vazar a cor, permitindo a retirada do overflow-hidden do card */}
         {task.type === 'sprint' && (
-            <div className="absolute top-0 left-0 w-full h-1.5 opacity-10 dark:opacity-20 pointer-events-none" style={{ backgroundImage: 'repeating-conic-gradient(currentColor 0% 25%, transparent 0% 50%)', backgroundSize: '12px 12px' }} />
+            <div className="absolute top-0 left-0 w-full h-1.5 rounded-t-2xl opacity-10 dark:opacity-20 pointer-events-none" style={{ backgroundImage: 'repeating-conic-gradient(currentColor 0% 25%, transparent 0% 50%)', backgroundSize: '12px 12px' }} />
         )}
 
         <div className="flex items-start gap-4">
@@ -282,7 +283,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
 
                 {onEdit && !task.isCompleted && !isRoutine && (
                     <button onClick={(e) => { e.stopPropagation(); handleActionRequest('edit'); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
-                        <Edit2 size={14} /> Editar {isFreeToEdit ? <span className="opacity-60">({formatFreeTime(freeEditTimeLeft)})</span> : <span className="flex items-center text-blue-500 gap-1 ml-1">1 <Ticket size={12}/></span>}
+                        <Edit2 size={14} /> Editar {isFreeToEdit ? <span className="opacity-60 font-normal">({formatFreeTime(freeEditTimeLeft)})</span> : <span className="flex items-center text-blue-500 gap-1 ml-1">1 <Ticket size={12}/></span>}
                     </button>
                 )}
                 {onDelete && !isRoutine && (
@@ -293,7 +294,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
 
                 {onEditRoutine && !task.isCompleted && isRoutine && (
                     <button onClick={(e) => { e.stopPropagation(); handleActionRequest('editRoutine'); }} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${rColorData.buttonHover}`}>
-                        <Edit2 size={14} /> Editar Rotina {isFreeToEdit ? <span className="opacity-60">({formatFreeTime(freeEditTimeLeft)})</span> : <span className="flex items-center opacity-100 gap-1 ml-1">1 <Ticket size={12}/></span>}
+                        <Edit2 size={14} /> Editar Rotina {isFreeToEdit ? <span className="opacity-60 font-normal">({formatFreeTime(freeEditTimeLeft)})</span> : <span className="flex items-center opacity-100 gap-1 ml-1">1 <Ticket size={12}/></span>}
                     </button>
                 )}
                 {onDeleteRoutine && isRoutine && (
@@ -302,28 +303,29 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
                     </button>
                 )}
               </div>
-
-              {/* OVERLAY DE PAGAMENTO (VOUCHERS) */}
-              <AnimatePresence>
-                {actionPrompt && (
-                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-full right-0 mb-2 p-4 bg-zinc-900 dark:bg-zinc-100 rounded-2xl shadow-xl z-50 text-white dark:text-black flex flex-col items-center min-w-[220px]">
-                      <AlertTriangle size={24} className="text-amber-500 mb-2"/>
-                      <span className="text-sm font-bold text-center mb-1">Acesso Restrito</span>
-                      <span className="text-xs text-center opacity-80 mb-4">O tempo de edição gratuita expirou. Custo: {actionPrompt.cost} Vouchers.</span>
-                      <div className="flex gap-2 w-full">
-                         <button onClick={() => setActionPrompt(null)} className="flex-1 py-2 rounded-lg bg-zinc-800 dark:bg-zinc-200 text-xs font-bold transition-colors">Cancelar</button>
-                         <button onClick={confirmPaidAction} className="flex-1 py-2 rounded-lg bg-blue-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1">Pagar <Ticket size={12}/></button>
-                      </div>
-                      {voucherError && <span className="text-[10px] text-red-400 font-bold mt-2 uppercase tracking-widest">Saldo Insuficiente</span>}
-                   </motion.div>
-                )}
-              </AnimatePresence>
             </div>
 
             </div>
             </motion.div>
         )}
         </AnimatePresence>
+
+        {/* OVERLAY DE PAGAMENTO DE VOUCHERS MOVIDO PARA A RAIZ DO CARD */}
+        <AnimatePresence>
+            {actionPrompt && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-12 right-4 p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-[100] text-zinc-900 dark:text-zinc-100 flex flex-col items-center min-w-[220px]">
+                    <AlertTriangle size={24} className="text-amber-500 mb-2"/>
+                    <span className="text-sm font-bold text-center mb-1">Acesso Restrito</span>
+                    <span className="text-xs text-center opacity-80 mb-4">O tempo de edição gratuita expirou. Custo: {actionPrompt.cost} Vouchers.</span>
+                    <div className="flex gap-2 w-full">
+                        <button onClick={(e) => { e.stopPropagation(); setActionPrompt(null); }} className="flex-1 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 text-xs font-bold transition-colors">Cancelar</button>
+                        <button onClick={(e) => { e.stopPropagation(); confirmPaidAction(); }} className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1">Pagar <Ticket size={12}/></button>
+                    </div>
+                    {voucherError && <span className="text-[10px] text-red-500 font-bold mt-2 uppercase tracking-widest">Saldo Insuficiente</span>}
+                </motion.div>
+            )}
+        </AnimatePresence>
+
         </motion.div>
     );
 };
