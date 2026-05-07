@@ -42,7 +42,6 @@ export const NotesDashboard = () => {
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [search, setSearch] = useState('');
 
-  // Modais
   const [isNbModalOpen, setNbModalOpen] = useState(false);
   const [nbName, setNbName] = useState('');
   const [nbColor, setNbColor] = useState<ItemColor>('zinc');
@@ -51,7 +50,6 @@ export const NotesDashboard = () => {
   const [passInput, setPassInput] = useState('');
   const [passError, setPassError] = useState('');
 
-  // Editor States
   const [noteTitle, setNoteTitle] = useState('');
   const [noteContent, setNoteContent] = useState('');
   const [noteFormat, setNoteFormat] = useState<NoteFormat>('richtext');
@@ -115,6 +113,7 @@ export const NotesDashboard = () => {
     updateNote(activeNote.id, { title: noteTitle, content: currentHtml, format: noteFormat, font: noteFont, hasLines: noteLines });
   };
 
+  // AUTOSAVE BLINDADO: Só atualiza com debounce contínuo enquanto digita
   useEffect(() => {
     if (view !== 'editor' || !activeNote || !isEditing) return;
     setSaveStatus('saving');
@@ -126,13 +125,14 @@ export const NotesDashboard = () => {
     return () => clearTimeout(timer);
   }, [noteTitle, noteContent, noteFormat, noteFont, noteLines, isEditing, activeNote?.id]);
 
+  // CORREÇÃO DO BUG DE CURSOR E RECRIAMENTO: Injeta texto APENAS se o editor não estiver em uso ativo
   useEffect(() => {
     if (view === 'editor' && noteFormat === 'richtext' && editorRef.current) {
-      if (editorRef.current.innerHTML !== noteContent) {
-          editorRef.current.innerHTML = noteContent;
-      }
+        if (document.activeElement !== editorRef.current) {
+            editorRef.current.innerHTML = noteContent;
+        }
     }
-  }, [view, noteFormat, activeNote?.id]);
+  }, [view, noteFormat, activeNote?.id, noteContent]);
 
   const submitPassword = () => {
     if (!passwordModal) return;
@@ -155,7 +155,11 @@ export const NotesDashboard = () => {
     else updateNote(id, { isLocked: false, password: '' });
   };
 
-  const execCmd = (cmd: string, value: string | null = null) => { document.execCommand(cmd, false, value || undefined); editorRef.current?.focus(); };
+  // e.preventDefault evita que o botão roube o foco do ContentEditable, preservando a seleção do texto!
+  const execCmd = (cmd: string, value: string | null = null) => { 
+      document.execCommand(cmd, false, value || undefined); 
+      editorRef.current?.focus(); 
+  };
 
   return (
     <>
@@ -167,10 +171,10 @@ export const NotesDashboard = () => {
       
       <div className={`transition-colors duration-500 ${isFullscreen ? 'fixed inset-0 z-[1000] bg-white dark:bg-black flex flex-col' : 'min-h-screen bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 pb-32'}`}>
         
-        {/* ENVOLVEDOR DE ANIMAÇÕES DE NOTAS */}
+        {/* A CHAVE DO BUG RESOLVIDA: "view" ao invés de "view-isFullscreen" previne a destruição da div! */}
         <AnimatePresence mode="wait">
           <motion.div 
-            key={`${view}-${isFullscreen}`}
+            key={view}
             initial={{ opacity: 0, scale: 0.97, filter: 'brightness(0.85)' }}
             animate={{ opacity: 1, scale: 1, filter: 'brightness(1)' }}
             exit={{ opacity: 0, scale: 0.97, filter: 'brightness(0.85)' }}
@@ -179,7 +183,7 @@ export const NotesDashboard = () => {
             className={`w-full h-full mx-auto flex flex-col ${isFullscreen ? 'max-w-6xl' : 'max-w-4xl px-6 md:px-8 pt-12'}`}
           >
 
-            {/* HEADER E VISÃO DE CADERNOS/NOTAS */}
+            {/* VISÃO DE CADERNOS/NOTAS */}
             {view !== 'editor' && !isFullscreen && (
               <header className="space-y-6 mb-6">
                 <div className="flex items-center justify-between">
@@ -198,7 +202,6 @@ export const NotesDashboard = () => {
               </header>
             )}
 
-            {/* VISÃO DE CADERNOS */}
             {view === 'notebooks' && (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 <button onClick={() => setNbModalOpen(true)} className="flex flex-col items-center justify-center gap-3 p-6 rounded-3xl border-2 border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all h-40">
@@ -221,7 +224,6 @@ export const NotesDashboard = () => {
               </div>
             )}
 
-            {/* VISÃO DE NOTAS DO CADERNO */}
             {view === 'notes' && activeNotebook && (
               <div className="space-y-4">
                  <div className="flex justify-between items-center mb-6">
@@ -289,43 +291,45 @@ export const NotesDashboard = () => {
                     )}
                 </AnimatePresence>
 
-                {/* BARRA DE FERRAMENTAS INFERIOR (Rich Text / Formatação) */}
-                <div className={`flex items-center justify-between border-b border-zinc-100 dark:border-zinc-900 mb-4 pb-2 px-2 ${isFullscreen ? 'pt-20' : ''}`}>
-                   <div className="flex gap-1 overflow-x-auto scrollbar-hide">
-                      {!isFullscreen && (
-                         <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${!isEditing ? 'bg-blue-500/10 text-blue-500' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
-                           {isEditing ? <Eye size={16}/> : <PenLine size={16}/>} {isEditing ? 'Ver' : 'Editar'}
-                         </button>
-                      )}
-                      
-                      {noteFormat === 'richtext' && isEditing && (
-                          <>
-                            {!isFullscreen && <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />}
-                            <button onClick={() => execCmd('bold')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Negrito"><Bold size={16}/></button>
-                            <button onClick={() => execCmd('italic')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Itálico"><Italic size={16}/></button>
-                            <button onClick={() => execCmd('underline')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Sublinhado"><Underline size={16}/></button>
-                            <button onClick={() => execCmd('strikeThrough')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Tachado"><Strikethrough size={16}/></button>
-                            
-                            <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
-                            <button onClick={() => execCmd('insertUnorderedList')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Lista"><List size={16}/></button>
-                            <button onClick={() => execCmd('insertOrderedList')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Lista Numerada"><ListOrdered size={16}/></button>
-                            
-                            <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
-                            <button onClick={() => {
-                               const url = prompt('Digite a URL do link:');
-                               if (url) execCmd('createLink', url);
-                            }} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Inserir Link"><LinkIcon size={16}/></button>
-                            <button onClick={() => execCmd('formatBlock', 'PRE')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Bloco de Código"><Code size={16}/></button>
-                          </>
-                      )}
-                   </div>
+                {/* BARRA DE EDIÇÃO (SEMPRE VISÍVEL no topo da nota durante edição) */}
+                <AnimatePresence>
+                   <div className={`flex items-center justify-between border-b border-zinc-100 dark:border-zinc-900 mb-4 pb-2 px-2 ${isFullscreen ? 'pt-20' : ''}`}>
+                     <div className="flex gap-1 overflow-x-auto scrollbar-hide flex-1 items-center">
+                        {!isFullscreen && (
+                           <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shrink-0 ${!isEditing ? 'bg-blue-500/10 text-blue-500' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                             {isEditing ? <Eye size={16}/> : <PenLine size={16}/>} {isEditing ? 'Ver' : 'Editar'}
+                           </button>
+                        )}
+                        
+                        {noteFormat === 'richtext' && isEditing && (
+                            <div className="flex items-center gap-1 shrink-0">
+                              {!isFullscreen && <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-2 self-center" />}
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('bold')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Negrito"><Bold size={16}/></button>
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('italic')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Itálico"><Italic size={16}/></button>
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('underline')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Sublinhado"><Underline size={16}/></button>
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('strikeThrough')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Tachado"><Strikethrough size={16}/></button>
+                              
+                              <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('insertUnorderedList')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Lista"><List size={16}/></button>
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('insertOrderedList')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Lista Numerada"><ListOrdered size={16}/></button>
+                              
+                              <div className="w-px h-6 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => {
+                                 const url = prompt('Digite a URL do link:');
+                                 if (url) execCmd('createLink', url);
+                              }} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Inserir Link"><LinkIcon size={16}/></button>
+                              <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('formatBlock', 'PRE')} className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Bloco de Código"><Code size={16}/></button>
+                            </div>
+                        )}
+                     </div>
 
-                   {/* FEEDBACK DE AUTOSAVE */}
-                   <div className="flex items-center px-2">
-                     {saveStatus === 'saving' && <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-400 animate-pulse">Salvando...</span>}
-                     {saveStatus === 'saved' && <span className="text-[10px] uppercase tracking-widest font-bold text-emerald-500 flex items-center gap-1"><Check size={12}/> Salvo</span>}
-                   </div>
-                </div>
+                     {/* FEEDBACK DE AUTOSAVE NA TELA */}
+                     <div className="flex items-center px-2 shrink-0">
+                       {saveStatus === 'saving' && <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-400 animate-pulse">Salvando...</span>}
+                       {saveStatus === 'saved' && <span className="text-[10px] uppercase tracking-widest font-bold text-emerald-500 flex items-center gap-1"><Check size={12}/> Salvo</span>}
+                     </div>
+                  </div>
+                </AnimatePresence>
 
                 {/* TEXT AREA */}
                 <div className={`flex-1 flex flex-col rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-inner editor-content overflow-hidden ${colorStyles[activeNotebook.color].note}`}>
@@ -336,7 +340,7 @@ export const NotesDashboard = () => {
                       !isEditing ? (
                          <div dangerouslySetInnerHTML={{ __html: parseMarkdown(noteContent) }} className={`w-full h-full bg-transparent outline-none leading-relaxed text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
                       ) : (
-                         <textarea value={noteContent} onChange={(e) => setNoteContent(e.target.value)} placeholder="Escreva aqui em Markdown..." className={`w-full min-h-full bg-transparent outline-none resize-none leading-relaxed text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
+                         <textarea value={noteContent} onChange={(e) => setNoteContent(e.target.value)} placeholder="Escreva aqui em Markdown (# Título, **Negrito**)..." className={`w-full min-h-full bg-transparent outline-none resize-none leading-relaxed text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
                       )
                     ) : (
                       <div ref={editorRef} contentEditable={isEditing} suppressContentEditableWarning onInput={() => { if(editorRef.current) setNoteContent(editorRef.current.innerHTML); }} className={`w-full min-h-full bg-transparent outline-none text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
@@ -352,7 +356,7 @@ export const NotesDashboard = () => {
           </motion.div>
         </AnimatePresence>
 
-        {/* MODAL DE CRIAÇÃO DE CADERNO E SENHAS AQUI */}
+        {/* MODAL DE CRIAÇÃO DE CADERNO */}
         <AnimatePresence>
           {isNbModalOpen && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1100] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
@@ -374,6 +378,7 @@ export const NotesDashboard = () => {
           )}
         </AnimatePresence>
 
+        {/* MODAL DE SENHAS */}
         <AnimatePresence>
           {passwordModal && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1200] bg-black/90 flex items-center justify-center p-4 backdrop-blur-md">
