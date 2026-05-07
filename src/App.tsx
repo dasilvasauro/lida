@@ -38,72 +38,87 @@ function App() {
     config.setChangelogOpen(false);
   };
 
-  const handleForceExit = () => {
-    // Hack para forçar a saída nativa do PWA
-    window.history.go(-2);
-    setTimeout(() => window.close(), 100); 
-  };
-
+  // SISTEMA DE NAVEGAÇÃO PWA (SAMSUNG INTERNET & SAFARI FIX)
   useEffect(() => {
-    // 1. Inicializa o estado de histórico fantasma
-    window.history.replaceState({ popup: 'root' }, '');
-    window.history.pushState({ popup: 'app' }, '');
+    let hasPushed = false;
+    
+    // Injeta silenciosamente um estado no histórico para "trancar" o botão voltar
+    const initHistoryTrap = () => {
+      if (!hasPushed) {
+        window.history.pushState({ isLidaApp: true }, '', window.location.href);
+        hasPushed = true;
+      }
+    };
+    
+    // Dispara logo no início, e reforça no 1º clique (Resolve as proteções do iOS/Samsung)
+    initHistoryTrap();
+    document.addEventListener('click', initHistoryTrap, { once: true });
+    document.addEventListener('touchstart', initHistoryTrap, { once: true });
 
-    const executeBackAction = () => {
-        // A. Tenta executar manipuladores de modais internos primeiro (Toasts, Menus, Drops, Fullscreen)
-        if (triggerBack()) return;
+    // O Cérebro Hierárquico do App
+    const executeBackAction = (): boolean => {
+      // 1. Tenta fechar algo local na tela em que você está (Modal, Dropdown, Menu de Notas)
+      if (triggerBack()) return true;
 
-        // B. Tenta fechar modais globais das Stores
-        const c = useConfigStore.getState();
-        const t = useTaskStore.getState();
+      const c = useConfigStore.getState();
+      const t = useTaskStore.getState();
 
-        if (c.isExitModalOpen) { c.setExitModalOpen(false); return; }
+      // 2. Modais e Preferências Globais
+      if (c.isExitModalOpen) { c.setExitModalOpen(false); return true; }
+      if (t.isGlobalModalOpen || t.isRoutineModalOpen) {
+        window.dispatchEvent(new CustomEvent('request-modal-close'));
+        return true;
+      }
+      if (t.isFocusModeOpen) { t.toggleFocusMode(false); return true; }
+      if (c.isVisionOpen) { c.setVisionOpen(false); return true; }
+      if (c.isSettingsOpen) { c.setSettingsOpen(false); return true; }
+      if (c.isGoogleConnectOpen) { c.setGoogleConnectOpen(false); return true; }
+      if (c.isChangelogOpen) { c.setChangelogOpen(false); return true; }
 
-        if (t.isGlobalModalOpen || t.isRoutineModalOpen) {
-            window.dispatchEvent(new CustomEvent('request-modal-close'));
-            return;
-        }
+      // 3. Se não houver modais, mas você não estiver na tela Inicial, volta pra ela.
+      if (currentTabRef.current !== 'tasks') {
+        setCurrentTab('tasks');
+        c.setVisionOpen(false); c.setSettingsOpen(false); c.setGoogleConnectOpen(false); c.setChangelogOpen(false);
+        return true;
+      }
 
-        if (t.isFocusModeOpen) { t.toggleFocusMode(false); return; }
-        if (c.isVisionOpen) { c.setVisionOpen(false); return; }
-        if (c.isSettingsOpen) { c.setSettingsOpen(false); return; }
-        if (c.isGoogleConnectOpen) { c.setGoogleConnectOpen(false); return; }
-        if (c.isChangelogOpen) { c.setChangelogOpen(false); return; }
+      // 4. Estando na tela inicial e sem nada aberto, exibe o aviso de saída.
+      if (c.showExitWarning) {
+        c.setExitModalOpen(true);
+        return true;
+      }
 
-        // C. Se não houver modais e não estiver na tela de tarefas, volta para a tela de tarefas
-        if (currentTabRef.current !== 'tasks') {
-            setCurrentTab('tasks');
-            return;
-        }
-
-        // D. Se estiver na tela principal de tarefas e sem nada aberto, exibe aviso ou sai de fato
-        if (c.showExitWarning) {
-            c.setExitModalOpen(true);
-        } else {
-            handleForceExit();
-        }
+      // 5. Permissão negada para interceptar, o app vai fechar.
+      return false;
     };
 
     const handlePopState = () => {
-      // 2. Quando o botão voltar é pressionado, re-injetamos a trava para não fechar o app
-      window.history.pushState({ popup: 'app' }, '');
-      executeBackAction();
+      const handled = executeBackAction();
+      if (handled) {
+        // Se alguma ação foi processada internamente, devolvemos a trava ao histórico.
+        window.history.pushState({ isLidaApp: true }, '', window.location.href);
+      }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') executeBackAction();
+      if (e.key === 'Escape') executeBackAction();
     };
 
-    const exitEvent = () => handleForceExit();
+    const handleForceExit = () => {
+      window.history.go(-2);
+      setTimeout(() => window.close(), 100); 
+    };
 
     window.addEventListener('popstate', handlePopState);
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('force-app-exit', exitEvent);
+    window.addEventListener('force-app-exit', handleForceExit);
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('force-app-exit', exitEvent);
+      window.removeEventListener('force-app-exit', handleForceExit);
+      document.removeEventListener('click', initHistoryTrap);
+      document.removeEventListener('touchstart', initHistoryTrap);
     };
   }, []);
 
@@ -204,7 +219,7 @@ function App() {
 
               <div className="flex gap-3">
                 <button onClick={() => config.setExitModalOpen(false)} className="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
-                <button onClick={() => { config.setExitModalOpen(false); handleForceExit(); }} className="flex-1 p-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-colors">Sair</button>
+                <button onClick={() => { config.setExitModalOpen(false); window.dispatchEvent(new CustomEvent('force-app-exit')); }} className="flex-1 p-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-colors">Sair</button>
               </div>
             </motion.div>
           </motion.div>

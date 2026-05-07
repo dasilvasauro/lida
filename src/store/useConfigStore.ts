@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
-// === MOTOR DE NAVEGAÇÃO NATIVA (BACKHANDLER) ===
+// === MOTOR DE NAVEGAÇÃO NATIVA (BACKHANDLER BLINDADO) ===
 export const backHandlers: Array<() => boolean> = [];
 export const registerBackHandler = (handler: () => boolean) => backHandlers.push(handler);
 export const unregisterBackHandler = (handler: () => boolean) => {
@@ -10,22 +10,25 @@ export const unregisterBackHandler = (handler: () => boolean) => {
     if (index > -1) backHandlers.splice(index, 1);
 };
 export const triggerBack = () => {
-    // Roda do último registrado (mais recente) para o primeiro, respeitando a camada visual (z-index lógico)
     for (let i = backHandlers.length - 1; i >= 0; i--) {
         if (backHandlers[i]()) return true;
     }
     return false;
 };
 
+// O useRef aqui salva a vida do app, impedindo que a interceção se perca no meio das animações
 export const useBackHandler = (isActive: boolean, handler: () => boolean) => {
+    const handlerRef = useRef(handler);
+    useEffect(() => { handlerRef.current = handler; }, [handler]);
+
     useEffect(() => {
-        if (isActive) {
-            registerBackHandler(handler);
-            return () => unregisterBackHandler(handler);
-        }
-    }, [isActive, handler]);
+        if (!isActive) return;
+        const fn = () => handlerRef.current();
+        registerBackHandler(fn);
+        return () => unregisterBackHandler(fn);
+    }, [isActive]);
 };
-// ==============================================
+// ========================================================
 
 export type Theme = 'light' | 'dark-amoled' | 'soft-dark' | 'butter' | 'navy' | 'darcula';
 type Font = 'sans' | 'serif' | 'special';
