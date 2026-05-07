@@ -204,7 +204,7 @@ export const VisionModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () 
            
            {/* BOTÕES FIXOS TOPO DIREITA */}
            <div className="absolute top-6 right-6 md:top-8 md:right-8 z-[110] flex items-center gap-3">
-              <a href="https://thedankoe.com/letters/how-to-fix-your-life-in-1-day/" target="_blank" rel="noopener noreferrer" title="Ler Artigo de Referência" className="p-3 md:p-4 bg-blue-50 dark:bg-blue-900/30 text-blue-500 rounded-full hover:scale-110 transition-transform shadow-lg border border-blue-200 dark:border-blue-800 flex items-center justify-center">
+              <a href="https://letters.thedankoe.com/p/how-to-fix-your-entire-life-in-1" target="_blank" rel="noopener noreferrer" title="Ler Artigo de Referência" className="p-3 md:p-4 bg-blue-50 dark:bg-blue-900/30 text-blue-500 rounded-full hover:scale-110 transition-transform shadow-lg border border-blue-200 dark:border-blue-800 flex items-center justify-center">
                 <ExternalLink size={24}/>
               </a>
               <button onClick={onClose} className="p-3 md:p-4 bg-zinc-100 dark:bg-zinc-900 rounded-full hover:scale-110 transition-transform shadow-lg">
