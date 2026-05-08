@@ -54,38 +54,89 @@ export const RewardToast = ({ breakdown }: RewardToastProps) => {
             }, delay * (idx + 1));
         });
         
-    }, [breakdown]);
+    }, [breakdown, xpCounter, goldCounter]);
 
-    // LÓGICA DE ESTILOS DINÂMICOS BASEADA NO TEMA
+    // LÓGICA DE ESTILOS DINÂMICOS BASEADA NO TEMA (Contraste Máximo)
     const getThemeConfig = () => {
         let containerClass = "";
+        let textMain = "";
+        let subtext = "";
         let isDarkTheme = ['dark-amoled', 'soft-dark', 'navy', 'darcula', 'matrix'].includes(theme);
 
         switch(theme) {
-            case 'light': containerClass = "bg-white border-zinc-200 shadow-[0_20px_50px_rgba(0,0,0,0.15)] text-zinc-900"; break;
-            case 'dark-amoled': containerClass = "bg-zinc-900 border-zinc-800 shadow-[0_20px_50px_rgba(0,0,0,0.6)] text-white"; break;
-            case 'soft-dark': containerClass = "bg-zinc-800 border-zinc-700 shadow-[0_20px_50px_rgba(0,0,0,0.5)] text-zinc-100"; break;
-            case 'butter': containerClass = "bg-[#fdf6e3] border-[#e8ce95] shadow-[0_20px_50px_rgba(212,185,130,0.4)] text-[#362d1e]"; break;
-            case 'navy': containerClass = "bg-[#112240] border-[#233554] shadow-[0_20px_50px_rgba(2,12,27,0.7)] text-[#e6f1ff]"; break;
-            case 'darcula': containerClass = "bg-[#282a36] border-[#6272a4] shadow-[0_20px_50px_rgba(0,0,0,0.6)] text-[#f8f8f2]"; break;
-            case 'macos': containerClass = "bg-white border-blue-500 shadow-[0_15px_40px_rgba(59,130,246,0.3)] text-zinc-900"; break;
-            case 'matrix': containerClass = "bg-black border-[#00ff41] shadow-[0_15px_40px_rgba(0,255,65,0.2)] text-[#00ff41]"; break;
-            case 'pink': containerClass = "bg-white border-pink-500 shadow-[0_15px_40px_rgba(236,72,153,0.3)] text-zinc-900"; break;
-            case 'todoist': containerClass = "bg-white border-red-500 shadow-[0_15px_40px_rgba(225,29,72,0.3)] text-zinc-900"; break;
-            case 'light-gray': containerClass = "bg-[#f4f4f5] border-zinc-300 shadow-[0_15px_40px_rgba(0,0,0,0.15)] text-zinc-900"; break;
-            case 'orange': containerClass = "bg-white border-orange-500 shadow-[0_15px_40px_rgba(249,115,22,0.3)] text-zinc-900"; break;
-            default: containerClass = "bg-zinc-900 border-zinc-800 shadow-[0_20px_50px_rgba(0,0,0,0.5)] text-white"; break;
+            case 'light': 
+            case 'light-gray':
+                containerClass = "bg-white border-zinc-200 shadow-[0_20px_50px_rgba(0,0,0,0.15)]"; 
+                textMain = "text-zinc-900"; 
+                subtext = "text-zinc-500";
+                break;
+            case 'dark-amoled': 
+                containerClass = "bg-zinc-900 border-zinc-700 shadow-[0_20px_50px_rgba(0,0,0,0.8)]"; 
+                textMain = "text-zinc-50"; 
+                subtext = "text-zinc-400";
+                break;
+            case 'soft-dark': 
+                containerClass = "bg-zinc-800 border-zinc-600 shadow-[0_20px_50px_rgba(0,0,0,0.6)]"; 
+                textMain = "text-zinc-50"; 
+                subtext = "text-zinc-400";
+                break;
+            case 'butter': 
+                containerClass = "bg-[#fffbf0] border-[#d4b982] shadow-[0_20px_50px_rgba(212,185,130,0.4)]"; 
+                textMain = "text-[#362d1e]"; 
+                subtext = "text-[#857451]";
+                break;
+            case 'navy': 
+                containerClass = "bg-[#172a45] border-[#64ffda]/30 shadow-[0_20px_50px_rgba(2,12,27,0.7)]"; 
+                textMain = "text-[#e6f1ff]"; 
+                subtext = "text-[#8892b0]";
+                break;
+            case 'darcula': 
+                containerClass = "bg-[#44475a] border-[#bd93f9]/50 shadow-[0_20px_50px_rgba(0,0,0,0.6)]"; 
+                textMain = "text-[#f8f8f2]"; 
+                subtext = "text-[#6272a4]";
+                break;
+            case 'macos': 
+                containerClass = "bg-white border-blue-400 shadow-[0_15px_40px_rgba(59,130,246,0.3)]"; 
+                textMain = "text-zinc-900"; 
+                subtext = "text-zinc-500";
+                break;
+            case 'matrix': 
+                containerClass = "bg-[#001100] border-[#00ff41] shadow-[0_15px_40px_rgba(0,255,65,0.2)]"; 
+                textMain = "text-[#00ff41]"; 
+                subtext = "text-[#00aa00]";
+                break;
+            case 'pink': 
+                containerClass = "bg-white border-pink-400 shadow-[0_15px_40px_rgba(236,72,153,0.3)]"; 
+                textMain = "text-pink-950"; 
+                subtext = "text-pink-500";
+                break;
+            case 'todoist': 
+                containerClass = "bg-white border-red-500 shadow-[0_15px_40px_rgba(225,29,72,0.3)]"; 
+                textMain = "text-zinc-900"; 
+                subtext = "text-red-500";
+                break;
+            case 'orange': 
+                containerClass = "bg-white border-orange-500 shadow-[0_15px_40px_rgba(249,115,22,0.3)]"; 
+                textMain = "text-orange-950"; 
+                subtext = "text-orange-600";
+                break;
+            default: 
+                containerClass = "bg-zinc-900 border-zinc-700 shadow-[0_20px_50px_rgba(0,0,0,0.8)]"; 
+                textMain = "text-white"; 
+                subtext = "text-zinc-400";
+                break;
         }
 
         const isMatrix = theme === 'matrix';
         return {
             container: containerClass,
-            subtext: isMatrix ? "text-[#00aa00]" : "opacity-60 font-medium",
+            textMain: textMain,
+            subtext: subtext,
             primary: isMatrix ? "text-[#00ff41]" : "text-emerald-500",
             modus: isMatrix ? "text-[#00ff41]" : isDarkTheme ? 'text-blue-400' : 'text-blue-600',
             magic: isMatrix ? "text-[#00ff41]" : isDarkTheme ? 'text-purple-400' : 'text-purple-600',
             boost: isMatrix ? "text-[#00ff41]" : isDarkTheme ? 'text-orange-400' : 'text-orange-600',
-            divider: isMatrix ? "border-[#00aa00]/30" : "border-current opacity-10"
+            divider: isMatrix ? "border-[#00aa00]/30" : "border-current opacity-15"
         };
     };
 
@@ -98,7 +149,7 @@ export const RewardToast = ({ breakdown }: RewardToastProps) => {
                 initial={{ opacity: 0, y: 50, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                className={`fixed bottom-28 md:bottom-12 left-1/2 md:left-auto md:right-32 -translate-x-1/2 md:translate-x-0 w-[90%] max-w-sm p-6 rounded-3xl z-50 border-2 ${cfg.container}`}
+                className={`fixed bottom-28 md:bottom-12 left-1/2 md:left-auto md:right-32 -translate-x-1/2 md:translate-x-0 w-[90%] max-w-sm p-6 rounded-3xl z-50 border-2 ${cfg.container} ${cfg.textMain}`}
             >
                 {breakdown.isFailed ? (
                     <div className="flex items-center justify-center gap-3 text-red-500 py-2">
@@ -109,7 +160,7 @@ export const RewardToast = ({ breakdown }: RewardToastProps) => {
                     <div className="flex flex-col">
                         <div className={`flex items-center gap-2 mb-4 pb-3 border-b ${cfg.divider}`}>
                             <CheckCircle2 size={16} className={cfg.primary} />
-                            <span className="text-xs uppercase font-black tracking-widest opacity-80">Recompensa Obtida</span>
+                            <span className="text-xs uppercase font-black tracking-widest opacity-90">Recompensa Obtida</span>
                         </div>
 
                         <div className="space-y-3 mb-5 text-sm font-bold">
@@ -140,7 +191,7 @@ export const RewardToast = ({ breakdown }: RewardToastProps) => {
                         </div>
 
                         <div className={`flex justify-between items-center pt-4 border-t ${cfg.divider}`}>
-                            <span className="text-sm font-black uppercase tracking-widest">Total</span>
+                            <span className="text-sm font-black uppercase tracking-widest opacity-90">Total</span>
                             <div className="flex gap-4 text-lg">
                                 <span className={`${theme === 'matrix' ? 'text-[#00ff41]' : 'text-purple-500'} font-black flex items-center gap-1.5`}><motion.span>{displayedXp}</motion.span> <Star size={18}/></span>
                                 <span className={`${theme === 'matrix' ? 'text-[#00ff41]' : 'text-yellow-500'} font-black flex items-center gap-1.5`}><motion.span>{displayedGold}</motion.span> <Coins size={18}/></span>
