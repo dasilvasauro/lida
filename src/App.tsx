@@ -14,7 +14,7 @@ import { DailySummaryModal } from './features/daily/DailySummaryModal';
 import { Navbar, type Tab } from './components/layout/Navbar';
 import { AnimatePresence, motion } from 'framer-motion';
 import { startCloudListener, stopCloudListener, setupAutoSync, syncToCloud } from './lib/cloudSync';
-import { WifiOff, LogOut, CloudLightning, CloudOff } from 'lucide-react';
+import { WifiOff, LogOut, Check, CloudLightning, CloudOff } from 'lucide-react';
 import { LevelUpModal } from './components/ui/LevelUpModal';
 
 function App() {
@@ -115,13 +115,16 @@ function App() {
     return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); };
   }, [config.uid, config.e2eePin, config.isLocalMode, config.isManualOffline]);
 
+  // CORREÇÃO CRÍTICA: isManualOffline adicionado às dependências. Se ficar offline, o motor "desliga" a nuvem fisicamente.
   useEffect(() => {
-    if (!config.isLocalMode && config.uid && config.e2eePin && config.isOnboarded) {
+    if (!config.isLocalMode && !config.isManualOffline && config.uid && config.e2eePin && config.isOnboarded) {
       startCloudListener(config.uid, config.e2eePin); 
       const stopAutoSync = setupAutoSync(); 
       return () => { stopCloudListener(); stopAutoSync(); };
+    } else {
+      stopCloudListener();
     }
-  }, [config.uid, config.e2eePin, config.isOnboarded, config.isLocalMode]);
+  }, [config.uid, config.e2eePin, config.isOnboarded, config.isLocalMode, config.isManualOffline]);
 
   return (
     <ThemeWrapper>

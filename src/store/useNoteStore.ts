@@ -21,9 +21,14 @@ export const useNoteStore = create<NoteState>()(
 
       addNotebook: (notebook) => set((state) => ({ notebooks: [...state.notebooks, { ...notebook, updatedAt: Date.now() }] })),
       updateNotebook: (id, updated) => set((state) => ({ notebooks: state.notebooks.map(nb => nb.id === id ? { ...nb, ...updated, updatedAt: Date.now() } : nb) })),
+      
       deleteNotebook: (id) => {
         useConfigStore.getState().addTombstone(id);
-        set((state) => ({ notebooks: state.notebooks.filter(nb => nb.id !== id), notes: state.notes.filter(n => n.notebookId !== id) }));
+        set((state) => ({ 
+          notebooks: state.notebooks.filter(nb => nb.id !== id), 
+          // CORREÇÃO AQUI: Em vez de destruir as notas, resgata-as para a pasta Geral com um novo timestamp.
+          notes: state.notes.map(n => n.notebookId === id ? { ...n, notebookId: 'default', updatedAt: Date.now() } : n) 
+        }));
       },
 
       addNote: (note) => set((state) => ({ notes: [{ ...note, updatedAt: Date.now() }, ...state.notes] })),
