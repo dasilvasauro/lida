@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, Strikethrough, Link as LinkIcon, Code, List, ListOrdered, FileText, Trash2, Check, Eye, PenLine, Maximize2, Minimize2, Undo, Redo, FileSearch, FolderInput, Edit2, AlertTriangle, X, ChevronDown, Star, Pin } from 'lucide-react';
+import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, Strikethrough, Link as LinkIcon, Code, List, ListOrdered, FileText, Trash2, Check, Eye, PenLine, Maximize2, Minimize2, Undo, Redo, FileSearch, FolderInput, Edit2, AlertTriangle, X, ChevronDown, Star, Pin, Info } from 'lucide-react';
 import { useNoteStore } from '../../store/useNoteStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
@@ -81,13 +81,13 @@ export const NotesDashboard = () => {
 
   const [fontMenuOpen, setFontMenuOpen] = useState(false);
   const [folderMenuOpen, setFolderMenuOpen] = useState(false);
+  const [infoModal, setInfoModal] = useState<{title: string, desc: string} | null>(null);
 
   const editorRef = useRef<HTMLDivElement>(null);
   const noteSearchRef = useRef<HTMLInputElement>(null);
 
   const filteredNotebooks = notebooks.filter(nb => nb.name.toLowerCase().includes(search.toLowerCase()));
   
-  // Módulo de Notas do Caderno (Filtra e Ordena por Pinos primeiro, depois data)
   const filteredNotes = activeNotebook ? notes.filter(n => n.notebookId === activeNotebook.id && (n.title.toLowerCase().includes(search.toLowerCase()) || n.content.toLowerCase().includes(search.toLowerCase())))
     .sort((a, b) => {
         if (a.isPinned && !b.isPinned) return -1;
@@ -95,7 +95,6 @@ export const NotesDashboard = () => {
         return b.updatedAt - a.updatedAt;
     }) : [];
 
-  // Módulo de Notas Favoritas (Para a Home)
   const favoriteNotes = notes.filter(n => n.isFavorite && (n.title.toLowerCase().includes(search.toLowerCase()) || n.content.toLowerCase().includes(search.toLowerCase())))
     .sort((a, b) => b.updatedAt - a.updatedAt);
 
@@ -245,13 +244,14 @@ export const NotesDashboard = () => {
   }
 
   // === INTERCEPTAÇÃO DE NAVEGAÇÃO ===
-  const hasLocalState = !!passwordModal || !!confirmDialog || isNbModalOpen || fontMenuOpen || folderMenuOpen || showInNoteSearch || isFullscreen || view !== 'notebooks';
+  const hasLocalState = !!passwordModal || !!confirmDialog || isNbModalOpen || fontMenuOpen || folderMenuOpen || showInNoteSearch || isFullscreen || view !== 'notebooks' || !!infoModal;
   
   useBackHandler(hasLocalState, () => {
       const tStore = useTaskStore.getState();
       const cStore = useConfigStore.getState();
       if (tStore.isGlobalModalOpen || tStore.isRoutineModalOpen || tStore.isFocusModeOpen || cStore.isSettingsOpen || cStore.isVisionOpen || cStore.isGoogleConnectOpen || cStore.isChangelogOpen || cStore.isExitModalOpen) return false;
       
+      if (infoModal) { setInfoModal(null); return true; }
       if (passwordModal) { setPasswordModal(null); setPassInput(''); setPassError(''); return true; }
       if (confirmDialog) { setConfirmDialog(null); return true; }
       if (isNbModalOpen) { setNbModalOpen(false); setNbToEdit(null); return true; }
@@ -323,6 +323,9 @@ export const NotesDashboard = () => {
                   <div className="flex items-center gap-3">
                     {view === 'notes' && <button onClick={handleBack} className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"><ChevronLeft size={24}/></button>}
                     <h1 className="text-3xl font-black tracking-tight">{view === 'notebooks' ? 'Notas & Cadernos' : activeNotebook?.name}</h1>
+                    {view === 'notebooks' && (
+                       <button onClick={() => setInfoModal({title: 'Notas Rápidas', desc: 'Um espaço para capturar ideias sem atrito. O editor suporta Markdown para formatação ágil e Rich Text para quem prefere ferramentas visuais.\n\nVocê pode favoritar notas para acesso rápido ou fixá-las no topo de seus cadernos.'})} className="text-zinc-400 hover:text-blue-500 transition-colors mt-1"><Info size={20}/></button>
+                    )}
                   </div>
                   {view === 'notebooks' && (unlockedNotebooks.length > 0 || unlockedNotes.length > 0) && (
                     <button onClick={lockAll} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-500 text-xs font-bold hover:bg-amber-500/20 transition-colors"><Lock size={14} /> Trancar Sessão</button>
@@ -659,6 +662,23 @@ export const NotesDashboard = () => {
                   <button onClick={() => { setPasswordModal(null); setPassInput(''); setPassError(''); }} className="flex-1 p-4 rounded-xl font-bold bg-zinc-100 dark:bg-zinc-800">Cancelar</button>
                   <button onClick={submitPassword} className="flex-1 p-4 rounded-xl font-bold bg-amber-500 text-white">Confirmar</button>
                 </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* INFO MODAL */}
+        <AnimatePresence>
+          {infoModal && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
+              <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 text-center relative">
+                <button onClick={(e) => { e.stopPropagation(); setInfoModal(null); }} className="absolute top-4 right-4 p-2 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 transition-colors"><X size={20} /></button>
+                <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4"><Info size={32} /></div>
+                <h3 className="text-xl font-black mb-4 dark:text-white">{infoModal.title}</h3>
+                <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed whitespace-pre-line text-left">
+                  {infoModal.desc}
+                </p>
+                <button onClick={() => setInfoModal(null)} className="w-full mt-8 p-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-colors">Entendi</button>
               </motion.div>
             </motion.div>
           )}

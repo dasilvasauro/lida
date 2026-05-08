@@ -1,17 +1,28 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Coins, Star, Ticket, Dices, TrendingUp, AlertOctagon, AlertTriangle, Wind, CalendarHeart, Gift, Snowflake, Coffee, Clover, Play, Sparkles } from 'lucide-react';
+import { Coins, Star, Ticket, Dices, TrendingUp, AlertOctagon, AlertTriangle, Wind, CalendarHeart, Gift, Snowflake, Coffee, Clover, Play, Sparkles, Info, X } from 'lucide-react';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useTaskStore } from '../../store/useTaskStore'; 
+import { useBackHandler, useConfigStore } from '../../store/useConfigStore';
 
 export const ShopDashboard = () => {
   const { level, xp, gold, vouchers, inventory, buyItem, useItem, setBoost, addReward } = useEconomyStore();
   const { tasks, applyPowerUp } = useTaskStore(); 
   
   const [toastMessage, setToastMessage] = useState<{ msg: string, type: 'success' | 'error' | 'rare' } | null>(null);
+  const [infoModal, setInfoModal] = useState<{title: string, desc: string} | null>(null);
   
   const [isRolling, setIsRolling] = useState(false);
   const [isDrawingCard, setIsDrawingCard] = useState(false);
+
+  useBackHandler(!!infoModal, () => {
+      const tStore = useTaskStore.getState();
+      const cStore = useConfigStore.getState();
+      if (tStore.isGlobalModalOpen || tStore.isRoutineModalOpen || tStore.isFocusModeOpen || cStore.isSettingsOpen || cStore.isVisionOpen || cStore.isGoogleConnectOpen || cStore.isChangelogOpen || cStore.isExitModalOpen) return false;
+      
+      setInfoModal(null); 
+      return true;
+  });
 
   const showToast = (msg: string, type: 'success' | 'error' | 'rare' = 'success') => {
     setToastMessage({ msg, type }); setTimeout(() => setToastMessage(null), 4000);
@@ -86,7 +97,13 @@ export const ShopDashboard = () => {
       <div className="max-w-5xl mx-auto px-6 md:px-8 pt-12 space-y-12">
         
         <header className="flex flex-wrap items-end justify-between gap-6 pb-6 border-b border-zinc-100 dark:border-zinc-900">
-          <div><h1 className="text-3xl font-black tracking-tight">Loja</h1><p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium mt-1">Gerencie seus recursos com sabedoria.</p></div>
+          <div>
+             <div className="flex items-center gap-3">
+               <h1 className="text-3xl font-black tracking-tight">Loja</h1>
+               <button onClick={() => setInfoModal({title: 'Loja', desc: 'A economia do Lida recompensa sua consistência. \n\nGanhe XP para subir de nível e desbloquear novos temas estéticos ou limites de prioridade. O Ouro serve para comprar vantagens que facilitam a sua jornada, e os Vouchers permitem perdoar deslizes se você perder sua janela de edição gratuita.'})} className="text-zinc-400 hover:text-blue-500 transition-colors mt-1"><Info size={20}/></button>
+             </div>
+             <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium mt-1">Gerencie seus recursos com sabedoria.</p>
+          </div>
           <div className="flex gap-6">
             <div className="flex flex-col items-end"><span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Nível {level}</span><div className="flex items-center gap-1.5 text-xl font-black">{xp} <Star size={18} className="text-zinc-400" /></div></div>
             <div className="w-px h-10 bg-zinc-200 dark:bg-zinc-800" />
@@ -160,6 +177,23 @@ export const ShopDashboard = () => {
       <AnimatePresence>
         {toastMessage && (
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className={`fixed top-6 left-1/2 -translate-x-1/2 z-[90] px-6 py-3 rounded-full shadow-2xl font-bold text-sm tracking-wide border ${toastMessage.type === 'error' ? 'bg-red-500 text-white border-red-600' : toastMessage.type === 'rare' ? 'bg-purple-600 text-white border-purple-500' : 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black border-zinc-800 dark:border-zinc-200'}`}>{toastMessage.msg}</motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* INFO MODAL */}
+      <AnimatePresence>
+        {infoModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 text-center relative">
+              <button onClick={(e) => { e.stopPropagation(); setInfoModal(null); }} className="absolute top-4 right-4 p-2 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 transition-colors"><X size={20} /></button>
+              <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4"><Info size={32} /></div>
+              <h3 className="text-xl font-black mb-4 dark:text-white">{infoModal.title}</h3>
+              <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed whitespace-pre-line text-left">
+                 {infoModal.desc}
+              </p>
+              <button onClick={() => setInfoModal(null)} className="w-full mt-8 p-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-colors">Entendi</button>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

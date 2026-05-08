@@ -30,6 +30,7 @@ export const TaskDashboard = () => {
   const [newFolderName, setNewFolderName] = useState('');
   const [isSortedByPriority, setIsSortedByPriority] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [infoModal, setInfoModal] = useState<{title: string, desc: string} | null>(null);
 
   const [reward, setReward] = useState<{ xp: number; gold: number; isFailed?: boolean } | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -56,13 +57,11 @@ export const TaskDashboard = () => {
 
   const calculateTaskReward = (task: Task) => {
     let baseGold = 15; let baseXp = 45;
-    
     if (task.type === 'routine') {
        const itemsCount = task.subtasks?.length || 1;
        const routineReward = Math.min(200, Math.round(50 + (itemsCount - 1) * 37.5));
        return { xpAmount: routineReward, goldAmount: routineReward };
     }
-
     switch (task.priority) { case 'P0': baseGold = 50; baseXp = 150; break; case 'P1': baseGold = 40; baseXp = 100; break; case 'P2': baseGold = 30; baseXp = 75; break; case 'P3': baseGold = 20; baseXp = 50; break; case 'P4': baseGold = 10; baseXp = 25; break; }
     let modusGoldMulti = 1; let modusXpMulti = 1;
     if (userClass === 'multitask') { modusGoldMulti = 1.2; modusXpMulti = 1.2; }
@@ -126,13 +125,13 @@ export const TaskDashboard = () => {
   const moods: { value: Mood; icon: any; label: string }[] = [ { value: 'disappointed', icon: CloudRain, label: 'Desapontado' }, { value: 'annoyed', icon: Frown, label: 'Incomodado' }, { value: 'normal', icon: Meh, label: 'Normal' }, { value: 'happy', icon: Smile, label: 'Feliz' }, { value: 'radiant', icon: Sparkles, label: 'Radiante' } ];
   const filters: { id: typeof selectedFilter; label: string }[] = [ { id: 'today', label: 'Hoje' }, { id: 'week', label: 'Semana' }, { id: 'month', label: 'Mês' }, { id: 'all', label: 'Tudo' } ];
 
-  // === INTERCEPTAÇÃO DE NAVEGAÇÃO ===
-  const hasLocalState = !!confirmDialog || isMenuOpen || isCreatingFolder;
+  const hasLocalState = !!confirmDialog || isMenuOpen || isCreatingFolder || !!infoModal;
   useBackHandler(hasLocalState, () => {
       const tStore = useTaskStore.getState();
       const cStore = useConfigStore.getState();
       if (tStore.isGlobalModalOpen || tStore.isRoutineModalOpen || tStore.isFocusModeOpen || cStore.isSettingsOpen || cStore.isVisionOpen || cStore.isGoogleConnectOpen || cStore.isChangelogOpen || cStore.isExitModalOpen) return false;
 
+      if (infoModal) { setInfoModal(null); return true; }
       if (confirmDialog) { setConfirmDialog(null); return true; }
       if (isCreatingFolder) { setIsCreatingFolder(false); setNewFolderName(''); return true; }
       if (isMenuOpen) { setIsMenuOpen(false); return true; }
@@ -204,7 +203,10 @@ export const TaskDashboard = () => {
               <>
                 {routineTasks.length > 0 && (
                   <div className="mb-8">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-4 flex items-center gap-2 ml-1"><Repeat size={14} /> Rotinas</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-4 flex items-center gap-2 ml-1">
+                      <Repeat size={14} /> Rotinas
+                      <button onClick={() => setInfoModal({title: 'Rotinas', desc: 'Rotinas são moldes de tarefas. \n\nElas geram tarefas automaticamente nos dias da semana especificados, ajudando a manter processos diários sem precisar recriá-los continuamente.'})} className="text-zinc-400 hover:text-blue-500 transition-colors ml-1"><Info size={14}/></button>
+                    </h3>
                     {routineTasks.map((task) => (
                        <TaskItem key={task.id} task={task} onToggle={requestToggle} 
                          onEditRoutine={() => {
@@ -281,6 +283,23 @@ export const TaskDashboard = () => {
                 <button onClick={() => setConfirmDialog(null)} className="flex-1 py-3 rounded-xl font-bold bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
                 <button onClick={handleConfirmAction} className={`flex-1 py-3 rounded-xl font-bold text-white transition-colors ${confirmDialog.type === 'delete' || confirmDialog.type === 'clear_completed' || confirmDialog.type === 'delete_routine' ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600 text-zinc-900'}`}>Confirmar</button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* INFO MODAL */}
+      <AnimatePresence>
+        {infoModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 text-center relative">
+              <button onClick={(e) => { e.stopPropagation(); setInfoModal(null); }} className="absolute top-4 right-4 p-2 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 transition-colors"><X size={20} /></button>
+              <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4"><Info size={32} /></div>
+              <h3 className="text-xl font-black mb-4 dark:text-white">{infoModal.title}</h3>
+              <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed whitespace-pre-line text-left">
+                 {infoModal.desc}
+              </p>
+              <button onClick={() => setInfoModal(null)} className="w-full mt-8 p-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-colors">Entendi</button>
             </motion.div>
           </motion.div>
         )}

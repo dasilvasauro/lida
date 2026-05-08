@@ -45,6 +45,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
   const [showDatePicker, setShowDatePicker] = useState(false); const [showTimePicker, setShowTimePicker] = useState(false);
   const [activeDateField, setActiveDateField] = useState<'deadline' | 'start' | 'end' | null>(null);
   const [showConfirmClose, setShowConfirmClose] = useState(false);
+  const [infoModal, setInfoModal] = useState<{title: string, desc: string} | null>(null);
 
   const canBeRecurrent = !['sprint', 'daily_challenge', 'bonus'].includes(type);
 
@@ -80,8 +81,8 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
     return () => window.removeEventListener('request-modal-close', handleGlobalClose);
   }, [isOpen, title, description, status, priority, type, folderId, subtasks, taskToEdit]);
 
-  // === INTERCEPTAÇÃO DE NAVEGAÇÃO ===
-  useBackHandler(isOpen && !showConfirmClose, () => { handleRequestClose(); return true; });
+  useBackHandler(!!infoModal, () => { setInfoModal(null); return true; });
+  useBackHandler(isOpen && !showConfirmClose && !infoModal, () => { handleRequestClose(); return true; });
   useBackHandler(showConfirmClose, () => { setShowConfirmClose(false); return true; });
 
   const addSubtask = () => { if (!subtaskInput.trim()) return; setSubtasks([...subtasks, { id: uuidv4(), title: subtaskInput, completed: false }]); setSubtaskInput(''); };
@@ -133,7 +134,6 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
 
               <div className="p-6 overflow-y-auto flex-1 space-y-8 scrollbar-hide">
                 
-                {/* ALERTA DE EDIÇÃO E PUNIÇÕES (MODO HARDCORE) */}
                 {enableEditWindow && !hasDismissedEditWarning && !taskToEdit && (
                     <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl relative flex gap-3 items-start text-amber-600 dark:text-amber-500 mb-2">
                         <AlertTriangle className="shrink-0 mt-0.5" size={20} />
@@ -183,7 +183,10 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
                 )}
 
                 <div>
-                  <span className="text-xs uppercase tracking-widest text-zinc-500 mb-3 block font-bold">Tipo</span>
+                  <div className="flex items-center gap-2 mb-3">
+                     <span className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Tipo</span>
+                     <button onClick={(e) => { e.preventDefault(); setInfoModal({ title: 'Tipos de Tarefas', desc: '• Sprint: Projetos com múltiplas etapas e prazo rigoroso (Início e Fim). Se não concluída, aplica punição.\n\n• Tempo: Ativa um Modo Foco imersivo com cronômetro.\n\n• Desafio: Válido apenas para o dia de hoje, expira à meia-noite.\n\n• Bônus: Tarefas extras que exigem recursos da Loja para serem criadas.' }); }} className="text-zinc-400 hover:text-blue-500 transition-colors"><Info size={14}/></button>
+                  </div>
                   <div className="grid grid-cols-3 gap-2">
                     {taskTypes.map((t) => {
                       const Icon = t.icon; const isSelected = type === t.id; const isDisabled = (t.id === 'sprint' && hasActiveSprint) || t.isLocked;
@@ -273,6 +276,23 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
                 <button onClick={() => setShowConfirmClose(false)} className="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
                 <button onClick={() => { setShowConfirmClose(false); onClose(); }} className="flex-1 p-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-500 transition-colors">Descartar</button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* INFO MODAL TIPO */}
+      <AnimatePresence>
+        {infoModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 text-center relative">
+              <button onClick={(e) => { e.stopPropagation(); setInfoModal(null); }} className="absolute top-4 right-4 p-2 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 transition-colors"><X size={20} /></button>
+              <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4"><Info size={32} /></div>
+              <h3 className="text-xl font-black mb-4 dark:text-white">{infoModal.title}</h3>
+              <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed whitespace-pre-line text-left">
+                 {infoModal.desc}
+              </p>
+              <button onClick={() => setInfoModal(null)} className="w-full mt-8 p-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-colors">Entendi</button>
             </motion.div>
           </motion.div>
         )}

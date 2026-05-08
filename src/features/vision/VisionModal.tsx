@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ArrowRight, ExternalLink, AlertTriangle, Eye, Activity, Anchor, Compass } from 'lucide-react';
+import { X, ArrowRight, ExternalLink, AlertTriangle, Eye, Activity, Anchor, Compass, Info } from 'lucide-react';
 import { useVisionStore } from '../../store/useVisionStore';
+import { useBackHandler } from '../../store/useConfigStore';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -10,20 +11,21 @@ import type { GoalState } from '../../types';
 export const VisionModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const { vision, setVision, updateGoalState, checkAndGenerateCheckpoints } = useVisionStore();
   
-  // Wizard States
   const [step, setStep] = useState(0);
   const [devTraits, setDevTraits] = useState(['', '', '', '']);
   const [abTraits, setAbTraits] = useState(['', '', '', '']);
   const [goals, setGoals] = useState(['', '', '', '', '']);
+  const [showInfo, setShowInfo] = useState(false);
 
   useEffect(() => {
     if (isOpen && vision) checkAndGenerateCheckpoints();
-    if (!isOpen) setStep(0); // Reseta o wizard ao fechar
+    if (!isOpen) setStep(0); 
   }, [isOpen, vision]);
+
+  useBackHandler(isOpen && showInfo, () => { setShowInfo(false); return true; });
 
   if (!isOpen) return null;
 
-  // VALIDAÇÕES: Traços (Exatamente 4), Objetivos (Pelo menos 1)
   const isStep1Valid = devTraits.every(t => t.trim().length > 0);
   const isStep2Valid = abTraits.every(t => t.trim().length > 0);
   const isStep3Valid = goals.some(g => g.trim().length > 0);
@@ -124,7 +126,10 @@ export const VisionModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () 
        <div className="max-w-4xl w-full mx-auto p-6 md:p-12 h-full overflow-y-auto scrollbar-hide pt-24 md:pt-20">
          <header className="flex flex-col md:flex-row justify-between md:items-end mb-12 gap-6">
             <div>
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight">Visão</h2>
+              <div className="flex items-center gap-3">
+                 <h2 className="text-4xl md:text-5xl font-black tracking-tight">Visão</h2>
+                 <button onClick={() => setShowInfo(true)} className="text-zinc-400 hover:text-blue-500 transition-colors mt-2"><Info size={24}/></button>
+              </div>
               <p className="text-zinc-500 mt-2 font-medium">Acompanhe seu alinhamento com a realidade que você exige.</p>
             </div>
             {nextCheckpoint && (
@@ -193,6 +198,24 @@ export const VisionModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () 
               </div>
             ))}
          </div>
+         
+         {/* INFO MODAL */}
+          <AnimatePresence>
+            {showInfo && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
+                <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 text-center relative">
+                  <button onClick={(e) => { e.stopPropagation(); setShowInfo(false); }} className="absolute top-4 right-4 p-2 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 transition-colors"><X size={20} /></button>
+                  <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4"><Info size={32} /></div>
+                  <h3 className="text-xl font-black mb-4 dark:text-white">O Fim da Inércia</h3>
+                  <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed whitespace-pre-line text-left">
+                    Inspirado em "How to Fix Your Life in 1 day" de Dan Koe. <br/><br/>
+                    A clareza mental é o ativo mais valioso do século. A Visão define rigorosamente quem você não quer mais ser, quem precisa se tornar e quais Grandes Objetivos justificam as suas tarefas diárias.
+                  </p>
+                  <button onClick={() => setShowInfo(false)} className="w-full mt-8 p-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-colors">Entendi</button>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
        </div>
     );
   };

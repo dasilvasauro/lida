@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Coins, Flame, CheckCircle2, TrendingUp, Eye, Medal, Info, Activity, RefreshCw, Settings, Plus, Palette, Ticket, Clover, Target, Crown } from 'lucide-react';
+import { Star, Coins, Flame, CheckCircle2, TrendingUp, Eye, Medal, Info, Activity, RefreshCw, Settings, Plus, Palette, Ticket, Clover, Target, Crown, X } from 'lucide-react';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useHabitStore } from '../../store/useHabitStore';
@@ -39,6 +39,8 @@ export const ProfileDashboard = () => {
   const [isCreatorOpen, setIsCreatorOpen] = useState(false);
   const [reflectionToEdit, setReflectionToEdit] = useState<Reflection | null>(null);
   const [viewerReflection, setViewerReflection] = useState<Reflection | null>(null);
+  
+  const [infoModal, setInfoModal] = useState<{title: string, desc: string} | null>(null);
 
   const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); };
 
@@ -130,13 +132,13 @@ export const ProfileDashboard = () => {
     { level: 50, label: 'Darcula + 40V', icon: Crown },
   ];
 
-  // === INTERCEPTAÇÃO DE NAVEGAÇÃO ===
-  const hasLocalState = !!viewerReflection || isCreatorOpen;
+  const hasLocalState = !!viewerReflection || isCreatorOpen || !!infoModal;
   useBackHandler(hasLocalState, () => {
       const tStore = useTaskStore.getState();
       const cStore = useConfigStore.getState();
       if (tStore.isGlobalModalOpen || tStore.isRoutineModalOpen || tStore.isFocusModeOpen || cStore.isSettingsOpen || cStore.isVisionOpen || cStore.isGoogleConnectOpen || cStore.isChangelogOpen || cStore.isExitModalOpen) return false;
 
+      if (infoModal) { setInfoModal(null); return true; }
       if (viewerReflection) { setViewerReflection(null); return true; }
       if (isCreatorOpen) { setIsCreatorOpen(false); setReflectionToEdit(null); return true; }
       return false;
@@ -154,15 +156,21 @@ export const ProfileDashboard = () => {
           </div>
         </header>
 
-        <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide py-2">
-          <button onClick={() => { setReflectionToEdit(null); setIsCreatorOpen(true); }} className="shrink-0 w-[72px] h-[72px] rounded-full border-2 border-dashed border-zinc-300 dark:border-zinc-700 flex flex-col items-center justify-center text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
-            <Plus size={28} />
-          </button>
-          {reflections.map(r => (
-            <button key={r.id} onClick={() => setViewerReflection(r)} className={`shrink-0 w-[72px] h-[72px] rounded-full border-[3px] flex flex-col items-center justify-center p-1.5 shadow-sm transition-transform hover:scale-105 ${colorMap[r.color]}`}>
-               <span className="text-[9px] font-black text-center leading-tight line-clamp-2">{r.title}</span>
-            </button>
-          ))}
+        <div>
+           <div className="flex items-center gap-2 mb-2 ml-1">
+             <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Reflexões</h3>
+             <button onClick={() => setInfoModal({title: 'Reflexões', desc: 'Sessões de cards dinâmicos para anotar insights profundos, regras pessoais ou pensamentos filosóficos.\n\nUse para cristalizar aprendizados e revisitá-los como um "flashcard" interativo de clareza mental.'})} className="text-zinc-400 hover:text-blue-500 transition-colors"><Info size={14}/></button>
+           </div>
+           <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide py-2">
+             <button onClick={() => { setReflectionToEdit(null); setIsCreatorOpen(true); }} className="shrink-0 w-[72px] h-[72px] rounded-full border-2 border-dashed border-zinc-300 dark:border-zinc-700 flex flex-col items-center justify-center text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+               <Plus size={28} />
+             </button>
+             {reflections.map(r => (
+               <button key={r.id} onClick={() => setViewerReflection(r)} className={`shrink-0 w-[72px] h-[72px] rounded-full border-[3px] flex flex-col items-center justify-center p-1.5 shadow-sm transition-transform hover:scale-105 ${colorMap[r.color]}`}>
+                  <span className="text-[9px] font-black text-center leading-tight line-clamp-2">{r.title}</span>
+               </button>
+             ))}
+           </div>
         </div>
 
         {isLocalMode && (
@@ -245,6 +253,23 @@ export const ProfileDashboard = () => {
         {toastMessage && (
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="fixed top-6 left-1/2 -translate-x-1/2 z-[110] bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black px-6 py-3 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.12)] font-bold text-sm tracking-wide border border-zinc-800 dark:border-zinc-200">
             {toastMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* INFO MODAL */}
+      <AnimatePresence>
+        {infoModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 text-center relative">
+              <button onClick={(e) => { e.stopPropagation(); setInfoModal(null); }} className="absolute top-4 right-4 p-2 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 transition-colors"><X size={20} /></button>
+              <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4"><Info size={32} /></div>
+              <h3 className="text-xl font-black mb-4 dark:text-white">{infoModal.title}</h3>
+              <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed whitespace-pre-line text-left">
+                 {infoModal.desc}
+              </p>
+              <button onClick={() => setInfoModal(null)} className="w-full mt-8 p-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-colors">Entendi</button>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
