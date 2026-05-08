@@ -14,7 +14,7 @@ import { DailySummaryModal } from './features/daily/DailySummaryModal';
 import { Navbar, type Tab } from './components/layout/Navbar';
 import { AnimatePresence, motion } from 'framer-motion';
 import { startCloudListener, stopCloudListener, setupAutoSync, syncToCloud } from './lib/cloudSync';
-import { WifiOff, LogOut, Check, CloudLightning, CloudOff } from 'lucide-react';
+import { WifiOff, LogOut, CloudLightning, CloudOff } from 'lucide-react';
 import { LevelUpModal } from './components/ui/LevelUpModal';
 
 function App() {
