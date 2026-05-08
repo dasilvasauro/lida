@@ -120,8 +120,6 @@ export const NotesDashboard = () => {
       const nb = notebooks.find(n => n.id === note.notebookId);
       if (!nb) return;
       if (nb.isLocked && !unlockedNotebooks.includes(nb.id)) {
-          // Se o caderno estiver trancado, o utilizador tem de colocar a senha. 
-          // O fluxo do password modal abrirá o caderno normalmente e ele verá a nota lá dentro.
           setPasswordModal({ isOpen: true, type: 'unlock_nb', targetId: nb.id });
           return;
       }
@@ -401,10 +399,10 @@ export const NotesDashboard = () => {
             {view === 'editor' && activeNote && activeNotebook && (
               <div className="flex flex-col flex-1 h-full min-h-0 relative">
                 
-                {/* BARRA SUPERIOR (RESPONSIVA) */}
+                {/* BARRA SUPERIOR (RESPONSIVA SEM OVERFLOW-X-AUTO) */}
                 {!isFullscreen && (
                     <div className={`flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 p-3 mb-4 rounded-2xl border ${colorStyles[activeNotebook.color].note} w-full min-w-0`}>
-                       <div className="flex items-center gap-1 w-full md:w-auto overflow-x-auto scrollbar-hide shrink-0 pb-1 md:pb-0">
+                       <div className="flex flex-wrap items-center gap-y-2 gap-x-1 w-full md:w-auto shrink-0 pb-1 md:pb-0">
                          <button onClick={handleBack} className="p-2 shrink-0 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><ChevronLeft size={20}/></button>
                          <div className="w-px h-6 shrink-0 bg-zinc-300 dark:bg-zinc-700 mx-1" />
                          
