@@ -1,75 +1,42 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Note, Notebook } from '../types';
+import { useConfigStore } from './useConfigStore';
 
 interface NoteState {
-  notebooks: Notebook[];
-  notes: Note[];
-  
-  // Sessões Desbloqueadas (Não são persistidas)
-  unlockedNotebooks: string[];
-  unlockedNotes: string[];
+  notebooks: Notebook[]; notes: Note[];
+  unlockedNotebooks: string[]; unlockedNotes: string[];
 
-  addNotebook: (notebook: Notebook) => void;
-  updateNotebook: (id: string, updated: Partial<Notebook>) => void;
-  deleteNotebook: (id: string) => void;
+  addNotebook: (notebook: Notebook) => void; updateNotebook: (id: string, updated: Partial<Notebook>) => void; deleteNotebook: (id: string) => void;
+  addNote: (note: Note) => void; updateNote: (id: string, updated: Partial<Note>) => void; deleteNote: (id: string) => void;
 
-  addNote: (note: Note) => void;
-  updateNote: (id: string, updated: Partial<Note>) => void;
-  deleteNote: (id: string) => void;
-
-  // Sistema de Segurança
-  unlockNotebook: (id: string, pass: string) => boolean;
-  unlockNote: (id: string, pass: string) => boolean;
-  lockAll: () => void;
+  unlockNotebook: (id: string, pass: string) => boolean; unlockNote: (id: string, pass: string) => boolean; lockAll: () => void;
 }
 
 export const useNoteStore = create<NoteState>()(
   persist(
     (set, get) => ({
-      notebooks: [{ id: 'default', name: 'Geral', color: 'zinc', isLocked: false, createdAt: Date.now() }],
-      notes: [],
-      
-      unlockedNotebooks: [],
-      unlockedNotes: [],
+      notebooks: [{ id: 'default', name: 'Geral', color: 'zinc', isLocked: false, createdAt: Date.now(), updatedAt: Date.now() }],
+      notes: [], unlockedNotebooks: [], unlockedNotes: [],
 
-      addNotebook: (notebook) => set((state) => ({ notebooks: [...state.notebooks, notebook] })),
-      updateNotebook: (id, updated) => set((state) => ({
-        notebooks: state.notebooks.map(nb => nb.id === id ? { ...nb, ...updated } : nb)
-      })),
-      deleteNotebook: (id) => set((state) => ({
-        notebooks: state.notebooks.filter(nb => nb.id !== id),
-        notes: state.notes.filter(n => n.notebookId !== id) // Apaga as notas do caderno excluído
-      })),
-
-      addNote: (note) => set((state) => ({ notes: [note, ...state.notes] })),
-      updateNote: (id, updated) => set((state) => ({
-        notes: state.notes.map(n => n.id === id ? { ...n, ...updated, updatedAt: Date.now() } : n)
-      })),
-      deleteNote: (id) => set((state) => ({ notes: state.notes.filter(n => n.id !== id) })),
-
-      unlockNotebook: (id, pass) => {
-        const nb = get().notebooks.find(n => n.id === id);
-        if (nb && nb.password === pass) {
-          set((state) => ({ unlockedNotebooks: [...state.unlockedNotebooks, id] }));
-          return true;
-        }
-        return false;
+      addNotebook: (notebook) => set((state) => ({ notebooks: [...state.notebooks, { ...notebook, updatedAt: Date.now() }] })),
+      updateNotebook: (id, updated) => set((state) => ({ notebooks: state.notebooks.map(nb => nb.id === id ? { ...nb, ...updated, updatedAt: Date.now() } : nb) })),
+      deleteNotebook: (id) => {
+        useConfigStore.getState().addTombstone(id);
+        set((state) => ({ notebooks: state.notebooks.filter(nb => nb.id !== id), notes: state.notes.filter(n => n.notebookId !== id) }));
       },
-      unlockNote: (id, pass) => {
-        const note = get().notes.find(n => n.id === id);
-        if (note && note.password === pass) {
-          set((state) => ({ unlockedNotes: [...state.unlockedNotes, id] }));
-          return true;
-        }
-        return false;
+
+      addNote: (note) => set((state) => ({ notes: [{ ...note, updatedAt: Date.now() }, ...state.notes] })),
+      updateNote: (id, updated) => set((state) => ({ notes: state.notes.map(n => n.id === id ? { ...n, ...updated, updatedAt: Date.now() } : n) })),
+      deleteNote: (id) => {
+        useConfigStore.getState().addTombstone(id);
+        set((state) => ({ notes: state.notes.filter(n => n.id !== id) }));
       },
+
+      unlockNotebook: (id, pass) => { const nb = get().notebooks.find(n => n.id === id); if (nb && nb.password === pass) { set((state) => ({ unlockedNotebooks: [...state.unlockedNotebooks, id] })); return true; } return false; },
+      unlockNote: (id, pass) => { const note = get().notes.find(n => n.id === id); if (note && note.password === pass) { set((state) => ({ unlockedNotes: [...state.unlockedNotes, id] })); return true; } return false; },
       lockAll: () => set({ unlockedNotebooks: [], unlockedNotes: [] })
     }),
-    { 
-      name: 'lida-notes',
-      // partialize garante que as permissões (chaves abertas) NÃO sejam salvas no cache!
-      partialize: (state) => ({ notebooks: state.notebooks, notes: state.notes }),
-    }
+    { name: 'lida-notes', partialize: (state) => ({ notebooks: state.notebooks, notes: state.notes }) }
   )
 );

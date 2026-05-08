@@ -14,7 +14,7 @@ import { DailySummaryModal } from './features/daily/DailySummaryModal';
 import { Navbar, type Tab } from './components/layout/Navbar';
 import { AnimatePresence, motion } from 'framer-motion';
 import { startCloudListener, stopCloudListener, setupAutoSync, syncToCloud } from './lib/cloudSync';
-import { WifiOff, LogOut, CloudLightning } from 'lucide-react';
+import { WifiOff, LogOut, CloudLightning, CloudOff } from 'lucide-react';
 import { LevelUpModal } from './components/ui/LevelUpModal';
 
 function App() {
@@ -36,31 +36,23 @@ function App() {
     config.setGoogleConnectOpen(false); config.setChangelogOpen(false);
   };
 
-  // === SISTEMA DE NAVEGAÇÃO PWA UNIFICADO ===
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     const TRAP_HASH = '#app';
+    let isTrapped = false;
 
-    // Comando mestre para encerrar o PWA
-    const handleForceExit = () => {
-      // Recua 10 estados para garantir que limpa qualquer trava de hash e sai do container PWA
-      window.history.go(-10);
-      setTimeout(() => {
-        window.close();
-        // Fallback caso o window.close seja bloqueado
-        window.location.href = "about:blank"; 
-      }, 100); 
-    };
-
-    const lockHistory = () => { 
-      if (window.location.hash !== TRAP_HASH) {
-        window.history.pushState({ trap: true }, '', window.location.pathname + TRAP_HASH); 
+    const lockHistory = () => {
+      if (!isTrapped && window.location.hash !== TRAP_HASH) {
+        window.history.pushState({ trap: true }, '', window.location.pathname + TRAP_HASH);
+        isTrapped = true;
       }
     };
-    
+
     lockHistory();
-    const forceLock = () => lockHistory();
-    document.addEventListener('click', forceLock, { passive: true });
-    document.addEventListener('touchstart', forceLock, { passive: true });
+    const forceLockOnInteract = () => lockHistory();
+    document.addEventListener('click', forceLockOnInteract, { passive: true });
+    document.addEventListener('touchstart', forceLockOnInteract, { passive: true });
 
     const executeBackAction = (): boolean => {
       if (triggerBack()) return true;
@@ -77,70 +69,51 @@ function App() {
 
       if (currentTabRef.current !== 'tasks') {
         setCurrentTab('tasks');
+        c.setVisionOpen(false); c.setSettingsOpen(false); c.setGoogleConnectOpen(false); c.setChangelogOpen(false);
         return true;
       }
 
-      if (c.isExitModalOpen) { 
-        c.setExitModalOpen(false); 
-        return false; // Indica que deve sair agora
-      }
-
-      if (c.showExitWarning) {
-        c.setExitModalOpen(true);
-        return true; 
-      }
-      
+      if (c.isExitModalOpen) { c.setExitModalOpen(false); return false; }
+      if (c.showExitWarning) { c.setExitModalOpen(true); return true; }
       return false; 
     };
 
     const handlePopState = () => {
+      isTrapped = false;
       const handled = executeBackAction();
-      if (handled) {
-        lockHistory();
-      } else {
-        handleForceExit();
-      }
+      if (handled) { lockHistory(); } 
+      else { window.removeEventListener('popstate', handlePopState); window.history.back(); }
     };
 
-    const handleInternalBack = () => {
-        const handled = executeBackAction();
-        // CORREÇÃO: Se o gesto for feito em Tarefas e retornar false, fecha o app
-        if (!handled) handleForceExit();
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') executeBackAction(); };
+    const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') { const handled = executeBackAction(); if (!handled) window.history.back(); } };
+    const handleForceExit = () => { window.history.back(); setTimeout(() => window.close(), 100); };
 
     window.addEventListener('popstate', handlePopState);
-    window.addEventListener('lida-internal-back', handleInternalBack);
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('force-app-exit', handleForceExit);
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
-      window.removeEventListener('lida-internal-back', handleInternalBack);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('force-app-exit', handleForceExit);
-      window.removeEventListener('click', forceLock);
-      window.removeEventListener('touchstart', forceLock);
+      document.removeEventListener('click', forceLockOnInteract);
+      document.removeEventListener('touchstart', forceLockOnInteract);
     };
   }, []);
 
   useEffect(() => {
     const handleOnline = async () => {
       setIsOffline(false);
-      const { uid, e2eePin, isLocalMode } = useConfigStore.getState();
-      if (!isLocalMode && uid && e2eePin) {
+      const { uid, e2eePin, isLocalMode, isManualOffline } = useConfigStore.getState();
+      if (!isLocalMode && !isManualOffline && uid && e2eePin) {
         setSyncMessage("Conexão restaurada. Sincronizando dados...");
-        await syncToCloud(); 
-        setSyncMessage("Nuvem atualizada com sucesso!");
-        setTimeout(() => setSyncMessage(null), 4000);
+        await syncToCloud(); setSyncMessage("Nuvem atualizada com sucesso!"); setTimeout(() => setSyncMessage(null), 4000);
       }
     };
     const handleOffline = () => setIsOffline(true);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline); window.addEventListener('offline', handleOffline);
     return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); };
-  }, []);
+  }, [config.uid, config.e2eePin, config.isLocalMode, config.isManualOffline]);
 
   useEffect(() => {
     if (!config.isLocalMode && config.uid && config.e2eePin && config.isOnboarded) {
@@ -153,12 +126,20 @@ function App() {
   return (
     <ThemeWrapper>
       <LevelUpModal />
+      
       <AnimatePresence>
-        {isOffline && !config.isLocalMode && (
+        {config.isManualOffline && !config.isLocalMode && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-blue-500 text-white font-bold text-xs py-2 px-4 flex justify-center items-center gap-2 z-[999] relative">
+            <CloudOff size={14} /> Offline Manual. Salvando apenas no dispositivo.
+          </motion.div>
+        )}
+
+        {isOffline && !config.isLocalMode && !config.isManualOffline && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-amber-500 text-white font-bold text-xs py-2 px-4 flex justify-center items-center gap-2 z-[999] relative">
             <WifiOff size={14} /> Você está offline.
           </motion.div>
         )}
+        
         {syncMessage && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-emerald-500 text-white font-bold text-xs py-2 px-4 flex justify-center items-center gap-2 z-[999] relative">
             <CloudLightning size={14} /> {syncMessage}
@@ -172,7 +153,7 @@ function App() {
         {!isAuth ? (
           <motion.div key="auth" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }}><AuthScreen /></motion.div>
         ) : !config.isOnboarded ? (
-          <motion.div key="onboarding" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }}><OnboardingFlow /></motion.div>
+          <motion.div key="onboarding" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, filter: 'blur(10px)' }} transition={{ duration: 0.6 }}><OnboardingFlow /></motion.div>
         ) : (
           <motion.div key="dashboard" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }} className="relative min-h-screen pb-24">
             <AnimatePresence mode="wait">
@@ -202,12 +183,7 @@ function App() {
               <p className="text-zinc-500 dark:text-zinc-400 mb-6 text-sm font-medium">Deseja fechar o aplicativo?</p>
               
               <label className="flex items-center justify-center gap-3 mb-6 cursor-pointer group">
-                <input 
-                  type="checkbox" 
-                  checked={!config.showExitWarning}
-                  className="w-5 h-5 rounded border-2 border-zinc-300 dark:border-zinc-700 accent-blue-500 transition-colors cursor-pointer" 
-                  onChange={(e) => config.setShowExitWarning(!e.target.checked)} 
-                />
+                <input type="checkbox" checked={!config.showExitWarning} className="w-5 h-5 rounded border-2 border-zinc-300 dark:border-zinc-700 accent-blue-500 transition-colors cursor-pointer" onChange={(e) => config.setShowExitWarning(!e.target.checked)} />
                 <span className="text-sm font-bold text-zinc-600 dark:text-zinc-300">Não perguntar novamente</span>
               </label>
 
