@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Coins, Star, Ticket, Dices, TrendingUp, AlertOctagon, AlertTriangle, Wind, CalendarHeart, Gift, Snowflake, Coffee, Clover, Play, Sparkles, Info, X } from 'lucide-react';
+import { Coins, Star, Ticket, Dices, TrendingUp, AlertOctagon, AlertTriangle, Wind, CalendarHeart, Gift, Snowflake, Coffee, Clover, Play, Sparkles, Info, X, Palette, CheckCircle2 } from 'lucide-react';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useTaskStore } from '../../store/useTaskStore'; 
 import { useBackHandler, useConfigStore } from '../../store/useConfigStore';
 
 export const ShopDashboard = () => {
-  const { level, xp, gold, vouchers, inventory, buyItem, useItem, setBoost, addReward } = useEconomyStore();
+  const { level, xp, gold, vouchers, inventory, buyItem, useItem, setBoost, addReward, purchasedThemes, buyTheme } = useEconomyStore();
   const { tasks, applyPowerUp } = useTaskStore(); 
   
   const [toastMessage, setToastMessage] = useState<{ msg: string, type: 'success' | 'error' | 'rare' } | null>(null);
@@ -33,6 +33,12 @@ export const ShopDashboard = () => {
       showToast(`${name} adquirido com sucesso!`);
       if (id === 'instantLuck') { useItem('instantLuck'); buyItem('luckyCard', 0, 'gold'); }
     } else { showToast(`Saldo de ${currency === 'gold' ? 'Ouro' : 'Vouchers'} insuficiente!`, 'error'); }
+  };
+
+  const handleBuyTheme = (id: string, cost: number, name: string) => {
+    if (buyTheme(id, cost)) {
+      showToast(`Tema ${name} adquirido com sucesso!`, 'rare');
+    } else { showToast(`Saldo de Ouro insuficiente!`, 'error'); }
   };
 
   const handleRollDice = () => {
@@ -90,6 +96,15 @@ export const ShopDashboard = () => {
     { id: 'respite', name: 'Respiro', desc: 'Aumenta prazo da tarefa em 3h.', cost: 100, icon: Wind },
     { id: 'relief', name: 'Alívio', desc: 'Aumenta prazo da tarefa em 1 dia.', cost: 200, icon: CalendarHeart },
     { id: 'bonusTask', name: 'Tarefa Bônus', desc: 'Permite criar 1 Tarefa Bônus extra.', cost: 200, icon: Gift },
+  ];
+  
+  const premiumThemes = [
+    { id: 'macos', name: 'Branco e Azul', desc: 'Estética limpa inspirada no macOS.', cost: 2500, color: 'text-blue-500' },
+    { id: 'matrix', name: 'Preto e Verde', desc: 'Modo escuro com acentos verdes neon. Siga o coelho branco.', cost: 2500, color: 'text-emerald-500' },
+    { id: 'pink', name: 'Branco e Rosa', desc: 'Tons suaves e elegantes de rosa com fundo claro.', cost: 2500, color: 'text-pink-500' },
+    { id: 'todoist', name: 'Branco e Vermelho', desc: 'O clássico visual de produtividade vermelha.', cost: 2500, color: 'text-red-500' },
+    { id: 'light-gray', name: 'Cinza Claro', desc: 'Tema incrivelmente neutro, sem distrações.', cost: 2500, color: 'text-zinc-500' },
+    { id: 'orange', name: 'Branco e Laranja', desc: 'Quente, solar e energético.', cost: 2500, color: 'text-orange-500' },
   ];
 
   return (
@@ -151,6 +166,32 @@ export const ShopDashboard = () => {
             {goldItems.map((item) => (
               <div key={item.id} className="p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 transition-all hover:shadow-lg dark:hover:bg-zinc-900/50 flex flex-col"><item.icon size={28} className="text-yellow-600 dark:text-yellow-500 mb-3" /><h3 className="font-black text-lg">{item.name}</h3><p className="text-sm text-zinc-500 mt-1 mb-6 flex-1">{item.desc}</p><button onClick={() => handleBuy(item.id, item.cost, 'gold', item.name)} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black font-bold hover:opacity-90 transition-opacity">{item.cost} <Coins size={16} /></button></div>
             ))}
+          </div>
+        </section>
+
+        <section>
+          <h2 className="text-xs font-bold text-purple-500 uppercase tracking-widest mb-4">Estética Premium</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {premiumThemes.map((item) => {
+              const isPurchased = purchasedThemes.includes(item.id);
+              return (
+                <div key={item.id} className="p-6 rounded-3xl border border-purple-500/20 bg-purple-50/30 dark:bg-purple-950/10 transition-all flex flex-col">
+                  <Palette size={28} className={`${item.color} mb-3`} />
+                  <h3 className="font-black text-lg">{item.name}</h3>
+                  <p className="text-sm text-zinc-500 mt-1 mb-6 flex-1">{item.desc}</p>
+                  
+                  {isPurchased ? (
+                     <button disabled className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/30 cursor-default">
+                        <CheckCircle2 size={16} /> Adquirido
+                     </button>
+                  ) : (
+                     <button onClick={() => handleBuyTheme(item.id, item.cost, item.name)} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-colors">
+                        {item.cost} <Coins size={16} />
+                     </button>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </section>
 

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, LogOut, Trash2, History, AlertTriangle, Download, Upload, Lock, ShieldAlert, WifiOff } from 'lucide-react';
+import { X, LogOut, Trash2, History, AlertTriangle, Download, Upload, Lock, ShieldAlert, WifiOff, ShoppingBag } from 'lucide-react';
 import { useConfigStore, useBackHandler, type Theme } from '../../store/useConfigStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useHabitStore } from '../../store/useHabitStore';
@@ -10,7 +10,7 @@ import { deleteCloudVault, syncToCloud, syncFromCloud } from '../../lib/cloudSyn
 
 export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const { theme, font, setTheme, setFont, uid, e2eePin, setChangelogOpen, isLocalMode, defaultDaysOff, setDefaultDaysOff, enableEditWindow, setEnableEditWindow, enablePunishments, setEnablePunishments, isManualOffline, setManualOffline } = useConfigStore();
-  const { level } = useEconomyStore();
+  const { level, purchasedThemes } = useEconomyStore();
   
   const [confirmAction, setConfirmAction] = useState<'logout' | 'wipe' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -54,10 +54,21 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
     reader.readAsText(file);
   };
 
-  const themesList: { id: Theme; name: string; color1: string; color2: string; req: number }[] = [
-    { id: 'light', name: 'Claro', color1: '#fafafa', color2: '#e4e4e7', req: 1 }, { id: 'dark-amoled', name: 'AMOLED', color1: '#000000', color2: '#27272a', req: 1 },
-    { id: 'soft-dark', name: 'Suave', color1: '#18181b', color2: '#3f3f46', req: 10 }, { id: 'butter', name: 'Manteiga', color1: '#fdf6e3', color2: '#f5dfac', req: 20 },
-    { id: 'navy', name: 'Marinho', color1: '#0a192f', color2: '#233554', req: 35 }, { id: 'darcula', name: 'Darcula', color1: '#282a36', color2: '#6272a4', req: 50 },
+  const themesList: { id: Theme; name: string; color1: string; color2: string; type: 'level' | 'premium'; req?: number }[] = [
+    { id: 'light', name: 'Claro', color1: '#fafafa', color2: '#e4e4e7', type: 'level', req: 1 }, 
+    { id: 'dark-amoled', name: 'AMOLED', color1: '#000000', color2: '#27272a', type: 'level', req: 1 },
+    { id: 'soft-dark', name: 'Suave', color1: '#18181b', color2: '#3f3f46', type: 'level', req: 10 }, 
+    { id: 'butter', name: 'Manteiga', color1: '#fdf6e3', color2: '#f5dfac', type: 'level', req: 20 },
+    { id: 'navy', name: 'Marinho', color1: '#0a192f', color2: '#233554', type: 'level', req: 35 }, 
+    { id: 'darcula', name: 'Darcula', color1: '#282a36', color2: '#6272a4', type: 'level', req: 50 },
+    
+    // Temas Premium (Loja)
+    { id: 'macos', name: 'MacOS', color1: '#f5f5f7', color2: '#0071e3', type: 'premium' },
+    { id: 'matrix', name: 'Matrix', color1: '#000000', color2: '#00ff41', type: 'premium' },
+    { id: 'pink', name: 'Rosa Claro', color1: '#fdf2f8', color2: '#ec4899', type: 'premium' },
+    { id: 'todoist', name: 'Foco Verme.', color1: '#ffffff', color2: '#e11d48', type: 'premium' },
+    { id: 'light-gray', name: 'Cinza', color1: '#f4f4f5', color2: '#a1a1aa', type: 'premium' },
+    { id: 'orange', name: 'Laranja', color1: '#fff7ed', color2: '#f97316', type: 'premium' },
   ];
 
   return (
@@ -77,14 +88,18 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
               <span className="text-xs uppercase tracking-widest text-zinc-500 font-bold">Estética Visual</span>
               <div className="flex gap-4 overflow-x-auto scrollbar-hide py-3 px-2">
                 {themesList.map(t => {
-                  const isUnlocked = level >= t.req; const isSelected = theme === t.id;
+                  const isUnlocked = t.type === 'level' ? level >= (t.req || 1) : purchasedThemes.includes(t.id);
+                  const isSelected = theme === t.id;
+                  const lockLabel = t.type === 'level' ? `Nível ${t.req}` : 'Loja';
+                  const LockIcon = t.type === 'level' ? Lock : ShoppingBag;
+
                   return (
                     <div key={t.id} className="relative group flex flex-col items-center gap-2 shrink-0">
                       <button onClick={() => isUnlocked && setTheme(t.id)} disabled={!isUnlocked} className={`w-12 h-12 rounded-full border-2 overflow-hidden relative transition-transform ${isSelected ? 'border-blue-500 scale-110 shadow-md' : 'border-zinc-300 dark:border-zinc-700'} ${!isUnlocked ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:scale-105'}`}>
                          <div className="w-full h-1/2" style={{ backgroundColor: t.color1 }} /><div className="w-full h-1/2" style={{ backgroundColor: t.color2 }} />
-                         {!isUnlocked && <Lock size={16} className="absolute inset-0 m-auto text-zinc-900 dark:text-zinc-100 drop-shadow-md" />}
+                         {!isUnlocked && <LockIcon size={16} className="absolute inset-0 m-auto text-zinc-900 dark:text-zinc-100 drop-shadow-md" />}
                       </button>
-                      <span className="text-[10px] font-bold text-zinc-500 text-center whitespace-nowrap">{isUnlocked ? t.name : `Nível ${t.req}`}</span>
+                      <span className="text-[10px] font-bold text-zinc-500 text-center whitespace-nowrap">{isUnlocked ? t.name : lockLabel}</span>
                     </div>
                   )
                 })}

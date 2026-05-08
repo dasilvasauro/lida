@@ -41,15 +41,14 @@
     background-image: linear-gradient(transparent 95%, rgba(0, 0, 0, 0.1) 100%);
     background-size: 100% 32px;
     background-attachment: local;
-    line-height: 32px; /* A altura da linha tem que ser exata ao fundo */
-    padding-top: 4px;  /* Ajuste de baseline */
+    line-height: 32px;
+    padding-top: 4px; 
 }
 
 .dark .bg-lined-paper {
     background-image: linear-gradient(transparent 95%, rgba(255, 255, 255, 0.15) 100%);
 }
 
-/* Desbloqueio de Listas no Tailwind */
 .editor-content ul {
     list-style-type: disc !important;
     padding-left: 1.5rem !important;
@@ -64,7 +63,7 @@
 }
 
 /* =======================================
-   SISTEMA DE TEMAS DESBLOQUEÁVEIS 
+   SISTEMA DE TEMAS DESBLOQUEÁVEIS (LVL)
    ======================================= */
 
 html[data-theme="soft-dark"] {
@@ -113,4 +112,64 @@ html[data-theme="darcula"] {
     --color-zinc-800: #44475a;
     --color-zinc-400: #6272a4;
     --color-zinc-500: #8be9fd;
+}
+
+/* =======================================
+   SISTEMA DE TEMAS PREMIUM (LOJA)
+   ======================================= */
+
+html[data-theme="macos"] {
+    --color-zinc-50: #f5f5f7;
+    --color-zinc-100: #e8e8ed;
+    --color-zinc-200: #d2d2d7;
+    --color-zinc-400: #86868b;
+    --color-zinc-500: #0071e3;
+    --color-zinc-600: #0071e3;
+}
+
+html[data-theme="matrix"] {
+    --color-black: #000000;
+    --color-white: #000000;
+    --color-zinc-50: #001100;
+    --color-zinc-100: #002200;
+    --color-zinc-200: #003300;
+    --color-zinc-800: #002200;
+    --color-zinc-900: #001100;
+    --color-zinc-950: #000000;
+    --color-zinc-400: #00aa00;
+    --color-zinc-500: #00ff41;
+    --color-zinc-600: #00ff41;
+    --color-zinc-700: #00cc00;
+}
+
+html[data-theme="pink"] {
+    --color-zinc-50: #fdf2f8;
+    --color-zinc-100: #fce7f3;
+    --color-zinc-200: #fbcfe8;
+    --color-zinc-800: #831843;
+    --color-zinc-900: #4c0519;
+    --color-zinc-400: #f472b6;
+    --color-zinc-500: #ec4899;
+    --color-zinc-600: #db2777;
+}
+
+html[data-theme="todoist"] {
+    --color-zinc-500: #e11d48; 
+    --color-zinc-600: #be123c;
+}
+
+html[data-theme="light-gray"] {
+    --color-white: #f4f4f5;
+    --color-zinc-50: #e4e4e7;
+    --color-zinc-100: #d4d4d8;
+    --color-zinc-200: #a1a1aa;
+}
+
+html[data-theme="orange"] {
+    --color-zinc-50: #fff7ed;
+    --color-zinc-100: #ffedd5;
+    --color-zinc-200: #fed7aa;
+    --color-zinc-400: #fb923c;
+    --color-zinc-500: #f97316;
+    --color-zinc-600: #ea580c;
 }

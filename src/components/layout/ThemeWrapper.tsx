@@ -8,16 +8,18 @@ export const ThemeWrapper = ({ children }: { children: ReactNode }) => {
     const root = document.documentElement;
     root.setAttribute('data-theme', theme);
 
-    if (['dark-amoled', 'soft-dark', 'navy', 'darcula'].includes(theme)) {
+    if (['dark-amoled', 'soft-dark', 'navy', 'darcula', 'matrix'].includes(theme)) {
       root.classList.add('dark');
       if (theme === 'dark-amoled') document.body.style.backgroundColor = '#000000';
       else if (theme === 'soft-dark') document.body.style.backgroundColor = '#18181b';
       else if (theme === 'navy') document.body.style.backgroundColor = '#0a192f';
       else if (theme === 'darcula') document.body.style.backgroundColor = '#282a36';
+      else if (theme === 'matrix') document.body.style.backgroundColor = '#000000';
     } else {
       root.classList.remove('dark');
       if (theme === 'butter') document.body.style.backgroundColor = '#fdf6e3';
-      else document.body.style.backgroundColor = '#fafafa'; 
+      else if (theme === 'light-gray') document.body.style.backgroundColor = '#f4f4f5';
+      else document.body.style.backgroundColor = '#ffffff'; 
     }
 
     if (font === 'serif') {

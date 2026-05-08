@@ -11,7 +11,10 @@ interface EconomyState {
   levelUpData: { level: number; hasReward: boolean } | null;
   claimedMilestones: number[]; 
   
-  // A PROPRIEDADE QUE FALTAVA NA TIPAGEM
+  // NOVOS CAMPOS DE LOJA DE TEMAS
+  purchasedThemes: string[];
+  buyTheme: (themeId: string, cost: number) => boolean;
+
   updatedAt?: number;
 
   addReward: (baseXp: number, baseGold: number) => void;
@@ -34,9 +37,21 @@ export const useEconomyStore = create<EconomyState>()(
       xp: 0, level: 1, gold: 1500, vouchers: 20, voucherProgress: 0,
       inventory: { freeze: 0, dayOff: 0, instantLuck: 0, magicDice: 0, xpBoost: 0, goldBoost: 0, extraP0: 0, extraP1: 0, respite: 0, relief: 0, bonusTask: 0, luckyCard: 0 },
       activeXpBoostUntil: null, activeGoldBoostUntil: null, dailyHistory: {}, levelUpData: null, claimedMilestones: [], 
+      
+      purchasedThemes: [],
+      
       updatedAt: Date.now(),
 
       clearLevelUp: () => set({ levelUpData: null, updatedAt: Date.now() }),
+
+      buyTheme: (themeId, cost) => {
+        const state = get();
+        if (state.gold >= cost && !state.purchasedThemes.includes(themeId)) {
+            set({ gold: state.gold - cost, purchasedThemes: [...state.purchasedThemes, themeId], updatedAt: Date.now() });
+            return true;
+        }
+        return false;
+      },
 
       addReward: (baseXp, baseGold) => set((state) => {
         const isXpBoosted = state.activeXpBoostUntil && Date.now() < state.activeXpBoostUntil;

@@ -25,7 +25,8 @@ export const useBackHandler = (isActive: boolean, handler: () => boolean) => {
     }, [isActive]);
 };
 
-export type Theme = 'light' | 'dark-amoled' | 'soft-dark' | 'butter' | 'navy' | 'darcula';
+// ATUALIZADO: Os 6 novos temas premium adicionados
+export type Theme = 'light' | 'dark-amoled' | 'soft-dark' | 'butter' | 'navy' | 'darcula' | 'macos' | 'matrix' | 'pink' | 'todoist' | 'light-gray' | 'orange';
 type Font = 'sans' | 'serif' | 'special';
 type ModusOperandi = 'multitask' | 'minimalist' | 'punctual' | 'ambitious' | null;
 
