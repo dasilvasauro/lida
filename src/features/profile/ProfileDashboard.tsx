@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Coins, Flame, CheckCircle2, TrendingUp, Eye, Medal, Info, Activity, RefreshCw, Settings, Plus, Palette, Ticket, Clover, Target, Crown, X } from 'lucide-react';
+import { Star, Coins, Flame, CheckCircle2, TrendingUp, Eye, Medal, Info, Activity, RefreshCw, Settings, Plus, Palette, Ticket, Clover, Target, Crown, X, Zap, Shield, Clock, UserCog } from 'lucide-react';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useHabitStore } from '../../store/useHabitStore';
@@ -23,33 +23,57 @@ const colorMap: Record<string, string> = {
   indigo: 'border-indigo-500 text-indigo-500 bg-indigo-500/10', zinc: 'border-zinc-500 text-zinc-500 bg-zinc-500/10'
 };
 
+const modusLabels = {
+    multitask: { label: 'Multitarefa', icon: Zap, color: 'text-blue-500', bg: 'bg-blue-500/10 border-blue-500/20' },
+    minimalist: { label: 'Minimalista', icon: Shield, color: 'text-indigo-500', bg: 'bg-indigo-500/10 border-indigo-500/20' },
+    punctual: { label: 'Pontual', icon: Clock, color: 'text-emerald-500', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+    ambitious: { label: 'Ambicioso', icon: Target, color: 'text-orange-500', bg: 'bg-orange-500/10 border-orange-500/20' }
+};
+
 export const ProfileDashboard = () => {
-  const { xp, level, gold } = useEconomyStore();
+  const { xp, level, gold, inventory, useItem } = useEconomyStore();
   const { tasks, moodHistory } = useTaskStore();
   const { habits, logs, modifiers } = useHabitStore();
-  const { uid, e2eePin, isLocalMode, defaultDaysOff } = useConfigStore();
+  const { uid, e2eePin, isLocalMode, defaultDaysOff, userClass, setUserClass } = useConfigStore();
   const { reflections } = useReflectionStore();
 
   const { isVisionOpen, setVisionOpen, isSettingsOpen, setSettingsOpen, isGoogleConnectOpen, setGoogleConnectOpen, isChangelogOpen, setChangelogOpen } = useConfigStore();
   const [gridMode, setGridMode] = useState<'perfect' | 'habits' | 'mood'>('perfect');
 
   const [isSyncing, setIsSyncing] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ msg: string, type?: 'error' } | null>(null);
 
   const [isCreatorOpen, setIsCreatorOpen] = useState(false);
   const [reflectionToEdit, setReflectionToEdit] = useState<Reflection | null>(null);
   const [viewerReflection, setViewerReflection] = useState<Reflection | null>(null);
   
   const [infoModal, setInfoModal] = useState<{title: string, desc: string} | null>(null);
+  const [isModusModalOpen, setModusModalOpen] = useState(false);
 
-  const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); };
+  const activeModus = userClass ? modusLabels[userClass] : null;
+
+  const showToast = (msg: string, type?: 'error') => { setToastMessage({msg, type}); setTimeout(() => setToastMessage(null), 3000); };
 
   const handleForceSync = async () => {
-    if (!uid || !e2eePin || !navigator.onLine) return showToast("Não foi possível sincronizar. Verifique a rede.");
+    if (!uid || !e2eePin || !navigator.onLine) return showToast("Não foi possível sincronizar. Verifique a rede.", "error");
     setIsSyncing(true);
     try { await syncToCloud(); await syncFromCloud(uid, e2eePin); showToast("Sincronização realizada com sucesso!"); } 
-    catch (e) { showToast("Erro ao sincronizar dados."); } 
+    catch (e) { showToast("Erro ao sincronizar dados.", "error"); } 
     finally { setIsSyncing(false); }
+  };
+
+  const handleChangeModus = (newModus: any) => {
+      if (newModus === userClass) {
+          showToast("Você já possui essa filosofia ativada!", "error");
+          return;
+      }
+      if (useItem('changeModus')) {
+          setUserClass(newModus);
+          setModusModalOpen(false);
+          showToast("Modus Operandi atualizado com sucesso!");
+      } else {
+          showToast("Você não possui a Troca de Filosofia. Adquira na Loja.", "error");
+      }
   };
 
   const currentLevelXp = Math.pow(level - 1, 2) * 100; const nextLevelXp = Math.pow(level, 2) * 100;
@@ -132,12 +156,13 @@ export const ProfileDashboard = () => {
     { level: 50, label: 'Darcula + 40V', icon: Crown },
   ];
 
-  const hasLocalState = !!viewerReflection || isCreatorOpen || !!infoModal;
+  const hasLocalState = !!viewerReflection || isCreatorOpen || !!infoModal || isModusModalOpen;
   useBackHandler(hasLocalState, () => {
       const tStore = useTaskStore.getState();
       const cStore = useConfigStore.getState();
       if (tStore.isGlobalModalOpen || tStore.isRoutineModalOpen || tStore.isFocusModeOpen || cStore.isSettingsOpen || cStore.isVisionOpen || cStore.isGoogleConnectOpen || cStore.isChangelogOpen || cStore.isExitModalOpen) return false;
 
+      if (isModusModalOpen) { setModusModalOpen(false); return true; }
       if (infoModal) { setInfoModal(null); return true; }
       if (viewerReflection) { setViewerReflection(null); return true; }
       if (isCreatorOpen) { setIsCreatorOpen(false); setReflectionToEdit(null); return true; }
@@ -219,6 +244,30 @@ export const ProfileDashboard = () => {
           </div>
         </div>
 
+        {/* SECÇÃO DO MODUS OPERANDI (NOVA) */}
+        {activeModus && (
+            <div className="bg-zinc-50 dark:bg-zinc-900/30 p-5 md:p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col md:flex-row items-start md:items-center justify-between shadow-sm gap-4">
+                <div className="flex items-center gap-4">
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center border-2 ${activeModus.bg} ${activeModus.color} shrink-0`}>
+                        <activeModus.icon size={28} />
+                    </div>
+                    <div>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 block mb-0.5">Modus Operandi</span>
+                        <h3 className="text-xl font-black text-zinc-900 dark:text-zinc-100 leading-tight">{activeModus.label}</h3>
+                    </div>
+                </div>
+                {inventory.changeModus > 0 ? (
+                    <button onClick={() => setModusModalOpen(true)} className="w-full md:w-auto px-5 py-3 bg-pink-500/10 text-pink-600 dark:text-pink-400 font-bold rounded-xl border border-pink-500/20 hover:bg-pink-500/20 transition-colors flex items-center justify-center gap-2 text-sm shadow-sm">
+                        <UserCog size={18} /> Mudar (Tem {inventory.changeModus})
+                    </button>
+                ) : (
+                    <button disabled className="w-full md:w-auto px-5 py-3 bg-zinc-100 dark:bg-zinc-800 text-zinc-400 font-bold rounded-xl border border-zinc-200 dark:border-zinc-700 cursor-not-allowed flex items-center justify-center gap-2 text-sm">
+                        <UserCog size={18} /> Bloqueado na Loja
+                    </button>
+                )}
+            </div>
+        )}
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-orange-500/10 border border-orange-500/20 p-5 rounded-3xl flex flex-col justify-between"><Flame size={24} className="text-orange-500 mb-3" /><span className="text-[10px] font-bold uppercase tracking-widest text-orange-600 dark:text-orange-400 mb-1">Ofensiva Global</span><span className="text-3xl font-black text-orange-500">{activeStreak} dias</span></div>
           <div className="bg-yellow-500/10 border border-yellow-500/20 p-5 rounded-3xl flex flex-col justify-between"><Coins size={24} className="text-yellow-600 dark:text-yellow-500 mb-3" /><span className="text-[10px] font-bold uppercase tracking-widest text-yellow-600 dark:text-yellow-400 mb-1">Ouro Acumulado</span><span className="text-3xl font-black text-yellow-600 dark:text-yellow-500">{gold}</span></div>
@@ -249,10 +298,48 @@ export const ProfileDashboard = () => {
       <ReflectionCreatorModal isOpen={isCreatorOpen} onClose={() => setIsCreatorOpen(false)} reflectionToEdit={reflectionToEdit} />
       <ReflectionViewerModal reflection={viewerReflection} onClose={() => setViewerReflection(null)} onEdit={() => { setViewerReflection(null); setReflectionToEdit(viewerReflection); setIsCreatorOpen(true); }} />
 
+      {/* MODAL DE TROCA DE MODUS */}
+      <AnimatePresence>
+        {isModusModalOpen && (
+            <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 z-[2000] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm">
+                <motion.div initial={{scale:0.95}} animate={{scale:1}} className="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-3xl p-6 md:p-8 shadow-2xl border border-zinc-200 dark:border-zinc-800 relative">
+                    <button onClick={() => setModusModalOpen(false)} className="absolute top-6 right-6 p-2 rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 transition-colors"><X size={20}/></button>
+                    <div className="text-center mb-8">
+                        <UserCog size={48} className="mx-auto text-pink-500 mb-4" />
+                        <h2 className="text-2xl font-black">Nova Filosofia</h2>
+                        <p className="text-zinc-500 mt-2 text-sm">Escolha seu novo Modus Operandi. Esta ação consumirá 1 Troca de Modus.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button onClick={() => handleChangeModus('multitask')} className="flex flex-col items-start text-left p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 hover:border-pink-500/50 hover:bg-pink-500/5 transition-all group">
+                           <div className="p-3 rounded-xl bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 mb-3 group-hover:scale-110 group-hover:text-pink-500 transition-transform shadow-sm"><Zap size={24} /></div>
+                           <h3 className="text-lg font-black tracking-tight mb-1">Multitarefa</h3>
+                           <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">Ganha bônus por quantidade de tarefas finalizadas.</p>
+                        </button>
+                        <button onClick={() => handleChangeModus('minimalist')} className="flex flex-col items-start text-left p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 hover:border-pink-500/50 hover:bg-pink-500/5 transition-all group">
+                           <div className="p-3 rounded-xl bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 mb-3 group-hover:scale-110 group-hover:text-pink-500 transition-transform shadow-sm"><Shield size={24} /></div>
+                           <h3 className="text-lg font-black tracking-tight mb-1">Minimalista</h3>
+                           <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">Ganha bônus focado apenas em tarefas essenciais (P0 e P1).</p>
+                        </button>
+                        <button onClick={() => handleChangeModus('punctual')} className="flex flex-col items-start text-left p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 hover:border-pink-500/50 hover:bg-pink-500/5 transition-all group">
+                           <div className="p-3 rounded-xl bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 mb-3 group-hover:scale-110 group-hover:text-pink-500 transition-transform shadow-sm"><Clock size={24} /></div>
+                           <h3 className="text-lg font-black tracking-tight mb-1">Pontual</h3>
+                           <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">Bônus gigantesco por respeitar horários e prazos definidos.</p>
+                        </button>
+                        <button onClick={() => handleChangeModus('ambitious')} className="flex flex-col items-start text-left p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 hover:border-pink-500/50 hover:bg-pink-500/5 transition-all group">
+                           <div className="p-3 rounded-xl bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 mb-3 group-hover:scale-110 group-hover:text-pink-500 transition-transform shadow-sm"><Target size={24} /></div>
+                           <h3 className="text-lg font-black tracking-tight mb-1">Ambicioso</h3>
+                           <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">Multiplicador aumenta drasticamente ao finalizar Sprints.</p>
+                        </button>
+                    </div>
+                </motion.div>
+            </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {toastMessage && (
-          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="fixed top-6 left-1/2 -translate-x-1/2 z-[110] bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black px-6 py-3 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.12)] font-bold text-sm tracking-wide border border-zinc-800 dark:border-zinc-200">
-            {toastMessage}
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className={`fixed top-6 left-1/2 -translate-x-1/2 z-[3000] px-6 py-3 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.12)] font-bold text-sm tracking-wide border ${toastMessage.type === 'error' ? 'bg-red-500 text-white border-red-600' : 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black border-zinc-800 dark:border-zinc-200'}`}>
+            {toastMessage.msg}
           </motion.div>
         )}
       </AnimatePresence>

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { format } from 'date-fns';
 
-export type EconomyItem = 'freeze' | 'dayOff' | 'instantLuck' | 'magicDice' | 'xpBoost' | 'goldBoost' | 'extraP0' | 'extraP1' | 'respite' | 'relief' | 'bonusTask' | 'luckyCard';
+export type EconomyItem = 'freeze' | 'dayOff' | 'instantLuck' | 'magicDice' | 'xpBoost' | 'goldBoost' | 'extraP0' | 'extraP1' | 'respite' | 'relief' | 'bonusTask' | 'luckyCard' | 'changeModus';
 
 interface EconomyState {
   xp: number; level: number; gold: number; vouchers: number; voucherProgress: number;
@@ -10,15 +10,12 @@ interface EconomyState {
   dailyHistory: Record<string, { xp: number; gold: number; lostXp?: number; lostGold?: number }>;
   levelUpData: { level: number; hasReward: boolean } | null;
   claimedMilestones: number[]; 
-  
-  // NOVOS CAMPOS DE LOJA DE TEMAS
   purchasedThemes: string[];
-  buyTheme: (themeId: string, cost: number) => boolean;
-
   updatedAt?: number;
 
-  addReward: (baseXp: number, baseGold: number) => void;
-  removeReward: (baseXp: number, baseGold: number) => void; 
+  buyTheme: (themeId: string, cost: number) => boolean;
+  addReward: (finalXp: number, finalGold: number) => void;
+  removeReward: (finalXp: number, finalGold: number) => void; 
   applyPenalty: (baseXp: number, baseGold: number) => void; 
   addVouchers: (amount: number) => void;
   spendVouchers: (amount: number) => boolean; 
@@ -35,12 +32,8 @@ export const useEconomyStore = create<EconomyState>()(
   persist(
     (set, get) => ({
       xp: 0, level: 1, gold: 1500, vouchers: 20, voucherProgress: 0,
-      inventory: { freeze: 0, dayOff: 0, instantLuck: 0, magicDice: 0, xpBoost: 0, goldBoost: 0, extraP0: 0, extraP1: 0, respite: 0, relief: 0, bonusTask: 0, luckyCard: 0 },
-      activeXpBoostUntil: null, activeGoldBoostUntil: null, dailyHistory: {}, levelUpData: null, claimedMilestones: [], 
-      
-      purchasedThemes: [],
-      
-      updatedAt: Date.now(),
+      inventory: { freeze: 0, dayOff: 0, instantLuck: 0, magicDice: 0, xpBoost: 0, goldBoost: 0, extraP0: 0, extraP1: 0, respite: 0, relief: 0, bonusTask: 0, luckyCard: 0, changeModus: 0 },
+      activeXpBoostUntil: null, activeGoldBoostUntil: null, dailyHistory: {}, levelUpData: null, claimedMilestones: [], purchasedThemes: [], updatedAt: Date.now(),
 
       clearLevelUp: () => set({ levelUpData: null, updatedAt: Date.now() }),
 
@@ -53,12 +46,9 @@ export const useEconomyStore = create<EconomyState>()(
         return false;
       },
 
-      addReward: (baseXp, baseGold) => set((state) => {
-        const isXpBoosted = state.activeXpBoostUntil && Date.now() < state.activeXpBoostUntil;
-        const isGoldBoosted = state.activeGoldBoostUntil && Date.now() < state.activeGoldBoostUntil;
-        const finalXp = Math.round(baseXp * (isXpBoosted ? 1 + (Math.random() * 0.35 + 0.15) : 1));
-        const finalGold = Math.round(baseGold * (isGoldBoosted ? 1 + (Math.random() * 0.20 + 0.25) : 1));
-        const newXp = state.xp + finalXp; const newLevel = calculateLevel(newXp);
+      addReward: (finalXp, finalGold) => set((state) => {
+        const newXp = state.xp + finalXp; 
+        const newLevel = calculateLevel(newXp);
         
         let newInventory = state.inventory; let newVouchers = state.vouchers; let newClaimed = [...(state.claimedMilestones || [])]; let levelUpInfo = null;
 
@@ -78,8 +68,8 @@ export const useEconomyStore = create<EconomyState>()(
         return { xp: newXp, level: newLevel, gold: state.gold + finalGold, inventory: newInventory, vouchers: newVouchers, claimedMilestones: newClaimed, ...(levelUpInfo ? { levelUpData: levelUpInfo } : {}), dailyHistory: { ...state.dailyHistory, [todayStr]: { ...currentHistory, xp: currentHistory.xp + finalXp, gold: currentHistory.gold + finalGold } }, updatedAt: Date.now() };
       }),
 
-      removeReward: (baseXp, baseGold) => set((state) => {
-        const newXp = Math.max(0, state.xp - baseXp); const newGold = Math.max(0, state.gold - baseGold); const newLevel = calculateLevel(newXp);
+      removeReward: (finalXp, finalGold) => set((state) => {
+        const newXp = Math.max(0, state.xp - finalXp); const newGold = Math.max(0, state.gold - finalGold); const newLevel = calculateLevel(newXp);
         let newInventory = state.inventory;
         if (newLevel < state.level) {
           let lostItems = 0;
@@ -88,7 +78,7 @@ export const useEconomyStore = create<EconomyState>()(
         }
         const todayStr = format(new Date(), 'yyyy-MM-dd');
         const currentHistory = state.dailyHistory[todayStr] || { xp: 0, gold: 0 };
-        return { xp: newXp, level: newLevel, gold: newGold, inventory: newInventory, dailyHistory: { ...state.dailyHistory, [todayStr]: { ...currentHistory, xp: Math.max(0, currentHistory.xp - baseXp), gold: Math.max(0, currentHistory.gold - baseGold) } }, updatedAt: Date.now() };
+        return { xp: newXp, level: newLevel, gold: newGold, inventory: newInventory, dailyHistory: { ...state.dailyHistory, [todayStr]: { ...currentHistory, xp: Math.max(0, currentHistory.xp - finalXp), gold: Math.max(0, currentHistory.gold - finalGold) } }, updatedAt: Date.now() };
       }),
 
       applyPenalty: (baseXp, baseGold) => set((state) => {

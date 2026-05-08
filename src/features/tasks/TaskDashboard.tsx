@@ -7,7 +7,7 @@ import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
 import { TaskModal } from './TaskModal';
 import { RoutineModal } from './RoutineModal';
 import { TaskItem } from './TaskItem';
-import { RewardToast } from '../../components/ui/RewardToast';
+import { RewardToast, type RewardBreakdown } from '../../components/ui/RewardToast';
 import type { Task, Mood, Priority, RoutineTemplate } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
@@ -32,7 +32,7 @@ export const TaskDashboard = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [infoModal, setInfoModal] = useState<{title: string, desc: string} | null>(null);
 
-  const [reward, setReward] = useState<{ xp: number; gold: number; isFailed?: boolean } | null>(null);
+  const [rewardBreakdown, setRewardBreakdown] = useState<RewardBreakdown | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ type: 'delete' | 'complete' | 'clear_completed' | 'delete_routine'; taskId: string; title: string; subtitle: string } | null>(null);
 
@@ -55,32 +55,56 @@ export const TaskDashboard = () => {
       setIsMenuOpen(false);
   };
 
-  const calculateTaskReward = (task: Task) => {
+  const calculateTaskReward = (task: Task): RewardBreakdown => {
     let baseGold = 15; let baseXp = 45;
     if (task.type === 'routine') {
        const itemsCount = task.subtasks?.length || 1;
        const routineReward = Math.min(200, Math.round(50 + (itemsCount - 1) * 37.5));
-       return { xpAmount: routineReward, goldAmount: routineReward };
+       baseGold = routineReward; baseXp = routineReward;
+    } else {
+       switch (task.priority) { case 'P0': baseGold = 50; baseXp = 150; break; case 'P1': baseGold = 40; baseXp = 100; break; case 'P2': baseGold = 30; baseXp = 75; break; case 'P3': baseGold = 20; baseXp = 50; break; case 'P4': baseGold = 10; baseXp = 25; break; }
     }
-    switch (task.priority) { case 'P0': baseGold = 100; baseXp = 200; break; case 'P1': baseGold = 70; baseXp = 150; break; case 'P2': baseGold = 50; baseXp = 120; break; case 'P3': baseGold = 30; baseXp = 70; break; case 'P4': baseGold = 25; baseXp = 50; break; }
+
     let modusGoldMulti = 1; let modusXpMulti = 1;
     if (userClass === 'multitask') { modusGoldMulti = 1.2; modusXpMulti = 1.2; }
-    else if (userClass === 'minimalist' && (task.priority === 'P0' || task.priority === 'P1')) { modusGoldMulti = 2.0; modusXpMulti = 2.0; }
+    else if (userClass === 'minimalist' && (task.priority === 'P0' || task.priority === 'P1')) { modusGoldMulti = 1.5; modusXpMulti = 1.5; }
     else if (userClass === 'punctual' && task.deadlineDate) { modusGoldMulti = 1.3; modusXpMulti = 1.3; }
     else if (userClass === 'ambitious' && (task.type === 'sprint' || task.type === 'daily_challenge')) { modusGoldMulti = 1.8; modusXpMulti = 1.8; }
+    
+    const modusXp = Math.round(baseXp * modusXpMulti) - baseXp;
+    const modusGold = Math.round(baseGold * modusGoldMulti) - baseGold;
+
     const magicMultiplier = task.hasMagicDice ? 2 : 1;
-    return { xpAmount: Math.round(baseXp * modusXpMulti * magicMultiplier), goldAmount: Math.round(baseGold * modusGoldMulti * magicMultiplier) };
+    const magicXp = Math.round((baseXp + modusXp) * magicMultiplier) - (baseXp + modusXp);
+    const magicGold = Math.round((baseGold + modusGold) * magicMultiplier) - (baseGold + modusGold);
+
+    const boostXp = isXpBoosted ? Math.round((baseXp + modusXp + magicXp) * (Math.random() * 0.35 + 0.15)) : 0;
+    const boostGold = isGoldBoosted ? Math.round((baseGold + modusGold + magicGold) * (Math.random() * 0.20 + 0.25)) : 0;
+
+    const totalXp = baseXp + modusXp + magicXp + boostXp;
+    const totalGold = baseGold + modusGold + magicGold + boostGold;
+
+    return { baseXp, baseGold, modusXp, modusGold, magicXp, magicGold, boostXp, boostGold, totalXp, totalGold };
   };
 
   const executeToggle = (taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (task) {
       if (!task.isCompleted) {
-        if (task.isFailed) { setReward({ xp: 0, gold: 0, isFailed: true }); } 
-        else { const { xpAmount, goldAmount } = calculateTaskReward(task); setReward({ xp: xpAmount, gold: goldAmount }); addReward(xpAmount, goldAmount); }
-        setTimeout(() => setReward(null), 4000);
+        if (task.isFailed) { 
+            setRewardBreakdown({ isFailed: true } as RewardBreakdown); 
+        } else { 
+            const breakdown = calculateTaskReward(task); 
+            setRewardBreakdown(breakdown); 
+            addReward(breakdown.totalXp, breakdown.totalGold); 
+        }
+        setTimeout(() => setRewardBreakdown(null), 6000); // Mais tempo para a animação
       } else {
-        if (!task.isFailed) { const { xpAmount, goldAmount } = calculateTaskReward(task); removeReward(xpAmount, goldAmount); showToast('Recompensas revertidas.'); }
+        if (!task.isFailed) { 
+            const breakdown = calculateTaskReward(task); 
+            removeReward(breakdown.totalXp, breakdown.totalGold); 
+            showToast('Recompensas revertidas.'); 
+        }
       }
     }
     toggleTaskCompletion(taskId);
@@ -266,7 +290,7 @@ export const TaskDashboard = () => {
 
       <TaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} taskToEdit={taskToEdit} onSuccess={showToast} />
       <RoutineModal isOpen={isRoutineModalOpen} onClose={() => setRoutineModalOpen(false)} routineToEdit={routineToEdit} onSuccess={showToast} />
-      <RewardToast isVisible={!!reward} xp={reward?.xp || 0} gold={reward?.gold || 0} isFailed={reward?.isFailed} />
+      <RewardToast breakdown={rewardBreakdown} />
 
       <AnimatePresence>
         {toastMessage && ( <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black px-6 py-3 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] font-bold text-sm tracking-wide border border-zinc-800 dark:border-zinc-200">{toastMessage}</motion.div> )}
