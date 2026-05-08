@@ -62,10 +62,10 @@ export const TaskDashboard = () => {
        const routineReward = Math.min(200, Math.round(50 + (itemsCount - 1) * 37.5));
        return { xpAmount: routineReward, goldAmount: routineReward };
     }
-    switch (task.priority) { case 'P0': baseGold = 50; baseXp = 150; break; case 'P1': baseGold = 40; baseXp = 100; break; case 'P2': baseGold = 30; baseXp = 75; break; case 'P3': baseGold = 20; baseXp = 50; break; case 'P4': baseGold = 10; baseXp = 25; break; }
+    switch (task.priority) { case 'P0': baseGold = 100; baseXp = 200; break; case 'P1': baseGold = 70; baseXp = 150; break; case 'P2': baseGold = 50; baseXp = 120; break; case 'P3': baseGold = 30; baseXp = 70; break; case 'P4': baseGold = 25; baseXp = 50; break; }
     let modusGoldMulti = 1; let modusXpMulti = 1;
     if (userClass === 'multitask') { modusGoldMulti = 1.2; modusXpMulti = 1.2; }
-    else if (userClass === 'minimalist' && (task.priority === 'P0' || task.priority === 'P1')) { modusGoldMulti = 1.5; modusXpMulti = 1.5; }
+    else if (userClass === 'minimalist' && (task.priority === 'P0' || task.priority === 'P1')) { modusGoldMulti = 2.0; modusXpMulti = 2.0; }
     else if (userClass === 'punctual' && task.deadlineDate) { modusGoldMulti = 1.3; modusXpMulti = 1.3; }
     else if (userClass === 'ambitious' && (task.type === 'sprint' || task.type === 'daily_challenge')) { modusGoldMulti = 1.8; modusXpMulti = 1.8; }
     const magicMultiplier = task.hasMagicDice ? 2 : 1;
