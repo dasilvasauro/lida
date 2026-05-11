@@ -54,72 +54,63 @@ interface TaskState {
 export const useTaskStore = create<TaskState>()(
   persist(
     (set, get) => ({
-      tasks: [], folders: [{ id: 'default', name: 'Geral' }], routines: [], dailyMood: null, moodHistory: {},
+      // CORREÇÃO: Pasta Geral agora nasce no tempo 0
+      tasks: [], folders: [{ id: 'default', name: 'Geral', updatedAt: 0 }], routines: [], dailyMood: null, moodHistory: {},
       selectedFilter: 'today', selectedFolderId: 'all', activeFocusSession: null, 
       isFocusModeOpen: false, isGlobalModalOpen: false, isRoutineModalOpen: false,
 
       setGlobalModalOpen: (isOpen) => set({ isGlobalModalOpen: isOpen }), setRoutineModalOpen: (isOpen) => set({ isRoutineModalOpen: isOpen }),
-      addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
+      addTask: (task) => set((state) => ({ tasks: [...state.tasks, { ...task, updatedAt: Date.now() }] })),
       toggleTaskCompletion: (taskId) => set((state) => {
         const task = state.tasks.find(t => t.id === taskId);
         if (!task) return state;
         const isCompleting = !task.isCompleted;
         const isCompletingActive = state.activeFocusSession?.taskId === taskId;
-        return { tasks: state.tasks.map((t) => t.id === taskId ? { ...t, isCompleted: isCompleting, completedAt: isCompleting ? Date.now() : undefined } : t), ...(isCompletingActive ? { activeFocusSession: null, isFocusModeOpen: false } : {}) };
+        return { tasks: state.tasks.map((t) => t.id === taskId ? { ...t, isCompleted: isCompleting, completedAt: isCompleting ? Date.now() : undefined, updatedAt: Date.now() } : t), ...(isCompletingActive ? { activeFocusSession: null, isFocusModeOpen: false } : {}) };
       }),
-      deleteTask: (taskId) => set((state) => ({ tasks: state.tasks.filter((t) => t.id !== taskId) })),
-      updateTask: (taskId, updatedTask) => set((state) => ({ tasks: state.tasks.map((t) => t.id === taskId ? { ...t, ...updatedTask } : t) })),
+      deleteTask: (taskId) => { useConfigStore.getState().addTombstone(taskId); set((state) => ({ tasks: state.tasks.filter((t) => t.id !== taskId) })); },
+      updateTask: (taskId, updatedTask) => set((state) => ({ tasks: state.tasks.map((t) => t.id === taskId ? { ...t, ...updatedTask, updatedAt: Date.now() } : t) })),
       
-      addFolder: (folder) => set((state) => ({ folders: [...state.folders, folder] })), setFolderId: (folderId) => set({ selectedFolderId: folderId }),
-      deleteFolder: (folderId) => set((state) => ({ folders: state.folders.filter(f => f.id !== folderId), tasks: state.tasks.map(t => t.folderId === folderId ? { ...t, folderId: 'default' } : t), selectedFolderId: state.selectedFolderId === folderId ? 'all' : state.selectedFolderId })),
+      addFolder: (folder) => set((state) => ({ folders: [...state.folders, { ...folder, updatedAt: Date.now() }] })), setFolderId: (folderId) => set({ selectedFolderId: folderId }),
+      deleteFolder: (folderId) => { useConfigStore.getState().addTombstone(folderId); set((state) => ({ folders: state.folders.filter(f => f.id !== folderId), tasks: state.tasks.map(t => t.folderId === folderId ? { ...t, folderId: 'default', updatedAt: Date.now() } : t), selectedFolderId: state.selectedFolderId === folderId ? 'all' : state.selectedFolderId })); },
 
       addRoutine: (routine) => set((state) => {
         const todayObj = new Date(); const todayStr = format(todayObj, 'yyyy-MM-dd'); const dayOfWeek = todayObj.getDay(); let newTasks = [...state.tasks];
         if (routine.weekdays.includes(dayOfWeek)) {
-            newTasks.push({ id: uuidv4(), title: routine.title, type: 'routine', priority: 'P4', color: routine.color, folderId: 'default', createdAt: Date.now(), deadlineDate: todayStr, isCompleted: false, subtasks: routine.items.map(title => ({ id: uuidv4(), title, completed: false })), routineTemplateId: routine.id, isFreeEditExpired: true });
+            newTasks.push({ id: uuidv4(), title: routine.title, type: 'routine', priority: 'P4', color: routine.color, folderId: 'default', createdAt: Date.now(), updatedAt: Date.now(), deadlineDate: todayStr, isCompleted: false, subtasks: routine.items.map(title => ({ id: uuidv4(), title, completed: false })), routineTemplateId: routine.id, isFreeEditExpired: true });
         }
-        return { routines: [...state.routines, routine], tasks: newTasks };
+        return { routines: [...state.routines, { ...routine, updatedAt: Date.now() }], tasks: newTasks };
       }),
       updateRoutine: (id, updated) => set((state) => {
         const todayStr = format(new Date(), 'yyyy-MM-dd');
-        return { routines: state.routines.map(r => r.id === id ? { ...r, ...updated } : r), tasks: state.tasks.map(t => { if (t.routineTemplateId === id && t.deadlineDate === todayStr && !t.isCompleted) { return { ...t, title: updated.title || t.title, color: updated.color || t.color, subtasks: updated.items ? updated.items.map(title => ({ id: uuidv4(), title, completed: false })) : t.subtasks }; } return t; }) };
+        return { routines: state.routines.map(r => r.id === id ? { ...r, ...updated, updatedAt: Date.now() } : r), tasks: state.tasks.map(t => { if (t.routineTemplateId === id && t.deadlineDate === todayStr && !t.isCompleted) { return { ...t, title: updated.title || t.title, color: updated.color || t.color, updatedAt: Date.now(), subtasks: updated.items ? updated.items.map(title => ({ id: uuidv4(), title, completed: false })) : t.subtasks }; } return t; }) };
       }),
-      deleteRoutine: (id) => set((state) => {
-        const todayStr = format(new Date(), 'yyyy-MM-dd');
-        return { routines: state.routines.filter(r => r.id !== id), tasks: state.tasks.filter(t => !(t.routineTemplateId === id && t.deadlineDate === todayStr && !t.isCompleted)) };
-      }),
+      deleteRoutine: (id) => { useConfigStore.getState().addTombstone(id); set((state) => { const todayStr = format(new Date(), 'yyyy-MM-dd'); return { routines: state.routines.filter(r => r.id !== id), tasks: state.tasks.filter(t => !(t.routineTemplateId === id && t.deadlineDate === todayStr && !t.isCompleted)) }; }); },
 
       setDailyMood: (mood) => set((state) => { const todayStr = format(new Date(), 'yyyy-MM-dd'); return { dailyMood: mood, moodHistory: { ...state.moodHistory, [todayStr]: mood } }; }),
       setFilter: (selectedFilter) => set({ selectedFilter }),
-      toggleSubtask: (taskId, subtaskId) => set((state) => ({ tasks: state.tasks.map((t) => t.id === taskId ? { ...t, subtasks: t.subtasks?.map((st) => st.id === subtaskId ? { ...st, completed: !st.completed } : st) } : t) })),
+      toggleSubtask: (taskId, subtaskId) => set((state) => ({ tasks: state.tasks.map((t) => t.id === taskId ? { ...t, updatedAt: Date.now(), subtasks: t.subtasks?.map((st) => st.id === subtaskId ? { ...st, completed: !st.completed } : st) } : t) })),
       startFocus: (taskId, durationMinutes) => set((state) => { if (state.activeFocusSession?.taskId === taskId) return { isFocusModeOpen: true }; return { activeFocusSession: { taskId, startTime: Date.now(), duration: durationMinutes * 60 }, isFocusModeOpen: true }; }),
-      stopFocus: () => set({ activeFocusSession: null, isFocusModeOpen: false }),
-      toggleFocusMode: (isOpen) => set({ isFocusModeOpen: isOpen }),
-      markTaskFailed: (taskId) => set((state) => ({ tasks: state.tasks.map((t) => t.id === taskId ? { ...t, isFailed: true } : t) })),
-      clearCompletedTasks: () => set((state) => ({ tasks: state.tasks.map((t) => t.isCompleted ? { ...t, isArchived: true } : t) })),
+      stopFocus: () => set({ activeFocusSession: null, isFocusModeOpen: false }), toggleFocusMode: (isOpen) => set({ isFocusModeOpen: isOpen }),
+      markTaskFailed: (taskId) => set((state) => ({ tasks: state.tasks.map((t) => t.id === taskId ? { ...t, isFailed: true, updatedAt: Date.now() } : t) })),
+      clearCompletedTasks: () => set((state) => ({ tasks: state.tasks.map((t) => t.isCompleted ? { ...t, isArchived: true, updatedAt: Date.now() } : t) })),
 
-      applyPowerUp: (taskId, type) => set((state) => ({ tasks: state.tasks.map(t => { if (t.id !== taskId) return t; if (type === 'magicDice') return { ...t, hasMagicDice: true }; if (type === 'respite') { let newTime = t.deadlineTime; if (newTime) { const [h, m] = newTime.split(':').map(Number); const newH = Math.min(23, h + 3); newTime = `${newH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`; } return { ...t, hasRespite: true, deadlineTime: newTime }; } if (type === 'relief') { let newDate = t.deadlineDate; if (newDate) { const dateObj = new Date(newDate + 'T12:00:00'); dateObj.setDate(dateObj.getDate() + 1); newDate = dateObj.toISOString().split('T')[0]; } return { ...t, hasRelief: true, deadlineDate: newDate }; } return t; }) })),
+      applyPowerUp: (taskId, type) => set((state) => ({ tasks: state.tasks.map(t => { if (t.id !== taskId) return t; if (type === 'magicDice') return { ...t, hasMagicDice: true, updatedAt: Date.now() }; if (type === 'respite') { let newTime = t.deadlineTime; if (newTime) { const [h, m] = newTime.split(':').map(Number); const newH = Math.min(23, h + 3); newTime = `${newH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`; } return { ...t, hasRespite: true, deadlineTime: newTime, updatedAt: Date.now() }; } if (type === 'relief') { let newDate = t.deadlineDate; if (newDate) { const dateObj = new Date(newDate + 'T12:00:00'); dateObj.setDate(dateObj.getDate() + 1); newDate = dateObj.toISOString().split('T')[0]; } return { ...t, hasRelief: true, deadlineDate: newDate, updatedAt: Date.now() }; } return t; }) })),
 
       processNewDay: (todayStr) => {
         const { tasks, routines } = get();
         const { enablePunishments } = useConfigStore.getState();
-        const newTasks = [...tasks];
-        let changed = false;
-        let totalLostXp = 0;
-        let totalLostGold = 0;
+        const newTasks = [...tasks]; let changed = false; let totalLostXp = 0; let totalLostGold = 0;
 
         for (let i = 0; i < newTasks.length; i++) {
           const t = newTasks[i];
-          
           const isDailyChallengeOverdue = t.type === 'daily_challenge' && format(new Date(t.createdAt), 'yyyy-MM-dd') < todayStr;
           const isSprintOverdue = t.type === 'sprint' && t.deadlineDate && t.deadlineDate < todayStr;
           const isNormalOverdue = t.type === 'normal' && t.deadlineDate && t.deadlineDate < todayStr;
 
-          // Processamento de Punições
           if (!t.isCompleted && !t.isFailed && !t.isArchived) {
              if (isDailyChallengeOverdue || isSprintOverdue || isNormalOverdue) {
-                 newTasks[i] = { ...t, isFailed: true };
-                 changed = true;
+                 newTasks[i] = { ...t, isFailed: true, updatedAt: Date.now() }; changed = true;
                  if (enablePunishments) {
                     let baseGold = 15; let baseXp = 45;
                     switch (t.priority) { case 'P0': baseGold = 50; baseXp = 150; break; case 'P1': baseGold = 40; baseXp = 100; break; case 'P2': baseGold = 30; baseXp = 75; break; case 'P3': baseGold = 20; baseXp = 50; break; case 'P4': baseGold = 10; baseXp = 25; break; }
@@ -129,8 +120,8 @@ export const useTaskStore = create<TaskState>()(
           }
 
           if (t.type === 'routine' && t.deadlineDate && t.deadlineDate < todayStr && !t.isArchived) {
-            if (t.isCompleted) { newTasks[i] = { ...t, isArchived: true }; changed = true; } 
-            else { newTasks[i] = { ...t, deadlineDate: todayStr, subtasks: t.subtasks?.map(st => ({ ...st, completed: false })) }; changed = true; }
+            if (t.isCompleted) { newTasks[i] = { ...t, isArchived: true, updatedAt: Date.now() }; changed = true; } 
+            else { newTasks[i] = { ...t, deadlineDate: todayStr, subtasks: t.subtasks?.map(st => ({ ...st, completed: false })), updatedAt: Date.now() }; changed = true; }
           }
 
           if (t.isCompleted && t.recurrence && t.recurrence.type !== 'none' && !t.nextRecurrenceGenerated) {
@@ -139,10 +130,8 @@ export const useTaskStore = create<TaskState>()(
               const nextDateStr = calculateNextRecurrence(t.deadlineDate, t.recurrence);
               if (nextDateStr) {
                 const isDuplicate = newTasks.some(existing => existing.title === t.title && existing.deadlineDate === nextDateStr && existing.id !== t.id);
-                if (!isDuplicate) {
-                  newTasks.push({ ...t, id: uuidv4(), isCompleted: false, completedAt: undefined, deadlineDate: nextDateStr, isArchived: false, nextRecurrenceGenerated: false, isFailed: false, subtasks: t.subtasks?.map(st => ({ ...st, completed: false })), isFreeEditExpired: true });
-                }
-                newTasks[i] = { ...t, nextRecurrenceGenerated: true }; changed = true;
+                if (!isDuplicate) { newTasks.push({ ...t, id: uuidv4(), isCompleted: false, completedAt: undefined, deadlineDate: nextDateStr, isArchived: false, nextRecurrenceGenerated: false, isFailed: false, subtasks: t.subtasks?.map(st => ({ ...st, completed: false })), isFreeEditExpired: true, updatedAt: Date.now() }); }
+                newTasks[i] = { ...t, nextRecurrenceGenerated: true, updatedAt: Date.now() }; changed = true;
               }
             }
           }
@@ -153,7 +142,7 @@ export const useTaskStore = create<TaskState>()(
             if (routine.weekdays.includes(currentDayOfWeek)) {
                 const exists = newTasks.some(t => t.routineTemplateId === routine.id && t.deadlineDate === todayStr && !t.isArchived);
                 if (!exists) {
-                    newTasks.push({ id: uuidv4(), title: routine.title, type: 'routine', priority: 'P4', color: routine.color, folderId: 'default', createdAt: Date.now(), deadlineDate: todayStr, isCompleted: false, subtasks: routine.items.map(title => ({ id: uuidv4(), title, completed: false })), routineTemplateId: routine.id, isFreeEditExpired: true });
+                    newTasks.push({ id: uuidv4(), title: routine.title, type: 'routine', priority: 'P4', color: routine.color, folderId: 'default', createdAt: Date.now(), updatedAt: Date.now(), deadlineDate: todayStr, isCompleted: false, subtasks: routine.items.map(title => ({ id: uuidv4(), title, completed: false })), routineTemplateId: routine.id, isFreeEditExpired: true });
                     changed = true;
                 }
             }

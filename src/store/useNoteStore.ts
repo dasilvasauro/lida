@@ -16,7 +16,8 @@ interface NoteState {
 export const useNoteStore = create<NoteState>()(
   persist(
     (set, get) => ({
-      notebooks: [{ id: 'default', name: 'Geral', color: 'zinc', isLocked: false, createdAt: Date.now(), updatedAt: Date.now() }],
+      // CORREÇÃO: Caderno Geral agora nasce no tempo 0
+      notebooks: [{ id: 'default', name: 'Geral', color: 'zinc', isLocked: false, createdAt: Date.now(), updatedAt: 0 }],
       notes: [], unlockedNotebooks: [], unlockedNotes: [],
 
       addNotebook: (notebook) => set((state) => ({ notebooks: [...state.notebooks, { ...notebook, updatedAt: Date.now() }] })),
@@ -26,7 +27,6 @@ export const useNoteStore = create<NoteState>()(
         useConfigStore.getState().addTombstone(id);
         set((state) => ({ 
           notebooks: state.notebooks.filter(nb => nb.id !== id), 
-          // CORREÇÃO AQUI: Em vez de destruir as notas, resgata-as para a pasta Geral com um novo timestamp.
           notes: state.notes.map(n => n.notebookId === id ? { ...n, notebookId: 'default', updatedAt: Date.now() } : n) 
         }));
       },

@@ -33,7 +33,10 @@ export const useEconomyStore = create<EconomyState>()(
     (set, get) => ({
       xp: 0, level: 1, gold: 1500, vouchers: 20, voucherProgress: 0,
       inventory: { freeze: 0, dayOff: 0, instantLuck: 0, magicDice: 0, xpBoost: 0, goldBoost: 0, extraP0: 0, extraP1: 0, respite: 0, relief: 0, bonusTask: 0, luckyCard: 0, changeModus: 0 },
-      activeXpBoostUntil: null, activeGoldBoostUntil: null, dailyHistory: {}, levelUpData: null, claimedMilestones: [], purchasedThemes: [], updatedAt: Date.now(),
+      activeXpBoostUntil: null, activeGoldBoostUntil: null, dailyHistory: {}, levelUpData: null, claimedMilestones: [], purchasedThemes: [], 
+      
+      // CORREÇÃO CRÍTICA: Estado inicial nasce no tempo 0 para a nuvem sempre ter prioridade
+      updatedAt: 0, 
 
       clearLevelUp: () => set({ levelUpData: null, updatedAt: Date.now() }),
 
