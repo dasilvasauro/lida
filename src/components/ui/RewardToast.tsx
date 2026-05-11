@@ -19,7 +19,7 @@ interface RewardToastProps {
 export const RewardToast = ({ breakdown }: RewardToastProps) => {
     const { theme } = useConfigStore();
     const [visibleSteps, setVisibleSteps] = useState<number[]>([]);
-    const [isDismissed, setIsDismissed] = useState(false); // Estado para controlar o Swipe to Dismiss
+    const [isDismissed, setIsDismissed] = useState(false);
     
     const xpCounter = useMotionValue(0);
     const goldCounter = useMotionValue(0);
@@ -27,7 +27,7 @@ export const RewardToast = ({ breakdown }: RewardToastProps) => {
     const displayedGold = useTransform(goldCounter, Math.round);
 
     useEffect(() => {
-        setIsDismissed(false); // Reseta o dismiss sempre que houver uma nova recompensa
+        setIsDismissed(false); 
         if (!breakdown || breakdown.isFailed) {
             xpCounter.set(0); goldCounter.set(0);
             setVisibleSteps([]);
@@ -58,7 +58,6 @@ export const RewardToast = ({ breakdown }: RewardToastProps) => {
         
     }, [breakdown, xpCounter, goldCounter]);
 
-    // BLINDAGEM DE ESTILOS: Usamos cores hexadecimais explícitas para garantir 100% de contraste
     const getThemeConfig = () => {
         let container = "";
         let textMain = ""; 
@@ -71,17 +70,17 @@ export const RewardToast = ({ breakdown }: RewardToastProps) => {
             case 'light-gray':
             case 'macos':
                 container = "bg-white border-zinc-200 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]";
-                textMain = "#09090b"; // Preto carvão
-                textMuted = "#71717a"; // Cinza médio
+                textMain = "#09090b"; 
+                textMuted = "#71717a"; 
                 break;
             case 'dark-amoled': 
                 container = "bg-zinc-950 border-zinc-700 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8)]";
-                textMain = "#ffffff"; // Branco puro
+                textMain = "#ffffff"; 
                 textMuted = "#a1a1aa"; 
                 break;
             case 'soft-dark': 
                 container = "bg-zinc-800 border-zinc-600 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.6)]";
-                textMain = "#ffffff"; // Branco puro contrastando com o cinza do fundo
+                textMain = "#ffffff"; 
                 textMuted = "#d4d4d8"; 
                 break;
             case 'butter': 
@@ -129,11 +128,11 @@ export const RewardToast = ({ breakdown }: RewardToastProps) => {
             container,
             textMain,
             textMuted,
-            modus: theme === 'matrix' ? '#00ff41' : isDark ? '#60a5fa' : '#2563eb', // Azul brilhante ou escuro
-            magic: theme === 'matrix' ? '#00ff41' : isDark ? '#c084fc' : '#9333ea', // Roxo
-            boost: theme === 'matrix' ? '#00ff41' : isDark ? '#fb923c' : '#ea580c', // Laranja
-            xp: theme === 'matrix' ? '#00ff41' : '#a855f7', // Roxo principal
-            gold: theme === 'matrix' ? '#00ff41' : '#eab308', // Dourado
+            modus: theme === 'matrix' ? '#00ff41' : isDark ? '#60a5fa' : '#2563eb', 
+            magic: theme === 'matrix' ? '#00ff41' : isDark ? '#c084fc' : '#9333ea', 
+            boost: theme === 'matrix' ? '#00ff41' : isDark ? '#fb923c' : '#ea580c', 
+            xp: theme === 'matrix' ? '#00ff41' : '#a855f7', 
+            gold: theme === 'matrix' ? '#00ff41' : '#eab308', 
             divider: theme === 'matrix' ? 'rgba(0,255,65,0.3)' : 'rgba(150,150,150,0.2)'
         };
     };
@@ -144,11 +143,11 @@ export const RewardToast = ({ breakdown }: RewardToastProps) => {
         <AnimatePresence>
         {breakdown && !isDismissed && (
             <motion.div
-                drag="x" // Permite arrastar horizontalmente
-                dragConstraints={{ left: 0, right: 0 }} // Elástico em ambas as direções
+                drag="x" 
+                dragConstraints={{ left: 0, right: 0 }} 
                 dragElastic={0.8}
-                onDragEnd={(e, { offset, velocity }) => {
-                    // Se puxou muito para o lado ou muito rápido, descarta o toast
+                onDragEnd={(_, { offset, velocity }) => {
+                    // Substituído o 'e' por '_'
                     if (Math.abs(offset.x) > 80 || Math.abs(velocity.x) > 400) {
                         setIsDismissed(true);
                     }
@@ -157,7 +156,7 @@ export const RewardToast = ({ breakdown }: RewardToastProps) => {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, x: isDismissed ? 300 : 0, y: isDismissed ? 0 : 20, scale: 0.9 }}
                 className={`fixed bottom-28 md:bottom-12 left-1/2 md:left-auto md:right-12 -translate-x-1/2 md:translate-x-0 w-[92%] max-w-sm p-6 rounded-[2rem] z-[1000] border-2 transition-colors duration-300 cursor-grab active:cursor-grabbing ${cfg.container}`}
-                style={{ touchAction: 'none' }} // Impede que o celular role a tela enquanto arrasta o toast
+                style={{ touchAction: 'none' }} 
             >
                 {breakdown.isFailed ? (
                     <div className="flex items-center justify-center gap-3 text-red-500 py-2">
