@@ -58,10 +58,9 @@ export const RewardToast = ({ breakdown }: RewardToastProps) => {
 
     const getThemeConfig = () => {
         let container = "";
-        let textMain = ""; // Cor para "Recompensa Obtida", "Total", e valores
-        let textMuted = ""; // Cor para labels "Valor Base", etc.
+        let textMain = ""; 
+        let textMuted = ""; 
         
-        // Identificadores de brilho
         const isDark = ['dark-amoled', 'soft-dark', 'navy', 'darcula', 'matrix'].includes(theme);
 
         switch(theme) {
@@ -73,12 +72,12 @@ export const RewardToast = ({ breakdown }: RewardToastProps) => {
                 textMuted = "text-zinc-500";
                 break;
             case 'dark-amoled': 
-                container = "bg-zinc-950 border-zinc-800 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8)]";
+                container = "bg-zinc-950 border-zinc-700 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8)]";
                 textMain = "text-white";
                 textMuted = "text-zinc-400";
                 break;
             case 'soft-dark': 
-                container = "bg-zinc-800 border-zinc-700 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.6)]";
+                container = "bg-zinc-800 border-zinc-600 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.6)]";
                 textMain = "text-white";
                 textMuted = "text-zinc-300";
                 break;
@@ -118,8 +117,8 @@ export const RewardToast = ({ breakdown }: RewardToastProps) => {
                 textMuted = "text-orange-600";
                 break;
             default:
-                container = "bg-white text-black border-zinc-200";
-                textMain = "text-black";
+                container = "bg-white border-zinc-200 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.15)]";
+                textMain = "text-zinc-950";
                 textMuted = "text-zinc-500";
         }
 
@@ -127,13 +126,12 @@ export const RewardToast = ({ breakdown }: RewardToastProps) => {
             container,
             textMain,
             textMuted,
-            // Cores de acento otimizadas para contraste
             modus: theme === 'matrix' ? 'text-[#00ff41]' : isDark ? 'text-blue-400' : 'text-blue-600',
             magic: theme === 'matrix' ? 'text-[#00ff41]' : isDark ? 'text-purple-400' : 'text-purple-600',
             boost: theme === 'matrix' ? 'text-[#00ff41]' : isDark ? 'text-orange-400' : 'text-orange-600',
             xp: theme === 'matrix' ? 'text-[#00ff41]' : 'text-purple-500',
             gold: theme === 'matrix' ? 'text-[#00ff41]' : 'text-yellow-500',
-            divider: theme === 'matrix' ? 'border-[#00ff41]/20' : 'border-current opacity-10'
+            divider: theme === 'matrix' ? 'border-[#00ff41]/20' : 'border-current opacity-15'
         };
     };
 
@@ -146,12 +144,12 @@ export const RewardToast = ({ breakdown }: RewardToastProps) => {
                 initial={{ opacity: 0, y: 50, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                className={`fixed bottom-28 md:bottom-12 left-1/2 md:left-auto md:right-12 -translate-x-1/2 md:translate-x-0 w-[92%] max-w-sm p-6 rounded-[2rem] z-[1000] border-2 transition-colors duration-300 ${cfg.container}`}
+                className={`fixed bottom-28 md:bottom-12 left-1/2 md:left-auto md:right-12 -translate-x-1/2 md:translate-x-0 w-[92%] max-w-sm p-6 rounded-[2rem] z-[1000] border-2 transition-colors duration-300 ${cfg.container} ${cfg.textMain}`}
             >
                 {breakdown.isFailed ? (
                     <div className="flex items-center justify-center gap-3 text-red-500 py-2">
                         <XCircle size={24} />
-                        <span className="uppercase text-sm tracking-widest font-black">Recompensa Anulada</span>
+                        <span className={`uppercase text-sm tracking-widest font-black ${cfg.textMain}`}>Recompensa Anulada</span>
                     </div>
                 ) : (
                     <div className="flex flex-col">
@@ -188,7 +186,7 @@ export const RewardToast = ({ breakdown }: RewardToastProps) => {
                         </div>
 
                         <div className={`flex justify-between items-center pt-5 border-t-2 ${cfg.divider}`}>
-                            <span className={`text-sm font-black uppercase tracking-widest ${cfg.textMain}`}>Total Acumulado</span>
+                            <span className={`text-sm font-black uppercase tracking-widest ${cfg.textMain}`}>Total</span>
                             <div className="flex gap-4 text-xl">
                                 <span className={`${cfg.xp} font-black flex items-center gap-1.5`}><motion.span>{displayedXp}</motion.span> <Star size={20} fill="currentColor" className="opacity-20" /></span>
                                 <span className={`${cfg.gold} font-black flex items-center gap-1.5`}><motion.span>{displayedGold}</motion.span> <Coins size={20} fill="currentColor" className="opacity-20" /></span>
