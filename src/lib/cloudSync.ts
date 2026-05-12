@@ -100,10 +100,22 @@ const applyCloudData = (data: any, pin: string) => {
 
     const localTasks = useTaskStore.getState();
     const cloudTasks = JSON.parse(decryptData(data.tasks, pin));
+    
+    // === CORREÇÃO: SINCRONIZAÇÃO DA NOVA FUNCIONALIDADE "BRAIN DUMP" ===
+    let mergedBrainDump = localTasks.brainDump;
+    if (cloudTasks.brainDump) {
+        const cloudTime = cloudTasks.brainDump.lastDumpAt || 0;
+        const localTime = localTasks.brainDump.lastDumpAt || 0;
+        if (cloudTime > localTime) {
+            mergedBrainDump = cloudTasks.brainDump;
+        }
+    }
+
     useTaskStore.setState({
         tasks: mergeArrays(localTasks.tasks, cloudTasks.tasks),
         folders: mergeArrays(localTasks.folders, cloudTasks.folders),
         routines: mergeArrays(localTasks.routines, cloudTasks.routines),
+        brainDump: mergedBrainDump, // Injeção à prova de falhas
     });
 
     const localHabits = useHabitStore.getState();
