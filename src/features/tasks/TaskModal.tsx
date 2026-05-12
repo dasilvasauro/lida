@@ -15,12 +15,13 @@ interface TaskModalProps {
   isOpen: boolean; 
   onClose: () => void; 
   taskToEdit?: Task | null; 
-  initialTitle?: string; // NOVO
+  initialTitle?: string; 
+  brainDumpItemId?: string; // NOVO: Link para amarrar o salvamento ao Brain Dump
   onSuccess?: (message: string) => void; 
 }
 
-export const TaskModal = ({ isOpen, onClose, taskToEdit, initialTitle, onSuccess }: TaskModalProps) => {
-  const { addTask, updateTask, tasks, folders, addFolder } = useTaskStore();
+export const TaskModal = ({ isOpen, onClose, taskToEdit, initialTitle, brainDumpItemId, onSuccess }: TaskModalProps) => {
+  const { addTask, updateTask, tasks, folders, addFolder, markBrainDumpItemConverted } = useTaskStore();
   const { inventory, useItem, level } = useEconomyStore();
   const { enableEditWindow, hasDismissedEditWarning, dismissEditWarning } = useConfigStore();
 
@@ -112,8 +113,18 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, initialTitle, onSuccess
       recurrence: (canBeRecurrent && recurrenceType !== 'none') ? { type: recurrenceType, weekdays: recurrenceType === 'weekly' ? selectedWeekdays : undefined, dayOfMonth: (recurrenceType === 'monthly' || recurrenceType === 'yearly') ? dateObj.getDate() : undefined, monthOfYear: recurrenceType === 'yearly' ? dateObj.getMonth() : undefined } : undefined,
     };
 
-    if (taskToEdit) { updateTask(taskToEdit.id, taskData); onSuccess?.('Tarefa atualizada!'); } 
-    else { addTask({ id: uuidv4(), createdAt: Date.now(), isCompleted: false, ...taskData } as Task); onSuccess?.('Tarefa criada!'); }
+    if (taskToEdit) { 
+        updateTask(taskToEdit.id, taskData); 
+        onSuccess?.('Tarefa atualizada!'); 
+    } else { 
+        addTask({ id: uuidv4(), createdAt: Date.now(), isCompleted: false, ...taskData } as Task); 
+        onSuccess?.('Tarefa criada!'); 
+        
+        // NOVO: Se o salvamento for bem sucedido, marca no Brain Dump
+        if (brainDumpItemId) {
+            markBrainDumpItemConverted(brainDumpItemId, 'task');
+        }
+    }
     onClose();
   };
 
