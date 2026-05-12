@@ -55,6 +55,7 @@ interface TaskState {
   setBrainDump: (items: BrainDumpItem[]) => void;
   updateBrainDumpItem: (id: string, quadrant: BrainDumpQuadrant) => void;
   removeBrainDumpItem: (id: string) => void;
+  markBrainDumpItemConverted: (id: string, type: 'task' | 'note') => void; // NOVO
 }
 
 export const useTaskStore = create<TaskState>()(
@@ -69,6 +70,14 @@ export const useTaskStore = create<TaskState>()(
       setBrainDump: (items) => set({ brainDump: { lastDumpAt: Date.now(), items } }),
       updateBrainDumpItem: (id, quadrant) => set((state) => ({ brainDump: { ...state.brainDump, items: state.brainDump.items.map(i => i.id === id ? { ...i, quadrant } : i) } })),
       removeBrainDumpItem: (id) => set((state) => ({ brainDump: { ...state.brainDump, items: state.brainDump.items.filter(i => i.id !== id) } })),
+      
+      // NOVA FUNÇÃO
+      markBrainDumpItemConverted: (id, type) => set((state) => ({ 
+        brainDump: { 
+            ...state.brainDump, 
+            items: state.brainDump.items.map(i => i.id === id ? { ...i, convertedTo: type } : i) 
+        } 
+      })),
 
       setGlobalModalOpen: (isOpen) => set({ isGlobalModalOpen: isOpen }), setRoutineModalOpen: (isOpen) => set({ isRoutineModalOpen: isOpen }),
       addTask: (task) => set((state) => ({ tasks: [...state.tasks, { ...task, updatedAt: Date.now() }] })),
