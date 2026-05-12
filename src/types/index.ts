@@ -55,13 +55,14 @@ export interface Note {
     isPinned?: boolean; 
 }
 
-// === NOVAS TIPAGENS DO BRAIN DUMP ===
+// === TIPAGENS DO BRAIN DUMP ===
 export type BrainDumpQuadrant = 'unorganized' | 'now' | 'schedule' | 'delegate' | 'incubator';
 
 export interface BrainDumpItem {
   id: string;
   text: string;
   quadrant: BrainDumpQuadrant;
+  convertedTo?: 'task' | 'note'; // NOVO: Indicador visual de conversão
 }
 
 export interface BrainDumpState {
