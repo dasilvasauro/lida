@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, AlertTriangle, Frown, CloudRain, Meh, Smile, Sparkles, Trash2, TrendingUp, Coins, X, Check, ArrowDownUp, Info, Repeat, CheckCircle2 } from 'lucide-react';
+import { Plus, AlertTriangle, Frown, CloudRain, Meh, Smile, Sparkles, Trash2, TrendingUp, Coins, X, Check, ArrowDownUp, Info, Repeat, CheckCircle2, BrainCircuit } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
 import { TaskModal } from './TaskModal';
 import { RoutineModal } from './RoutineModal';
 import { TaskItem } from './TaskItem';
+import { BrainDumpModal } from './BrainDumpModal';
 import { RewardToast, type RewardBreakdown } from '../../components/ui/RewardToast';
 import type { Task, Mood, Priority, RoutineTemplate } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
@@ -31,6 +32,10 @@ export const TaskDashboard = () => {
   const [isSortedByPriority, setIsSortedByPriority] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [infoModal, setInfoModal] = useState<{title: string, desc: string} | null>(null);
+
+  // BRAIN DUMP STATES
+  const [isBrainDumpOpen, setBrainDumpOpen] = useState(false);
+  const [brainDumpInitialTitle, setBrainDumpInitialTitle] = useState('');
 
   const [rewardBreakdown, setRewardBreakdown] = useState<RewardBreakdown | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -98,7 +103,7 @@ export const TaskDashboard = () => {
             setRewardBreakdown(breakdown); 
             addReward(breakdown.totalXp, breakdown.totalGold); 
         }
-        setTimeout(() => setRewardBreakdown(null), 6000); // Mais tempo para a animação
+        setTimeout(() => setRewardBreakdown(null), 6000); 
       } else {
         if (!task.isFailed) { 
             const breakdown = calculateTaskReward(task); 
@@ -149,12 +154,13 @@ export const TaskDashboard = () => {
   const moods: { value: Mood; icon: any; label: string }[] = [ { value: 'disappointed', icon: CloudRain, label: 'Desapontado' }, { value: 'annoyed', icon: Frown, label: 'Incomodado' }, { value: 'normal', icon: Meh, label: 'Normal' }, { value: 'happy', icon: Smile, label: 'Feliz' }, { value: 'radiant', icon: Sparkles, label: 'Radiante' } ];
   const filters: { id: typeof selectedFilter; label: string }[] = [ { id: 'today', label: 'Hoje' }, { id: 'week', label: 'Semana' }, { id: 'month', label: 'Mês' }, { id: 'all', label: 'Tudo' } ];
 
-  const hasLocalState = !!confirmDialog || isMenuOpen || isCreatingFolder || !!infoModal;
+  const hasLocalState = !!confirmDialog || isMenuOpen || isCreatingFolder || !!infoModal || isBrainDumpOpen;
   useBackHandler(hasLocalState, () => {
       const tStore = useTaskStore.getState();
       const cStore = useConfigStore.getState();
       if (tStore.isGlobalModalOpen || tStore.isRoutineModalOpen || tStore.isFocusModeOpen || cStore.isSettingsOpen || cStore.isVisionOpen || cStore.isGoogleConnectOpen || cStore.isChangelogOpen || cStore.isExitModalOpen) return false;
 
+      if (isBrainDumpOpen) return false; // BrainDumpModal has its own backHandler
       if (infoModal) { setInfoModal(null); return true; }
       if (confirmDialog) { setConfirmDialog(null); return true; }
       if (isCreatingFolder) { setIsCreatingFolder(false); setNewFolderName(''); return true; }
@@ -167,7 +173,15 @@ export const TaskDashboard = () => {
       <div className="max-w-4xl mx-auto px-6 md:px-8 pt-12 space-y-6">
 
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-zinc-100 dark:border-zinc-900">
-          <div><h1 className="text-3xl font-black tracking-tight">Tarefas</h1><p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium mt-1">Como vai? E o que tem pra hoje?</p></div>
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-black tracking-tight">Tarefas</h1>
+              <button onClick={() => setBrainDumpOpen(true)} className="mt-1 p-2 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 transition-colors" title="Brain Dump (Esvaziamento Mental)">
+                  <BrainCircuit size={20}/>
+              </button>
+            </div>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium mt-1">Como vai? E o que tem pra hoje?</p>
+          </div>
           <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
             <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900/80 rounded-xl w-full md:w-auto">
               {filters.map((f) => ( <button key={f.id} onClick={() => setFilter(f.id)} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${selectedFilter === f.id ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}`}>{f.label}</button> ))}
@@ -288,9 +302,25 @@ export const TaskDashboard = () => {
          </button>
       </div>
 
-      <TaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} taskToEdit={taskToEdit} onSuccess={showToast} />
+      <TaskModal 
+        isOpen={isModalOpen} 
+        onClose={() => { setIsModalOpen(false); setBrainDumpInitialTitle(''); }} 
+        taskToEdit={taskToEdit} 
+        initialTitle={brainDumpInitialTitle}
+        onSuccess={showToast} 
+      />
       <RoutineModal isOpen={isRoutineModalOpen} onClose={() => setRoutineModalOpen(false)} routineToEdit={routineToEdit} onSuccess={showToast} />
       <RewardToast breakdown={rewardBreakdown} />
+
+      <BrainDumpModal 
+        isOpen={isBrainDumpOpen}
+        onClose={() => setBrainDumpOpen(false)}
+        onConvertToTask={(title) => {
+           setBrainDumpInitialTitle(title);
+           setBrainDumpOpen(false);
+           setIsModalOpen(true);
+        }}
+      />
 
       <AnimatePresence>
         {toastMessage && ( <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black px-6 py-3 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] font-bold text-sm tracking-wide border border-zinc-800 dark:border-zinc-200">{toastMessage}</motion.div> )}
@@ -312,7 +342,7 @@ export const TaskDashboard = () => {
         )}
       </AnimatePresence>
 
-      {/* INFO MODAL */}
+      {/* INFO MODAL TIPO */}
       <AnimatePresence>
         {infoModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[2000] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">

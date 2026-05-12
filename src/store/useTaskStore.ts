@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Task, Mood, Folder, RoutineTemplate } from '../types';
+import type { Task, Mood, Folder, RoutineTemplate, BrainDumpState, BrainDumpItem, BrainDumpQuadrant } from '../types';
 import { format, addDays, addMonths } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 import { useConfigStore } from './useConfigStore';
@@ -35,6 +35,8 @@ interface TaskState {
   selectedFilter: 'today' | 'week' | 'month' | 'all'; selectedFolderId: string;
   activeFocusSession: { taskId: string; startTime: number; duration: number } | null;
   isFocusModeOpen: boolean; isGlobalModalOpen: boolean; isRoutineModalOpen: boolean;
+  
+  brainDump: BrainDumpState;
 
   setGlobalModalOpen: (isOpen: boolean) => void; setRoutineModalOpen: (isOpen: boolean) => void; 
   addTask: (task: Task) => void; toggleTaskCompletion: (taskId: string) => void; deleteTask: (taskId: string) => void;
@@ -49,15 +51,24 @@ interface TaskState {
   markTaskFailed: (taskId: string) => void; clearCompletedTasks: () => void;
   applyPowerUp: (taskId: string, type: 'respite' | 'relief' | 'magicDice') => void;
   processNewDay: (todayStr: string) => void;
+
+  setBrainDump: (items: BrainDumpItem[]) => void;
+  updateBrainDumpItem: (id: string, quadrant: BrainDumpQuadrant) => void;
+  removeBrainDumpItem: (id: string) => void;
 }
 
 export const useTaskStore = create<TaskState>()(
   persist(
     (set, get) => ({
-      // CORREÇÃO: Pasta Geral agora nasce no tempo 0
       tasks: [], folders: [{ id: 'default', name: 'Geral', updatedAt: 0 }], routines: [], dailyMood: null, moodHistory: {},
       selectedFilter: 'today', selectedFolderId: 'all', activeFocusSession: null, 
       isFocusModeOpen: false, isGlobalModalOpen: false, isRoutineModalOpen: false,
+
+      brainDump: { lastDumpAt: null, items: [] },
+
+      setBrainDump: (items) => set({ brainDump: { lastDumpAt: Date.now(), items } }),
+      updateBrainDumpItem: (id, quadrant) => set((state) => ({ brainDump: { ...state.brainDump, items: state.brainDump.items.map(i => i.id === id ? { ...i, quadrant } : i) } })),
+      removeBrainDumpItem: (id) => set((state) => ({ brainDump: { ...state.brainDump, items: state.brainDump.items.filter(i => i.id !== id) } })),
 
       setGlobalModalOpen: (isOpen) => set({ isGlobalModalOpen: isOpen }), setRoutineModalOpen: (isOpen) => set({ isRoutineModalOpen: isOpen }),
       addTask: (task) => set((state) => ({ tasks: [...state.tasks, { ...task, updatedAt: Date.now() }] })),

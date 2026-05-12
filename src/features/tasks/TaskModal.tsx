@@ -11,9 +11,15 @@ import { CustomTimePicker } from '../../components/ui/CustomTimePicker';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-interface TaskModalProps { isOpen: boolean; onClose: () => void; taskToEdit?: Task | null; onSuccess?: (message: string) => void; }
+interface TaskModalProps { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  taskToEdit?: Task | null; 
+  initialTitle?: string; // NOVO
+  onSuccess?: (message: string) => void; 
+}
 
-export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalProps) => {
+export const TaskModal = ({ isOpen, onClose, taskToEdit, initialTitle, onSuccess }: TaskModalProps) => {
   const { addTask, updateTask, tasks, folders, addFolder } = useTaskStore();
   const { inventory, useItem, level } = useEconomyStore();
   const { enableEditWindow, hasDismissedEditWarning, dismissEditWarning } = useConfigStore();
@@ -58,13 +64,13 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, onSuccess }: TaskModalP
       setSubtasks(taskToEdit.subtasks || []); setDuration(taskToEdit.duration || 30);
       setRecurrenceType(taskToEdit.recurrence?.type || 'none'); setSelectedWeekdays(taskToEdit.recurrence?.weekdays || []);
     } else if (isOpen) {
-      setTitle(''); setDescription(''); setStatus(''); setPriority('P4'); setType('normal'); setFolderId('default'); 
+      setTitle(initialTitle || ''); setDescription(''); setStatus(''); setPriority('P4'); setType('normal'); setFolderId('default'); 
       setDeadlineDate(''); setDeadlineTime(''); setStartDate(''); setEndDate('');
       setSubtasks([]); setDuration(30); setRecurrenceType('none'); setSelectedWeekdays([]);
       setShowDatePicker(false); setShowTimePicker(false); setIsCreatingFolder(false); setNewFolderName('');
     }
     if (isOpen) setShowConfirmClose(false);
-  }, [taskToEdit, isOpen]);
+  }, [taskToEdit, isOpen, initialTitle]);
 
   const checkIsDirty = () => {
     if (taskToEdit) {

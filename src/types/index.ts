@@ -54,3 +54,17 @@ export interface Note {
     isFavorite?: boolean;
     isPinned?: boolean; 
 }
+
+// === NOVAS TIPAGENS DO BRAIN DUMP ===
+export type BrainDumpQuadrant = 'unorganized' | 'now' | 'schedule' | 'delegate' | 'incubator';
+
+export interface BrainDumpItem {
+  id: string;
+  text: string;
+  quadrant: BrainDumpQuadrant;
+}
+
+export interface BrainDumpState {
+  lastDumpAt: number | null;
+  items: BrainDumpItem[];
+}
