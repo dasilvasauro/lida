@@ -11,7 +11,8 @@ import type { BrainDumpItem, BrainDumpQuadrant } from '../../types';
 interface BrainDumpModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConvertToTask: (title: string) => void;
+  // NOVO: Adicionado o id na chamada
+  onConvertToTask: (title: string, id: string) => void;
 }
 
 const quadrants: { id: BrainDumpQuadrant; label: string; desc: string; icon: any; color: string; bg: string }[] = [
@@ -22,7 +23,7 @@ const quadrants: { id: BrainDumpQuadrant; label: string; desc: string; icon: any
 ];
 
 export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpModalProps) => {
-  const { brainDump, setBrainDump, updateBrainDumpItem, removeBrainDumpItem } = useTaskStore();
+  const { brainDump, setBrainDump, updateBrainDumpItem, removeBrainDumpItem, markBrainDumpItemConverted } = useTaskStore();
   
   const [mode, setMode] = useState<'intro' | 'dumping' | 'organizing'>('intro');
   const [localItems, setLocalItems] = useState<BrainDumpItem[]>([]);
@@ -86,7 +87,9 @@ export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpMo
       createdAt: Date.now(),
       updatedAt: Date.now()
     });
-    removeBrainDumpItem(selectedItem.id);
+    
+    // NOVO: Apenas marca como convertido em vez de deletar
+    markBrainDumpItemConverted(selectedItem.id, 'note');
     setSelectedItem(null);
     showToast('Nota criada com sucesso!');
   };
@@ -200,11 +203,18 @@ export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpMo
                      Despejados ({unorganized.length})
                    </h3>
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                     {unorganized.map(item => (
-                       <button key={item.id} onClick={() => setSelectedItem(item)} className="text-left p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 shadow-sm hover:border-purple-500 transition-colors">
-                         <span className="font-medium text-sm text-zinc-900 dark:text-zinc-100 line-clamp-2">{item.text}</span>
-                       </button>
-                     ))}
+                     {unorganized.map(item => {
+                       const isConverted = !!item.convertedTo;
+                       return (
+                         <button key={item.id} onClick={() => !isConverted && setSelectedItem(item)} className={`text-left p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 shadow-sm transition-colors ${isConverted ? 'opacity-50 cursor-default grayscale' : 'hover:border-purple-500'}`}>
+                           <div className="flex justify-between items-start gap-2">
+                              <span className={`font-medium text-sm text-zinc-900 dark:text-zinc-100 line-clamp-2 ${isConverted ? 'line-through' : ''}`}>{item.text}</span>
+                              {item.convertedTo === 'task' && <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />}
+                              {item.convertedTo === 'note' && <NotebookPen size={16} className="text-blue-500 shrink-0 mt-0.5" />}
+                           </div>
+                         </button>
+                       )
+                     })}
                    </div>
                  </div>
                )}
@@ -220,11 +230,18 @@ export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpMo
                          <q.icon size={16} /> {q.label} ({qItems.length})
                        </h3>
                        <div className="space-y-3">
-                         {qItems.map(item => (
-                           <button key={item.id} onClick={() => setSelectedItem(item)} className="w-full text-left p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 shadow-sm hover:border-current transition-colors">
-                             <span className="font-medium text-sm text-zinc-900 dark:text-zinc-100 line-clamp-2">{item.text}</span>
-                           </button>
-                         ))}
+                         {qItems.map(item => {
+                           const isConverted = !!item.convertedTo;
+                           return (
+                             <button key={item.id} onClick={() => !isConverted && setSelectedItem(item)} className={`w-full text-left p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 shadow-sm transition-colors ${isConverted ? 'opacity-50 cursor-default grayscale' : 'hover:border-current'}`}>
+                               <div className="flex justify-between items-start gap-2">
+                                  <span className={`font-medium text-sm text-zinc-900 dark:text-zinc-100 line-clamp-2 ${isConverted ? 'line-through' : ''}`}>{item.text}</span>
+                                  {item.convertedTo === 'task' && <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />}
+                                  {item.convertedTo === 'note' && <NotebookPen size={16} className="text-blue-500 shrink-0 mt-0.5" />}
+                               </div>
+                             </button>
+                           )
+                         })}
                        </div>
                      </div>
                    );
@@ -278,7 +295,11 @@ export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpMo
 
               <span className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-3 block">Ações Imediatas</span>
               <div className="space-y-3">
-                  <button onClick={() => { onConvertToTask(selectedItem.text); removeBrainDumpItem(selectedItem.id); setSelectedItem(null); }} className="w-full p-4 flex items-center gap-3 rounded-xl bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 font-bold transition-colors">
+                  <button onClick={() => { 
+                      onConvertToTask(selectedItem.text, selectedItem.id); 
+                      // O Item não é deletado aqui! Deixamos o TaskModal salvar ou cancelar.
+                      setSelectedItem(null); 
+                  }} className="w-full p-4 flex items-center gap-3 rounded-xl bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 font-bold transition-colors">
                      <CheckCircle2 size={18} className="text-emerald-500" /> Converter em Tarefa
                   </button>
                   <button onClick={handleCreateNote} className="w-full p-4 flex items-center gap-3 rounded-xl bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 font-bold transition-colors">

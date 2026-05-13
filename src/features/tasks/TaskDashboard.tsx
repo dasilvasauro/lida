@@ -36,6 +36,7 @@ export const TaskDashboard = () => {
   // BRAIN DUMP STATES
   const [isBrainDumpOpen, setBrainDumpOpen] = useState(false);
   const [brainDumpInitialTitle, setBrainDumpInitialTitle] = useState('');
+  const [brainDumpItemId, setBrainDumpItemId] = useState<string | undefined>(undefined);
 
   const [rewardBreakdown, setRewardBreakdown] = useState<RewardBreakdown | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -160,7 +161,7 @@ export const TaskDashboard = () => {
       const cStore = useConfigStore.getState();
       if (tStore.isGlobalModalOpen || tStore.isRoutineModalOpen || tStore.isFocusModeOpen || cStore.isSettingsOpen || cStore.isVisionOpen || cStore.isGoogleConnectOpen || cStore.isChangelogOpen || cStore.isExitModalOpen) return false;
 
-      if (isBrainDumpOpen) return false; // BrainDumpModal has its own backHandler
+      if (isBrainDumpOpen) return false; 
       if (infoModal) { setInfoModal(null); return true; }
       if (confirmDialog) { setConfirmDialog(null); return true; }
       if (isCreatingFolder) { setIsCreatingFolder(false); setNewFolderName(''); return true; }
@@ -304,19 +305,26 @@ export const TaskDashboard = () => {
 
       <TaskModal 
         isOpen={isModalOpen} 
-        onClose={() => { setIsModalOpen(false); setBrainDumpInitialTitle(''); }} 
+        onClose={() => { 
+            setIsModalOpen(false); 
+            setBrainDumpInitialTitle(''); 
+            setBrainDumpItemId(undefined); 
+        }} 
         taskToEdit={taskToEdit} 
         initialTitle={brainDumpInitialTitle}
+        brainDumpItemId={brainDumpItemId}
         onSuccess={showToast} 
       />
+      
       <RoutineModal isOpen={isRoutineModalOpen} onClose={() => setRoutineModalOpen(false)} routineToEdit={routineToEdit} onSuccess={showToast} />
       <RewardToast breakdown={rewardBreakdown} />
 
       <BrainDumpModal 
         isOpen={isBrainDumpOpen}
         onClose={() => setBrainDumpOpen(false)}
-        onConvertToTask={(title) => {
+        onConvertToTask={(title, id) => {
            setBrainDumpInitialTitle(title);
+           setBrainDumpItemId(id);
            setBrainDumpOpen(false);
            setIsModalOpen(true);
         }}
