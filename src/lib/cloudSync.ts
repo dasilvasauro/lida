@@ -12,13 +12,14 @@ let unsubscribeSnapshot: (() => void) | null = null;
 let isApplyingCloudData = false;
 let syncTimeout: ReturnType<typeof setTimeout> | null = null;
 
-// Barreira de proteção contra Overwrites Cegos na Nuvem
 let hasSyncedOnce = false; 
 
-export const syncToCloud = async () => {
+export const syncToCloud = async (force = false) => {
   const config = useConfigStore.getState();
-  // IMPEDE O ENVIO SE: O download inicial não ocorreu, está em modo offline ou sem rede.
-  if (!hasSyncedOnce || config.isLocalMode || config.isManualOffline || !config.uid || !config.e2eePin || !navigator.onLine) return;
+  if (!config.uid || !config.e2eePin || config.isLocalMode) return;
+  
+  // Se force for falso, respeita os bloqueios offline e de primeira sincronização
+  if (!force && (!hasSyncedOnce || config.isManualOffline || !navigator.onLine)) return;
 
   const timestamp = Date.now();
 
@@ -37,8 +38,13 @@ export const syncToCloud = async () => {
     updatedAt: timestamp
   };
 
-  try { await setDoc(doc(db, 'users', config.uid), payload); } 
-  catch (error) { console.error("Erro ao sincronizar com a nuvem:", error); }
+  try { 
+      await setDoc(doc(db, 'users', config.uid), payload); 
+      hasSyncedOnce = true;
+  } catch (error) { 
+      console.error("Erro ao sincronizar com a nuvem:", error);
+      throw error; 
+  }
 };
 
 const applyCloudData = (data: any, pin: string) => {
@@ -101,7 +107,6 @@ const applyCloudData = (data: any, pin: string) => {
     const localTasks = useTaskStore.getState();
     const cloudTasks = JSON.parse(decryptData(data.tasks, pin));
     
-    // === CORREÇÃO: SINCRONIZAÇÃO DA NOVA FUNCIONALIDADE "BRAIN DUMP" ===
     let mergedBrainDump = localTasks.brainDump;
     if (cloudTasks.brainDump) {
         const cloudTime = cloudTasks.brainDump.lastDumpAt || 0;
@@ -115,7 +120,7 @@ const applyCloudData = (data: any, pin: string) => {
         tasks: mergeArrays(localTasks.tasks, cloudTasks.tasks),
         folders: mergeArrays(localTasks.folders, cloudTasks.folders),
         routines: mergeArrays(localTasks.routines, cloudTasks.routines),
-        brainDump: mergedBrainDump, // Injeção à prova de falhas
+        brainDump: mergedBrainDump,
     });
 
     const localHabits = useHabitStore.getState();
@@ -147,17 +152,22 @@ const applyCloudData = (data: any, pin: string) => {
 };
 
 export const syncFromCloud = async (uid: string, pin: string) => {
-  const snap = await getDoc(doc(db, 'users', uid));
-  hasSyncedOnce = true;
-  if (!snap.exists()) return 'no_data';
-  return applyCloudData(snap.data(), pin);
+  try {
+      const snap = await getDoc(doc(db, 'users', uid));
+      hasSyncedOnce = true;
+      if (!snap.exists()) return 'no_data';
+      return applyCloudData(snap.data(), pin);
+  } catch (error) {
+      console.error("Erro ao baixar da nuvem:", error);
+      throw error;
+  }
 };
 
 export const startCloudListener = (uid: string, pin: string) => {
   if (unsubscribeSnapshot) unsubscribeSnapshot(); 
   
   if (useConfigStore.getState().isManualOffline) {
-      hasSyncedOnce = true; // Libera o app para funcionar offline sem trancar a proteção de início
+      hasSyncedOnce = true; 
       return;
   }
 

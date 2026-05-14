@@ -6,7 +6,7 @@ import { useTaskStore } from '../../store/useTaskStore';
 import { useHabitStore } from '../../store/useHabitStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useVisionStore } from '../../store/useVisionStore';
-import { deleteCloudVault, syncToCloud, syncFromCloud } from '../../lib/cloudSync';
+import { deleteCloudVault, syncToCloud, syncFromCloud, startCloudListener } from '../../lib/cloudSync';
 
 export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const { theme, font, setTheme, setFont, uid, e2eePin, setChangelogOpen, isLocalMode, defaultDaysOff, setDefaultDaysOff, enableEditWindow, setEnableEditWindow, enablePunishments, setEnablePunishments, isManualOffline, setManualOffline } = useConfigStore();
@@ -29,7 +29,7 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
   const handleLogout = () => { localStorage.clear(); window.location.reload(); };
 
   const handleExport = () => {
-    const data = { tasks: localStorage.getItem('lida-tasks'), habits: localStorage.getItem('lida-habits-v5'), economy: localStorage.getItem('lida-economy-v3'), vision: localStorage.getItem('lida-vision'), config: localStorage.getItem('lida-config') };
+    const data = { tasks: localStorage.getItem('lida-tasks'), habits: localStorage.getItem('lida-habits-v5'), economy: localStorage.getItem('lida-economy-v3'), vision: localStorage.getItem('lida-vision'), config: localStorage.getItem('lida-config'), notes: localStorage.getItem('lida-notes'), reflections: localStorage.getItem('lida-reflections') };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = `lida-backup-${new Date().toISOString().split('T')[0]}.json`; a.click(); URL.revokeObjectURL(url);
@@ -47,7 +47,7 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
         if (data.economy) useEconomyStore.setState(JSON.parse(data.economy).state);
         if (data.vision) useVisionStore.setState(JSON.parse(data.vision).state);
         if (data.config) { const importedConfig = JSON.parse(data.config).state; useConfigStore.setState({ ...importedConfig, uid, e2eePin, isLocalMode }); }
-        if (uid && e2eePin && navigator.onLine) await syncToCloud();
+        if (uid && e2eePin && navigator.onLine) await syncToCloud(true);
         window.location.reload();
       } catch (err) { alert("O arquivo de backup é inválido ou está corrompido."); }
     };
@@ -137,8 +137,17 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
                   <div className="pr-4"><span className="font-bold text-sm text-zinc-900 dark:text-zinc-100 block">Modo Offline Manual</span><span className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 block leading-tight">Pausa a nuvem. Funciona localmente. Ao desativar, funde os dados de forma inteligente.</span></div>
                   <div className="relative shrink-0">
                      <input type="checkbox" className="peer sr-only" checked={isManualOffline} onChange={async (e) => { 
-                         const isChecked = e.target.checked; setManualOffline(isChecked); 
-                         if (!isChecked && uid && e2eePin && navigator.onLine) { await syncFromCloud(uid, e2eePin); await syncToCloud(); }
+                         const isChecked = e.target.checked; 
+                         setManualOffline(isChecked); 
+                         if (!isChecked && uid && e2eePin && navigator.onLine) { 
+                             try {
+                                 await syncFromCloud(uid, e2eePin); 
+                                 await syncToCloud(true); // Força envio
+                                 startCloudListener(uid, e2eePin); // Retoma o listener da nuvem!
+                             } catch (err) {
+                                 console.error("Erro ao desativar offline manual", err);
+                             }
+                         }
                      }} />
                      <div className="w-11 h-6 bg-zinc-300 dark:bg-zinc-700 rounded-full peer-checked:bg-blue-500 transition-colors"></div><div className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5"></div>
                   </div>

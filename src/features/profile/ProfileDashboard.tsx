@@ -57,8 +57,14 @@ export const ProfileDashboard = () => {
   const handleForceSync = async () => {
     if (!uid || !e2eePin || !navigator.onLine) return showToast("Não foi possível sincronizar. Verifique a rede.", "error");
     setIsSyncing(true);
-    try { await syncToCloud(); await syncFromCloud(uid, e2eePin); showToast("Sincronização realizada com sucesso!"); } 
-    catch (e) { showToast("Erro ao sincronizar dados.", "error"); } 
+    try { 
+        await syncToCloud(true); // FORÇA o upload dos dados locais (sua nota será enviada!)
+        await syncFromCloud(uid, e2eePin); 
+        showToast("Sincronização realizada com sucesso!"); 
+    } 
+    catch (e: any) { 
+        showToast("Erro: " + (e.message || "Problema de rede"), "error"); 
+    } 
     finally { setIsSyncing(false); }
   };
 
