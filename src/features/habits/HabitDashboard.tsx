@@ -44,29 +44,32 @@ export const HabitDashboard = () => {
     }
   };
 
-  const handleQuitterCheckin = (id: string, cycle: number) => {
+  const handleQuitterCheckin = (id: string, currentCycle: number) => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     let gold = 0; let xp = 0;
     
-    switch(cycle) {
-        case 1: gold = 60; xp = 100; break;
-        case 2: gold = 80; xp = 170; break;
-        case 3: gold = 100; xp = 210; break;
-        case 4: gold = 200; xp = 300; break;
-        case 5: gold = 250; xp = 350; break;
-        case 6: gold = 300; xp = 400; break;
-        case 7: gold = 500; xp = 500; break;
+    // Calcula o ciclo para o qual estamos pulando (0 para 1, etc. Se for 7 ele reiniciará e virará 1)
+    const nextCycle = currentCycle >= 7 ? 1 : currentCycle + 1;
+    
+    switch(nextCycle) {
+        case 1: gold = 60; xp = 100; break;   // 1º dia
+        case 2: gold = 80; xp = 170; break;   // 2º dia
+        case 3: gold = 100; xp = 210; break;  // 3º dia
+        case 4: gold = 200; xp = 300; break;  // 4º dia
+        case 5: gold = 250; xp = 350; break;  // 5º dia
+        case 6: gold = 300; xp = 400; break;  // 6º dia
+        case 7: gold = 500; xp = 500; break;  // 7º dia
         default: gold = 60; xp = 100; break;
     }
     
     addReward(xp, gold);
     
-    if (cycle === 7) {
-        // Usa o setState indireto para adicionar a carta surpresa
+    if (nextCycle === 7) {
+        // Carta Surpresa
         useEconomyStore.setState(s => ({ inventory: { ...s.inventory, luckyCard: s.inventory.luckyCard + 1 } }));
         showToast(`Check-in Triunfal! +${xp} XP, +${gold} Ouro e +1 Carta Surpresa!`, 'motivational');
     } else {
-        showToast(`Resistência Diária! +${xp} XP e +${gold} Ouro.`, 'success');
+        showToast(`Resistência (Dia ${nextCycle})! +${xp} XP e +${gold} Ouro.`, 'success');
     }
     
     checkinQuitter(id, todayStr);
@@ -76,10 +79,10 @@ export const HabitDashboard = () => {
      if (!quitterConfirm) return;
      if (quitterConfirm.type === 'relapse') {
          relapseQuitter(quitterConfirm.id);
-         showToast("O relapso foi registrado. Não desista. O Dia 1 começa agora.", "strict");
+         showToast("Recaída registrada. Punido em -50% XP/Ouro. O Dia 1 começa agora.", "strict");
      } else if (quitterConfirm.type === 'delete') {
          deleteQuitterItem(quitterConfirm.id);
-         showToast("Registro excluído com sucesso.");
+         showToast("Registro excluído. Você perdeu todo o seu Ouro e XP acumulados no nível.", "strict");
      }
      setQuitterConfirm(null);
   };
@@ -268,8 +271,8 @@ export const HabitDashboard = () => {
               <h3 className="text-xl font-black mb-2 text-white">{quitterConfirm.type === 'relapse' ? 'Registrar Recaída?' : 'Destruir Registro?'}</h3>
               <p className="text-zinc-400 mb-8 text-sm leading-relaxed">
                 {quitterConfirm.type === 'relapse' 
-                   ? 'Você tem certeza absoluta? Isso destruirá todos os seus dias limpos e zerará o seu progresso de volta ao Dia 1.' 
-                   : 'Isto apagará permanentemente o acompanhamento deste vício.'}
+                   ? 'Você perderá 50% de todo o seu XP no nível atual e 50% de todo o seu Ouro. O seu ciclo voltará ao Dia 0.' 
+                   : 'PUNIÇÃO MÁXIMA: Excluir este registro apagará 100% do seu Ouro e reiniciará o seu XP para o início do nível atual. Tem certeza absoluta?'}
               </p>
               <div className="flex gap-3">
                 <button onClick={() => setQuitterConfirm(null)} className="flex-1 p-4 rounded-xl bg-zinc-800 text-white font-bold hover:bg-zinc-700 transition-colors">Cancelar</button>
