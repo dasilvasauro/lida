@@ -136,7 +136,7 @@ const applyCloudData = (data: any, pin: string) => {
         habits: mergeArrays(localHabits.habits, cloudHabits.habits), 
         logs: mergeLogs(localHabits.logs, cloudHabits.logs), 
         modifiers: { ...localHabits.modifiers, ...cloudHabits.modifiers },
-        quitterItems: mergeArrays(localHabits.quitterItems || [], cloudHabits.quitterItems || []) // CORREÇÃO PARA O QUITTER
+        quitterItems: mergeArrays(localHabits.quitterItems || [], cloudHabits.quitterItems || [])
     });
 
     const localRef = useReflectionStore.getState();
