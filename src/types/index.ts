@@ -76,6 +76,6 @@ export interface QuitterItem {
   createdAt: number;
   lastRelapseAt: number;
   checkins: string[]; 
-  rewardCycle: number; 
+  rewardCycle: number; // Agora inicia em 0 e vai incrementando até 7
   updatedAt?: number;
 }
