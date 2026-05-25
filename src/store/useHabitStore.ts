@@ -3,13 +3,14 @@ import { persist } from 'zustand/middleware';
 import type { Habit, QuitterItem } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { useConfigStore } from './useConfigStore';
+import { useEconomyStore } from './useEconomyStore';
 
 interface HabitState {
   habits: Habit[];
   logs: Record<string, Record<string, number>>;
-  modifiers: Record<string, Record<string, 'freeze' | 'dayOff'>>; // Power-ups
+  modifiers: Record<string, Record<string, 'freeze' | 'dayOff'>>;
   
-  quitterItems: QuitterItem[]; // NOVA FUNCIONALIDADE
+  quitterItems: QuitterItem[];
 
   addHabit: (habit: Habit) => void;
   updateHabit: (id: string, updated: Partial<Habit>) => void;
@@ -19,7 +20,6 @@ interface HabitState {
   applyModifier: (habitId: string, date: string, type: 'freeze' | 'dayOff') => void;
   applyGlobalDayOff: (date: string) => void;
 
-  // MÉTODOS DO QUITTER
   addQuitterItem: (title: string) => void;
   updateQuitterItem: (id: string, updated: Partial<QuitterItem>) => void;
   deleteQuitterItem: (id: string) => void;
@@ -68,23 +68,52 @@ export const useHabitStore = create<HabitState>()(
         return { modifiers: newMods };
       }),
 
-      // IMPLEMENTAÇÃO QUITTER
+      // CRÍTICO: Ciclo de Recompensa inicial mudado para 0
       addQuitterItem: (title) => set((state) => ({
-          quitterItems: [...state.quitterItems, { id: uuidv4(), title, createdAt: Date.now(), lastRelapseAt: Date.now(), checkins: [], rewardCycle: 1, updatedAt: Date.now() }]
+          quitterItems: [...state.quitterItems, { id: uuidv4(), title, createdAt: Date.now(), lastRelapseAt: Date.now(), checkins: [], rewardCycle: 0, updatedAt: Date.now() }]
       })),
       updateQuitterItem: (id, updated) => set((state) => ({
           quitterItems: state.quitterItems.map(q => q.id === id ? { ...q, ...updated, updatedAt: Date.now() } : q)
       })),
+      
+      // PUNIÇÃO EXTREMA: Deletar um hábito ruim zera 100% do ouro e xp atuais
       deleteQuitterItem: (id) => {
           useConfigStore.getState().addTombstone(id);
+          const econ = useEconomyStore.getState();
+          // Guarda o nível atual do jogador, mas remove todo o progresso de XP e Ouro
+          const currentLevelBaseXp = Math.pow(econ.level - 1, 2) * 100;
+          useEconomyStore.setState({
+              xp: currentLevelBaseXp, // Reinicia no início do nível atual
+              gold: 0,
+              updatedAt: Date.now()
+          });
           set((state) => ({ quitterItems: state.quitterItems.filter(q => q.id !== id) }));
       },
-      relapseQuitter: (id) => set((state) => ({
-          quitterItems: state.quitterItems.map(q => q.id === id ? { ...q, lastRelapseAt: Date.now(), rewardCycle: 1, updatedAt: Date.now() } : q)
-      })),
+      
+      // PUNIÇÃO GRAVE: Recaída penaliza em 50% o XP acumulado no nível e 50% do ouro total
+      relapseQuitter: (id) => set((state) => {
+          const econ = useEconomyStore.getState();
+          const currentLevelBaseXp = Math.pow(econ.level - 1, 2) * 100;
+          const currentLevelProgressXp = econ.xp - currentLevelBaseXp;
+          
+          const newProgressXp = Math.max(0, Math.floor(currentLevelProgressXp * 0.5));
+          const newGold = Math.max(0, Math.floor(econ.gold * 0.5));
+          
+          useEconomyStore.setState({
+              xp: currentLevelBaseXp + newProgressXp,
+              gold: newGold,
+              updatedAt: Date.now()
+          });
+          
+          return {
+              quitterItems: state.quitterItems.map(q => q.id === id ? { ...q, lastRelapseAt: Date.now(), rewardCycle: 0, updatedAt: Date.now() } : q)
+          };
+      }),
+      
       checkinQuitter: (id, dateStr) => set((state) => ({
           quitterItems: state.quitterItems.map(q => {
               if (q.id === id && !q.checkins.includes(dateStr)) {
+                  // Aumenta o ciclo (de 0 para 1 no primeiro dia)
                   const nextCycle = q.rewardCycle >= 7 ? 1 : q.rewardCycle + 1;
                   return { ...q, checkins: [...q.checkins, dateStr], rewardCycle: nextCycle, updatedAt: Date.now() };
               }
