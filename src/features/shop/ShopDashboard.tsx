@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Coins, Star, Ticket, Dices, TrendingUp, AlertOctagon, AlertTriangle, Wind, CalendarHeart, Gift, Snowflake, Coffee, Clover, Play, Sparkles, Info, X, Palette, CheckCircle2, UserCog } from 'lucide-react';
+import { Coins, Star, Ticket, Dices, TrendingUp, AlertOctagon, AlertTriangle, Wind, CalendarHeart, Gift, Snowflake, Coffee, Clover, Play, Sparkles, Info, X, Palette, CheckCircle2, UserCog, Ban } from 'lucide-react';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useTaskStore } from '../../store/useTaskStore'; 
 import { useBackHandler, useConfigStore } from '../../store/useConfigStore';
@@ -97,6 +97,7 @@ export const ShopDashboard = () => {
     { id: 'relief', name: 'Alívio', desc: 'Aumenta prazo da tarefa em 1 dia.', cost: 200, icon: CalendarHeart },
     { id: 'bonusTask', name: 'Tarefa Bônus', desc: 'Permite criar 1 Tarefa Bônus extra.', cost: 200, icon: Gift },
     { id: 'changeModus', name: 'Novo Modus Operandi', desc: 'Permite trocar o seu Modus Operandi pela aba Perfil.', cost: 1000, icon: UserCog },
+    { id: 'extraQuitter', name: 'Espaço Quitter', desc: 'Permite monitorar mais um hábito ruim para ser destruído.', cost: 1700, icon: Ban },
   ];
   
   const premiumThemes = [
@@ -151,6 +152,11 @@ export const ShopDashboard = () => {
             <div className="min-w-[140px] p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 flex flex-col justify-between">
               <div className="flex items-center gap-2 mb-4 text-pink-500"><UserCog size={20} /><span className="font-bold text-sm">Troca Modus</span></div>
               <div className="flex justify-between items-end"><span className="font-black text-2xl">{inventory.changeModus}</span></div>
+            </div>
+
+            <div className="min-w-[140px] p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 flex flex-col justify-between">
+              <div className="flex items-center gap-2 mb-4 text-red-500"><Ban size={20} /><span className="font-bold text-sm">Espaço Quitter</span></div>
+              <div className="flex justify-between items-end"><span className="font-black text-2xl">{inventory.extraQuitter}</span></div>
             </div>
 
             <div className="min-w-[200px] p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/30 flex items-center gap-4 text-xs text-zinc-400 font-bold uppercase tracking-widest">Itens P0, P1, Bônus, Respiro e Alívio são aplicados no menu de Tarefas.</div>

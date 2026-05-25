@@ -18,7 +18,6 @@ export const syncToCloud = async (force = false) => {
   const config = useConfigStore.getState();
   if (!config.uid || !config.e2eePin || config.isLocalMode) return;
   
-  // Se force for falso, respeita os bloqueios offline e de primeira sincronização
   if (!force && (!hasSyncedOnce || config.isManualOffline || !navigator.onLine)) return;
 
   const timestamp = Date.now();
@@ -133,7 +132,12 @@ const applyCloudData = (data: any, pin: string) => {
        }
        return result;
     };
-    useHabitStore.setState({ habits: mergeArrays(localHabits.habits, cloudHabits.habits), logs: mergeLogs(localHabits.logs, cloudHabits.logs), modifiers: { ...localHabits.modifiers, ...cloudHabits.modifiers } });
+    useHabitStore.setState({ 
+        habits: mergeArrays(localHabits.habits, cloudHabits.habits), 
+        logs: mergeLogs(localHabits.logs, cloudHabits.logs), 
+        modifiers: { ...localHabits.modifiers, ...cloudHabits.modifiers },
+        quitterItems: mergeArrays(localHabits.quitterItems || [], cloudHabits.quitterItems || []) // CORREÇÃO PARA O QUITTER
+    });
 
     const localRef = useReflectionStore.getState();
     const cloudRef = JSON.parse(decryptData(data.reflections, pin));
