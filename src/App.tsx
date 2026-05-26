@@ -87,15 +87,20 @@ function App() {
 
     const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') { const handled = executeBackAction(); if (!handled) window.history.back(); } };
     const handleForceExit = () => { window.history.back(); setTimeout(() => window.close(), 100); };
+    
+    // === RESTAURAÇÃO: Escuta do Gesto de Swipe da Navbar ===
+    const handleInternalBack = () => { executeBackAction(); };
 
     window.addEventListener('popstate', handlePopState);
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('force-app-exit', handleForceExit);
+    window.addEventListener('lida-internal-back', handleInternalBack as EventListener);
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('force-app-exit', handleForceExit);
+      window.removeEventListener('lida-internal-back', handleInternalBack as EventListener);
       document.removeEventListener('click', forceLockOnInteract);
       document.removeEventListener('touchstart', forceLockOnInteract);
     };
@@ -115,7 +120,6 @@ function App() {
     return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); };
   }, [config.uid, config.e2eePin, config.isLocalMode, config.isManualOffline]);
 
-  // CORREÇÃO CRÍTICA: isManualOffline adicionado às dependências. Se ficar offline, o motor "desliga" a nuvem fisicamente.
   useEffect(() => {
     if (!config.isLocalMode && !config.isManualOffline && config.uid && config.e2eePin && config.isOnboarded) {
       startCloudListener(config.uid, config.e2eePin); 

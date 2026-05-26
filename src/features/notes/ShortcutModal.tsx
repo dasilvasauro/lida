@@ -210,7 +210,7 @@ export const ShortcutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
                              drag={shortcutCategories.length > 1 ? "x" : false}
                              dragConstraints={{ left: 0, right: 0 }}
                              dragElastic={0.2}
-                             onDragEnd={(e, { offset }) => {
+                             onDragEnd={(_, { offset }) => { // CORRIGIDO AQUI (Substituído o 'e' por '_')
                                 if (offset.x < -80) setCurrentIndex(i => i < shortcutCategories.length - 1 ? i + 1 : 0);
                                 else if (offset.x > 80) setCurrentIndex(i => i > 0 ? i - 1 : shortcutCategories.length - 1);
                              }}
