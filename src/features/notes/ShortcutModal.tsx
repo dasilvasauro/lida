@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
-import { X, Terminal, Plus, Copy, Trash2, Check, ChevronLeft, ChevronRight, Edit2, GripVertical, EyeOff, Eye } from 'lucide-react';
+import { X, Terminal, SplitSquareHorizontal, Plus, Copy, Trash2, Check, ChevronLeft, ChevronRight, Edit2, GripVertical, EyeOff, Eye } from 'lucide-react';
 import { useNoteStore } from '../../store/useNoteStore';
 import { useBackHandler } from '../../store/useConfigStore';
 import { v4 as uuidv4 } from 'uuid';
@@ -41,7 +41,8 @@ const MarqueeText = ({ text, className }: { text: string, className?: string }) 
    }, [text]);
 
    return (
-      <div ref={containerRef} className="flex-1 overflow-hidden relative flex items-center marquee-mask min-w-0 h-full">
+      // A máscara (fade) só é aplicada se houver overflow
+      <div ref={containerRef} className={`flex-1 overflow-hidden relative flex items-center min-w-0 h-full ${isOverflowing ? 'marquee-mask' : ''}`}>
          <span ref={textRef} className={`absolute invisible whitespace-nowrap ${className}`} style={{ paddingRight: '2rem' }}>{text}</span>
 
          <motion.div
@@ -344,7 +345,7 @@ export const ShortcutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
                  )}
               </div>
 
-              {/* === MODAL DE CRIAR COLEÇÃO === */}
+              {/* CRIAR NOVA COLEÇÃO (MODAL INTERNO) */}
               <AnimatePresence>
                  {isAddOpen && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-4 backdrop-blur-md">
