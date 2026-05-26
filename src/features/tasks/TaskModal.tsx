@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Zap, Target, Timer, Gift, CheckCircle2, Calendar, Clock, Plus, RotateCcw, Info, Lock, Check, AlertTriangle, Footprints } from 'lucide-react';
+import { X, Zap, Timer, Gift, CheckCircle2, Calendar, Clock, Plus, RotateCcw, Info, Lock, Check, AlertTriangle, Footprints } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
