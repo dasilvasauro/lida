@@ -130,19 +130,39 @@ function App() {
     }
   }, [config.uid, config.e2eePin, config.isOnboarded, config.isLocalMode, config.isManualOffline]);
 
-  // === MOTOR GLOBAL DO POMODORO ===
+  // === MOTOR GLOBAL DO POMODORO E SINTETIZADOR NATIVO ===
   useEffect(() => {
-      const interval = setInterval(() => {
-          useTaskStore.getState().tickPomodoro();
-      }, 1000);
-      return () => clearInterval(interval);
-  }, []);
+      let audioCtx: AudioContext | null = null;
+      const getAudioCtx = () => {
+         if (!audioCtx) {
+            audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+         }
+         if (audioCtx.state === 'suspended') audioCtx.resume();
+         return audioCtx;
+      };
 
-  // === SINTETIZADOR DE ÁUDIO NATIVO ===
-  useEffect(() => {
+      const playTick = () => {
+         try {
+            const ctx = getAudioCtx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            
+            // Som curto e abafado simulando um relógio mecânico (tic-tac)
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(120, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.05);
+            gain.gain.setValueAtTime(0.015, ctx.currentTime); // Volume bem baixo para não incomodar
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+            
+            osc.start(ctx.currentTime); 
+            osc.stop(ctx.currentTime + 0.05);
+         } catch(e) {}
+      };
+
       const playBell = () => {
           try {
-              const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+              const ctx = getAudioCtx();
               const osc = ctx.createOscillator();
               const gain = ctx.createGain();
               osc.connect(gain); gain.connect(ctx.destination);
@@ -157,7 +177,7 @@ function App() {
 
       const playChime = () => {
            try {
-              const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+              const ctx = getAudioCtx();
               const osc = ctx.createOscillator();
               const gain = ctx.createGain();
               osc.connect(gain); gain.connect(ctx.destination);
@@ -175,7 +195,16 @@ function App() {
       window.addEventListener('pomodoro-ring', handleRing);
       window.addEventListener('pomodoro-voucher', handleVoucher);
 
+      const interval = setInterval(() => {
+          const p = useTaskStore.getState().pomodoro;
+          if (p.isActive && p.soundEnabled) {
+              playTick();
+          }
+          useTaskStore.getState().tickPomodoro();
+      }, 1000);
+
       return () => {
+          clearInterval(interval);
           window.removeEventListener('pomodoro-ring', handleRing);
           window.removeEventListener('pomodoro-voucher', handleVoucher);
       };
