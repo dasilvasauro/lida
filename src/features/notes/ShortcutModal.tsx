@@ -4,7 +4,7 @@ import { X, Terminal, SplitSquareHorizontal, Plus, Copy, Trash2, Check, ChevronL
 import { useNoteStore } from '../../store/useNoteStore';
 import { useBackHandler } from '../../store/useConfigStore';
 import { v4 as uuidv4 } from 'uuid';
-import type { ShortcutCategory, ShortcutColor, ShortcutType } from '../../types';
+import type { ShortcutColor, ShortcutType } from '../../types';
 
 const catStyles: Record<ShortcutColor, { bg: string, border: string, text: string }> = {
   slate: { bg: 'bg-slate-900', border: 'border-slate-800', text: 'text-slate-100' },
