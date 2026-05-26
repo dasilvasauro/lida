@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import type { StateStorage } from 'zustand/middleware';
 import type { Task, Mood, Folder, RoutineTemplate, BrainDumpState, BrainDumpItem, BrainDumpQuadrant, PomodoroState } from '../types';
 import { format, addDays, addMonths } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
@@ -104,7 +105,6 @@ export const useTaskStore = create<TaskState>()(
         }
 
         let newMode: 'focus' | 'break' = p.mode;
-        // CORREÇÃO: Forçando a tipagem explícita para boolean
         let newIsActive: boolean = p.isActive; 
 
         if (newTimeLeft <= 0) {
