@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
-import type { Task, Mood, Folder, RoutineTemplate, BrainDumpState, BrainDumpItem, BrainDumpQuadrant } from '../types';
+import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
+import type { Task, Mood, Folder, RoutineTemplate, BrainDumpState, BrainDumpItem, BrainDumpQuadrant, PomodoroState } from '../types';
 import { format, addDays, addMonths } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 import { useConfigStore } from './useConfigStore';
@@ -30,7 +30,7 @@ const calculateNextRecurrence = (currentDateStr: string | undefined, recurrence:
   return null;
 };
 
-// OFUSCAÇÃO
+// OFUSCAÇÃO DO COFRE LOCAL
 const obfuscatedStorage: StateStorage = {
   getItem: (name) => {
     const str = localStorage.getItem(name);
@@ -47,6 +47,8 @@ interface TaskState {
   activeFocusSession: { taskId: string; startTime: number; duration: number } | null;
   isFocusModeOpen: boolean; isGlobalModalOpen: boolean; isRoutineModalOpen: boolean;
   brainDump: BrainDumpState;
+  
+  pomodoro: PomodoroState; 
 
   setGlobalModalOpen: (isOpen: boolean) => void; setRoutineModalOpen: (isOpen: boolean) => void; 
   addTask: (task: Task) => void; toggleTaskCompletion: (taskId: string) => void; deleteTask: (taskId: string) => void;
@@ -65,6 +67,9 @@ interface TaskState {
   updateBrainDumpItem: (id: string, quadrant: BrainDumpQuadrant) => void;
   removeBrainDumpItem: (id: string) => void;
   markBrainDumpItemConverted: (id: string, type: 'task' | 'note') => void;
+
+  updatePomodoro: (partial: Partial<PomodoroState>) => void;
+  tickPomodoro: () => void;
 }
 
 export const useTaskStore = create<TaskState>()(
@@ -74,6 +79,48 @@ export const useTaskStore = create<TaskState>()(
       selectedFilter: 'today', selectedFolderId: 'all', activeFocusSession: null, 
       isFocusModeOpen: false, isGlobalModalOpen: false, isRoutineModalOpen: false,
       brainDump: { lastDumpAt: null, items: [] },
+
+      pomodoro: { isOpen: false, isMinimized: false, isActive: false, mode: 'focus', timeLeft: 25 * 60, focusDuration: 25, breakDuration: 5, accumulatedSeconds: 0, soundEnabled: true },
+
+      updatePomodoro: (partial) => set((state) => ({ pomodoro: { ...state.pomodoro, ...partial } })),
+      
+      tickPomodoro: () => set((state) => {
+        const p = state.pomodoro;
+        if (!p.isActive) return state;
+
+        let newTimeLeft = p.timeLeft - 1;
+        let newAccumulated = p.accumulatedSeconds;
+
+        if (p.mode === 'focus') {
+            newAccumulated += 1;
+            // Farma Vouchers a cada 60 min de foco
+            if (newAccumulated >= 3600) {
+                setTimeout(() => {
+                    useEconomyStore.getState().addVouchers(1);
+                    window.dispatchEvent(new CustomEvent('pomodoro-voucher'));
+                }, 0);
+                newAccumulated -= 3600;
+            }
+        }
+
+        let newMode: 'focus' | 'break' = p.mode;
+        // CORREÇÃO: Forçando a tipagem explícita para boolean
+        let newIsActive: boolean = p.isActive; 
+
+        if (newTimeLeft <= 0) {
+            setTimeout(() => window.dispatchEvent(new CustomEvent('pomodoro-ring')), 0); 
+            if (p.mode === 'focus') {
+                newMode = 'break';
+                newTimeLeft = p.breakDuration * 60;
+            } else {
+                newMode = 'focus';
+                newTimeLeft = p.focusDuration * 60;
+                newIsActive = false; 
+            }
+        }
+
+        return { pomodoro: { ...p, timeLeft: newTimeLeft, accumulatedSeconds: newAccumulated, mode: newMode, isActive: newIsActive } };
+      }),
 
       setBrainDump: (items) => set({ brainDump: { lastDumpAt: Date.now(), items } }),
       updateBrainDumpItem: (id, quadrant) => set((state) => ({ brainDump: { ...state.brainDump, items: state.brainDump.items.map(i => i.id === id ? { ...i, quadrant } : i) } })),

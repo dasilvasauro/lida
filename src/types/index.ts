@@ -79,7 +79,6 @@ export interface QuitterItem {
   updatedAt?: number;
 }
 
-// === TIPAGENS DE ATALHOS (SHORTCUTS) ===
 export type ShortcutColor = 'slate' | 'gray' | 'neutral' | 'red' | 'orange' | 'lime' | 'teal' | 'sky';
 export type ShortcutType = 'keys' | 'command';
 
@@ -97,4 +96,17 @@ export interface ShortcutCategory {
   items: ShortcutItem[];
   createdAt: number;
   updatedAt?: number;
+}
+
+// === TIPAGENS DO POMODORO ===
+export interface PomodoroState {
+  isOpen: boolean;
+  isMinimized: boolean;
+  isActive: boolean;
+  mode: 'focus' | 'break';
+  timeLeft: number;
+  focusDuration: number;
+  breakDuration: number;
+  accumulatedSeconds: number;
+  soundEnabled: boolean;
 }

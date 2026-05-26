@@ -14,8 +14,9 @@ import { DailySummaryModal } from './features/daily/DailySummaryModal';
 import { Navbar, type Tab } from './components/layout/Navbar';
 import { AnimatePresence, motion } from 'framer-motion';
 import { startCloudListener, stopCloudListener, setupAutoSync, syncToCloud } from './lib/cloudSync';
-import { WifiOff, LogOut, CloudLightning, CloudOff } from 'lucide-react';
+import { WifiOff, LogOut, CloudLightning, CloudOff, Timer, X } from 'lucide-react';
 import { LevelUpModal } from './components/ui/LevelUpModal';
+import { PomodoroModal } from './features/pomodoro/PomodoroModal';
 
 function App() {
   const config = useConfigStore();
@@ -88,7 +89,6 @@ function App() {
     const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') { const handled = executeBackAction(); if (!handled) window.history.back(); } };
     const handleForceExit = () => { window.history.back(); setTimeout(() => window.close(), 100); };
     
-    // === RESTAURAÇÃO: Escuta do Gesto de Swipe da Navbar ===
     const handleInternalBack = () => { executeBackAction(); };
 
     window.addEventListener('popstate', handlePopState);
@@ -130,11 +130,85 @@ function App() {
     }
   }, [config.uid, config.e2eePin, config.isOnboarded, config.isLocalMode, config.isManualOffline]);
 
+  // === MOTOR GLOBAL DO POMODORO ===
+  useEffect(() => {
+      const interval = setInterval(() => {
+          useTaskStore.getState().tickPomodoro();
+      }, 1000);
+      return () => clearInterval(interval);
+  }, []);
+
+  // === SINTETIZADOR DE ÁUDIO NATIVO ===
+  useEffect(() => {
+      const playBell = () => {
+          try {
+              const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.connect(gain); gain.connect(ctx.destination);
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(800, ctx.currentTime);
+              osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 1.5);
+              gain.gain.setValueAtTime(0.8, ctx.currentTime);
+              gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.5);
+              osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 1.5);
+          } catch(e) {}
+      };
+
+      const playChime = () => {
+           try {
+              const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.connect(gain); gain.connect(ctx.destination);
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(1200, ctx.currentTime);
+              gain.gain.setValueAtTime(0.5, ctx.currentTime);
+              gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1);
+              osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 1);
+          } catch(e) {}
+      };
+
+      const handleRing = () => { if (useTaskStore.getState().pomodoro.soundEnabled) playBell(); };
+      const handleVoucher = () => { if (useTaskStore.getState().pomodoro.soundEnabled) playChime(); };
+
+      window.addEventListener('pomodoro-ring', handleRing);
+      window.addEventListener('pomodoro-voucher', handleVoucher);
+
+      return () => {
+          window.removeEventListener('pomodoro-ring', handleRing);
+          window.removeEventListener('pomodoro-voucher', handleVoucher);
+      };
+  }, []);
+
+  const formatTime = (seconds: number) => {
+      const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+      const s = (seconds % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+  };
+
   return (
     <ThemeWrapper>
       <LevelUpModal />
+      <PomodoroModal />
       
       <AnimatePresence>
+        {/* BARRA GLOBAL DO POMODORO MINIMIZADO */}
+        {tasks.pomodoro.isOpen && tasks.pomodoro.isMinimized && (
+           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} 
+              className="bg-red-600 text-white font-bold text-xs py-2.5 px-6 flex justify-between items-center z-[999] relative cursor-pointer shadow-md" 
+              onClick={() => tasks.updatePomodoro({ isMinimized: false })}>
+              <div className="flex items-center gap-2">
+                 <Timer size={14} className={tasks.pomodoro.isActive ? "animate-pulse" : ""} />
+                 <span className="uppercase tracking-widest text-[10px]">Pomodoro {tasks.pomodoro.mode === 'focus' ? 'Foco' : 'Pausa'}</span>
+              </div>
+              <div className="flex items-center gap-4">
+                 <span className="font-mono text-sm tracking-widest">{formatTime(tasks.pomodoro.timeLeft)}</span>
+                 <button onClick={(e) => { e.stopPropagation(); tasks.updatePomodoro({ isOpen: false }); }} className="p-1 hover:bg-red-700 rounded-full transition-colors"><X size={14}/></button>
+              </div>
+           </motion.div>
+        )}
+
         {config.isManualOffline && !config.isLocalMode && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-blue-500 text-white font-bold text-xs py-2 px-4 flex justify-center items-center gap-2 z-[999] relative">
             <CloudOff size={14} /> Offline Manual. Salvando apenas no dispositivo.
