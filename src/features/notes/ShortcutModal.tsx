@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
-import { X, Terminal, SplitSquareHorizontal, Plus, Copy, Trash2, Check, ChevronLeft, ChevronRight, Edit2, GripVertical, EyeOff, Eye } from 'lucide-react';
+import { X, Terminal, Plus, Copy, Trash2, Check, ChevronLeft, ChevronRight, Edit2, GripVertical, EyeOff, Eye } from 'lucide-react';
 import { useNoteStore } from '../../store/useNoteStore';
 import { useBackHandler } from '../../store/useConfigStore';
 import { v4 as uuidv4 } from 'uuid';
@@ -58,7 +58,7 @@ const MarqueeText = ({ text, className }: { text: string, className?: string }) 
 };
 
 // === LINHA DO ATALHO (REORDENÁVEL E COMPACTA) ===
-const ShortcutItemRow = ({ item, hideLabels, style, onRemove }: { item: ShortcutItem, hideLabels: boolean, style: any, onRemove: (id: string) => void }) => {
+const ShortcutItemRow = ({ item, hideLabels, onRemove }: { item: ShortcutItem, hideLabels: boolean, style: any, onRemove: (id: string) => void }) => {
     const dragControls = useDragControls();
     const [copiedId, setCopiedId] = useState<string | null>(null);
 
