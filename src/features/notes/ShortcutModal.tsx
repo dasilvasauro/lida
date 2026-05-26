@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
-import { X, Terminal, Plus, Copy, Trash2, Check, ChevronLeft, ChevronRight, Edit2, GripVertical, EyeOff, Eye } from 'lucide-react';
+import { X, Terminal, SplitSquareHorizontal, Plus, Copy, Trash2, Check, ChevronLeft, ChevronRight, Edit2, GripVertical, EyeOff, Eye } from 'lucide-react';
 import { useNoteStore } from '../../store/useNoteStore';
 import { useBackHandler } from '../../store/useConfigStore';
 import { v4 as uuidv4 } from 'uuid';
@@ -19,10 +19,9 @@ const catStyles: Record<ShortcutColor, { bg: string, border: string, text: strin
 
 const quickKeys = ['Ctrl', 'Alt', 'Shift', 'Cmd', 'Win', 'Tab', 'Enter', 'Esc', 'Space', 'Del', 'Up', 'Down', 'Left', 'Right'];
 
-// === COMPONENTE MARQUEE (SCROLL CONTÍNUO) ===
+// === COMPONENTE MARQUEE (SCROLL CONTÍNUO INTELIGENTE E PING-PONG) ===
 const MarqueeText = ({ text, className }: { text: string, className?: string }) => {
-   const [isOverflowing, setIsOverflowing] = useState(false);
-   const [contentWidth, setContentWidth] = useState(0);
+   const [overflowAmount, setOverflowAmount] = useState(0);
    const containerRef = useRef<HTMLDivElement>(null);
    const textRef = useRef<HTMLSpanElement>(null);
 
@@ -31,34 +30,45 @@ const MarqueeText = ({ text, className }: { text: string, className?: string }) 
          if (containerRef.current && textRef.current) {
             const cWidth = containerRef.current.clientWidth;
             const tWidth = textRef.current.scrollWidth;
-            setIsOverflowing(tWidth > cWidth);
-            setContentWidth(tWidth);
+            setOverflowAmount(Math.max(0, tWidth - cWidth));
          }
       };
+
       checkOverflow();
-      window.addEventListener('resize', checkOverflow);
-      return () => window.removeEventListener('resize', checkOverflow);
+      
+      // Assiste ativamente as mudanças de largura (ex: ao clicar no Olho de ocultar labels)
+      const observer = new ResizeObserver(() => checkOverflow());
+      if (containerRef.current) observer.observe(containerRef.current);
+      
+      return () => observer.disconnect();
    }, [text]);
 
+   const isOverflowing = overflowAmount > 0;
+
    return (
-      // A máscara (fade) só é aplicada se houver overflow
       <div ref={containerRef} className={`flex-1 overflow-hidden relative flex items-center min-w-0 h-full ${isOverflowing ? 'marquee-mask' : ''}`}>
-         <span ref={textRef} className={`absolute invisible whitespace-nowrap ${className}`} style={{ paddingRight: '2rem' }}>{text}</span>
+         {/* Elemento invisível que serve apenas para o ResizeObserver medir a largura real */}
+         <span ref={textRef} className={`absolute invisible whitespace-nowrap ${className}`}>{text}</span>
 
          <motion.div
-           animate={isOverflowing ? { x: [0, -contentWidth] } : { x: 0 }}
-           transition={isOverflowing ? { repeat: Infinity, duration: Math.max(text.length * 0.15, 3), ease: 'linear' } : {}}
+           animate={isOverflowing ? { x: [0, -overflowAmount] } : { x: 0 }}
+           transition={isOverflowing ? { 
+               repeat: Infinity, 
+               repeatType: "reverse", // Vai até o fim e volta (Ping-Pong)
+               duration: Math.max(overflowAmount * 0.04, 2.5), // Mais devagar
+               ease: 'linear',
+               repeatDelay: 1.5 // Pausa de 1.5s nas extremidades
+           } : {}}
            className="flex whitespace-nowrap min-w-max h-full items-center"
          >
-            <div className={`pr-8 ${className}`}>{text}</div>
-            {isOverflowing && <div className={`pr-8 ${className}`}>{text}</div>}
+            <div className={`${className}`}>{text}</div>
          </motion.div>
       </div>
    );
 };
 
 // === LINHA DO ATALHO (REORDENÁVEL E COMPACTA) ===
-const ShortcutItemRow = ({ item, hideLabels, onRemove }: { item: ShortcutItem, hideLabels: boolean, style: any, onRemove: (id: string) => void }) => {
+const ShortcutItemRow = ({ item, hideLabels, style, onRemove }: { item: ShortcutItem, hideLabels: boolean, style: any, onRemove: (id: string) => void }) => {
     const dragControls = useDragControls();
     const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -73,7 +83,7 @@ const ShortcutItemRow = ({ item, hideLabels, onRemove }: { item: ShortcutItem, h
             value={item}
             dragListener={false}
             dragControls={dragControls}
-            className="flex flex-row items-center justify-between gap-2 px-3 py-1.5 border-b border-white/5 bg-black/20 group hover:bg-black/30 transition-colors w-full shrink-0"
+            className="flex flex-row items-center justify-between gap-2 px-3 py-1.5 border-b border-white/5 bg-black/20 group hover:bg-black/30 transition-colors w-full shrink-0 relative"
         >
             <div className="cursor-grab touch-none p-1 shrink-0" onPointerDown={(e) => dragControls.start(e)}>
                 <GripVertical size={16} className="text-white/20 opacity-30 group-hover:opacity-100" />
@@ -85,11 +95,11 @@ const ShortcutItemRow = ({ item, hideLabels, onRemove }: { item: ShortcutItem, h
                 </span>
             )}
 
-            <div className="flex-1 flex justify-end min-w-0 overflow-hidden h-full">
+            <div className="flex-1 flex justify-end min-w-0 overflow-hidden h-full py-0.5">
                 {item.type === 'keys' ? (
                     <div className="flex gap-1.5 flex-wrap justify-end">
                         {item.value.split('+').map((k: string, idx: number) => (
-                            <kbd key={idx} className="px-1.5 py-0.5 md:px-2 md:py-1 bg-zinc-900 border-b-2 border-zinc-700 rounded text-[9px] md:text-[10px] font-black shadow-md uppercase tracking-wider text-white min-w-[1.5rem] text-center inline-block font-mono">
+                            <kbd key={idx} className="px-1.5 py-0.5 md:px-2 md:py-1 bg-zinc-950 border-b-2 border-zinc-700 rounded text-[9px] md:text-[10px] font-black shadow-md uppercase tracking-wider text-white min-w-[1.5rem] text-center inline-block font-mono">
                                 {k.trim()}
                             </kbd>
                         ))}
@@ -312,17 +322,20 @@ export const ShortcutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
                              animate={{ opacity: 1, scale: 1 }}
                              exit={{ opacity: 0, scale: 0.98 }}
                              transition={{ duration: 0.15 }}
-                             drag={shortcutCategories.length > 1 ? "x" : false}
-                             dragDirectionLock
-                             dragConstraints={{ left: 0, right: 0 }}
-                             dragElastic={0.15}
-                             onDragEnd={(_, { offset }) => {
-                                if (offset.x < -80) setCurrentIndex(i => i < shortcutCategories.length - 1 ? i + 1 : 0);
-                                else if (offset.x > 80) setCurrentIndex(i => i > 0 ? i - 1 : shortcutCategories.length - 1);
+                             // Gesto de Swipe personalizado (Evita conflitos com o Drag do Reorder)
+                             onPanEnd={(_, info) => {
+                                const isHorizontal = Math.abs(info.offset.x) > Math.abs(info.offset.y);
+                                if (isHorizontal) {
+                                    if (info.offset.x < -80 || info.velocity.x < -300) {
+                                        setCurrentIndex(i => i < shortcutCategories.length - 1 ? i + 1 : 0);
+                                    } else if (info.offset.x > 80 || info.velocity.x > 300) {
+                                        setCurrentIndex(i => i > 0 ? i - 1 : shortcutCategories.length - 1);
+                                    }
+                                }
                              }}
-                             className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing"
+                             className="absolute inset-0 w-full h-full"
                            >
-                              <div className="w-full h-full pointer-events-auto flex" onPointerDownCapture={(e) => e.stopPropagation()}>
+                              <div className="w-full h-full pointer-events-auto flex">
                                  <CategoryView categoryId={shortcutCategories[currentIndex].id} isSplit={false} />
                               </div>
                            </motion.div>
