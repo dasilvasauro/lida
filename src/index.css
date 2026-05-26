@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Architects+Daughter&display=swap');
 @import "tailwindcss";
+@custom-variant dark (&:is(.dark *));
 
 /* === Customização Global do Scrollbar === */
 * {
