@@ -1,9 +1,20 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import type { Habit, QuitterItem } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { useConfigStore } from './useConfigStore';
 import { useEconomyStore } from './useEconomyStore';
+
+// OFUSCAÇÃO
+const obfuscatedStorage: StateStorage = {
+  getItem: (name) => {
+    const str = localStorage.getItem(name);
+    if (!str) return null;
+    try { JSON.parse(str); return str; } catch { try { return decodeURIComponent(atob(str)); } catch { return null; } }
+  },
+  setItem: (name, value) => { localStorage.setItem(name, btoa(encodeURIComponent(value))); },
+  removeItem: (name) => localStorage.removeItem(name),
+};
 
 interface HabitState {
   habits: Habit[];
@@ -68,7 +79,6 @@ export const useHabitStore = create<HabitState>()(
         return { modifiers: newMods };
       }),
 
-      // CRÍTICO: Ciclo de Recompensa inicial mudado para 0
       addQuitterItem: (title) => set((state) => ({
           quitterItems: [...state.quitterItems, { id: uuidv4(), title, createdAt: Date.now(), lastRelapseAt: Date.now(), checkins: [], rewardCycle: 0, updatedAt: Date.now() }]
       })),
@@ -76,21 +86,18 @@ export const useHabitStore = create<HabitState>()(
           quitterItems: state.quitterItems.map(q => q.id === id ? { ...q, ...updated, updatedAt: Date.now() } : q)
       })),
       
-      // PUNIÇÃO EXTREMA: Deletar um hábito ruim zera 100% do ouro e xp atuais
       deleteQuitterItem: (id) => {
           useConfigStore.getState().addTombstone(id);
           const econ = useEconomyStore.getState();
-          // Guarda o nível atual do jogador, mas remove todo o progresso de XP e Ouro
           const currentLevelBaseXp = Math.pow(econ.level - 1, 2) * 100;
           useEconomyStore.setState({
-              xp: currentLevelBaseXp, // Reinicia no início do nível atual
+              xp: currentLevelBaseXp,
               gold: 0,
               updatedAt: Date.now()
           });
           set((state) => ({ quitterItems: state.quitterItems.filter(q => q.id !== id) }));
       },
       
-      // PUNIÇÃO GRAVE: Recaída penaliza em 50% o XP acumulado no nível e 50% do ouro total
       relapseQuitter: (id) => set((state) => {
           const econ = useEconomyStore.getState();
           const currentLevelBaseXp = Math.pow(econ.level - 1, 2) * 100;
@@ -113,7 +120,6 @@ export const useHabitStore = create<HabitState>()(
       checkinQuitter: (id, dateStr) => set((state) => ({
           quitterItems: state.quitterItems.map(q => {
               if (q.id === id && !q.checkins.includes(dateStr)) {
-                  // Aumenta o ciclo (de 0 para 1 no primeiro dia)
                   const nextCycle = q.rewardCycle >= 7 ? 1 : q.rewardCycle + 1;
                   return { ...q, checkins: [...q.checkins, dateStr], rewardCycle: nextCycle, updatedAt: Date.now() };
               }
@@ -121,6 +127,6 @@ export const useHabitStore = create<HabitState>()(
           })
       }))
     }),
-    { name: 'lida-habits-v5' }
+    { name: 'lida-habits-v5', storage: createJSONStorage(() => obfuscatedStorage) }
   )
 );

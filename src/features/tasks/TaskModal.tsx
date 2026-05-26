@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Zap, Target, Timer, Gift, CheckCircle2, Calendar, Clock, Plus, RotateCcw, Info, Lock, Check, AlertTriangle } from 'lucide-react';
+import { X, Zap, Target, Timer, Gift, CheckCircle2, Calendar, Clock, Plus, RotateCcw, Info, Lock, Check, AlertTriangle, Footprints } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
@@ -16,7 +16,7 @@ interface TaskModalProps {
   onClose: () => void; 
   taskToEdit?: Task | null; 
   initialTitle?: string; 
-  brainDumpItemId?: string; // NOVO: Link para amarrar o salvamento ao Brain Dump
+  brainDumpItemId?: string;
   onSuccess?: (message: string) => void; 
 }
 
@@ -119,8 +119,6 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, initialTitle, brainDump
     } else { 
         addTask({ id: uuidv4(), createdAt: Date.now(), isCompleted: false, ...taskData } as Task); 
         onSuccess?.('Tarefa criada!'); 
-        
-        // NOVO: Se o salvamento for bem sucedido, marca no Brain Dump
         if (brainDumpItemId) {
             markBrainDumpItemConverted(brainDumpItemId, 'task');
         }
@@ -131,7 +129,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, initialTitle, brainDump
   const taskTypes: { id: TaskType; label: string; icon: any; color: string; isLocked?: boolean }[] = [
     { id: 'normal', label: 'Normal', icon: CheckCircle2, color: 'text-zinc-500' },
     { id: 'daily_challenge', label: 'Desafio', icon: Zap, color: 'text-amber-500', isLocked: hasDailyChallengeToday },
-    { id: 'sprint', label: 'Sprint', icon: Target, color: 'text-purple-500', isLocked: hasActiveSprint },
+    { id: 'sprint', label: 'Sprint', icon: Footprints, color: 'text-purple-500', isLocked: hasActiveSprint },
     { id: 'time', label: 'Tempo', icon: Timer, color: 'text-blue-500' },
     { id: 'bonus', label: 'Bônus', icon: Gift, color: 'text-emerald-500', isLocked: isBonusLocked },
   ];

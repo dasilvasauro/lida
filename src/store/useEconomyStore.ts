@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import { format } from 'date-fns';
 
 export type EconomyItem = 'freeze' | 'dayOff' | 'instantLuck' | 'magicDice' | 'xpBoost' | 'goldBoost' | 'extraP0' | 'extraP1' | 'respite' | 'relief' | 'bonusTask' | 'luckyCard' | 'changeModus' | 'extraQuitter';
@@ -28,15 +28,24 @@ interface EconomyState {
 
 const calculateLevel = (xp: number) => Math.floor(Math.sqrt(xp / 100)) + 1;
 
+// OFUSCAÇÃO DE DADOS PARA PREVENIR CÓDIGOS DE CONSOLE
+const obfuscatedStorage: StateStorage = {
+  getItem: (name) => {
+    const str = localStorage.getItem(name);
+    if (!str) return null;
+    try { JSON.parse(str); return str; } catch { try { return decodeURIComponent(atob(str)); } catch { return null; } }
+  },
+  setItem: (name, value) => { localStorage.setItem(name, btoa(encodeURIComponent(value))); },
+  removeItem: (name) => localStorage.removeItem(name),
+};
+
 export const useEconomyStore = create<EconomyState>()(
   persist(
     (set, get) => ({
       xp: 0, level: 1, gold: 1500, vouchers: 20, voucherProgress: 0,
       inventory: { freeze: 0, dayOff: 0, instantLuck: 0, magicDice: 0, xpBoost: 0, goldBoost: 0, extraP0: 0, extraP1: 0, respite: 0, relief: 0, bonusTask: 0, luckyCard: 0, changeModus: 0, extraQuitter: 0 },
       activeXpBoostUntil: null, activeGoldBoostUntil: null, dailyHistory: {}, levelUpData: null, claimedMilestones: [], purchasedThemes: [], 
-      
       updatedAt: 0, 
-
       clearLevelUp: () => set({ levelUpData: null, updatedAt: Date.now() }),
 
       buyTheme: (themeId, cost) => {
@@ -118,6 +127,6 @@ export const useEconomyStore = create<EconomyState>()(
       useItem: (item) => { const state = get(); if (state.inventory[item] > 0) { set({ inventory: { ...state.inventory, [item]: state.inventory[item] - 1 }, updatedAt: Date.now() }); return true; } return false; },
       setBoost: (type, hours) => { const until = Date.now() + hours * 60 * 60 * 1000; set(() => ({ ...(type === 'xp' ? { activeXpBoostUntil: until } : { activeGoldBoostUntil: until }), updatedAt: Date.now() })); },
     }),
-    { name: 'lida-economy-v3' }
+    { name: 'lida-economy-v3', storage: createJSONStorage(() => obfuscatedStorage) }
   )
 );

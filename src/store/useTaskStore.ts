@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import type { Task, Mood, Folder, RoutineTemplate, BrainDumpState, BrainDumpItem, BrainDumpQuadrant } from '../types';
 import { format, addDays, addMonths } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
@@ -30,19 +30,28 @@ const calculateNextRecurrence = (currentDateStr: string | undefined, recurrence:
   return null;
 };
 
+// OFUSCAÇÃO
+const obfuscatedStorage: StateStorage = {
+  getItem: (name) => {
+    const str = localStorage.getItem(name);
+    if (!str) return null;
+    try { JSON.parse(str); return str; } catch { try { return decodeURIComponent(atob(str)); } catch { return null; } }
+  },
+  setItem: (name, value) => { localStorage.setItem(name, btoa(encodeURIComponent(value))); },
+  removeItem: (name) => localStorage.removeItem(name),
+};
+
 interface TaskState {
   tasks: Task[]; folders: Folder[]; routines: RoutineTemplate[]; dailyMood: Mood | null; moodHistory: Record<string, Mood>;
   selectedFilter: 'today' | 'week' | 'month' | 'all'; selectedFolderId: string;
   activeFocusSession: { taskId: string; startTime: number; duration: number } | null;
   isFocusModeOpen: boolean; isGlobalModalOpen: boolean; isRoutineModalOpen: boolean;
-  
   brainDump: BrainDumpState;
 
   setGlobalModalOpen: (isOpen: boolean) => void; setRoutineModalOpen: (isOpen: boolean) => void; 
   addTask: (task: Task) => void; toggleTaskCompletion: (taskId: string) => void; deleteTask: (taskId: string) => void;
   updateTask: (taskId: string, updatedTask: Partial<Task>) => void;
   addFolder: (folder: Folder) => void; deleteFolder: (folderId: string) => void; setFolderId: (folderId: string) => void;
-  
   addRoutine: (routine: RoutineTemplate) => void; updateRoutine: (id: string, updated: Partial<RoutineTemplate>) => void; deleteRoutine: (id: string) => void;
   setDailyMood: (mood: Mood) => void; setFilter: (filter: 'today' | 'week' | 'month' | 'all') => void;
   toggleSubtask: (taskId: string, subtaskId: string) => void;
@@ -55,7 +64,7 @@ interface TaskState {
   setBrainDump: (items: BrainDumpItem[]) => void;
   updateBrainDumpItem: (id: string, quadrant: BrainDumpQuadrant) => void;
   removeBrainDumpItem: (id: string) => void;
-  markBrainDumpItemConverted: (id: string, type: 'task' | 'note') => void; // NOVO
+  markBrainDumpItemConverted: (id: string, type: 'task' | 'note') => void;
 }
 
 export const useTaskStore = create<TaskState>()(
@@ -64,20 +73,12 @@ export const useTaskStore = create<TaskState>()(
       tasks: [], folders: [{ id: 'default', name: 'Geral', updatedAt: 0 }], routines: [], dailyMood: null, moodHistory: {},
       selectedFilter: 'today', selectedFolderId: 'all', activeFocusSession: null, 
       isFocusModeOpen: false, isGlobalModalOpen: false, isRoutineModalOpen: false,
-
       brainDump: { lastDumpAt: null, items: [] },
 
       setBrainDump: (items) => set({ brainDump: { lastDumpAt: Date.now(), items } }),
       updateBrainDumpItem: (id, quadrant) => set((state) => ({ brainDump: { ...state.brainDump, items: state.brainDump.items.map(i => i.id === id ? { ...i, quadrant } : i) } })),
       removeBrainDumpItem: (id) => set((state) => ({ brainDump: { ...state.brainDump, items: state.brainDump.items.filter(i => i.id !== id) } })),
-      
-      // NOVA FUNÇÃO
-      markBrainDumpItemConverted: (id, type) => set((state) => ({ 
-        brainDump: { 
-            ...state.brainDump, 
-            items: state.brainDump.items.map(i => i.id === id ? { ...i, convertedTo: type } : i) 
-        } 
-      })),
+      markBrainDumpItemConverted: (id, type) => set((state) => ({ brainDump: { ...state.brainDump, items: state.brainDump.items.map(i => i.id === id ? { ...i, convertedTo: type } : i) } })),
 
       setGlobalModalOpen: (isOpen) => set({ isGlobalModalOpen: isOpen }), setRoutineModalOpen: (isOpen) => set({ isRoutineModalOpen: isOpen }),
       addTask: (task) => set((state) => ({ tasks: [...state.tasks, { ...task, updatedAt: Date.now() }] })),
@@ -172,6 +173,6 @@ export const useTaskStore = create<TaskState>()(
         if (changed) set({ tasks: newTasks });
       }
     }),
-    { name: 'lida-tasks' }
+    { name: 'lida-tasks', storage: createJSONStorage(() => obfuscatedStorage) }
   )
 );

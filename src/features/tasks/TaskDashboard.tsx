@@ -33,7 +33,6 @@ export const TaskDashboard = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [infoModal, setInfoModal] = useState<{title: string, desc: string} | null>(null);
 
-  // BRAIN DUMP STATES
   const [isBrainDumpOpen, setBrainDumpOpen] = useState(false);
   const [brainDumpInitialTitle, setBrainDumpInitialTitle] = useState('');
   const [brainDumpItemId, setBrainDumpItemId] = useState<string | undefined>(undefined);
@@ -152,7 +151,17 @@ export const TaskDashboard = () => {
   const routineTasks = filteredTasks.filter(t => t.type === 'routine');
   const regularTasks = filteredTasks.filter(t => t.type !== 'routine');
 
-  const moods: { value: Mood; icon: any; label: string }[] = [ { value: 'disappointed', icon: CloudRain, label: 'Desapontado' }, { value: 'annoyed', icon: Frown, label: 'Incomodado' }, { value: 'normal', icon: Meh, label: 'Normal' }, { value: 'happy', icon: Smile, label: 'Feliz' }, { value: 'radiant', icon: Sparkles, label: 'Radiante' } ];
+  // NOVO: activeMood é "normal" se não foi explicitamente setado.
+  const activeMood = dailyMood || 'normal';
+
+  const moods: { value: Mood; icon: any; label: string }[] = [ 
+      { value: 'disappointed', icon: CloudRain, label: 'Desapontado' }, 
+      { value: 'annoyed', icon: Frown, label: 'Incomodado' }, 
+      { value: 'normal', icon: Meh, label: 'Normal' }, 
+      { value: 'happy', icon: Smile, label: 'Feliz' }, 
+      { value: 'radiant', icon: Sparkles, label: 'Radiante' } 
+  ];
+  
   const filters: { id: typeof selectedFilter; label: string }[] = [ { id: 'today', label: 'Hoje' }, { id: 'week', label: 'Semana' }, { id: 'month', label: 'Mês' }, { id: 'all', label: 'Tudo' } ];
 
   const hasLocalState = !!confirmDialog || isMenuOpen || isCreatingFolder || !!infoModal || isBrainDumpOpen;
@@ -188,7 +197,15 @@ export const TaskDashboard = () => {
               {filters.map((f) => ( <button key={f.id} onClick={() => setFilter(f.id)} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${selectedFilter === f.id ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}`}>{f.label}</button> ))}
             </div>
             <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900/80 rounded-xl w-full md:w-auto">
-              {moods.map((m) => { const Icon = m.icon; const isActive = dailyMood === m.value; return ( <button key={m.value} onClick={() => setDailyMood(m.value)} title={m.label} className={`flex-1 md:flex-none py-2 px-3 rounded-lg flex justify-center items-center transition-all ${isActive ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}><Icon size={18} strokeWidth={isActive ? 2.5 : 2} /></button> ); })}
+              {moods.map((m) => { 
+                  const Icon = m.icon; 
+                  const isActive = activeMood === m.value; 
+                  return ( 
+                      <button key={m.value} onClick={() => setDailyMood(m.value)} title={m.label} className={`flex-1 md:flex-none py-2 px-3 rounded-lg flex justify-center items-center transition-all ${isActive ? 'bg-purple-600 text-white shadow-sm dark:bg-purple-500' : 'text-zinc-400 hover:text-purple-500 dark:hover:text-purple-400'}`}>
+                          <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                      </button> 
+                  ); 
+              })}
             </div>
           </div>
         </header>

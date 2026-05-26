@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Clock, Calendar, Zap, Target, Timer, Gift, Sparkles, CheckCircle2, ChevronDown, Play, Maximize2, Trash2, Repeat, Edit2, Wind, CalendarHeart, Dices, Folder, Flame, Ticket, AlertTriangle } from 'lucide-react';
+import { Check, Clock, Calendar, Zap, Timer, Gift, Sparkles, CheckCircle2, ChevronDown, Play, Maximize2, Trash2, Repeat, Edit2, Wind, CalendarHeart, Dices, Folder, Flame, Ticket, AlertTriangle, Footprints, Target } from 'lucide-react';
 import type { Task } from '../../types';
-import { format, subDays } from 'date-fns';
+import { format, subDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
@@ -75,7 +75,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         return `${m}:${s}`;
     };
 
-    const icons = { normal: CheckCircle2, daily_challenge: Zap, sprint: Target, time: Timer, bonus: Gift, surprise: Sparkles, routine: Repeat };
+    const icons = { normal: CheckCircle2, daily_challenge: Zap, sprint: Footprints, time: Timer, bonus: Gift, surprise: Sparkles, routine: Repeat };
     const Icon = icons[task.type as keyof typeof icons] || CheckCircle2;
 
     const priorityStyles = {
@@ -148,6 +148,25 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         }
     }
 
+    // Cálculos de Progresso da Sprint (Dias)
+    let sprintTotal = 0;
+    let sprintElapsed = 0;
+    let sprintLeft = 0;
+    let sprintProgress = 0;
+
+    if (task.type === 'sprint' && task.deadlineDate) {
+        const startStr = format(new Date(task.createdAt), 'yyyy-MM-dd');
+        const start = new Date(startStr + 'T12:00:00');
+        const end = new Date(task.deadlineDate + 'T12:00:00');
+        const todayObj = new Date();
+        todayObj.setHours(12, 0, 0, 0);
+        
+        sprintTotal = Math.max(1, differenceInDays(end, start));
+        sprintElapsed = Math.max(0, differenceInDays(todayObj, start));
+        sprintLeft = Math.max(0, sprintTotal - sprintElapsed);
+        sprintProgress = Math.min(100, (sprintElapsed / sprintTotal) * 100);
+    }
+
     const finalBorderClass = isRoutine ? rColorData.bg : priorityStyles[task.priority];
     const textColorClass = isRoutine ? rColorData.text : 'text-zinc-900 dark:text-zinc-100';
     const subtextColorClass = isRoutine ? 'opacity-70' : 'text-zinc-500 dark:text-zinc-400';
@@ -181,7 +200,6 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
     return (
         <motion.div layout className={`relative flex flex-col p-4 mb-3 rounded-2xl border transition-all shadow-sm ${finalBorderClass} ${task.isCompleted ? 'opacity-50 grayscale' : ''}`}>
         
-        {/* CORREÇÃO DO SPRINT: rounded-t-2xl adicionado para não vazar a cor, permitindo a retirada do overflow-hidden do card */}
         {task.type === 'sprint' && (
             <div className="absolute top-0 left-0 w-full h-1.5 rounded-t-2xl opacity-10 dark:opacity-20 pointer-events-none" style={{ backgroundImage: 'repeating-conic-gradient(currentColor 0% 25%, transparent 0% 50%)', backgroundSize: '12px 12px' }} />
         )}
@@ -199,6 +217,24 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
             <div className={`mt-2.5 px-3 py-2 rounded-lg text-xs leading-relaxed border ${isRoutine ? rColorData.statusBg : 'bg-blue-500/5 border-blue-500/10 text-blue-700 dark:text-blue-400'}`}>
                 <span className="font-bold uppercase tracking-widest text-[9px] opacity-70 block mb-0.5">Status</span>
                 <span className={`line-clamp-3 ${isRoutine ? 'opacity-90' : ''}`}>{task.status}</span>
+            </div>
+        )}
+
+        {/* BARRA DE PROGRESSO DO SPRINT (NOVO) */}
+        {task.type === 'sprint' && task.deadlineDate && (
+            <div className="mt-4 mb-2 px-1">
+                <div className="flex justify-between items-end mb-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                        <Footprints size={14}/> {sprintElapsed} {sprintElapsed === 1 ? 'Dia Corrido' : 'Dias Corridos'}
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                        Faltam {sprintLeft}
+                    </span>
+                </div>
+                <div className="w-full h-2.5 bg-purple-500/10 dark:bg-purple-900/20 rounded-full relative overflow-hidden flex items-center shadow-inner border border-purple-500/10">
+                    <motion.div initial={{width:0}} animate={{width: `${sprintProgress}%`}} className="h-full bg-gradient-to-r from-purple-600 to-purple-400" />
+                    <div className="absolute right-0 top-0 bottom-0 w-2 border-l-[3px] border-dashed border-zinc-900 dark:border-zinc-100 opacity-40" title="Linha de chegada" />
+                </div>
             </div>
         )}
 
@@ -310,7 +346,6 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         )}
         </AnimatePresence>
 
-        {/* OVERLAY DE PAGAMENTO DE VOUCHERS MOVIDO PARA A RAIZ DO CARD */}
         <AnimatePresence>
             {actionPrompt && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-12 right-4 p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-[100] text-zinc-900 dark:text-zinc-100 flex flex-col items-center min-w-[220px]">

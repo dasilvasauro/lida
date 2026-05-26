@@ -58,7 +58,7 @@ export const ProfileDashboard = () => {
     if (!uid || !e2eePin || !navigator.onLine) return showToast("Não foi possível sincronizar. Verifique a rede.", "error");
     setIsSyncing(true);
     try { 
-        await syncToCloud(true); // FORÇA o upload dos dados locais (sua nota será enviada!)
+        await syncToCloud(true); 
         await syncFromCloud(uid, e2eePin); 
         showToast("Sincronização realizada com sucesso!"); 
     } 
@@ -126,8 +126,19 @@ export const ProfileDashboard = () => {
     return (hasTasks ? tasksCompleted : true) && (hasHabits ? habitsCompleted : true);
   };
 
-  const getMoodColor = (mood: Mood | undefined) => {
-    switch(mood) { case 'radiant': return 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]'; case 'happy': return 'bg-teal-400'; case 'normal': return 'bg-yellow-400'; case 'annoyed': return 'bg-orange-500'; case 'disappointed': return 'bg-red-500'; default: return 'bg-zinc-200 dark:bg-zinc-800/50'; }
+  // NOVO: Cores na mesma paleta de Roxos. Se for hoje e ainda não houver humor, reflete como normal na UI temporariamente.
+  const getMoodColor = (mood: Mood | undefined, isToday: boolean) => {
+    const m = mood || (isToday ? 'normal' : undefined);
+    if (!m) return 'bg-zinc-200 dark:bg-zinc-800/50';
+
+    switch(m) { 
+       case 'radiant': return 'bg-purple-700 shadow-[0_0_8px_rgba(126,34,206,0.5)]'; 
+       case 'happy': return 'bg-purple-600'; 
+       case 'normal': return 'bg-purple-500'; 
+       case 'annoyed': return 'bg-purple-400'; 
+       case 'disappointed': return 'bg-purple-300 dark:bg-purple-900/60'; 
+       default: return 'bg-purple-500'; 
+    }
   };
 
   const getHabitsColor = (dateStr: string) => {
@@ -142,7 +153,13 @@ export const ProfileDashboard = () => {
       for (let i = 0; i < 7; i++) {
         if (current > today) break; const dStr = format(current, 'yyyy-MM-dd');
         let colorClass = 'bg-zinc-200 dark:bg-zinc-800/50';
-        if (gridMode === 'mood') colorClass = getMoodColor(moodHistory[dStr]); else if (gridMode === 'perfect' && isPerfectDay(dStr)) colorClass = 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]'; else if (gridMode === 'habits') colorClass = getHabitsColor(dStr);
+        
+        const isTodayStr = dStr === format(today, 'yyyy-MM-dd');
+
+        if (gridMode === 'mood') colorClass = getMoodColor(moodHistory[dStr], isTodayStr); 
+        else if (gridMode === 'perfect' && isPerfectDay(dStr)) colorClass = 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.5)]'; 
+        else if (gridMode === 'habits') colorClass = getHabitsColor(dStr);
+        
         week.push(<div key={dStr} title={dStr} className={`w-3 h-3 md:w-4 md:h-4 rounded-[3px] md:rounded-sm transition-colors ${colorClass}`} />);
         current = addDays(current, 1);
       }
