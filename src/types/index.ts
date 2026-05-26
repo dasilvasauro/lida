@@ -69,13 +69,32 @@ export interface BrainDumpState {
   items: BrainDumpItem[];
 }
 
-// === TIPAGENS DO QUITTER ===
 export interface QuitterItem {
   id: string;
   title: string;
   createdAt: number;
   lastRelapseAt: number;
   checkins: string[]; 
-  rewardCycle: number; // Agora inicia em 0 e vai incrementando até 7
+  rewardCycle: number; 
+  updatedAt?: number;
+}
+
+// === TIPAGENS DE ATALHOS (SHORTCUTS) ===
+export type ShortcutColor = 'slate' | 'gray' | 'neutral' | 'red' | 'orange' | 'lime' | 'teal' | 'sky';
+export type ShortcutType = 'keys' | 'command';
+
+export interface ShortcutItem {
+  id: string;
+  label: string;
+  type: ShortcutType;
+  value: string; 
+}
+
+export interface ShortcutCategory {
+  id: string;
+  title: string;
+  color: ShortcutColor;
+  items: ShortcutItem[];
+  createdAt: number;
   updatedAt?: number;
 }

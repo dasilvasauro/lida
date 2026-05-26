@@ -95,13 +95,21 @@ const applyCloudData = (data: any, pin: string) => {
     const mergedNotebooks = mergeArrays(localNotes.notebooks, cloudNotes.notebooks);
     let mergedNotes = mergeArrays(localNotes.notes, cloudNotes.notes);
     
+    // FUNDE TAMBÉM OS ATALHOS
+    const mergedShortcutCategories = mergeArrays(localNotes.shortcutCategories || [], cloudNotes.shortcutCategories || []);
+
     mergedNotes = mergedNotes.map(note => {
         if (note.notebookId !== 'default' && !mergedNotebooks.find(nb => nb.id === note.notebookId)) {
             return { ...note, notebookId: 'default', updatedAt: Date.now() };
         }
         return note;
     });
-    useNoteStore.setState({ notebooks: mergedNotebooks, notes: mergedNotes });
+    
+    useNoteStore.setState({ 
+        notebooks: mergedNotebooks, 
+        notes: mergedNotes, 
+        shortcutCategories: mergedShortcutCategories 
+    });
 
     const localTasks = useTaskStore.getState();
     const cloudTasks = JSON.parse(decryptData(data.tasks, pin));

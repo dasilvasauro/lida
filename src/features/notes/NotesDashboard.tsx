@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, Strikethrough, Link as LinkIcon, Code, List, ListOrdered, FileText, Trash2, Check, Eye, PenLine, Maximize2, Minimize2, Undo, Redo, FileSearch, FolderInput, Edit2, AlertTriangle, X, ChevronDown, Star, Pin, Info } from 'lucide-react';
+import { Search, Plus, Lock, Unlock, ChevronLeft, AlignLeft, Bold, Italic, Underline, Strikethrough, Link as LinkIcon, Code, List, ListOrdered, FileText, Trash2, Check, Eye, PenLine, Maximize2, Minimize2, Undo, Redo, FileSearch, FolderInput, Edit2, AlertTriangle, X, ChevronDown, Star, Pin, Info, Terminal } from 'lucide-react';
 import { useNoteStore } from '../../store/useNoteStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
+import { ShortcutModal } from './ShortcutModal';
 import type { Notebook, Note, ItemColor, NoteFont, NoteFormat } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
@@ -82,6 +83,7 @@ export const NotesDashboard = () => {
   const [fontMenuOpen, setFontMenuOpen] = useState(false);
   const [folderMenuOpen, setFolderMenuOpen] = useState(false);
   const [infoModal, setInfoModal] = useState<{title: string, desc: string} | null>(null);
+  const [isShortcutOpen, setShortcutOpen] = useState(false);
 
   const editorRef = useRef<HTMLDivElement>(null);
   const noteSearchRef = useRef<HTMLInputElement>(null);
@@ -244,13 +246,14 @@ export const NotesDashboard = () => {
   }
 
   // === INTERCEPTAÇÃO DE NAVEGAÇÃO ===
-  const hasLocalState = !!passwordModal || !!confirmDialog || isNbModalOpen || fontMenuOpen || folderMenuOpen || showInNoteSearch || isFullscreen || view !== 'notebooks' || !!infoModal;
+  const hasLocalState = !!passwordModal || !!confirmDialog || isNbModalOpen || fontMenuOpen || folderMenuOpen || showInNoteSearch || isFullscreen || view !== 'notebooks' || !!infoModal || isShortcutOpen;
   
   useBackHandler(hasLocalState, () => {
       const tStore = useTaskStore.getState();
       const cStore = useConfigStore.getState();
       if (tStore.isGlobalModalOpen || tStore.isRoutineModalOpen || tStore.isFocusModeOpen || cStore.isSettingsOpen || cStore.isVisionOpen || cStore.isGoogleConnectOpen || cStore.isChangelogOpen || cStore.isExitModalOpen) return false;
       
+      if (isShortcutOpen) return false; // ShortcutModal has its own handler internally
       if (infoModal) { setInfoModal(null); return true; }
       if (passwordModal) { setPasswordModal(null); setPassInput(''); setPassError(''); return true; }
       if (confirmDialog) { setConfirmDialog(null); return true; }
@@ -324,7 +327,12 @@ export const NotesDashboard = () => {
                     {view === 'notes' && <button onClick={handleBack} className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"><ChevronLeft size={24}/></button>}
                     <h1 className="text-3xl font-black tracking-tight">{view === 'notebooks' ? 'Notas & Cadernos' : activeNotebook?.name}</h1>
                     {view === 'notebooks' && (
-                       <button onClick={() => setInfoModal({title: 'Notas Rápidas', desc: 'Um espaço para capturar ideias sem atrito. O editor suporta Markdown para formatação ágil e Rich Text para quem prefere ferramentas visuais.\n\nVocê pode favoritar notas para acesso rápido ou fixá-las no topo de seus cadernos.'})} className="text-zinc-400 hover:text-blue-500 transition-colors mt-1"><Info size={20}/></button>
+                       <>
+                         <button onClick={() => setShortcutOpen(true)} className="mt-1 p-2 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-400 hover:bg-sky-500/20 transition-colors" title="Central de Atalhos">
+                             <Terminal size={20}/>
+                         </button>
+                         <button onClick={() => setInfoModal({title: 'Notas Rápidas e Atalhos', desc: 'Sua base de conhecimento unificada.\n\nNas Notas, escreva pensamentos complexos usando Markdown ou formatação rica. Organize em cadernos ou favorite-as.\n\nNa Central de Atalhos (Ícone de Terminal), crie coleções compactas de teclas de atalho e comandos frequentes que você precisa sempre ter à mão.'})} className="text-zinc-400 hover:text-blue-500 transition-colors mt-1"><Info size={20}/></button>
+                       </>
                     )}
                   </div>
                   {view === 'notebooks' && (unlockedNotebooks.length > 0 || unlockedNotes.length > 0) && (
@@ -683,6 +691,8 @@ export const NotesDashboard = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <ShortcutModal isOpen={isShortcutOpen} onClose={() => setShortcutOpen(false)} />
 
       </div>
     </>
