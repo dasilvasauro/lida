@@ -11,7 +11,6 @@ import type { BrainDumpItem, BrainDumpQuadrant } from '../../types';
 interface BrainDumpModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // NOVO: Adicionado o id na chamada
   onConvertToTask: (title: string, id: string) => void;
 }
 
@@ -35,15 +34,16 @@ export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpMo
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // CORREÇÃO: Removida a dependência do brainDump.items.length para evitar 
+  // que o usuário seja ejetado da tela de organização ao deletar/descartar um item.
   useEffect(() => {
     if (isOpen) {
-      if (brainDump.items.length > 0) setMode('intro');
-      else setMode('intro');
+      setMode('intro');
     } else {
       setMode('intro');
       setSelectedItem(null);
     }
-  }, [isOpen, brainDump.items.length]);
+  }, [isOpen]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -88,7 +88,6 @@ export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpMo
       updatedAt: Date.now()
     });
     
-    // NOVO: Apenas marca como convertido em vez de deletar
     markBrainDumpItemConverted(selectedItem.id, 'note');
     setSelectedItem(null);
     showToast('Nota criada com sucesso!');
@@ -196,7 +195,6 @@ export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpMo
              <div className="text-center text-zinc-500 py-20 font-bold">Nenhum item pendente. Sua mente está limpa.</div>
           ) : (
              <div className="space-y-12">
-               {/* SESSÃO DESPEJADOS */}
                {unorganized.length > 0 && (
                  <div>
                    <h3 className="font-bold text-xs uppercase tracking-widest text-zinc-500 mb-4 flex items-center gap-2">
@@ -206,7 +204,8 @@ export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpMo
                      {unorganized.map(item => {
                        const isConverted = !!item.convertedTo;
                        return (
-                         <button key={item.id} onClick={() => !isConverted && setSelectedItem(item)} className={`text-left p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 shadow-sm transition-colors ${isConverted ? 'opacity-50 cursor-default grayscale' : 'hover:border-purple-500'}`}>
+                         // CORREÇÃO: Removido o '!isConverted &&' para permitir mover após convertido
+                         <button key={item.id} onClick={() => setSelectedItem(item)} className={`text-left p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 shadow-sm transition-colors ${isConverted ? 'opacity-50 grayscale' : 'hover:border-purple-500'}`}>
                            <div className="flex justify-between items-start gap-2">
                               <span className={`font-medium text-sm text-zinc-900 dark:text-zinc-100 line-clamp-2 ${isConverted ? 'line-through' : ''}`}>{item.text}</span>
                               {item.convertedTo === 'task' && <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />}
@@ -219,7 +218,6 @@ export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpMo
                  </div>
                )}
 
-               {/* SESSÕES MATRIZ DE EISENHOWER */}
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                  {quadrants.map(q => {
                    const qItems = brainDump.items.filter(i => i.quadrant === q.id);
@@ -233,7 +231,8 @@ export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpMo
                          {qItems.map(item => {
                            const isConverted = !!item.convertedTo;
                            return (
-                             <button key={item.id} onClick={() => !isConverted && setSelectedItem(item)} className={`w-full text-left p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 shadow-sm transition-colors ${isConverted ? 'opacity-50 cursor-default grayscale' : 'hover:border-current'}`}>
+                             // CORREÇÃO: Mesma coisa aqui, permitindo reagendar ou mover itens já convertidos
+                             <button key={item.id} onClick={() => setSelectedItem(item)} className={`w-full text-left p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 shadow-sm transition-colors ${isConverted ? 'opacity-50 grayscale' : 'hover:border-current'}`}>
                                <div className="flex justify-between items-start gap-2">
                                   <span className={`font-medium text-sm text-zinc-900 dark:text-zinc-100 line-clamp-2 ${isConverted ? 'line-through' : ''}`}>{item.text}</span>
                                   {item.convertedTo === 'task' && <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />}
@@ -270,7 +269,6 @@ export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpMo
         )}
       </AnimatePresence>
 
-      {/* DRAWER DE OPÇÕES DO ITEM */}
       <AnimatePresence>
         {selectedItem && mode === 'organizing' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 z-[300] flex justify-center items-end md:items-center p-4 backdrop-blur-sm">
@@ -297,7 +295,6 @@ export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpMo
               <div className="space-y-3">
                   <button onClick={() => { 
                       onConvertToTask(selectedItem.text, selectedItem.id); 
-                      // O Item não é deletado aqui! Deixamos o TaskModal salvar ou cancelar.
                       setSelectedItem(null); 
                   }} className="w-full p-4 flex items-center gap-3 rounded-xl bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 font-bold transition-colors">
                      <CheckCircle2 size={18} className="text-emerald-500" /> Converter em Tarefa

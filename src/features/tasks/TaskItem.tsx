@@ -19,7 +19,9 @@ interface TaskItemProps {
 
 export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDeleteRoutine }: TaskItemProps) => {
     const [isExpanded, setIsExpanded] = useState(false);
-    const { toggleSubtask, activeFocusSession, startFocus, toggleFocusMode, markTaskFailed, applyPowerUp, folders, routines, tasks } = useTaskStore();
+    
+    // CORREÇÃO: Adicionada a extração de updateTask para permitir a edição in-line do status
+    const { toggleSubtask, activeFocusSession, startFocus, toggleFocusMode, markTaskFailed, applyPowerUp, folders, routines, tasks, updateTask } = useTaskStore();
     const { enableEditWindow } = useConfigStore();
     const { inventory, useItem, spendVouchers } = useEconomyStore();
     
@@ -30,10 +32,25 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
     const [isOvertime, setIsOvertime] = useState(false);
 
-    // Sistema de Janela de Edição (10 minutos)
+    // Sistema de Janela de Edição e Status
     const [freeEditTimeLeft, setFreeEditTimeLeft] = useState(0);
     const [actionPrompt, setActionPrompt] = useState<{ type: 'edit' | 'delete' | 'editRoutine' | 'deleteRoutine', cost: number } | null>(null);
     const [voucherError, setVoucherError] = useState(false);
+    
+    // NOVO: Estado para a edição local do Status (Custo Zero)
+    const [isEditingStatus, setIsEditingStatus] = useState(false);
+    const [tempStatus, setTempStatus] = useState(task.status || '');
+
+    useEffect(() => {
+        setTempStatus(task.status || '');
+    }, [task.status]);
+
+    const handleStatusSave = () => {
+        setIsEditingStatus(false);
+        if (tempStatus.trim() !== (task.status || '').trim()) {
+            updateTask(task.id, { status: tempStatus.trim() });
+        }
+    };
 
     useEffect(() => {
         if (!enableEditWindow || task.isFreeEditExpired) return;
@@ -148,7 +165,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         }
     }
 
-    // Cálculos de Progresso da Sprint (Dias)
+    // Cálculos de Progresso da Sprint
     let sprintTotal = 0;
     let sprintElapsed = 0;
     let sprintLeft = 0;
@@ -213,14 +230,41 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         <h4 className={`text-base font-bold truncate ${task.isCompleted ? 'line-through opacity-60' : textColorClass}`}>{task.title}</h4>
         {task.description && !isExpanded && (<p className={`text-sm truncate mt-0.5 italic ${subtextColorClass}`}>{task.description}</p>)}
 
-        {task.status && (
+        {/* MÓDULO DE STATUS IN-LINE */}
+        {(task.status || isEditingStatus) && (
             <div className={`mt-2.5 px-3 py-2 rounded-lg text-xs leading-relaxed border ${isRoutine ? rColorData.statusBg : 'bg-blue-500/5 border-blue-500/10 text-blue-700 dark:text-blue-400'}`}>
-                <span className="font-bold uppercase tracking-widest text-[9px] opacity-70 block mb-0.5">Status</span>
-                <span className={`line-clamp-3 ${isRoutine ? 'opacity-90' : ''}`}>{task.status}</span>
+                <div className="flex justify-between items-center mb-0.5">
+                    <span className="font-bold uppercase tracking-widest text-[9px] opacity-70 block">Status</span>
+                    {!isEditingStatus && !task.isCompleted && (
+                        <button onClick={(e) => { e.stopPropagation(); setIsEditingStatus(true); }} className="opacity-50 hover:opacity-100 transition-opacity p-1" title="Editar Status (Grátis)">
+                            <Edit2 size={10} />
+                        </button>
+                    )}
+                </div>
+                {isEditingStatus ? (
+                    <textarea
+                        autoFocus
+                        value={tempStatus}
+                        onChange={e => setTempStatus(e.target.value)}
+                        onBlur={handleStatusSave}
+                        onClick={e => e.stopPropagation()}
+                        onKeyDown={e => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleStatusSave();
+                            }
+                        }}
+                        className="w-full bg-transparent outline-none resize-none border-b border-blue-500/30 dark:border-blue-400/30"
+                        rows={2}
+                        placeholder="Digite o andamento atual..."
+                    />
+                ) : (
+                    <span className={`line-clamp-3 whitespace-pre-wrap ${isRoutine ? 'opacity-90' : ''}`}>{task.status}</span>
+                )}
             </div>
         )}
 
-        {/* BARRA DE PROGRESSO DO SPRINT (NOVO) */}
+        {/* BARRA DE PROGRESSO DO SPRINT */}
         {task.type === 'sprint' && task.deadlineDate && (
             <div className="mt-4 mb-2 px-1">
                 <div className="flex justify-between items-end mb-1.5">
@@ -306,6 +350,13 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
               </div>
 
               <div className="flex gap-2">
+                {/* NOVO: Botão para Adicionar Status caso a tarefa ainda não o possua */}
+                {!task.status && !task.isCompleted && !isEditingStatus && (
+                    <button onClick={(e) => { e.stopPropagation(); setIsEditingStatus(true); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-blue-500 hover:bg-blue-500/10 transition-colors">
+                        <Edit2 size={14} /> Add Status
+                    </button>
+                )}
+
                 {!task.isCompleted && !task.hasRespite && inventory.respite > 0 && task.deadlineTime && !isRoutine && (
                     <button onClick={(e) => { e.stopPropagation(); if(useItem('respite')) applyPowerUp(task.id, 'respite'); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-teal-500 hover:bg-teal-500/10 transition-colors">
                         <Wind size={14} /> Usar Respiro
