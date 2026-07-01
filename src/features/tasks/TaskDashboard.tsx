@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, AlertTriangle, Frown, CloudRain, Meh, Smile, Sparkles, Trash2, TrendingUp, Coins, X, Check, ArrowDownUp, Info, Repeat, CheckCircle2, BrainCircuit, Timer } from 'lucide-react';
+import { Plus, AlertTriangle, Frown, CloudRain, Meh, Smile, Sparkles, Trash2, TrendingUp, Coins, X, Check, ArrowDownUp, Info, Repeat, CheckCircle2, BrainCircuit, Timer, AlignJustify } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
@@ -14,7 +14,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
 
 export const TaskDashboard = () => {
-  const { userClass, defaultDaysOff, hasDismissedDayOffWarning, dismissDayOffWarning } = useConfigStore();
+  const { userClass, defaultDaysOff, hasDismissedDayOffWarning, dismissDayOffWarning, isCompactView, setCompactView } = useConfigStore();
   const { tasks, folders, routines, selectedFolderId, setFolderId, addFolder, deleteFolder, toggleTaskCompletion, deleteTask, deleteRoutine, clearCompletedTasks, selectedFilter, setFilter, dailyMood, setDailyMood, updatePomodoro } = useTaskStore();
   const { activeXpBoostUntil, activeGoldBoostUntil, addReward, removeReward } = useEconomyStore();
 
@@ -186,6 +186,12 @@ export const TaskDashboard = () => {
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-black tracking-tight">Tarefas</h1>
               
+              {/* ORDENAÇÃO E MODO COMPACTO TRANSFERIDOS PARA CÁ */}
+              <div className="flex items-center bg-zinc-100 dark:bg-zinc-800/80 rounded-xl p-1 ml-1 border border-zinc-200 dark:border-zinc-700 shadow-inner">
+                 <button onClick={() => setIsSortedByPriority(!isSortedByPriority)} className={`p-1.5 rounded-lg transition-all ${isSortedByPriority ? 'bg-white dark:bg-zinc-700 text-blue-500 shadow-sm' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`} title="Ordenar por Prioridade"><ArrowDownUp size={16} /></button>
+                 <button onClick={() => setCompactView(!isCompactView)} className={`p-1.5 rounded-lg transition-all ${isCompactView ? 'bg-white dark:bg-zinc-700 text-blue-500 shadow-sm' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`} title="Visão Compacta"><AlignJustify size={16} /></button>
+              </div>
+              
               <button onClick={() => updatePomodoro({ isOpen: true, isMinimized: false })} className="mt-1 p-2 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors" title="Rádio Relógio Pomodoro">
                   <Timer size={20}/>
               </button>
@@ -244,8 +250,6 @@ export const TaskDashboard = () => {
               <button onClick={() => setIsCreatingFolder(false)} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-full transition-colors"><X size={14}/></button>
             </div>
           ) : ( <button onClick={() => setIsCreatingFolder(true)} className="px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap border border-dashed border-zinc-300 text-zinc-500 dark:border-zinc-700 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all">+ Nova Pasta</button> )}
-          <div className="flex-1" />
-          <button onClick={() => setIsSortedByPriority(!isSortedByPriority)} className={`p-2 rounded-full transition-all shrink-0 ${isSortedByPriority ? 'bg-blue-500 text-white shadow-md' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`} title="Ordenar por Prioridade"><ArrowDownUp size={16} /></button>
         </div>
 
         {(isXpBoosted || isGoldBoosted) && (

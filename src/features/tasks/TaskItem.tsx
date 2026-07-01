@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Clock, Calendar, Zap, Timer, Gift, Sparkles, CheckCircle2, ChevronDown, Play, Maximize2, Trash2, Repeat, Edit2, Wind, CalendarHeart, Dices, Folder, Flame, Ticket, AlertTriangle, Footprints, Target } from 'lucide-react';
 import type { Task } from '../../types';
@@ -7,6 +7,42 @@ import { ptBR } from 'date-fns/locale';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useConfigStore } from '../../store/useConfigStore';
+
+// === COMPONENTE MARQUEE PARA VISÃO COMPACTA ===
+const MarqueeText = ({ text, className }: { text: string, className?: string }) => {
+    const [overflowAmount, setOverflowAmount] = useState(0);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const textRef = useRef<HTMLSpanElement>(null);
+ 
+    useEffect(() => {
+       const checkOverflow = () => {
+          if (containerRef.current && textRef.current) {
+             const cWidth = containerRef.current.clientWidth;
+             const tWidth = textRef.current.scrollWidth;
+             setOverflowAmount(Math.max(0, tWidth - cWidth));
+          }
+       };
+       checkOverflow();
+       const observer = new ResizeObserver(() => checkOverflow());
+       if (containerRef.current) observer.observe(containerRef.current);
+       return () => observer.disconnect();
+    }, [text]);
+ 
+    const isOverflowing = overflowAmount > 0;
+ 
+    return (
+       <div ref={containerRef} className={`flex-1 overflow-hidden relative flex items-center min-w-0 h-full ${isOverflowing ? 'marquee-mask' : ''}`}>
+          <span ref={textRef} className={`absolute invisible whitespace-nowrap ${className}`}>{text}</span>
+          <motion.div
+            animate={isOverflowing ? { x: [0, -overflowAmount] } : { x: 0 }}
+            transition={isOverflowing ? { repeat: Infinity, repeatType: "reverse", duration: Math.max(overflowAmount * 0.04, 2.5), ease: 'linear', repeatDelay: 1.5 } : {}}
+            className="flex whitespace-nowrap min-w-max h-full items-center"
+          >
+             <div className={`${className}`}>{text}</div>
+          </motion.div>
+       </div>
+    );
+ };
 
 interface TaskItemProps {
     task: Task; 
@@ -20,9 +56,8 @@ interface TaskItemProps {
 export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDeleteRoutine }: TaskItemProps) => {
     const [isExpanded, setIsExpanded] = useState(false);
     
-    // CORREÇÃO: Adicionada a extração de updateTask para permitir a edição in-line do status
     const { toggleSubtask, activeFocusSession, startFocus, toggleFocusMode, markTaskFailed, applyPowerUp, folders, routines, tasks, updateTask } = useTaskStore();
-    const { enableEditWindow } = useConfigStore();
+    const { enableEditWindow, isCompactView } = useConfigStore();
     const { inventory, useItem, spendVouchers } = useEconomyStore();
     
     const folder = folders.find(f => f.id === task.folderId);
@@ -32,18 +67,14 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
     const [isOvertime, setIsOvertime] = useState(false);
 
-    // Sistema de Janela de Edição e Status
     const [freeEditTimeLeft, setFreeEditTimeLeft] = useState(0);
     const [actionPrompt, setActionPrompt] = useState<{ type: 'edit' | 'delete' | 'editRoutine' | 'deleteRoutine', cost: number } | null>(null);
     const [voucherError, setVoucherError] = useState(false);
     
-    // NOVO: Estado para a edição local do Status (Custo Zero)
     const [isEditingStatus, setIsEditingStatus] = useState(false);
     const [tempStatus, setTempStatus] = useState(task.status || '');
 
-    useEffect(() => {
-        setTempStatus(task.status || '');
-    }, [task.status]);
+    useEffect(() => { setTempStatus(task.status || ''); }, [task.status]);
 
     const handleStatusSave = () => {
         setIsEditingStatus(false);
@@ -165,12 +196,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         }
     }
 
-    // Cálculos de Progresso da Sprint
-    let sprintTotal = 0;
-    let sprintElapsed = 0;
-    let sprintLeft = 0;
-    let sprintProgress = 0;
-
+    let sprintTotal = 0; let sprintElapsed = 0; let sprintLeft = 0; let sprintProgress = 0;
     if (task.type === 'sprint' && task.deadlineDate) {
         const startStr = format(new Date(task.createdAt), 'yyyy-MM-dd');
         const start = new Date(startStr + 'T12:00:00');
@@ -214,6 +240,59 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         }
     };
 
+    // ======= RENDERIZAÇÃO COMPACTA =======
+    if (isCompactView) {
+        return (
+            <motion.div layout className={`relative flex items-center p-2.5 mb-2 rounded-xl border transition-all shadow-sm ${finalBorderClass} ${task.isCompleted ? 'opacity-50 grayscale' : ''} group`}>
+                <button onClick={(e) => { e.stopPropagation(); onToggle(task.id); }} className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors mx-1 ${task.isCompleted ? 'bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-100 dark:border-zinc-100 dark:text-black' : isRoutine ? 'border-current opacity-50 hover:opacity-100' : 'border-zinc-400 dark:border-zinc-500 hover:border-zinc-900 dark:hover:border-zinc-100'}`}>
+                    {task.isCompleted && <Check size={12} strokeWidth={3} />}
+                </button>
+
+                <div className="flex-1 min-w-0 flex items-center gap-2 overflow-hidden h-6 cursor-pointer pl-2 pr-1" onClick={(e) => { e.stopPropagation(); handleActionRequest(isRoutine ? 'editRoutine' : 'edit'); }}>
+                    <MarqueeText text={task.title} className={`text-sm font-bold ${task.isCompleted ? 'line-through opacity-60' : textColorClass}`} />
+                    
+                    {task.type === 'sprint' && <Footprints size={12} className="text-purple-500 shrink-0"/>}
+                    {task.type === 'daily_challenge' && <Zap size={12} className="text-amber-500 shrink-0"/>}
+                    {task.type === 'time' && <Timer size={12} className="text-blue-500 shrink-0"/>}
+                    {task.hasMagicDice && <Dices size={12} className="text-purple-500 shrink-0"/>}
+                    {task.deadlineTime && <span className="text-[10px] font-bold text-zinc-400 shrink-0 flex items-center gap-0.5 ml-1"><Clock size={10}/>{task.deadlineTime}</span>}
+                </div>
+
+                <div className="shrink-0 flex items-center gap-2 px-2 bg-transparent">
+                    {!isRoutine && (
+                        <div className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${priorityBadgeStyles[task.priority]}`}>
+                            {task.priority}
+                        </div>
+                    )}
+                    
+                    {/* Botões Hover (Play / Delete) */}
+                    <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity ml-1">
+                         {task.type === 'time' && !task.isCompleted && (
+                             <button onClick={(e) => { e.stopPropagation(); if (!isActiveSession) startFocus(task.id, task.duration || 30); }} className="p-1.5 text-blue-500 hover:bg-blue-500/10 rounded-md transition-colors"><Play size={14} fill="currentColor"/></button>
+                         )}
+                         <button onClick={(e) => { e.stopPropagation(); handleActionRequest(isRoutine ? 'deleteRoutine' : 'delete'); }} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-md transition-colors"><Trash2 size={14} /></button>
+                    </div>
+                </div>
+
+                <AnimatePresence>
+                    {actionPrompt && (
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-full right-0 mb-2 p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-[100] text-zinc-900 dark:text-zinc-100 flex flex-col items-center min-w-[220px]">
+                            <AlertTriangle size={24} className="text-amber-500 mb-2"/>
+                            <span className="text-sm font-bold text-center mb-1">Acesso Restrito</span>
+                            <span className="text-xs text-center opacity-80 mb-4">O tempo de edição gratuita expirou. Custo: {actionPrompt.cost} Vouchers.</span>
+                            <div className="flex gap-2 w-full">
+                                <button onClick={(e) => { e.stopPropagation(); setActionPrompt(null); }} className="flex-1 py-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 text-xs font-bold transition-colors">Cancelar</button>
+                                <button onClick={(e) => { e.stopPropagation(); confirmPaidAction(); }} className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-colors flex items-center justify-center gap-1">Pagar <Ticket size={12}/></button>
+                            </div>
+                            {voucherError && <span className="text-[10px] text-red-500 font-bold mt-2 uppercase tracking-widest">Saldo Insuficiente</span>}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </motion.div>
+        );
+    }
+
+    // ======= RENDERIZAÇÃO NORMAL (MANTIDA) =======
     return (
         <motion.div layout className={`relative flex flex-col p-4 mb-3 rounded-2xl border transition-all shadow-sm ${finalBorderClass} ${task.isCompleted ? 'opacity-50 grayscale' : ''}`}>
         
@@ -350,7 +429,6 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
               </div>
 
               <div className="flex gap-2">
-                {/* NOVO: Botão para Adicionar Status caso a tarefa ainda não o possua */}
                 {!task.status && !task.isCompleted && !isEditingStatus && (
                     <button onClick={(e) => { e.stopPropagation(); setIsEditingStatus(true); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-blue-500 hover:bg-blue-500/10 transition-colors">
                         <Edit2 size={14} /> Add Status

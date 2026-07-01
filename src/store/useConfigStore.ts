@@ -25,7 +25,6 @@ export const useBackHandler = (isActive: boolean, handler: () => boolean) => {
     }, [isActive]);
 };
 
-// ATUALIZADO: Os 6 novos temas premium adicionados
 export type Theme = 'light' | 'dark-amoled' | 'soft-dark' | 'butter' | 'navy' | 'darcula' | 'macos' | 'matrix' | 'pink' | 'todoist' | 'light-gray' | 'orange';
 type Font = 'sans' | 'serif' | 'special';
 type ModusOperandi = 'multitask' | 'minimalist' | 'punctual' | 'ambitious' | null;
@@ -39,8 +38,9 @@ interface ConfigState {
   enableEditWindow: boolean; enablePunishments: boolean; hasDismissedEditWarning: boolean;
   showExitWarning: boolean; isExitModalOpen: boolean; isVisionOpen: boolean;
   isSettingsOpen: boolean; isGoogleConnectOpen: boolean; isChangelogOpen: boolean;
+  
+  isCompactView: boolean; // NOVO: Visualização Super Compacta
 
-  // OFFLINE E TOMBSTONES
   isManualOffline: boolean;
   tombstones: Record<string, number>;
   setManualOffline: (val: boolean) => void;
@@ -57,6 +57,7 @@ interface ConfigState {
   setShowExitWarning: (show: boolean) => void; setExitModalOpen: (open: boolean) => void;
   setVisionOpen: (open: boolean) => void; setSettingsOpen: (open: boolean) => void;
   setGoogleConnectOpen: (open: boolean) => void; setChangelogOpen: (open: boolean) => void;
+  setCompactView: (val: boolean) => void; // NOVO
 }
 
 export const useConfigStore = create<ConfigState>()(persist((set) => ({
@@ -66,6 +67,7 @@ export const useConfigStore = create<ConfigState>()(persist((set) => ({
   enableEditWindow: true, enablePunishments: true, hasDismissedEditWarning: false,
   showExitWarning: true, isExitModalOpen: false, isVisionOpen: false,
   isSettingsOpen: false, isGoogleConnectOpen: false, isChangelogOpen: false,
+  isCompactView: false,
 
   isManualOffline: false, tombstones: {},
   setManualOffline: (val) => set({ isManualOffline: val }),
@@ -86,4 +88,5 @@ export const useConfigStore = create<ConfigState>()(persist((set) => ({
   setShowExitWarning: (show) => set({ showExitWarning: show }), setExitModalOpen: (open) => set({ isExitModalOpen: open }),
   setVisionOpen: (open) => set({ isVisionOpen: open }), setSettingsOpen: (open) => set({ isSettingsOpen: open }),
   setGoogleConnectOpen: (open) => set({ isGoogleConnectOpen: open }), setChangelogOpen: (open) => set({ isChangelogOpen: open }),
+  setCompactView: (val) => set({ isCompactView: val }),
 }), { name: 'lida-config' }));

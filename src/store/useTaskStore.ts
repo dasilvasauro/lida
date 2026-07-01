@@ -31,7 +31,6 @@ const calculateNextRecurrence = (currentDateStr: string | undefined, recurrence:
   return null;
 };
 
-// OFUSCAÇÃO DO COFRE LOCAL
 const obfuscatedStorage: StateStorage = {
   getItem: (name) => {
     const str = localStorage.getItem(name);
@@ -54,6 +53,10 @@ interface TaskState {
   setGlobalModalOpen: (isOpen: boolean) => void; setRoutineModalOpen: (isOpen: boolean) => void; 
   addTask: (task: Task) => void; toggleTaskCompletion: (taskId: string) => void; deleteTask: (taskId: string) => void;
   updateTask: (taskId: string, updatedTask: Partial<Task>) => void;
+  
+  // NOVO: Conclui a tarefa assinando a data de ontem
+  retroactiveCompleteTask: (taskId: string, dateStr: string) => void;
+
   addFolder: (folder: Folder) => void; deleteFolder: (folderId: string) => void; setFolderId: (folderId: string) => void;
   addRoutine: (routine: RoutineTemplate) => void; updateRoutine: (id: string, updated: Partial<RoutineTemplate>) => void; deleteRoutine: (id: string) => void;
   setDailyMood: (mood: Mood) => void; setFilter: (filter: 'today' | 'week' | 'month' | 'all') => void;
@@ -94,7 +97,6 @@ export const useTaskStore = create<TaskState>()(
 
         if (p.mode === 'focus') {
             newAccumulated += 1;
-            // Farma Vouchers a cada 60 min de foco
             if (newAccumulated >= 3600) {
                 setTimeout(() => {
                     useEconomyStore.getState().addVouchers(1);
@@ -139,6 +141,13 @@ export const useTaskStore = create<TaskState>()(
       deleteTask: (taskId) => { useConfigStore.getState().addTombstone(taskId); set((state) => ({ tasks: state.tasks.filter((t) => t.id !== taskId) })); },
       updateTask: (taskId, updatedTask) => set((state) => ({ tasks: state.tasks.map((t) => t.id === taskId ? { ...t, ...updatedTask, updatedAt: Date.now() } : t) })),
       
+      retroactiveCompleteTask: (taskId, dateStr) => set((state) => {
+        const retroTime = new Date(dateStr + 'T23:59:59').getTime();
+        return {
+            tasks: state.tasks.map(t => t.id === taskId ? { ...t, isCompleted: true, completedAt: retroTime, updatedAt: Date.now() } : t)
+        };
+      }),
+
       addFolder: (folder) => set((state) => ({ folders: [...state.folders, { ...folder, updatedAt: Date.now() }] })), setFolderId: (folderId) => set({ selectedFolderId: folderId }),
       deleteFolder: (folderId) => { useConfigStore.getState().addTombstone(folderId); set((state) => ({ folders: state.folders.filter(f => f.id !== folderId), tasks: state.tasks.map(t => t.folderId === folderId ? { ...t, folderId: 'default', updatedAt: Date.now() } : t), selectedFolderId: state.selectedFolderId === folderId ? 'all' : state.selectedFolderId })); },
 
@@ -166,9 +175,21 @@ export const useTaskStore = create<TaskState>()(
       applyPowerUp: (taskId, type) => set((state) => ({ tasks: state.tasks.map(t => { if (t.id !== taskId) return t; if (type === 'magicDice') return { ...t, hasMagicDice: true, updatedAt: Date.now() }; if (type === 'respite') { let newTime = t.deadlineTime; if (newTime) { const [h, m] = newTime.split(':').map(Number); const newH = Math.min(23, h + 3); newTime = `${newH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`; } return { ...t, hasRespite: true, deadlineTime: newTime, updatedAt: Date.now() }; } if (type === 'relief') { let newDate = t.deadlineDate; if (newDate) { const dateObj = new Date(newDate + 'T12:00:00'); dateObj.setDate(dateObj.getDate() + 1); newDate = dateObj.toISOString().split('T')[0]; } return { ...t, hasRelief: true, deadlineDate: newDate, updatedAt: Date.now() }; } return t; }) })),
 
       processNewDay: (todayStr) => {
-        const { tasks, routines } = get();
+        const { tasks, routines, moodHistory } = get();
         const { enablePunishments } = useConfigStore.getState();
         const newTasks = [...tasks]; let changed = false; let totalLostXp = 0; let totalLostGold = 0;
+
+        // NOVO: Garantir que sempre há um mood registrado no dia anterior
+        const yesterdayObj = new Date(todayStr + 'T12:00:00');
+        yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+        const yStr = format(yesterdayObj, 'yyyy-MM-dd');
+        
+        let newMoodHistory = { ...moodHistory };
+        let moodChanged = false;
+        if (!newMoodHistory[yStr]) {
+            newMoodHistory[yStr] = 'normal';
+            moodChanged = true;
+        }
 
         for (let i = 0; i < newTasks.length; i++) {
           const t = newTasks[i];
@@ -217,7 +238,11 @@ export const useTaskStore = create<TaskState>()(
         });
 
         if (totalLostXp > 0 || totalLostGold > 0) useEconomyStore.getState().applyPenalty(totalLostXp, totalLostGold);
-        if (changed) set({ tasks: newTasks });
+        
+        // Zera o humor do dia se tivermos mudado de dia, e salva as mudanças
+        if (changed || moodChanged) {
+            set({ tasks: newTasks, moodHistory: newMoodHistory });
+        }
       }
     }),
     { name: 'lida-tasks', storage: createJSONStorage(() => obfuscatedStorage) }
