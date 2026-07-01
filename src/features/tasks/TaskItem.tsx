@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Clock, Calendar, Zap, Timer, Gift, Sparkles, CheckCircle2, ChevronDown, Play, Maximize2, Trash2, Repeat, Edit2, Wind, CalendarHeart, Dices, Folder, Flame, Ticket, AlertTriangle, Footprints, Target } from 'lucide-react';
+import { Check, Clock, Calendar, Zap, Timer, Gift, Sparkles, CheckCircle2, ChevronDown, Play, Maximize2, Trash2, Repeat, Edit2, Wind, CalendarHeart, Dices, Folder, Flame, Ticket, AlertTriangle, Footprints, Target, MessageSquareText } from 'lucide-react';
 import type { Task } from '../../types';
 import { format, subDays, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -38,11 +38,11 @@ const MarqueeText = ({ text, className }: { text: string, className?: string }) 
             transition={isOverflowing ? { repeat: Infinity, repeatType: "reverse", duration: Math.max(overflowAmount * 0.04, 2.5), ease: 'linear', repeatDelay: 1.5 } : {}}
             className="flex whitespace-nowrap min-w-max h-full items-center"
           >
-             <div className={`${className}`}>{text}</div>
+             <div className={`${className} pr-4`}>{text}</div>
           </motion.div>
        </div>
     );
- };
+};
 
 interface TaskItemProps {
     task: Task; 
@@ -67,14 +67,22 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
     const [isOvertime, setIsOvertime] = useState(false);
 
+    // Sistema de Janela de Edição e Status
     const [freeEditTimeLeft, setFreeEditTimeLeft] = useState(0);
     const [actionPrompt, setActionPrompt] = useState<{ type: 'edit' | 'delete' | 'editRoutine' | 'deleteRoutine', cost: number } | null>(null);
     const [voucherError, setVoucherError] = useState(false);
     
+    // Status In-line
     const [isEditingStatus, setIsEditingStatus] = useState(false);
     const [tempStatus, setTempStatus] = useState(task.status || '');
 
-    useEffect(() => { setTempStatus(task.status || ''); }, [task.status]);
+    // Tooltip de Descrição (Modo Compacto)
+    const [showTooltip, setShowTooltip] = useState(false);
+    const pressTimer = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+        setTempStatus(task.status || '');
+    }, [task.status]);
 
     const handleStatusSave = () => {
         setIsEditingStatus(false);
@@ -121,6 +129,15 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         const m = Math.floor(seconds / 60).toString().padStart(2, '0');
         const s = (seconds % 60).toString().padStart(2, '0');
         return `${m}:${s}`;
+    };
+
+    const handlePressStart = () => {
+        if (!task.description) return;
+        pressTimer.current = setTimeout(() => setShowTooltip(true), 500); // 500ms de segurar ativa a tooltip
+    };
+    const handlePressEnd = () => {
+        if (pressTimer.current) clearTimeout(pressTimer.current);
+        setShowTooltip(false);
     };
 
     const icons = { normal: CheckCircle2, daily_challenge: Zap, sprint: Footprints, time: Timer, bonus: Gift, surprise: Sparkles, routine: Repeat };
@@ -240,40 +257,122 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         }
     };
 
+    // ========================================
     // ======= RENDERIZAÇÃO COMPACTA =======
+    // ========================================
     if (isCompactView) {
         return (
-            <motion.div layout className={`relative flex items-center p-2.5 mb-2 rounded-xl border transition-all shadow-sm ${finalBorderClass} ${task.isCompleted ? 'opacity-50 grayscale' : ''} group`}>
-                <button onClick={(e) => { e.stopPropagation(); onToggle(task.id); }} className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors mx-1 ${task.isCompleted ? 'bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-100 dark:border-zinc-100 dark:text-black' : isRoutine ? 'border-current opacity-50 hover:opacity-100' : 'border-zinc-400 dark:border-zinc-500 hover:border-zinc-900 dark:hover:border-zinc-100'}`}>
-                    {task.isCompleted && <Check size={12} strokeWidth={3} />}
-                </button>
-
-                <div className="flex-1 min-w-0 flex items-center gap-2 overflow-hidden h-6 cursor-pointer pl-2 pr-1" onClick={(e) => { e.stopPropagation(); handleActionRequest(isRoutine ? 'editRoutine' : 'edit'); }}>
-                    <MarqueeText text={task.title} className={`text-sm font-bold ${task.isCompleted ? 'line-through opacity-60' : textColorClass}`} />
-                    
-                    {task.type === 'sprint' && <Footprints size={12} className="text-purple-500 shrink-0"/>}
-                    {task.type === 'daily_challenge' && <Zap size={12} className="text-amber-500 shrink-0"/>}
-                    {task.type === 'time' && <Timer size={12} className="text-blue-500 shrink-0"/>}
-                    {task.hasMagicDice && <Dices size={12} className="text-purple-500 shrink-0"/>}
-                    {task.deadlineTime && <span className="text-[10px] font-bold text-zinc-400 shrink-0 flex items-center gap-0.5 ml-1"><Clock size={10}/>{task.deadlineTime}</span>}
-                </div>
-
-                <div className="shrink-0 flex items-center gap-2 px-2 bg-transparent">
-                    {!isRoutine && (
-                        <div className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${priorityBadgeStyles[task.priority]}`}>
-                            {task.priority}
-                        </div>
+            <motion.div layout className={`relative flex flex-col p-2 mb-2 rounded-xl border transition-all shadow-sm ${finalBorderClass} ${task.isCompleted ? 'opacity-50 grayscale' : ''} group`}>
+                
+                {/* Tooltip de Descrição no Hover (Desktop) e Hold (Mobile) */}
+                <AnimatePresence>
+                    {showTooltip && task.description && (
+                        <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute z-50 bottom-full left-10 mb-1 p-3 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-black font-medium text-xs rounded-xl shadow-2xl max-w-xs whitespace-pre-wrap border border-zinc-700 dark:border-zinc-300">
+                            {task.description}
+                        </motion.div>
                     )}
-                    
-                    {/* Botões Hover (Play / Delete) */}
-                    <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity ml-1">
-                         {task.type === 'time' && !task.isCompleted && (
-                             <button onClick={(e) => { e.stopPropagation(); if (!isActiveSession) startFocus(task.id, task.duration || 30); }} className="p-1.5 text-blue-500 hover:bg-blue-500/10 rounded-md transition-colors"><Play size={14} fill="currentColor"/></button>
-                         )}
-                         <button onClick={(e) => { e.stopPropagation(); handleActionRequest(isRoutine ? 'deleteRoutine' : 'delete'); }} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-md transition-colors"><Trash2 size={14} /></button>
+                </AnimatePresence>
+
+                <div 
+                   className="flex items-center w-full"
+                   onMouseEnter={() => { if(task.description) setShowTooltip(true); }}
+                   onMouseLeave={() => setShowTooltip(false)}
+                   onTouchStart={handlePressStart}
+                   onTouchEnd={handlePressEnd}
+                >
+                    {/* Checkbox */}
+                    <button onClick={(e) => { e.stopPropagation(); onToggle(task.id); }} className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors mx-1 ${task.isCompleted ? 'bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-100 dark:border-zinc-100 dark:text-black' : isRoutine ? 'border-current opacity-50 hover:opacity-100' : 'border-zinc-400 dark:border-zinc-500 hover:border-zinc-900 dark:hover:border-zinc-100'}`}>
+                        {task.isCompleted && <Check size={12} strokeWidth={3} />}
+                    </button>
+
+                    {/* Título & Ícones */}
+                    <div className="flex-1 min-w-0 flex items-center gap-2 overflow-hidden px-2 h-7 cursor-pointer" onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}>
+                        <Icon size={14} className={textColorClass} />
+                        <MarqueeText text={task.title} className={`text-sm font-bold ${task.isCompleted ? 'line-through opacity-60' : textColorClass}`} />
+                        {task.hasMagicDice && <Dices size={12} className="text-purple-500 shrink-0"/>}
+                        {task.deadlineTime && <span className="text-[10px] font-bold text-zinc-400 shrink-0 flex items-center gap-0.5"><Clock size={10}/>{task.deadlineTime}</span>}
+                    </div>
+
+                    {/* Botões de Ação (Aparecem no Hover) */}
+                    <div className="shrink-0 flex items-center gap-0.5 px-1 bg-transparent">
+                        {!isRoutine && (
+                            <div className={`px-1.5 py-0.5 mr-1 rounded text-[8px] font-black uppercase ${priorityBadgeStyles[task.priority]}`}>
+                                {task.priority}
+                            </div>
+                        )}
+
+                        <div className="flex items-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity gap-0.5">
+                             {task.type === 'time' && !task.isCompleted && (
+                                 <button onClick={(e) => { e.stopPropagation(); if (!isActiveSession) startFocus(task.id, task.duration || 30); }} className="p-1.5 text-blue-500 hover:bg-blue-500/10 rounded-md transition-colors" title="Iniciar Timer"><Play size={14} fill="currentColor"/></button>
+                             )}
+                             
+                             {!task.isCompleted && !task.status && !isEditingStatus && (
+                                 <button onClick={(e) => { e.stopPropagation(); setIsEditingStatus(true); setIsExpanded(true); }} className="p-1.5 text-blue-500 hover:bg-blue-500/10 rounded-md transition-colors" title="Adicionar Status">
+                                     <MessageSquareText size={14} />
+                                 </button>
+                             )}
+                             
+                             {!task.isCompleted && (
+                                 <button onClick={(e) => { e.stopPropagation(); handleActionRequest(isRoutine ? 'editRoutine' : 'edit'); }} className="p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-md transition-colors" title="Editar"><Edit2 size={14}/></button>
+                             )}
+
+                             <button onClick={(e) => { e.stopPropagation(); handleActionRequest(isRoutine ? 'deleteRoutine' : 'delete'); }} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-md transition-colors" title="Excluir"><Trash2 size={14} /></button>
+                        </div>
+
+                        {/* Seta de Dropdown se tiver Subtarefas/Sprint/Rotina ou Status Ativo */}
+                        {(hasSubtasks || task.type === 'sprint' || isRoutine || task.status || isEditingStatus) && (
+                             <button onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }} className="p-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-md transition-colors ml-1">
+                                 <motion.div animate={{ rotate: isExpanded ? 180 : 0 }}><ChevronDown size={16} /></motion.div>
+                             </button>
+                        )}
                     </div>
                 </div>
 
+                {/* DROPDOWN COMPACTO */}
+                <AnimatePresence>
+                    {(isExpanded || isEditingStatus) && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                            <div className="pt-2 mt-2 border-t border-zinc-200 dark:border-zinc-800 space-y-2 px-1 pb-1">
+                                
+                                {/* Status In-line */}
+                                {(task.status || isEditingStatus) && (
+                                    <div className="flex gap-2 text-xs items-start">
+                                        <span className="font-bold text-blue-500 shrink-0 mt-0.5"><MessageSquareText size={14}/></span>
+                                        {isEditingStatus ? (
+                                            <textarea autoFocus value={tempStatus} onChange={e=>setTempStatus(e.target.value)} onBlur={handleStatusSave} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleStatusSave();}}} className="flex-1 bg-transparent border-b border-blue-500/30 outline-none text-blue-700 dark:text-blue-300 resize-none overflow-hidden" placeholder="Digite o andamento..." rows={2} />
+                                        ) : (
+                                            <span className="text-zinc-600 dark:text-zinc-400 font-medium whitespace-pre-wrap flex-1 cursor-pointer hover:opacity-70 transition-opacity" onClick={()=>setIsEditingStatus(true)}>{task.status}</span>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Sprint Compact Info (TEXTO) */}
+                                {task.type === 'sprint' && task.deadlineDate && (
+                                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-purple-600 dark:text-purple-400 mt-2 p-2 bg-purple-500/10 rounded-lg">
+                                        <span>Conclusão: {Math.round(sprintProgress)}%</span>
+                                        <span>Restam {sprintLeft} Dias</span>
+                                    </div>
+                                )}
+
+                                {/* Subtasks / Rotinas Compactas */}
+                                {hasSubtasks && (
+                                    <div className="space-y-1.5 mt-2">
+                                        {task.subtasks?.map(st => (
+                                            <button key={st.id} onClick={() => toggleSubtask(task.id, st.id)} className="w-full flex items-center gap-2 text-xs text-left group px-1 py-0.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                                                <div className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center shrink-0 transition-colors ${st.completed ? (isRoutine ? `${rColorData.bar} border-transparent text-white` : 'bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-100 dark:border-zinc-100 dark:text-black') : 'border-zinc-400 group-hover:border-zinc-500'}`}>
+                                                    {st.completed && <Check size={10} strokeWidth={3} />}
+                                                </div>
+                                                <span className={`${st.completed ? 'line-through opacity-50 text-zinc-500' : 'text-zinc-700 dark:text-zinc-300 group-hover:text-black dark:group-hover:text-white font-medium'}`}>{st.title}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Vouchers Alert */}
                 <AnimatePresence>
                     {actionPrompt && (
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-full right-0 mb-2 p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-[100] text-zinc-900 dark:text-zinc-100 flex flex-col items-center min-w-[220px]">
@@ -292,7 +391,9 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         );
     }
 
-    // ======= RENDERIZAÇÃO NORMAL (MANTIDA) =======
+    // ========================================
+    // ======= RENDERIZAÇÃO NORMAL (DEFAULT) =======
+    // ========================================
     return (
         <motion.div layout className={`relative flex flex-col p-4 mb-3 rounded-2xl border transition-all shadow-sm ${finalBorderClass} ${task.isCompleted ? 'opacity-50 grayscale' : ''}`}>
         
@@ -431,7 +532,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
               <div className="flex gap-2">
                 {!task.status && !task.isCompleted && !isEditingStatus && (
                     <button onClick={(e) => { e.stopPropagation(); setIsEditingStatus(true); }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-blue-500 hover:bg-blue-500/10 transition-colors">
-                        <Edit2 size={14} /> Add Status
+                        <MessageSquareText size={14} /> Add Status
                     </button>
                 )}
 

@@ -186,12 +186,6 @@ export const TaskDashboard = () => {
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-black tracking-tight">Tarefas</h1>
               
-              {/* ORDENAÇÃO E MODO COMPACTO TRANSFERIDOS PARA CÁ */}
-              <div className="flex items-center bg-zinc-100 dark:bg-zinc-800/80 rounded-xl p-1 ml-1 border border-zinc-200 dark:border-zinc-700 shadow-inner">
-                 <button onClick={() => setIsSortedByPriority(!isSortedByPriority)} className={`p-1.5 rounded-lg transition-all ${isSortedByPriority ? 'bg-white dark:bg-zinc-700 text-blue-500 shadow-sm' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`} title="Ordenar por Prioridade"><ArrowDownUp size={16} /></button>
-                 <button onClick={() => setCompactView(!isCompactView)} className={`p-1.5 rounded-lg transition-all ${isCompactView ? 'bg-white dark:bg-zinc-700 text-blue-500 shadow-sm' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`} title="Visão Compacta"><AlignJustify size={16} /></button>
-              </div>
-              
               <button onClick={() => updatePomodoro({ isOpen: true, isMinimized: false })} className="mt-1 p-2 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors" title="Rádio Relógio Pomodoro">
                   <Timer size={20}/>
               </button>
@@ -289,7 +283,17 @@ export const TaskDashboard = () => {
 
                 {regularTasks.length > 0 && (
                   <div>
-                    {routineTasks.length > 0 && <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-4 flex items-center gap-2 ml-1"><CheckCircle2 size={14} /> Tarefas</h3>}
+                    {/* CABEÇALHO DE TAREFAS COM BOTÕES DE ORDENAÇÃO E COMPACTO */}
+                    <div className="flex items-center justify-between mb-4 mt-2">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 flex items-center gap-2 ml-1">
+                            <CheckCircle2 size={14} /> Tarefas
+                        </h3>
+                        <div className="flex items-center bg-zinc-100 dark:bg-zinc-800/80 rounded-xl p-1 border border-zinc-200 dark:border-zinc-700 shadow-inner">
+                           <button onClick={() => setIsSortedByPriority(!isSortedByPriority)} className={`p-1.5 rounded-lg transition-all ${isSortedByPriority ? 'bg-white dark:bg-zinc-700 text-blue-500 shadow-sm' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`} title="Ordenar por Prioridade"><ArrowDownUp size={14} /></button>
+                           <button onClick={() => setCompactView(!isCompactView)} className={`p-1.5 rounded-lg transition-all ${isCompactView ? 'bg-white dark:bg-zinc-700 text-blue-500 shadow-sm' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`} title="Visão Compacta"><AlignJustify size={14} /></button>
+                        </div>
+                    </div>
+
                     {regularTasks.map((task) => (
                        <TaskItem key={task.id} task={task} onToggle={requestToggle} onEdit={() => { setTaskToEdit(task); setIsModalOpen(true); }} onDelete={() => requestDelete(task.id)} />
                     ))}
