@@ -78,7 +78,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
 
     // Tooltip de Descrição (Modo Compacto)
     const [showTooltip, setShowTooltip] = useState(false);
-    const pressTimer = useRef<NodeJS.Timeout | null>(null);
+    const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         setTempStatus(task.status || '');
@@ -133,7 +133,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
 
     const handlePressStart = () => {
         if (!task.description) return;
-        pressTimer.current = setTimeout(() => setShowTooltip(true), 500); // 500ms de segurar ativa a tooltip
+        pressTimer.current = setTimeout(() => setShowTooltip(true), 500);
     };
     const handlePressEnd = () => {
         if (pressTimer.current) clearTimeout(pressTimer.current);
@@ -290,7 +290,7 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
                         <Icon size={14} className={textColorClass} />
                         <MarqueeText text={task.title} className={`text-sm font-bold ${task.isCompleted ? 'line-through opacity-60' : textColorClass}`} />
                         {task.hasMagicDice && <Dices size={12} className="text-purple-500 shrink-0"/>}
-                        {task.deadlineTime && <span className="text-[10px] font-bold text-zinc-400 shrink-0 flex items-center gap-0.5"><Clock size={10}/>{task.deadlineTime}</span>}
+                        {task.deadlineTime && <span className="text-[10px] font-bold text-zinc-400 shrink-0 flex items-center gap-0.5 ml-1"><Clock size={10}/>{task.deadlineTime}</span>}
                     </div>
 
                     {/* Botões de Ação (Aparecem no Hover) */}
