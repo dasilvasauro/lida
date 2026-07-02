@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldCheck, KeyRound, ArrowRight, ShieldAlert, Fingerprint } from 'lucide-react';
-import { signInWithPopup } from 'firebase/auth';
+import { signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { auth, googleProvider, db } from '../../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { syncFromCloud, syncToCloud } from '../../lib/cloudSync';
@@ -17,22 +17,52 @@ export const AuthScreen = () => {
   const [confirmPin, setConfirmPin] = useState('');
   const [error, setError] = useState('');
 
+  // Captura o resultado do redirecionamento caso o pop-up tenha falhado/sido bloqueado
+  useEffect(() => {
+    const checkRedirect = async () => {
+      try {
+        setStep('check');
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          const uid = result.user.uid;
+          setTempUid(uid);
+          const snap = await getDoc(doc(db, 'users', uid));
+          if (snap.exists()) setStep('enter_pin');
+          else setStep('create_pin');
+        } else {
+          setStep('login');
+        }
+      } catch (err: any) {
+        console.error(err);
+        setError('Falha na autenticação por redirecionamento.');
+        setStep('login');
+      }
+    };
+    checkRedirect();
+  }, [setAuth]);
+
   const handleGoogleLogin = async () => {
     try {
+      setError('');
       setStep('check');
+      // Tenta primeiro por Pop-up
       const result = await signInWithPopup(auth, googleProvider);
       const uid = result.user.uid;
       setTempUid(uid);
 
-      // Verifica se o cofre do usuário já existe
       const snap = await getDoc(doc(db, 'users', uid));
       if (snap.exists()) setStep('enter_pin');
       else setStep('create_pin');
       
-    } catch (err) {
-      console.error(err);
-      setError('Falha na autenticação com o Google.');
-      setStep('login');
+    } catch (err: any) {
+      console.warn("Pop-up bloqueado por políticas COOP, alternando para redirecionamento...", err);
+      // Fallback automático para Redirecionamento seguro contra COOP
+      try {
+        await signInWithRedirect(auth, googleProvider);
+      } catch (redirectErr) {
+        setError('Falha na autenticação com o Google.');
+        setStep('login');
+      }
     }
   };
 
@@ -42,7 +72,7 @@ export const AuthScreen = () => {
     
     setStep('loading');
     setAuth(tempUid!, pin);
-    await syncToCloud(); // Sobe os dados do onboarding/testes locais para a nuvem
+    await syncToCloud();
   };
 
   const handleEnterPin = async () => {
@@ -51,7 +81,7 @@ export const AuthScreen = () => {
     const result = await syncFromCloud(tempUid!, pin);
     
     if (result === 'success') {
-      setAuth(tempUid!, pin); // Libera o app
+      setAuth(tempUid!, pin);
     } else {
       setError('Chave Mestra Incorreta. Tente novamente.');
       setStep('enter_pin');
@@ -71,12 +101,11 @@ export const AuthScreen = () => {
             </p>
             {error && <div className="text-red-500 text-sm font-bold mb-4">{error}</div>}
             
-            <button onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-3 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black px-8 py-4 rounded-xl font-bold hover:scale-105 transition-transform shadow-xl">
+            <button onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-3 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black px-8 py-4 rounded-xl font-bold hover:scale-105 transition-transform shadow-xl cursor-pointer">
               Autenticar com Google <ArrowRight size={20} />
             </button>
 
-            {/* BOTÃO DO MODO LOCAL */}
-            <button onClick={() => useConfigStore.getState().setLocalMode(true)} className="mt-8 text-sm font-bold text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+            <button onClick={() => useConfigStore.getState().setLocalMode(true)} className="mt-8 text-sm font-bold text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer">
               Continuar Offline (Armazenamento Local)
             </button>
 
@@ -104,7 +133,7 @@ export const AuthScreen = () => {
               <input type="password" placeholder="Confirme a Chave Mestra" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleCreatePin()} className="w-full p-4 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 outline-none focus:border-amber-500 font-bold text-center tracking-widest" />
             </div>
             {error && <div className="text-red-500 text-sm font-bold text-center">{error}</div>}
-            <button onClick={handleCreatePin} className="w-full py-4 rounded-xl bg-amber-500 text-white font-black hover:opacity-90 transition-opacity">Forjar Cofre</button>
+            <button onClick={handleCreatePin} className="w-full py-4 rounded-xl bg-amber-500 text-white font-black hover:opacity-90 transition-opacity cursor-pointer">Forjar Cofre</button>
           </motion.div>
         )}
 
@@ -117,7 +146,7 @@ export const AuthScreen = () => {
             </div>
             <input type="password" placeholder="Chave Mestra" value={pin} onChange={(e) => setPin(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleEnterPin()} className="w-full p-4 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 outline-none focus:border-emerald-500 font-bold text-center tracking-widest" autoFocus />
             {error && <div className="text-red-500 text-sm font-bold text-center">{error}</div>}
-            <button onClick={handleEnterPin} className="w-full py-4 rounded-xl bg-emerald-500 text-white font-black hover:opacity-90 transition-opacity">Descriptografar</button>
+            <button onClick={handleEnterPin} className="w-full py-4 rounded-xl bg-emerald-500 text-white font-black hover:opacity-90 transition-opacity cursor-pointer">Descriptografar</button>
           </motion.div>
         )}
 
