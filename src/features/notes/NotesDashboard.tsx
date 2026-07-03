@@ -8,7 +8,6 @@ import { ShortcutModal } from './ShortcutModal';
 import type { Notebook, Note, ItemColor, NoteFont, NoteFormat } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 
 const colorStyles: Record<ItemColor, { nb: string; note: string; hex: string }> = {
   blue: { nb: 'bg-blue-500/20 dark:bg-blue-500/30 border-blue-500/30 dark:border-blue-400/50 text-blue-600 dark:text-blue-300', note: 'bg-blue-500/5 dark:bg-blue-500/10 border-blue-500/10 dark:border-blue-400/30', hex: 'text-blue-500 dark:text-blue-400' },
