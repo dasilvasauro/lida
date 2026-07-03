@@ -601,37 +601,6 @@ export const NotesDashboard = () => {
                     )}
                 </AnimatePresence>
 
-                {/* FAB FLUTUANTE DA BARRA DE EDIÇÃO (Aparece se scrollar e sumir a principal) */}
-                <AnimatePresence>
-                    {!isToolbarVisible && isEditing && noteFormat === 'richtext' && !showInNoteSearch && (
-                        <motion.div 
-                            initial={{ y: 50, opacity: 0, x: "-50%" }} 
-                            animate={{ y: 0, opacity: 1, x: "-50%" }} 
-                            exit={{ y: 50, opacity: 0, x: "-50%" }} 
-                            // A classe abaixo garante que ele fique ACIMA da navbar no mobile (bottom-28) e elegante no desktop (bottom-12)
-                            className={`fixed left-1/2 z-[2000] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full shadow-2xl px-4 py-2 flex items-center gap-1 overflow-x-auto w-[90vw] md:w-auto max-w-2xl scrollbar-hide ${isFullscreen ? 'bottom-8' : 'bottom-28 md:bottom-12'}`}
-                        >
-                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('undo')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Desfazer"><Undo size={16}/></button>
-                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('redo')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Refazer"><Redo size={16}/></button>
-                            <button onMouseDown={e => e.preventDefault()} onClick={() => { setShowInNoteSearch(true); setIsEditing(false); }} className="shrink-0 p-2 rounded-lg transition-colors text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800" title="Buscar na Nota"><FileSearch size={16}/></button>
-                            
-                            <div className="w-px h-6 shrink-0 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
-                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('bold')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Negrito"><Bold size={16}/></button>
-                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('italic')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Itálico"><Italic size={16}/></button>
-                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('underline')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Sublinhado"><Underline size={16}/></button>
-                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('strikeThrough')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Tachado"><Strikethrough size={16}/></button>
-                            
-                            <div className="w-px h-6 shrink-0 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
-                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('insertUnorderedList')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Lista"><List size={16}/></button>
-                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('insertOrderedList')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Lista Numerada"><ListOrdered size={16}/></button>
-                            
-                            <div className="w-px h-6 shrink-0 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
-                            <button onMouseDown={e => e.preventDefault()} onClick={() => { const url = prompt('Digite a URL do link:'); if (url) execCmd('createLink', url); }} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Inserir Link"><LinkIcon size={16}/></button>
-                            <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('formatBlock', 'PRE')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Bloco de Código"><Code size={16}/></button>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
                 {/* BARRA DE PESQUISA CUSTOMIZADA */}
                 <AnimatePresence>
                   {showInNoteSearch && (
@@ -688,6 +657,38 @@ export const NotesDashboard = () => {
             )}
           </motion.div>
         </AnimatePresence>
+
+        {/* ================================================================= */}
+        {/* FAB FLUTUANTE GLOBAL (AGORA FORA DO CONTAINER QUE QUEBRA O FIXED) */}
+        {/* ================================================================= */}
+                <AnimatePresence>
+                  {view === 'editor' && !isToolbarVisible && isEditing && noteFormat === 'richtext' && !showInNoteSearch && (
+                      <motion.div 
+                          initial={{ y: 50, opacity: 0, x: "-50%" }} 
+                          animate={{ y: 0, opacity: 1, x: "-50%" }} 
+                          exit={{ y: 50, opacity: 0, x: "-50%" }} 
+                          className={`fixed left-1/2 z-[2000] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full shadow-2xl px-4 py-2 flex items-center gap-1 overflow-x-auto w-[90vw] md:w-auto max-w-2xl scrollbar-hide ${isFullscreen ? 'bottom-8' : 'bottom-28 md:bottom-12'}`}
+                      >
+                          <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('undo')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Desfazer"><Undo size={16}/></button>
+                          <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('redo')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Refazer"><Redo size={16}/></button>
+                          <button onMouseDown={e => e.preventDefault()} onClick={() => { setShowInNoteSearch(true); setIsEditing(false); }} className="shrink-0 p-2 rounded-lg transition-colors text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800" title="Buscar na Nota"><FileSearch size={16}/></button>
+                          
+                          <div className="w-px h-6 shrink-0 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
+                          <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('bold')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Negrito"><Bold size={16}/></button>
+                          <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('italic')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Itálico"><Italic size={16}/></button>
+                          <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('underline')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Sublinhado"><Underline size={16}/></button>
+                          <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('strikeThrough')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Tachado"><Strikethrough size={16}/></button>
+                          
+                          <div className="w-px h-6 shrink-0 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
+                          <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('insertUnorderedList')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Lista"><List size={16}/></button>
+                          <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('insertOrderedList')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Lista Numerada"><ListOrdered size={16}/></button>
+                          
+                          <div className="w-px h-6 shrink-0 bg-zinc-200 dark:bg-zinc-800 mx-1 self-center" />
+                          <button onMouseDown={e => e.preventDefault()} onClick={() => { const url = prompt('Digite a URL do link:'); if (url) execCmd('createLink', url); }} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Inserir Link"><LinkIcon size={16}/></button>
+                          <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('formatBlock', 'PRE')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Bloco de Código"><Code size={16}/></button>
+                      </motion.div>
+                  )}
+                </AnimatePresence>
 
         {/* MODAL DE CRIAÇÃO/EDIÇÃO DE CADERNO */}
         <AnimatePresence>
