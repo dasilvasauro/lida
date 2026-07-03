@@ -132,3 +132,41 @@ export interface MonthlyArchive {
   finalScore: number; 
   grade: ScoreGrade;
 }
+
+// === HÁBITOS E VÍCIOS ===
+export type HabitType = 'good' | 'bad';
+
+export interface Habit {
+  id: string;
+  title: string;
+  description?: string;
+  type: HabitType;
+  goal?: number;
+  unit?: string;
+  color: ItemColor;
+  icon?: string;
+  createdAt: number;
+}
+
+export interface QuitterItem {
+  id: string;
+  title: string;
+  reason: string;
+  moneySavedPerDay: number;
+  quitDate: string; 
+  relapses: string[]; 
+  createdAt: number;
+}
+
+// === CENTRAL DE ATALHOS ===
+export type ShortcutType = 'link' | 'command' | 'snippet';
+export type ShortcutColor = ItemColor;
+
+export interface ShortcutItem {
+  id: string;
+  title: string;
+  content: string;
+  type: ShortcutType;
+  color: ShortcutColor;
+  createdAt: number;
+}

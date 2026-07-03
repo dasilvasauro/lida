@@ -68,7 +68,7 @@ const MarqueeText = ({ text, className }: { text: string, className?: string }) 
 };
 
 // === LINHA DO ATALHO (REORDENÁVEL E COMPACTA) ===
-const ShortcutItemRow = ({ item, hideLabels, onRemove }: { item: ShortcutItem, hideLabels: boolean, style: any, onRemove: (id: string) => void }) => {
+const ShortcutItemRow = ({ item, hideLabels, onRemove, style }: { item: ShortcutItem, hideLabels: boolean, style: any, onRemove: (id: string) => void }) => {
     const dragControls = useDragControls();
     const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -85,7 +85,7 @@ const ShortcutItemRow = ({ item, hideLabels, onRemove }: { item: ShortcutItem, h
             dragControls={dragControls}
             className="flex flex-row items-center justify-between gap-2 px-3 py-1.5 border-b border-white/5 bg-black/20 group hover:bg-black/30 transition-colors w-full shrink-0 relative"
         >
-            <div className="cursor-grab touch-none p-1 shrink-0" onPointerDown={(e) => dragControls.start(e)}>
+            <div className="cursor-grab touch-none p-1 shrink-0" onPointerDown={(e: any) => dragControls.start(e)}>
                 <GripVertical size={16} className="text-white/20 opacity-30 group-hover:opacity-100" />
             </div>
 
@@ -130,7 +130,7 @@ interface CategoryViewProps {
 
 const CategoryView = ({ categoryId, isSplit, onSelectCategory }: CategoryViewProps) => {
     const { shortcutCategories, updateShortcutCategory, deleteShortcutCategory } = useNoteStore();
-    const category = shortcutCategories.find(c => c.id === categoryId);
+    const category = shortcutCategories.find((c: any) => c.id === categoryId);
 
     const [isAdding, setIsAdding] = useState(false);
     const [hideLabels, setHideLabels] = useState(false);
@@ -139,7 +139,7 @@ const CategoryView = ({ categoryId, isSplit, onSelectCategory }: CategoryViewPro
     const [type, setType] = useState<ShortcutType>('keys');
 
     if (!category) return null;
-    const style = catStyles[category.color];
+    const style = catStyles[category.color as ShortcutColor];
 
     const handleAddItem = () => {
         if (!label.trim() || !value.trim()) return;
@@ -154,8 +154,8 @@ const CategoryView = ({ categoryId, isSplit, onSelectCategory }: CategoryViewPro
            <div className="px-4 py-2 border-b border-white/10 flex justify-between items-center bg-black/30 shrink-0">
               {isSplit && onSelectCategory ? (
                  <div className="relative max-w-[60%] flex-1">
-                    <select value={category.id} onChange={e => onSelectCategory(e.target.value)} className={`w-full bg-transparent border-none outline-none font-black text-sm md:text-base ${style.text} cursor-pointer pr-4 uppercase tracking-tight truncate`}>
-                       {shortcutCategories.map(c => <option key={c.id} value={c.id} className="bg-zinc-950 text-white font-bold">{c.title}</option>)}
+                    <select value={category.id} onChange={(e: any) => onSelectCategory(e.target.value)} className={`w-full bg-transparent border-none outline-none font-black text-sm md:text-base ${style.text} cursor-pointer pr-4 uppercase tracking-tight truncate`}>
+                       {shortcutCategories.map((c: any) => <option key={c.id} value={c.id} className="bg-zinc-950 text-white font-bold">{c.title}</option>)}
                     </select>
                  </div>
               ) : (
@@ -180,9 +180,9 @@ const CategoryView = ({ categoryId, isSplit, onSelectCategory }: CategoryViewPro
               {category.items.length === 0 ? (
                  <div className="m-auto text-center text-white/20 text-xs font-bold italic p-4">Nenhum atalho.</div>
               ) : (
-                 <Reorder.Group axis="y" values={category.items} onReorder={(newItems) => updateShortcutCategory(category.id, { items: newItems })} className="flex flex-col w-full h-full pb-4">
-                     {category.items.map(item => (
-                         <ShortcutItemRow key={item.id} item={item} hideLabels={hideLabels} style={style} onRemove={(id) => updateShortcutCategory(category.id, { items: category.items.filter(i => i.id !== id) })} />
+                 <Reorder.Group axis="y" values={category.items} onReorder={(newItems: any[]) => updateShortcutCategory(category.id, { items: newItems })} className="flex flex-col w-full h-full pb-4">
+                     {category.items.map((item: ShortcutItem) => (
+                         <ShortcutItemRow key={item.id} item={item} hideLabels={hideLabels} style={style} onRemove={(id: string) => updateShortcutCategory(category.id, { items: category.items.filter((i: ShortcutItem) => i.id !== id) })} />
                      ))}
                  </Reorder.Group>
               )}
@@ -194,19 +194,19 @@ const CategoryView = ({ categoryId, isSplit, onSelectCategory }: CategoryViewPro
                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="p-3 md:p-4 bg-black/40 border-t border-white/5 shrink-0 overflow-hidden">
                     <div className="flex flex-col gap-2">
                        <div className="flex items-center gap-2">
-                          <input type="text" placeholder="Ação (Ex: Duplicar Linha)" value={label} onChange={e=>setLabel(e.target.value)} className="flex-1 bg-black/40 border border-white/10 px-3 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold outline-none placeholder:text-white/20 text-white focus:border-white/30 transition-colors" />
-                          <button onClick={() => setType(t => t === 'keys' ? 'command' : 'keys')} className="text-[9px] md:text-[10px] font-black uppercase tracking-widest px-3 py-2 md:py-2.5 bg-white/10 hover:bg-white/20 rounded-xl border border-white/10 transition-colors text-white whitespace-nowrap">
+                          <input type="text" placeholder="Ação (Ex: Duplicar Linha)" value={label} onChange={(e: any) => setLabel(e.target.value)} className="flex-1 bg-black/40 border border-white/10 px-3 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold outline-none placeholder:text-white/20 text-white focus:border-white/30 transition-colors" />
+                          <button onClick={() => setType((t: ShortcutType) => t === 'keys' ? 'command' : 'keys')} className="text-[9px] md:text-[10px] font-black uppercase tracking-widest px-3 py-2 md:py-2.5 bg-white/10 hover:bg-white/20 rounded-xl border border-white/10 transition-colors text-white whitespace-nowrap">
                              {type === 'keys' ? 'Teclas' : 'Comando'}
                           </button>
                        </div>
                        <div className="flex items-center gap-2">
-                          <input type="text" placeholder={type === 'keys' ? "Ex: Ctrl + Shift + D" : "Ex: docker-compose up"} value={value} onChange={e=>setValue(e.target.value)} className={`flex-1 bg-black/40 border border-white/10 px-3 py-2 md:py-2.5 rounded-xl text-xs md:text-sm outline-none placeholder:text-white/20 transition-colors text-white ${type === 'keys' ? 'font-bold' : 'font-mono text-emerald-400'}`} />
+                          <input type="text" placeholder={type === 'keys' ? "Ex: Ctrl + Shift + D" : "Ex: docker-compose up"} value={value} onChange={(e: any) => setValue(e.target.value)} className={`flex-1 bg-black/40 border border-white/10 px-3 py-2 md:py-2.5 rounded-xl text-xs md:text-sm outline-none placeholder:text-white/20 transition-colors text-white ${type === 'keys' ? 'font-bold' : 'font-mono text-emerald-400'}`} />
                           <button onClick={handleAddItem} disabled={!label.trim() || !value.trim()} className="p-2 md:p-2.5 bg-white text-black rounded-xl hover:opacity-80 disabled:opacity-50 transition-opacity shrink-0"><Plus size={16} strokeWidth={3}/></button>
                        </div>
                        {type === 'keys' && (
                           <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pt-1 pb-1">
-                             {quickKeys.map(k => (
-                                <button key={k} onClick={() => setValue(v => v ? `${v} + ${k}` : k)} className="shrink-0 px-2.5 py-1 bg-white/5 hover:bg-white/15 border border-white/10 rounded-md text-[9px] font-black tracking-wider uppercase transition-colors text-white/80">{k}</button>
+                             {quickKeys.map((k: string) => (
+                                <button key={k} onClick={() => setValue((v: string) => v ? `${v} + ${k}` : k)} className="shrink-0 px-2.5 py-1 bg-white/5 hover:bg-white/15 border border-white/10 rounded-md text-[9px] font-black tracking-wider uppercase transition-colors text-white/80">{k}</button>
                              ))}
                           </div>
                        )}
@@ -235,9 +235,9 @@ export const ShortcutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
   useEffect(() => {
      if (shortcutCategories.length > 0) {
         if (currentIndex >= shortcutCategories.length) setCurrentIndex(Math.max(0, shortcutCategories.length - 1));
-        if (!leftCatId || !shortcutCategories.find(c => c.id === leftCatId)) setLeftCatId(shortcutCategories[0].id);
-        if (!midCatId || !shortcutCategories.find(c => c.id === midCatId)) setMidCatId(shortcutCategories[1]?.id || shortcutCategories[0].id);
-        if (!rightCatId || !shortcutCategories.find(c => c.id === rightCatId)) setRightCatId(shortcutCategories[2]?.id || shortcutCategories[1]?.id || shortcutCategories[0].id);
+        if (!leftCatId || !shortcutCategories.find((c: any) => c.id === leftCatId)) setLeftCatId(shortcutCategories[0].id);
+        if (!midCatId || !shortcutCategories.find((c: any) => c.id === midCatId)) setMidCatId(shortcutCategories[1]?.id || shortcutCategories[0].id);
+        if (!rightCatId || !shortcutCategories.find((c: any) => c.id === rightCatId)) setRightCatId(shortcutCategories[2]?.id || shortcutCategories[1]?.id || shortcutCategories[0].id);
      }
   }, [shortcutCategories.length, currentIndex, leftCatId, midCatId, rightCatId]);
 
@@ -273,7 +273,7 @@ export const ShortcutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
                  </div>
                  <div className="flex items-center gap-1.5">
                     {shortcutCategories.length > 1 && (
-                       <button onClick={() => setSplitCount(s => s === 1 ? 2 : s === 2 ? 3 : 1)} className="p-2 rounded-xl bg-white/5 text-white/70 hover:bg-white/10 border border-white/5 transition-colors font-black text-xs md:text-sm w-9 flex justify-center" title="Dividir Tela">
+                       <button onClick={() => setSplitCount((s: 1|2|3) => s === 1 ? 2 : s === 2 ? 3 : 1)} className="p-2 rounded-xl bg-white/5 text-white/70 hover:bg-white/10 border border-white/5 transition-colors font-black text-xs md:text-sm w-9 flex justify-center" title="Dividir Tela">
                           {splitCount}x
                        </button>
                     )}
@@ -299,11 +299,11 @@ export const ShortcutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
                  ) : splitCount > 1 ? (
                      /* === VISÃO DIVIDIDA (2x ou 3x) === */
                      <div className="w-full h-full flex divide-x divide-white/10 overflow-hidden">
-                        {activeCols.map((catId, index) => {
+                        {activeCols.map((catId: string | null | undefined, index: number) => {
                             if (!catId) return null;
                             return (
                                 <div key={`col-${index}`} className={`flex-1 min-w-0 h-full ${index === 2 ? 'hidden lg:block' : ''} ${index === 1 ? 'hidden md:block' : ''}`}>
-                                    <CategoryView categoryId={catId} isSplit={true} onSelectCategory={(id) => {
+                                    <CategoryView categoryId={catId} isSplit={true} onSelectCategory={(id: string) => {
                                         if (index === 0) setLeftCatId(id);
                                         if (index === 1) setRightCatId(id);
                                         if (index === 2) setMidCatId(id);
@@ -323,13 +323,13 @@ export const ShortcutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
                              exit={{ opacity: 0, scale: 0.98 }}
                              transition={{ duration: 0.15 }}
                              // Gesto de Swipe personalizado (Evita conflitos com o Drag do Reorder)
-                             onPanEnd={(_, info) => {
+                             onPanEnd={(_: any, info: any) => {
                                 const isHorizontal = Math.abs(info.offset.x) > Math.abs(info.offset.y);
                                 if (isHorizontal) {
                                     if (info.offset.x < -80 || info.velocity.x < -300) {
-                                        setCurrentIndex(i => i < shortcutCategories.length - 1 ? i + 1 : 0);
+                                        setCurrentIndex((i: number) => i < shortcutCategories.length - 1 ? i + 1 : 0);
                                     } else if (info.offset.x > 80 || info.velocity.x > 300) {
-                                        setCurrentIndex(i => i > 0 ? i - 1 : shortcutCategories.length - 1);
+                                        setCurrentIndex((i: number) => i > 0 ? i - 1 : shortcutCategories.length - 1);
                                     }
                                 }
                              }}
@@ -345,13 +345,13 @@ export const ShortcutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
                         {shortcutCategories.length > 1 && (
                            <>
                              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2 z-20 bg-black/40 px-3 py-2 rounded-full backdrop-blur-md border border-white/5 shadow-lg">
-                                {shortcutCategories.map((c, i) => (
+                                {shortcutCategories.map((c: any, i: number) => (
                                    <button key={c.id} onClick={() => setCurrentIndex(i)} className={`w-2 h-2 rounded-full transition-colors ${i === currentIndex ? 'bg-white' : 'bg-white/20 hover:bg-white/40'}`} />
                                 ))}
                              </div>
                              
-                             <button onClick={() => setCurrentIndex(i => i > 0 ? i - 1 : shortcutCategories.length - 1)} className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/60 text-white rounded-full border border-white/10 shadow-xl backdrop-blur-md z-20 hover:scale-105 transition-all"><ChevronLeft size={24}/></button>
-                             <button onClick={() => setCurrentIndex(i => i < shortcutCategories.length - 1 ? i + 1 : 0)} className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/60 text-white rounded-full border border-white/10 shadow-xl backdrop-blur-md z-20 hover:scale-105 transition-all"><ChevronRight size={24}/></button>
+                             <button onClick={() => setCurrentIndex((i: number) => i > 0 ? i - 1 : shortcutCategories.length - 1)} className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/60 text-white rounded-full border border-white/10 shadow-xl backdrop-blur-md z-20 hover:scale-105 transition-all"><ChevronLeft size={24}/></button>
+                             <button onClick={() => setCurrentIndex((i: number) => i < shortcutCategories.length - 1 ? i + 1 : 0)} className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/60 text-white rounded-full border border-white/10 shadow-xl backdrop-blur-md z-20 hover:scale-105 transition-all"><ChevronRight size={24}/></button>
                            </>
                         )}
                      </div>
@@ -364,11 +364,11 @@ export const ShortcutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center p-4 backdrop-blur-md">
                        <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-zinc-950 w-full max-w-sm rounded-[2rem] p-6 border border-white/10 text-white relative shadow-2xl">
                           <h3 className="text-lg font-black mb-5 uppercase tracking-tight">Nova Coleção</h3>
-                          <input type="text" value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="Ex: TERMINAL LINUX, GMAIL..." className="w-full bg-black/50 p-4 rounded-xl border border-white/10 outline-none focus:border-sky-500 mb-5 font-black uppercase text-sm tracking-wide text-center" autoFocus />
+                          <input type="text" value={newTitle} onChange={(e: any) => setNewTitle(e.target.value)} placeholder="Ex: TERMINAL LINUX, GMAIL..." className="w-full bg-black/50 p-4 rounded-xl border border-white/10 outline-none focus:border-sky-500 mb-5 font-black uppercase text-sm tracking-wide text-center" autoFocus />
                           
                           <span className="text-[9px] font-black uppercase tracking-widest text-white/40 mb-3 block text-center">Ambiente Visual</span>
                           <div className="flex gap-2.5 mb-8 flex-wrap justify-center">
-                             {(Object.keys(catStyles) as ShortcutColor[]).map(c => (
+                             {(Object.keys(catStyles) as ShortcutColor[]).map((c: ShortcutColor) => (
                                 <button key={c} onClick={() => setNewColor(c)} className={`w-9 h-9 rounded-full border-2 transition-all ${newColor === c ? 'border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.2)]' : 'border-transparent opacity-30 hover:opacity-60'} ${catStyles[c].bg}`} />
                              ))}
                           </div>
