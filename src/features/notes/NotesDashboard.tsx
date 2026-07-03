@@ -8,6 +8,7 @@ import { ShortcutModal } from './ShortcutModal';
 import type { Notebook, Note, ItemColor, NoteFont, NoteFormat } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const colorStyles: Record<ItemColor, { nb: string; note: string; hex: string }> = {
   blue: { nb: 'bg-blue-500/20 dark:bg-blue-500/30 border-blue-500/30 dark:border-blue-400/50 text-blue-600 dark:text-blue-300', note: 'bg-blue-500/5 dark:bg-blue-500/10 border-blue-500/10 dark:border-blue-400/30', hex: 'text-blue-500 dark:text-blue-400' },
@@ -407,7 +408,7 @@ export const NotesDashboard = () => {
             exit={{ opacity: 0, scale: 0.97, filter: 'brightness(0.85)' }}
             transition={{ duration: 0.25, ease: "easeInOut" }}
             style={{ willChange: "opacity, transform, filter" }}
-            className={`w-full h-full mx-auto flex flex-col ${isFullscreen ? 'max-w-6xl' : 'max-w-4xl px-6 md:px-8 pt-12'}`}
+            className={`w-full h-full mx-auto flex flex-col ${isFullscreen ? 'max-w-6xl p-4 md:p-6' : 'max-w-4xl px-6 md:px-8 pt-12'}`}
           >
 
             {/* HEADER GERAL */}
@@ -502,85 +503,83 @@ export const NotesDashboard = () => {
               <div className="flex flex-col flex-1 h-full min-h-0 relative">
                 
                 {/* BARRA SUPERIOR E DE OPÇÕES DE EDIÇÃO */}
-                <div className={`flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 p-3 mb-4 rounded-2xl border ${colorStyles[activeNotebook.color].note} w-full min-w-0 ${isFullscreen && !showInNoteSearch ? 'fixed top-4 left-1/2 -translate-x-1/2 z-[1100] max-w-4xl bg-white/90 dark:bg-black/90 backdrop-blur-md shadow-2xl' : ''}`}>
-                    <div className="flex flex-wrap items-center gap-y-2 gap-x-1 w-full md:w-auto shrink-0 pb-1 md:pb-0">
-                        <button onClick={handleBack} className="p-2 shrink-0 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><ChevronLeft size={20}/></button>
-                        <div className="w-px h-6 shrink-0 bg-zinc-300 dark:bg-zinc-700 mx-1" />
-                        
-                        <div className="relative shrink-0 flex items-center gap-2 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800/50 rounded-lg border border-zinc-200 dark:border-zinc-800">
-                           <FolderInput size={14} className="text-zinc-500 shrink-0" />
-                           <button onClick={() => setFolderMenuOpen(!folderMenuOpen)} className="flex items-center gap-1 bg-transparent text-xs font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-300 outline-none max-w-[100px] md:max-w-[150px] truncate">
-                             {notebooks.find(nb => nb.id === activeNote?.notebookId)?.name || 'Caderno'} <ChevronDown size={14} className="opacity-50 shrink-0" />
-                           </button>
-                           <AnimatePresence>
-                             {folderMenuOpen && (
-                               <>
-                                 <div className="fixed inset-0 z-40" onClick={() => setFolderMenuOpen(false)} />
-                                 <motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-10}} className="absolute top-full left-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl z-50 flex flex-col p-2 min-w-[180px] max-h-48 overflow-y-auto gap-1">
-                                   {notebooks.map(nb => (
-                                     <button key={nb.id} onClick={() => { updateNote(activeNote.id, { notebookId: nb.id }); setActiveNote({ ...activeNote, notebookId: nb.id }); setFolderMenuOpen(false); }} className={`text-left px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-xs font-bold uppercase tracking-widest truncate transition-colors ${activeNote?.notebookId === nb.id ? 'bg-zinc-100 dark:bg-zinc-800 text-blue-500' : ''}`}>
-                                       {nb.name}
-                                     </button>
-                                   ))}
-                                 </motion.div>
-                               </>
-                             )}
-                           </AnimatePresence>
-                        </div>
-                        
-                        <div className="w-px h-6 shrink-0 bg-zinc-300 dark:bg-zinc-700 mx-1" />
-                        
-                        {/* TOGGLE MARKDOWN E TOOLTIP */}
-                        <div className="flex items-center gap-1">
-                           <button onClick={toggleFormat} className="shrink-0 px-3 py-1.5 text-[10px] md:text-xs font-bold uppercase tracking-widest rounded-lg bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 shadow-sm text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
-                               {noteFormat === 'richtext' ? 'Rich Text' : 'Markdown'}
-                           </button>
-                           <button onClick={() => setShowCheatSheet(true)} className="p-1.5 text-zinc-400 hover:text-blue-500 transition-colors" title="Guia de Markdown">
-                              <HelpCircle size={16} />
-                           </button>
-                        </div>
-
-                        <div className="w-px h-6 shrink-0 bg-zinc-300 dark:bg-zinc-700 mx-1" />
-                        <button onClick={() => { setIsEditing(!isEditing); setShowInNoteSearch(false); setNoteSearchQuery(''); }} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shrink-0 ${!isEditing ? 'bg-blue-500/10 text-blue-500' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
-                            {isEditing ? <Eye size={16}/> : <PenLine size={16}/>} {isEditing ? 'Ver' : 'Editar'}
-                        </button>
-                        {!isEditing && <button onClick={() => { setShowInNoteSearch(!showInNoteSearch); if(!showInNoteSearch) setNoteSearchQuery(''); }} className={`shrink-0 p-2 rounded-lg transition-colors ml-1 ${showInNoteSearch ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} title="Buscar na Nota"><FileSearch size={16}/></button>}
+                <div className={`flex items-center gap-2 p-2 mb-4 rounded-2xl border ${colorStyles[activeNotebook.color].note} w-full min-w-0 overflow-x-auto scrollbar-hide shrink-0 ${isFullscreen ? 'shadow-sm' : ''}`}>
+                    <button onClick={handleBack} className="p-2 shrink-0 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"><ChevronLeft size={20}/></button>
+                    <div className="w-px h-6 shrink-0 bg-zinc-300 dark:bg-zinc-700 mx-1" />
+                    
+                    <div className="relative shrink-0 flex items-center gap-2 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800/50 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                       <FolderInput size={14} className="text-zinc-500 shrink-0" />
+                       <button onClick={() => setFolderMenuOpen(!folderMenuOpen)} className="flex items-center gap-1 bg-transparent text-xs font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-300 outline-none max-w-[100px] md:max-w-[150px] truncate">
+                         {notebooks.find(nb => nb.id === activeNote?.notebookId)?.name || 'Caderno'} <ChevronDown size={14} className="opacity-50 shrink-0" />
+                       </button>
+                       <AnimatePresence>
+                         {folderMenuOpen && (
+                           <>
+                             <div className="fixed inset-0 z-40" onClick={() => setFolderMenuOpen(false)} />
+                             <motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-10}} className="absolute top-full left-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl z-50 flex flex-col p-2 min-w-[180px] max-h-48 overflow-y-auto gap-1">
+                               {notebooks.map(nb => (
+                                 <button key={nb.id} onClick={() => { updateNote(activeNote.id, { notebookId: nb.id }); setActiveNote({ ...activeNote, notebookId: nb.id }); setFolderMenuOpen(false); }} className={`text-left px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-xs font-bold uppercase tracking-widest truncate transition-colors ${activeNote?.notebookId === nb.id ? 'bg-zinc-100 dark:bg-zinc-800 text-blue-500' : ''}`}>
+                                   {nb.name}
+                                 </button>
+                               ))}
+                             </motion.div>
+                           </>
+                         )}
+                       </AnimatePresence>
+                    </div>
+                    
+                    <div className="w-px h-6 shrink-0 bg-zinc-300 dark:bg-zinc-700 mx-1" />
+                    
+                    {/* TOGGLE MARKDOWN E TOOLTIP */}
+                    <div className="flex items-center gap-1 shrink-0">
+                       <button onClick={toggleFormat} className="shrink-0 px-3 py-1.5 text-[10px] md:text-xs font-bold uppercase tracking-widest rounded-lg bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 shadow-sm text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-colors">
+                           {noteFormat === 'richtext' ? 'Rich Text' : 'Markdown'}
+                       </button>
+                       <button onClick={() => setShowCheatSheet(true)} className="p-1.5 text-zinc-400 hover:text-blue-500 transition-colors shrink-0" title="Guia de Markdown">
+                          <HelpCircle size={16} />
+                       </button>
                     </div>
 
-                    <div className="flex items-center justify-end w-full md:w-auto gap-1 shrink-0 border-t md:border-none border-zinc-200 dark:border-zinc-800 pt-2 md:pt-0">
-                        {saveStatus === 'saving' && <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-400 animate-pulse mr-2">Salvando...</span>}
-                        {saveStatus === 'saved' && <span className="text-[10px] uppercase tracking-widest font-bold text-emerald-500 flex items-center gap-1 mr-2"><Check size={12}/> Salvo</span>}
-                        
-                        {/* Dropdown Customizado: Fonte */}
-                        <div className="relative shrink-0">
-                           <button onClick={() => setFontMenuOpen(!fontMenuOpen)} className="flex items-center gap-1 bg-transparent text-sm font-bold text-zinc-600 dark:text-zinc-300 outline-none pr-2">
-                             {noteFont === 'sans' ? 'Sans' : noteFont === 'serif' ? 'Serif' : 'Manual'} <ChevronDown size={14} className="opacity-50 shrink-0"/>
-                           </button>
-                           <AnimatePresence>
-                             {fontMenuOpen && (
-                               <>
-                                 <div className="fixed inset-0 z-40" onClick={() => setFontMenuOpen(false)} />
-                                 <motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-10}} className="absolute top-full right-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl z-50 flex flex-col p-2 w-36 gap-1">
-                                   <button onClick={() => { setNoteFont('sans'); setFontMenuOpen(false); }} className={`font-sans text-left px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-sm transition-colors ${noteFont==='sans'?'bg-zinc-100 dark:bg-zinc-800':''}`}>Sans</button>
-                                   <button onClick={() => { setNoteFont('serif'); setFontMenuOpen(false); }} className={`font-serif text-left px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-sm transition-colors ${noteFont==='serif'?'bg-zinc-100 dark:bg-zinc-800':''}`}>Serif</button>
-                                   <button onClick={() => { setNoteFont('handwriting'); setFontMenuOpen(false); }} className={`font-handwriting text-left px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-sm transition-colors ${noteFont==='handwriting'?'bg-zinc-100 dark:bg-zinc-800':''}`}>Manual</button>
-                                 </motion.div>
-                               </>
-                             )}
-                           </AnimatePresence>
-                        </div>
-                         
-                        <button onClick={() => setIsFullscreen(!isFullscreen)} className="p-2 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg">{isFullscreen ? <Minimize2 size={18}/> : <Maximize2 size={18}/>}</button>
-                        <button onClick={() => setNoteLines(!noteLines)} className={`p-2 rounded-lg transition-colors ${noteLines ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}><AlignLeft size={18}/></button>
-                        <button onClick={() => { activeNote.isLocked ? removeLock(activeNote.id, false) : setPasswordModal({ isOpen: true, type: 'set_note_lock', targetId: activeNote.id }) }} className={`p-2 rounded-lg ${activeNote.isLocked ? 'text-amber-500 bg-amber-500/10' : 'text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
-                           {activeNote.isLocked ? <Lock size={18}/> : <Unlock size={18}/>}
-                        </button>
+                    <div className="w-px h-6 shrink-0 bg-zinc-300 dark:bg-zinc-700 mx-1" />
+                    <button onClick={() => { setIsEditing(!isEditing); setShowInNoteSearch(false); setNoteSearchQuery(''); }} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shrink-0 ${!isEditing ? 'bg-blue-500/10 text-blue-500' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                        {isEditing ? <Eye size={16}/> : <PenLine size={16}/>} {isEditing ? 'Ver' : 'Editar'}
+                    </button>
+                    {!isEditing && <button onClick={() => { setShowInNoteSearch(!showInNoteSearch); if(!showInNoteSearch) setNoteSearchQuery(''); }} className={`shrink-0 p-2 rounded-lg transition-colors ml-1 ${showInNoteSearch ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`} title="Buscar na Nota"><FileSearch size={16}/></button>}
+
+                    <div className="flex-1 min-w-[20px]"></div>
+
+                    {saveStatus === 'saving' && <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-400 animate-pulse mr-2 shrink-0">Salvando...</span>}
+                    {saveStatus === 'saved' && <span className="text-[10px] uppercase tracking-widest font-bold text-emerald-500 flex items-center gap-1 mr-2 shrink-0"><Check size={12}/> Salvo</span>}
+                    
+                    {/* Dropdown Customizado: Fonte */}
+                    <div className="relative shrink-0">
+                       <button onClick={() => setFontMenuOpen(!fontMenuOpen)} className="flex items-center gap-1 bg-transparent text-sm font-bold text-zinc-600 dark:text-zinc-300 outline-none pr-2 shrink-0">
+                         {noteFont === 'sans' ? 'Sans' : noteFont === 'serif' ? 'Serif' : 'Manual'} <ChevronDown size={14} className="opacity-50 shrink-0"/>
+                       </button>
+                       <AnimatePresence>
+                         {fontMenuOpen && (
+                           <>
+                             <div className="fixed inset-0 z-40" onClick={() => setFontMenuOpen(false)} />
+                             <motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-10}} className="absolute top-full right-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl z-50 flex flex-col p-2 w-36 gap-1">
+                               <button onClick={() => { setNoteFont('sans'); setFontMenuOpen(false); }} className={`font-sans text-left px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-sm transition-colors ${noteFont==='sans'?'bg-zinc-100 dark:bg-zinc-800':''}`}>Sans</button>
+                               <button onClick={() => { setNoteFont('serif'); setFontMenuOpen(false); }} className={`font-serif text-left px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-sm transition-colors ${noteFont==='serif'?'bg-zinc-100 dark:bg-zinc-800':''}`}>Serif</button>
+                               <button onClick={() => { setNoteFont('handwriting'); setFontMenuOpen(false); }} className={`font-handwriting text-left px-4 py-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-sm transition-colors ${noteFont==='handwriting'?'bg-zinc-100 dark:bg-zinc-800':''}`}>Manual</button>
+                             </motion.div>
+                           </>
+                         )}
+                       </AnimatePresence>
                     </div>
+                     
+                    <button onClick={() => setIsFullscreen(!isFullscreen)} className="p-2 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg shrink-0">{isFullscreen ? <Minimize2 size={18}/> : <Maximize2 size={18}/>}</button>
+                    <button onClick={() => setNoteLines(!noteLines)} className={`p-2 rounded-lg transition-colors shrink-0 ${noteLines ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100' : 'text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}><AlignLeft size={18}/></button>
+                    <button onClick={() => { activeNote.isLocked ? removeLock(activeNote.id, false) : setPasswordModal({ isOpen: true, type: 'set_note_lock', targetId: activeNote.id }) }} className={`p-2 rounded-lg shrink-0 ${activeNote.isLocked ? 'text-amber-500 bg-amber-500/10' : 'text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+                       {activeNote.isLocked ? <Lock size={18}/> : <Unlock size={18}/>}
+                    </button>
                 </div>
 
                 <AnimatePresence>
                     {isEditing && noteFormat === 'richtext' && (
-                        <motion.div ref={toolbarRef} initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className={`flex items-center gap-1 overflow-x-auto scrollbar-hide pb-2 px-1 ${isFullscreen && !showInNoteSearch ? 'mt-24' : ''}`}>
+                        <motion.div ref={toolbarRef} initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="flex items-center gap-1 overflow-x-auto scrollbar-hide pb-2 px-1 shrink-0">
                             <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('undo')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Desfazer"><Undo size={16}/></button>
                             <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('redo')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg" title="Refazer"><Redo size={16}/></button>
                             <button onMouseDown={e => e.preventDefault()} onClick={() => { setShowInNoteSearch(true); setIsEditing(false); }} className="shrink-0 p-2 rounded-lg transition-colors text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800" title="Buscar na Nota"><FileSearch size={16}/></button>
@@ -605,7 +604,7 @@ export const NotesDashboard = () => {
                 {/* FAB FLUTUANTE DA BARRA DE EDIÇÃO (Aparece se scrollar e sumir a principal) */}
                 <AnimatePresence>
                     {!isToolbarVisible && isEditing && noteFormat === 'richtext' && !showInNoteSearch && (
-                        <motion.div initial={{ y: 50, opacity: 0, x: "-50%" }} animate={{ y: 0, opacity: 1, x: "-50%" }} exit={{ y: 50, opacity: 0, x: "-50%" }} className="fixed bottom-6 left-1/2 z-[2000] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full shadow-2xl px-4 py-2 flex items-center gap-1 overflow-x-auto max-w-[90vw] scrollbar-hide">
+                        <motion.div initial={{ y: 50, opacity: 0, x: "-50%" }} animate={{ y: 0, opacity: 1, x: "-50%" }} exit={{ y: 50, opacity: 0, x: "-50%" }} className="fixed bottom-6 left-1/2 z-[2000] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full shadow-2xl px-4 py-2 flex items-center gap-1 overflow-x-auto w-[90vw] md:w-auto max-w-lg scrollbar-hide">
                             <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('undo')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg"><Undo size={16}/></button>
                             <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-800 mx-1 shrink-0" />
                             <button onMouseDown={e => e.preventDefault()} onClick={() => execCmd('bold')} className="shrink-0 p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg"><Bold size={16}/></button>
@@ -620,7 +619,7 @@ export const NotesDashboard = () => {
                 {/* BARRA DE PESQUISA CUSTOMIZADA */}
                 <AnimatePresence>
                   {showInNoteSearch && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className={`mb-4 ${isFullscreen ? 'pt-24 px-4' : ''}`}>
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-4 shrink-0">
                        <div className="flex items-center gap-3 px-4 py-3 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-inner">
                           <Search size={18} className="text-zinc-400 shrink-0" />
                           <input 
@@ -643,7 +642,7 @@ export const NotesDashboard = () => {
                 </AnimatePresence>
 
                 {/* TEXT AREA: Renderização Separada (Leitura vs Edição) para 100% de Confiabilidade */}
-                <div className={`flex-1 flex flex-col rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-inner editor-content overflow-hidden ${colorStyles[activeNotebook.color].note} ${isFullscreen && !showInNoteSearch ? 'mt-4' : ''}`}>
+                <div className={`flex-1 flex flex-col rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-inner editor-content overflow-hidden ${colorStyles[activeNotebook.color].note}`}>
                   <input type="text" placeholder="Título da Nota" readOnly={!isEditing && !showInNoteSearch} value={noteTitle} onChange={(e) => setNoteTitle(e.target.value)} className={`w-full px-8 pt-8 pb-4 bg-transparent outline-none text-3xl font-black placeholder:text-zinc-300 dark:placeholder:text-zinc-700 ${noteFont === 'handwriting' ? 'font-handwriting' : noteFont === 'serif' ? 'font-serif' : 'font-sans'}`} />
                   
                   <div className={`flex-1 flex flex-col px-8 relative overflow-y-auto scrollbar-thin ${noteLines ? 'bg-lined-paper' : ''}`}>
