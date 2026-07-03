@@ -109,7 +109,7 @@ export const VisionModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     const today = format(new Date(), 'yyyy-MM-dd');
     const nextCheckpoint = vision.checkpoints.find(cp => cp >= today) || vision.checkpoints.filter((cp: string) => cp >= today)  || vision.checkpoints[vision.checkpoints.length - 1];
 
-    const allInactive = vision.goals.every(g: any => g.state === 1);
+    const allInactive = vision.goals.every((g: any) => g.state === 1);
     const dayOfWeek = new Date().getDay();
     const showWarning = allInactive && [1, 3, 5].includes(dayOfWeek);
 
