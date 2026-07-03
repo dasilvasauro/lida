@@ -146,21 +146,24 @@ export interface Habit {
   color: ItemColor;
   icon?: string;
   createdAt: number;
+  updatedAt?: number;
+  isFreeEditExpired?: boolean;
 }
 
 export interface QuitterItem {
   id: string;
   title: string;
-  reason: string;
-  moneySavedPerDay: number;
-  quitDate: string; 
-  relapses: string[]; 
   createdAt: number;
+  updatedAt: number;
+  lastRelapseAt: number;
+  checkins: string[];
+  rewardCycle: number;
 }
+
 
 // === CENTRAL DE ATALHOS ===
 export type ShortcutType = 'link' | 'command' | 'snippet';
-export type ShortcutColor = ItemColor;
+export type ShortcutColor = 'slate' | 'gray' | 'neutral' | 'red' | 'orange' | 'lime' | 'teal' | 'sky';
 
 export interface ShortcutItem {
   id: string;

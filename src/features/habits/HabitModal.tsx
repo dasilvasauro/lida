@@ -22,7 +22,7 @@ export const HabitModal = ({ isOpen, onClose, habitToEdit, onSuccess }: HabitMod
     const handleSave = () => {
         if (!title.trim()) return;
         if (habitToEdit) { updateHabit(habitToEdit.id, { title, description, goal }); onSuccess?.('Hábito atualizado com sucesso!'); } 
-        else { addHabit({ id: uuidv4(), createdAt: Date.now(), title, description, goal }); onSuccess?.('Novo hábito forjado!'); }
+        else { addHabit({ id: uuidv4(), createdAt: Date.now(), title, description, goal, type: 'good', color: 'emerald' }); }
         onClose();
     };
 
