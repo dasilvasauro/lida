@@ -7,14 +7,14 @@ import { v4 as uuidv4 } from 'uuid';
 import type { ShortcutColor, ShortcutType, ShortcutItem } from '../../types';
 
 const catStyles: Record<ShortcutColor, { bg: string, border: string, text: string }> = {
-  slate: { bg: 'bg-slate-900', border: 'border-slate-800', text: 'text-slate-100' },
-  gray: { bg: 'bg-zinc-900', border: 'border-zinc-800', text: 'text-zinc-100' },
-  neutral: { bg: 'bg-neutral-900', border: 'border-neutral-800', text: 'text-neutral-100' },
-  red: { bg: 'bg-rose-950', border: 'border-rose-900/50', text: 'text-rose-100' },
-  orange: { bg: 'bg-amber-950', border: 'border-amber-900/50', text: 'text-amber-100' },
-  lime: { bg: 'bg-lime-950', border: 'border-lime-900/50', text: 'text-lime-100' },
-  teal: { bg: 'bg-teal-950', border: 'border-teal-900/50', text: 'text-teal-100' },
-  sky: { bg: 'bg-sky-950', border: 'border-sky-900/50', text: 'text-sky-100' },
+  blue: { bg: 'bg-blue-950', border: 'border-blue-900/50', text: 'text-blue-100' },
+  emerald: { bg: 'bg-emerald-950', border: 'border-emerald-900/50', text: 'text-emerald-100' },
+  amber: { bg: 'bg-amber-950', border: 'border-amber-900/50', text: 'text-amber-100' },
+  rose: { bg: 'bg-rose-950', border: 'border-rose-900/50', text: 'text-rose-100' },
+  purple: { bg: 'bg-purple-950', border: 'border-purple-900/50', text: 'text-purple-100' },
+  cyan: { bg: 'bg-cyan-950', border: 'border-cyan-900/50', text: 'text-cyan-100' },
+  indigo: { bg: 'bg-indigo-950', border: 'border-indigo-900/50', text: 'text-indigo-100' },
+  zinc: { bg: 'bg-zinc-900', border: 'border-zinc-800', text: 'text-zinc-100' },
 };
 
 const quickKeys = ['Ctrl', 'Alt', 'Shift', 'Cmd', 'Win', 'Tab', 'Enter', 'Esc', 'Space', 'Del', 'Up', 'Down', 'Left', 'Right'];
@@ -182,7 +182,7 @@ const CategoryView = ({ categoryId, isSplit, onSelectCategory }: CategoryViewPro
               ) : (
                  <Reorder.Group axis="y" values={category.items} onReorder={(newItems: any[]) => updateShortcutCategory(category.id, { items: newItems })} className="flex flex-col w-full h-full pb-4">
                      {category.items.map((item: ShortcutItem) => (
-                         <ShortcutItemRow key={item.id} item={item} hideLabels={hideLabels} style={style} onRemove={(id: string) => updateShortcutCategory(category.id, { items: category.items.filter((i: ShortcutItem) => i.id !== id) })} />
+                         <ShortcutItemRow key={item.id} item={item} hideLabels={hideLabels}  onRemove={(id: string) => updateShortcutCategory(category.id, { items: category.items.filter((i: ShortcutItem) => i.id !== id) })} />
                      ))}
                  </Reorder.Group>
               )}
@@ -230,7 +230,7 @@ export const ShortcutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
   
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  const [newColor, setNewColor] = useState<ShortcutColor>('slate');
+  const [newColor, setNewColor] = useState<ShortcutColor>('zinc');
 
   useEffect(() => {
      if (shortcutCategories.length > 0) {
