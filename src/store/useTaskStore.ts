@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { StateStorage } from 'zustand/middleware';
-import type { Task, Mood, Folder, RoutineTemplate, BrainDumpState, BrainDumpItem, BrainDumpQuadrant, PomodoroState } from '../types';
-import { format, addDays, addMonths } from 'date-fns';
+import type { Task, Mood, Folder, RoutineTemplate, BrainDumpState, BrainDumpItem, BrainDumpQuadrant, PomodoroState, Priority } from '../types';
+import { format, addDays, addMonths, differenceInDays } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 import { useConfigStore } from './useConfigStore';
 import { useEconomyStore } from './useEconomyStore';
+import { useHabitStore } from './useHabitStore';
+import { useScoreStore } from './useScoreStore';
 
 const calculateNextRecurrence = (currentDateStr: string | undefined, recurrence: Task['recurrence']): string | null => {
   if (!recurrence || recurrence.type === 'none') return null;
@@ -41,6 +43,11 @@ const obfuscatedStorage: StateStorage = {
   removeItem: (name) => localStorage.removeItem(name),
 };
 
+// Mapa de Pesos Lógicos para Score
+const PRIORITY_WEIGHTS: Record<Priority, number> = { P0: 0, P1: 1, P2: 2, P3: 3, P4: 4 };
+const PRIORITY_SCORE_VALUE: Record<Priority, number> = { P0: 5, P1: 4, P2: 3, P3: 2, P4: 1 };
+const PRIORITY_FAIL_PENALTY: Record<Priority, number> = { P0: 8, P1: 6, P2: 4, P3: 2, P4: 1 };
+
 interface TaskState {
   tasks: Task[]; folders: Folder[]; routines: RoutineTemplate[]; dailyMood: Mood | null; moodHistory: Record<string, Mood>;
   selectedFilter: 'today' | 'week' | 'month' | 'all'; selectedFolderId: string;
@@ -63,7 +70,8 @@ interface TaskState {
   toggleFocusMode: (isOpen: boolean) => void; 
   markTaskFailed: (taskId: string) => void; clearCompletedTasks: () => void;
   applyPowerUp: (taskId: string, type: 'respite' | 'relief' | 'magicDice') => void;
-  processNewDay: (todayStr: string) => void;
+  
+  processNewDay: (todayStr: string, lastLoginStr: string | null) => void;
 
   setBrainDump: (items: BrainDumpItem[]) => void;
   updateBrainDumpItem: (id: string, quadrant: BrainDumpQuadrant) => void;
@@ -130,7 +138,7 @@ export const useTaskStore = create<TaskState>()(
       clearBrainDump: () => set((state) => ({ brainDump: { ...state.brainDump, items: [] } })),
 
       setGlobalModalOpen: (isOpen) => set({ isGlobalModalOpen: isOpen }), setRoutineModalOpen: (isOpen) => set({ isRoutineModalOpen: isOpen }),
-      addTask: (task) => set((state) => ({ tasks: [...state.tasks, { ...task, updatedAt: Date.now() }] })),
+      addTask: (task) => set((state) => ({ tasks: [...state.tasks, { ...task, postponedCount: 0, reprioritizedCount: 0, updatedAt: Date.now() }] })),
       
       toggleTaskCompletion: (taskId) => set((state) => {
         const taskIndex = state.tasks.findIndex(t => t.id === taskId);
@@ -143,7 +151,6 @@ export const useTaskStore = create<TaskState>()(
         const updatedTask = { ...task, isCompleted: isCompleting, completedAt: isCompleting ? Date.now() : undefined, updatedAt: Date.now() };
         newTasks[taskIndex] = updatedTask;
 
-        // MÁGICA DO BACKLOG: Se completou uma rotina/recorrência, gera a próxima INSTANTANEAMENTE
         if (isCompleting && !task.nextRecurrenceGenerated) {
             if (task.type === 'routine' && task.routineTemplateId) {
                 const routine = state.routines.find(r => r.id === task.routineTemplateId);
@@ -169,7 +176,27 @@ export const useTaskStore = create<TaskState>()(
       }),
 
       deleteTask: (taskId) => { useConfigStore.getState().addTombstone(taskId); set((state) => ({ tasks: state.tasks.filter((t) => t.id !== taskId) })); },
-      updateTask: (taskId, updatedTask) => set((state) => ({ tasks: state.tasks.map((t) => t.id === taskId ? { ...t, ...updatedTask, updatedAt: Date.now() } : t) })),
+      
+      updateTask: (taskId, updatedTask) => set((state) => {
+        return { tasks: state.tasks.map(t => {
+            if (t.id !== taskId) return t;
+
+            let pCount = t.postponedCount || 0;
+            let rCount = t.reprioritizedCount || 0;
+
+            // Tracking Adiados (Se a data limite nova for maior que a anterior)
+            if (updatedTask.deadlineDate && t.deadlineDate && updatedTask.deadlineDate > t.deadlineDate) {
+                pCount += 1;
+            }
+
+            // Tracking Repriorizado (Se a prioridade subiu. Ex: P2 para P1. P0=0 < P2=2)
+            if (updatedTask.priority && t.priority && PRIORITY_WEIGHTS[updatedTask.priority] < PRIORITY_WEIGHTS[t.priority]) {
+                rCount += 1;
+            }
+
+            return { ...t, ...updatedTask, postponedCount: pCount, reprioritizedCount: rCount, updatedAt: Date.now() };
+        })};
+      }),
       
       retroactiveCompleteTask: (taskId, dateStr) => set((state) => {
         const retroTime = new Date(dateStr + 'T23:59:59').getTime();
@@ -202,42 +229,128 @@ export const useTaskStore = create<TaskState>()(
 
       applyPowerUp: (taskId, type) => set((state) => ({ tasks: state.tasks.map(t => { if (t.id !== taskId) return t; if (type === 'magicDice') return { ...t, hasMagicDice: true, updatedAt: Date.now() }; if (type === 'respite') { let newTime = t.deadlineTime; if (newTime) { const [h, m] = newTime.split(':').map(Number); const newH = Math.min(23, h + 3); newTime = `${newH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`; } return { ...t, hasRespite: true, deadlineTime: newTime, updatedAt: Date.now() }; } if (type === 'relief') { let newDate = t.deadlineDate; if (newDate) { const dateObj = new Date(newDate + 'T12:00:00'); dateObj.setDate(dateObj.getDate() + 1); newDate = dateObj.toISOString().split('T')[0]; } return { ...t, hasRelief: true, deadlineDate: newDate, updatedAt: Date.now() }; } return t; }) })),
 
-      processNewDay: (todayStr) => {
+      // === NÚCLEO DE PASSAGEM DE DIAS E CÁLCULO DE SCORE ===
+      processNewDay: (todayStr, lastLoginStr) => {
         const { tasks, routines, moodHistory } = get();
-        const { enablePunishments } = useConfigStore.getState();
-        const newTasks = [...tasks]; let changed = false; let totalLostXp = 0; let totalLostGold = 0;
-
-        const yesterdayObj = new Date(todayStr + 'T12:00:00');
-        yesterdayObj.setDate(yesterdayObj.getDate() - 1);
-        const yStr = format(yesterdayObj, 'yyyy-MM-dd');
+        const { enablePunishments, defaultDaysOff } = useConfigStore.getState();
+        const habitStore = useHabitStore.getState();
+        const scoreStore = useScoreStore.getState();
         
+        let newTasks = [...tasks];
         let newMoodHistory = { ...moodHistory };
-        let moodChanged = false;
-        if (!newMoodHistory[yStr]) { newMoodHistory[yStr] = 'normal'; moodChanged = true; }
+        let changed = false;
 
-        for (let i = 0; i < newTasks.length; i++) {
-          const t = newTasks[i];
-          const isRecurring = t.recurrence && t.recurrence.type !== 'none';
-          const isRoutine = t.type === 'routine';
+        // Se o lastLogin for nulo (primeira vez no app), assume o próprio dia de hoje.
+        const startProcessingDate = lastLoginStr ? new Date(lastLoginStr + 'T12:00:00') : new Date(todayStr + 'T12:00:00');
+        const todayObj = new Date(todayStr + 'T12:00:00');
 
-          // EXCLUSÃO DO AUTO-FAIL para Rotinas e Tarefas Recorrentes (Eles se tornam backlog)
-          if (!t.isCompleted && !t.isFailed && !t.isArchived && !isRecurring && !isRoutine) {
-             const isDailyChallengeOverdue = t.type === 'daily_challenge' && format(new Date(t.createdAt), 'yyyy-MM-dd') < todayStr;
-             const isSprintOverdue = t.type === 'sprint' && t.deadlineDate && t.deadlineDate < todayStr;
-             const isNormalOverdue = t.type === 'normal' && t.deadlineDate && t.deadlineDate < todayStr;
+        // Proteção contra loops infinitos caso o relógio mude bizarramente
+        const diffTotal = differenceInDays(todayObj, startProcessingDate);
+        const maxDaysToProcess = Math.min(diffTotal, 30); // Limite de 30 dias retroativos para não congelar o app
 
-             if (isDailyChallengeOverdue || isSprintOverdue || isNormalOverdue) {
-                 newTasks[i] = { ...t, isFailed: true, updatedAt: Date.now() }; changed = true;
-                 if (enablePunishments) {
-                    let baseGold = 15; let baseXp = 45;
-                    switch (t.priority) { case 'P0': baseGold = 50; baseXp = 150; break; case 'P1': baseGold = 40; baseXp = 100; break; case 'P2': baseGold = 30; baseXp = 75; break; case 'P3': baseGold = 20; baseXp = 50; break; case 'P4': baseGold = 10; baseXp = 25; break; }
-                    totalLostXp += baseXp; totalLostGold += baseGold;
-                 }
-             }
-          }
+        let processDate = new Date(startProcessingDate);
+
+        while (processDate < todayObj && differenceInDays(todayObj, processDate) <= maxDaysToProcess) {
+            const loopDateStr = format(processDate, 'yyyy-MM-dd');
+            const dayOfWeek = processDate.getDay();
+            const isDayOff = defaultDaysOff.includes(dayOfWeek);
+
+            let totalLostXp = 0; let totalLostGold = 0;
+            
+            // --- MÉTRICAS DO SCORE PARA O DIA 'loopDateStr' ---
+            let dayScore = 50; // Base neutra
+            let tasksDoneCount = 0;
+            let habitsDoneCount = 0;
+            let penaltiesCount = 0;
+
+            if (!newMoodHistory[loopDateStr]) {
+                newMoodHistory[loopDateStr] = 'normal';
+                changed = true;
+            }
+
+            // 1. Processar Falhas e Atrasos das Tarefas
+            for (let i = 0; i < newTasks.length; i++) {
+                const t = newTasks[i];
+                const isRecurring = t.recurrence && t.recurrence.type !== 'none';
+                const isRoutine = t.type === 'routine';
+
+                // Avaliar tarefas que deveriam ter sido feitas até ESTE dia (loopDateStr)
+                if (!t.isCompleted && !t.isFailed && !t.isArchived && !isRecurring && !isRoutine) {
+                    const isDailyChallengeOverdue = t.type === 'daily_challenge' && format(new Date(t.createdAt), 'yyyy-MM-dd') === loopDateStr;
+                    const isSprintOverdue = t.type === 'sprint' && t.deadlineDate === loopDateStr;
+                    const isNormalOverdue = t.type === 'normal' && t.deadlineDate === loopDateStr;
+
+                    if (isDailyChallengeOverdue || isSprintOverdue || isNormalOverdue) {
+                        newTasks[i] = { ...t, isFailed: true, updatedAt: Date.now() }; 
+                        changed = true;
+                        penaltiesCount++;
+                        
+                        // Penalidade Pura no Score baseada na prioridade
+                        dayScore -= PRIORITY_FAIL_PENALTY[t.priority];
+
+                        if (enablePunishments) {
+                            let baseGold = 15; let baseXp = 45;
+                            switch (t.priority) { case 'P0': baseGold = 50; baseXp = 150; break; case 'P1': baseGold = 40; baseXp = 100; break; case 'P2': baseGold = 30; baseXp = 75; break; case 'P3': baseGold = 20; baseXp = 50; break; case 'P4': baseGold = 10; baseXp = 25; break; }
+                            totalLostXp += baseXp; totalLostGold += baseGold;
+                        }
+                    }
+                }
+
+                // Avaliar Tarefas Feitas Neste Dia (Para o Score)
+                if (t.isCompleted && t.completedAt && format(new Date(t.completedAt), 'yyyy-MM-dd') === loopDateStr) {
+                    tasksDoneCount++;
+                    let taskPoints = PRIORITY_SCORE_VALUE[t.priority];
+                    
+                    // Bônus/Penalidade temporal: P0 feita rápido ganha mais. P0 feita depois de 3 dias ganha menos.
+                    const daysTaken = differenceInDays(new Date(t.completedAt), new Date(t.createdAt));
+                    if (t.priority === 'P0' && daysTaken > 2) taskPoints = Math.max(1, taskPoints - 2);
+                    if (t.priority === 'P4' && daysTaken === 0) taskPoints += 1;
+
+                    // Punição se foi adiada
+                    if (t.postponedCount && t.postponedCount > 0) {
+                        taskPoints -= (t.postponedCount * 2);
+                        penaltiesCount++;
+                    }
+
+                    dayScore += taskPoints;
+                }
+            }
+
+            // 2. Avaliar Hábitos do Dia (Para o Score)
+            habitStore.habits.forEach(habit => {
+                const logs = habitStore.logs[habit.id]?.[loopDateStr] || 0;
+                const isFrozen = habitStore.modifiers[habit.id]?.[loopDateStr] === 'freeze';
+                
+                if (logs >= (habit.goal || 1)) {
+                    habitsDoneCount++;
+                    dayScore += 3; // +3 por hábito concluído
+                } else if (isFrozen) {
+                    // Neutro, não ganha nem perde
+                } else {
+                    // Penalidade de hábito
+                    dayScore -= 2;
+                    penaltiesCount++;
+                }
+            });
+
+            // 3. Aplica Punições Econômicas e Salva o Score do Dia
+            if (totalLostXp > 0 || totalLostGold > 0) {
+                useEconomyStore.getState().applyPenalty(totalLostXp, totalLostGold);
+            }
+
+            // Bônus Supremo: Dia de Folga produtivo!
+            if (isDayOff && (tasksDoneCount > 0 || habitsDoneCount > 0)) {
+                dayScore += 10;
+            }
+
+            scoreStore.recordDailyScore(loopDateStr, dayScore, tasksDoneCount, habitsDoneCount, penaltiesCount);
+
+            // Avança pro próximo dia do loop
+            processDate.setDate(processDate.getDate() + 1);
         }
 
-        const currentDayOfWeek = new Date(todayStr + 'T12:00:00').getDay();
+        // --- PREPARAÇÃO DO DIA ATUAL (Hoje) ---
+        const currentDayOfWeek = todayObj.getDay();
         routines.forEach(routine => {
             if (routine.weekdays.includes(currentDayOfWeek)) {
                 const exists = newTasks.some(t => t.routineTemplateId === routine.id && t.deadlineDate === todayStr && !t.isArchived);
@@ -248,8 +361,16 @@ export const useTaskStore = create<TaskState>()(
             }
         });
 
-        if (totalLostXp > 0 || totalLostGold > 0) useEconomyStore.getState().applyPenalty(totalLostXp, totalLostGold);
-        if (changed || moodChanged) set({ tasks: newTasks, moodHistory: newMoodHistory });
+        // Verificação se virou o Mês para Arquivamento Automático
+        if (lastLoginStr) {
+            const lastMonth = lastLoginStr.substring(0, 7); // yyyy-MM
+            const currentMonth = todayStr.substring(0, 7);
+            if (lastMonth !== currentMonth) {
+                scoreStore.archiveMonth(lastMonth);
+            }
+        }
+
+        if (changed) set({ tasks: newTasks, moodHistory: newMoodHistory });
       }
     }),
     { name: 'lida-tasks', storage: createJSONStorage(() => obfuscatedStorage) }
