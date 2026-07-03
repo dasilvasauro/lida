@@ -47,7 +47,7 @@ export const TaskDashboard = () => {
   const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); };
 
   const handleCreateFolder = () => {
-    if (newFolderName.trim()) { addFolder({ id: uuidv4(), name: newFolderName }); setNewFolderName(''); setIsCreatingFolder(false); }
+    if (newFolderName.trim()) { addFolder({ id: uuidv4(), name: newFolderName, updatedAt: Date.now() }); setNewFolderName(''); setIsCreatingFolder(false); }
   };
 
   const handleOpenRoutineForm = () => {

@@ -20,7 +20,7 @@ export const useVisionStore = create<VisionState>()(
         return {
           vision: {
             ...state.vision,
-            goals: state.vision.goals.map(g => g.id === goalId ? { ...g, state: newState } : g)
+            goals: state.vision.goals.map(g: any => g.id === goalId ? { ...g, state: newState } : g)
           }
         };
       }),
@@ -29,7 +29,7 @@ export const useVisionStore = create<VisionState>()(
         if (!vision) return;
         
         const today = format(new Date(), 'yyyy-MM-dd');
-        const futureCheckpoints = vision.checkpoints.filter(cp => cp >= today);
+        const futureCheckpoints = vision.checkpoints.filter(cp: string => cp >= today);
         
         // Se ainda houverem checkpoints no futuro, não fazemos nada
         if (futureCheckpoints.length > 0) return;

@@ -162,14 +162,50 @@ export interface QuitterItem {
 
 
 // === CENTRAL DE ATALHOS ===
-export type ShortcutType = 'link' | 'command' | 'snippet';
-export type ShortcutColor = 'slate' | 'gray' | 'neutral' | 'red' | 'orange' | 'lime' | 'teal' | 'sky';
+export type ShortcutType = 'keys' | 'command';
+export type ShortcutColor = ItemColor;
 
 export interface ShortcutItem {
   id: string;
-  title: string;
-  content: string;
+  label: string;
+  value: string;
   type: ShortcutType;
+}
+
+export interface ShortcutCategory {
+  id: string;
+  title: string;
   color: ShortcutColor;
+  items: ShortcutItem[];
+  createdAt: number;
+  updatedAt?: number;
+}
+
+// === REFLEXÕES ===
+export type ReflectionColor = ItemColor;
+
+export interface Reflection {
+  id: string;
+  title: string;
+  color: ReflectionColor;
+  cards: string[];
+  createdAt: number;
+  updatedAt?: number;
+}
+
+// === VISÃO DE VIDA ===
+export type GoalState = 1 | 2 | 3 | 4 | 5;
+
+export interface Goal {
+  id: string;
+  title: string;
+  state: GoalState;
+}
+
+export interface Vision {
+  traitsToDevelop: string[];
+  traitsToAbandon: string[];
+  goals: Goal[];
+  checkpoints: string[];
   createdAt: number;
 }

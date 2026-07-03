@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Coins, Flame, CheckCircle2, TrendingUp, TrendingDown, Minus, Eye, Medal, Info, Activity, RefreshCw, Settings, Plus, Palette, Ticket, Clover, Target, Crown, X, Zap, Shield, Clock, UserCog, CloudCog, ScrollText, LogOut, BarChart3, Calendar, Award } from 'lucide-react';
+import { Star, Coins, Flame, CheckCircle2, TrendingUp, TrendingDown, Minus, Eye, Medal, Info, Activity, RefreshCw, Settings, Plus, Palette, Ticket, Clover, Target, Crown, X, Zap, Shield, Clock, UserCog, CloudCog, ScrollText, LogOut, BarChart3, Calendar } from 'lucide-react';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useHabitStore } from '../../store/useHabitStore';

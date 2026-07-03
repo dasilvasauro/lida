@@ -105,7 +105,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, initialTitle, brainDump
 
   const addSubtask = () => { if (!subtaskInput.trim()) return; setSubtasks([...subtasks, { id: uuidv4(), title: subtaskInput, completed: false }]); setSubtaskInput(''); };
   const toggleWeekday = (day: number) => setSelectedWeekdays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
-  const handleCreateFolder = () => { if (newFolderName.trim()) { const newId = uuidv4(); addFolder({ id: newId, name: newFolderName }); setFolderId(newId); setNewFolderName(''); setIsCreatingFolder(false); } };
+  const handleCreateFolder = () => { if (newFolderName.trim()) { const newId = uuidv4(); addFolder({ id: newId, name: newFolderName, updatedAt: Date.now() }); setFolderId(newId); setNewFolderName(''); setIsCreatingFolder(false); } };
 
   const handleSave = () => {
     if (!title.trim() || (type === 'sprint' && subtasks.length === 0)) return;

@@ -68,7 +68,7 @@ const MarqueeText = ({ text, className }: { text: string, className?: string }) 
 };
 
 // === LINHA DO ATALHO (REORDENÁVEL E COMPACTA) ===
-const ShortcutItemRow = ({ item, hideLabels, onRemove, style }: { item: ShortcutItem, hideLabels: boolean, style: any, onRemove: (id: string) => void }) => {
+const ShortcutItemRow = ({ item, hideLabels, onRemove }: { item: ShortcutItem, hideLabels: boolean,  onRemove: (id: string) => void }) => {
     const dragControls = useDragControls();
     const [copiedId, setCopiedId] = useState<string | null>(null);
 

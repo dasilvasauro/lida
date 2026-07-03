@@ -30,11 +30,11 @@ export const ReflectionViewerModal = ({ reflection, onClose, onEdit }: { reflect
 
   return (
     <AnimatePresence>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className={`fixed inset-0 z-[200] ${bgMap[reflection.color]} text-white flex flex-col`}>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className={`fixed inset-0 z-[200] ${bgMap[reflection.color as keyof typeof bgMap]} text-white flex flex-col`}>
         
         {/* Barras de Progresso */}
         <div className="flex gap-1 p-4 pt-12 z-20">
-          {reflection.cards.map((_, i) => (
+          {reflection.cards.map((_: string, i: number) => (
             <div key={i} className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
               <motion.div className="h-full bg-white" initial={{ width: 0 }} animate={{ width: i <= currentIndex ? '100%' : '0%' }} transition={{ duration: 0.2 }} />
             </div>

@@ -107,9 +107,9 @@ export const VisionModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   const renderDashboard = () => {
     if (!vision) return null;
     const today = format(new Date(), 'yyyy-MM-dd');
-    const nextCheckpoint = vision.checkpoints.find(cp => cp >= today) || vision.checkpoints[vision.checkpoints.length - 1];
+    const nextCheckpoint = vision.checkpoints.find(cp => cp >= today) || vision.checkpoints.filter((cp: string) => cp >= today)  || vision.checkpoints[vision.checkpoints.length - 1];
 
-    const allInactive = vision.goals.every(g => g.state === 1);
+    const allInactive = vision.goals.every(g: any => g.state === 1);
     const dayOfWeek = new Date().getDay();
     const showWarning = allInactive && [1, 3, 5].includes(dayOfWeek);
 
@@ -156,7 +156,7 @@ export const VisionModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             <div className="space-y-4">
               <h3 className="text-sm font-bold uppercase tracking-widest text-emerald-500 flex items-center gap-2"><Anchor size={16}/> Internalizar</h3>
               <ul className="space-y-3">
-                {vision.traitsToDevelop.map((t, i) => (
+                {vision.traitsToDevelop.map((t: string, i: number) => (
                   <li key={i} className="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-sm font-bold shadow-sm">{t}</li>
                 ))}
               </ul>
@@ -164,7 +164,7 @@ export const VisionModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             <div className="space-y-4">
               <h3 className="text-sm font-bold uppercase tracking-widest text-red-500 flex items-center gap-2"><Activity size={16}/> Abandonar</h3>
               <ul className="space-y-3">
-                {vision.traitsToAbandon.map((t, i) => (
+                {vision.traitsToAbandon.map((t: string, i: number) => (
                   <li key={i} className="p-5 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 text-sm font-bold line-through opacity-60">{t}</li>
                 ))}
               </ul>
@@ -173,7 +173,7 @@ export const VisionModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 
          <div className="space-y-6 pb-20">
             <h3 className="text-sm font-bold uppercase tracking-widest text-blue-500 flex items-center gap-2 mb-6"><Compass size={16}/> Estados de Atuação</h3>
-            {vision.goals.map((g) => (
+            {vision.goals.map((g: any) => (
               <div key={g.id} className="p-6 md:p-8 rounded-3xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 shadow-sm transition-all hover:border-blue-500/30">
                  <div className="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
                     <h4 className="text-xl md:text-2xl font-black">{g.title}</h4>
