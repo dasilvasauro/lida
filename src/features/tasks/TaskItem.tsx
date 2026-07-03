@@ -8,8 +8,8 @@ import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useConfigStore } from '../../store/useConfigStore';
 
-// === COMPONENTE MARQUEE PARA VISÃO COMPACTA ===
-const MarqueeText = ({ text, className }: { text: string, className?: string }) => {
+// === COMPONENTE MARQUEE OTIMIZADO (SÓ ANIMA NO HOVER/TOUCH) ===
+const MarqueeText = ({ text, className, isHovered }: { text: string, className?: string, isHovered: boolean }) => {
     const [overflowAmount, setOverflowAmount] = useState(0);
     const containerRef = useRef<HTMLDivElement>(null);
     const textRef = useRef<HTMLSpanElement>(null);
@@ -29,13 +29,14 @@ const MarqueeText = ({ text, className }: { text: string, className?: string }) 
     }, [text]);
  
     const isOverflowing = overflowAmount > 0;
+    const shouldAnimate = isOverflowing && isHovered;
  
     return (
        <div ref={containerRef} className={`flex-1 overflow-hidden relative flex items-center min-w-0 h-full ${isOverflowing ? 'marquee-mask' : ''}`}>
           <span ref={textRef} className={`absolute invisible whitespace-nowrap ${className}`}>{text}</span>
           <motion.div
-            animate={isOverflowing ? { x: [0, -overflowAmount] } : { x: 0 }}
-            transition={isOverflowing ? { repeat: Infinity, repeatType: "reverse", duration: Math.max(overflowAmount * 0.04, 2.5), ease: 'linear', repeatDelay: 1.5 } : {}}
+            animate={shouldAnimate ? { x: [0, -overflowAmount] } : { x: 0 }}
+            transition={shouldAnimate ? { repeat: Infinity, repeatType: "reverse", duration: Math.max(overflowAmount * 0.04, 2.5), ease: 'linear', repeatDelay: 1.5 } : {}}
             className="flex whitespace-nowrap min-w-max h-full items-center"
           >
              <div className={`${className} pr-4`}>{text}</div>
@@ -67,17 +68,15 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
     const [isOvertime, setIsOvertime] = useState(false);
 
-    // Sistema de Janela de Edição e Status
     const [freeEditTimeLeft, setFreeEditTimeLeft] = useState(0);
     const [actionPrompt, setActionPrompt] = useState<{ type: 'edit' | 'delete' | 'editRoutine' | 'deleteRoutine', cost: number } | null>(null);
     const [voucherError, setVoucherError] = useState(false);
     
-    // Status In-line
     const [isEditingStatus, setIsEditingStatus] = useState(false);
     const [tempStatus, setTempStatus] = useState(task.status || '');
 
-    // Tooltip de Descrição (Modo Compacto)
     const [showTooltip, setShowTooltip] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
     const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
@@ -132,10 +131,12 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
     };
 
     const handlePressStart = () => {
+        setIsHovered(true);
         if (!task.description) return;
-        pressTimer.current = setTimeout(() => setShowTooltip(true), 500);
+        pressTimer.current = setTimeout(() => setShowTooltip(true), 500); 
     };
     const handlePressEnd = () => {
+        setIsHovered(false);
         if (pressTimer.current) clearTimeout(pressTimer.current);
         setShowTooltip(false);
     };
@@ -264,7 +265,6 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         return (
             <motion.div layout className={`relative flex flex-col p-2 mb-2 rounded-xl border transition-all shadow-sm ${finalBorderClass} ${task.isCompleted ? 'opacity-50 grayscale' : ''} group`}>
                 
-                {/* Tooltip de Descrição no Hover (Desktop) e Hold (Mobile) */}
                 <AnimatePresence>
                     {showTooltip && task.description && (
                         <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute z-50 bottom-full left-10 mb-1 p-3 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-black font-medium text-xs rounded-xl shadow-2xl max-w-xs whitespace-pre-wrap border border-zinc-700 dark:border-zinc-300">
@@ -275,25 +275,23 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
 
                 <div 
                    className="flex items-center w-full"
-                   onMouseEnter={() => { if(task.description) setShowTooltip(true); }}
-                   onMouseLeave={() => setShowTooltip(false)}
+                   onMouseEnter={() => { setIsHovered(true); if(task.description) setShowTooltip(true); }}
+                   onMouseLeave={() => { setIsHovered(false); setShowTooltip(false); }}
                    onTouchStart={handlePressStart}
                    onTouchEnd={handlePressEnd}
+                   onTouchCancel={handlePressEnd}
                 >
-                    {/* Checkbox */}
                     <button onClick={(e) => { e.stopPropagation(); onToggle(task.id); }} className={`shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors mx-1 ${task.isCompleted ? 'bg-zinc-900 border-zinc-900 text-white dark:bg-zinc-100 dark:border-zinc-100 dark:text-black' : isRoutine ? 'border-current opacity-50 hover:opacity-100' : 'border-zinc-400 dark:border-zinc-500 hover:border-zinc-900 dark:hover:border-zinc-100'}`}>
                         {task.isCompleted && <Check size={12} strokeWidth={3} />}
                     </button>
 
-                    {/* Título & Ícones */}
                     <div className="flex-1 min-w-0 flex items-center gap-2 overflow-hidden px-2 h-7 cursor-pointer" onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}>
                         <Icon size={14} className={textColorClass} />
-                        <MarqueeText text={task.title} className={`text-sm font-bold ${task.isCompleted ? 'line-through opacity-60' : textColorClass}`} />
+                        <MarqueeText isHovered={isHovered} text={task.title} className={`text-sm font-bold ${task.isCompleted ? 'line-through opacity-60' : textColorClass}`} />
                         {task.hasMagicDice && <Dices size={12} className="text-purple-500 shrink-0"/>}
                         {task.deadlineTime && <span className="text-[10px] font-bold text-zinc-400 shrink-0 flex items-center gap-0.5 ml-1"><Clock size={10}/>{task.deadlineTime}</span>}
                     </div>
 
-                    {/* Botões de Ação (Aparecem no Hover) */}
                     <div className="shrink-0 flex items-center gap-0.5 px-1 bg-transparent">
                         {!isRoutine && (
                             <div className={`px-1.5 py-0.5 mr-1 rounded text-[8px] font-black uppercase ${priorityBadgeStyles[task.priority]}`}>
@@ -319,7 +317,6 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
                              <button onClick={(e) => { e.stopPropagation(); handleActionRequest(isRoutine ? 'deleteRoutine' : 'delete'); }} className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-md transition-colors" title="Excluir"><Trash2 size={14} /></button>
                         </div>
 
-                        {/* Seta de Dropdown se tiver Subtarefas/Sprint/Rotina ou Status Ativo */}
                         {(hasSubtasks || task.type === 'sprint' || isRoutine || task.status || isEditingStatus) && (
                              <button onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }} className="p-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-md transition-colors ml-1">
                                  <motion.div animate={{ rotate: isExpanded ? 180 : 0 }}><ChevronDown size={16} /></motion.div>
@@ -328,13 +325,11 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
                     </div>
                 </div>
 
-                {/* DROPDOWN COMPACTO */}
                 <AnimatePresence>
                     {(isExpanded || isEditingStatus) && (
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                             <div className="pt-2 mt-2 border-t border-zinc-200 dark:border-zinc-800 space-y-2 px-1 pb-1">
                                 
-                                {/* Status In-line */}
                                 {(task.status || isEditingStatus) && (
                                     <div className="flex gap-2 text-xs items-start">
                                         <span className="font-bold text-blue-500 shrink-0 mt-0.5"><MessageSquareText size={14}/></span>
@@ -346,7 +341,6 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
                                     </div>
                                 )}
 
-                                {/* Sprint Compact Info (TEXTO) */}
                                 {task.type === 'sprint' && task.deadlineDate && (
                                     <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-purple-600 dark:text-purple-400 mt-2 p-2 bg-purple-500/10 rounded-lg">
                                         <span>Conclusão: {Math.round(sprintProgress)}%</span>
@@ -354,7 +348,6 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
                                     </div>
                                 )}
 
-                                {/* Subtasks / Rotinas Compactas */}
                                 {hasSubtasks && (
                                     <div className="space-y-1.5 mt-2">
                                         {task.subtasks?.map(st => (
@@ -372,7 +365,6 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
                     )}
                 </AnimatePresence>
 
-                {/* Vouchers Alert */}
                 <AnimatePresence>
                     {actionPrompt && (
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute bottom-full right-0 mb-2 p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-[100] text-zinc-900 dark:text-zinc-100 flex flex-col items-center min-w-[220px]">
@@ -410,7 +402,6 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
         <h4 className={`text-base font-bold truncate ${task.isCompleted ? 'line-through opacity-60' : textColorClass}`}>{task.title}</h4>
         {task.description && !isExpanded && (<p className={`text-sm truncate mt-0.5 italic ${subtextColorClass}`}>{task.description}</p>)}
 
-        {/* MÓDULO DE STATUS IN-LINE */}
         {(task.status || isEditingStatus) && (
             <div className={`mt-2.5 px-3 py-2 rounded-lg text-xs leading-relaxed border ${isRoutine ? rColorData.statusBg : 'bg-blue-500/5 border-blue-500/10 text-blue-700 dark:text-blue-400'}`}>
                 <div className="flex justify-between items-center mb-0.5">
@@ -444,7 +435,6 @@ export const TaskItem = ({ task, onToggle, onEdit, onDelete, onEditRoutine, onDe
             </div>
         )}
 
-        {/* BARRA DE PROGRESSO DO SPRINT */}
         {task.type === 'sprint' && task.deadlineDate && (
             <div className="mt-4 mb-2 px-1">
                 <div className="flex justify-between items-end mb-1.5">

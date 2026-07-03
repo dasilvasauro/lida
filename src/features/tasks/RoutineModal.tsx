@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, AlertTriangle, Repeat, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
+import { X, Plus, AlertTriangle, Repeat, Trash2, GripVertical } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
 import type { RoutineTemplate, ItemColor } from '../../types';
@@ -13,12 +13,28 @@ interface RoutineModalProps {
   onSuccess?: (message: string) => void;
 }
 
+const RoutineItemRow = ({ item, onChange, onRemove }: { item: any, onChange: (val: string) => void, onRemove: () => void }) => {
+    const dragControls = useDragControls();
+    return (
+        <Reorder.Item value={item} dragListener={false} dragControls={dragControls} className="flex items-center gap-2 mb-2">
+            <div className="cursor-grab touch-none p-2 shrink-0 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 bg-zinc-100 dark:bg-zinc-800/50 rounded-lg" onPointerDown={(e) => dragControls.start(e)}><GripVertical size={16} /></div>
+            <input 
+                type="text" maxLength={120} value={item.value} 
+                onChange={(e) => onChange(e.target.value)} 
+                placeholder="Item da Rotina..."
+                className="flex-1 bg-transparent border-b border-zinc-200 dark:border-zinc-800 p-2 text-sm outline-none focus:border-indigo-500 transition-colors" 
+            />
+            <button onClick={(e) => { e.preventDefault(); onRemove(); }} className="p-2 text-zinc-400 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
+        </Reorder.Item>
+    );
+};
+
 export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: RoutineModalProps) => {
   const { addRoutine, updateRoutine } = useTaskStore();
   const { enableEditWindow, hasDismissedEditWarning, dismissEditWarning } = useConfigStore();
 
   const [title, setTitle] = useState('');
-  const [items, setItems] = useState<string[]>(['']);
+  const [items, setItems] = useState<{id: string, value: string}[]>([{id: uuidv4(), value: ''}]);
   const [selectedWeekdays, setSelectedWeekdays] = useState<number[]>([1, 2, 3, 4, 5]); 
   const [color, setColor] = useState<ItemColor>('indigo'); 
   
@@ -34,12 +50,12 @@ export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: Rout
   useEffect(() => {
     if (routineToEdit && isOpen) {
       setTitle(routineToEdit.title);
-      setItems(routineToEdit.items.length > 0 ? routineToEdit.items : ['']);
+      setItems(routineToEdit.items.length > 0 ? routineToEdit.items.map(i => ({id: uuidv4(), value: i})) : [{id: uuidv4(), value: ''}]);
       setSelectedWeekdays(routineToEdit.weekdays);
       setColor(routineToEdit.color || 'indigo');
     } else if (isOpen) {
       setTitle('');
-      setItems(['']);
+      setItems([{id: uuidv4(), value: ''}]);
       setSelectedWeekdays([1, 2, 3, 4, 5]);
       setColor('indigo');
     }
@@ -49,11 +65,11 @@ export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: Rout
   const checkIsDirty = () => {
     if (routineToEdit) {
       return title !== routineToEdit.title || 
-             JSON.stringify(items) !== JSON.stringify(routineToEdit.items) ||
+             JSON.stringify(items.map(i=>i.value)) !== JSON.stringify(routineToEdit.items) ||
              JSON.stringify(selectedWeekdays) !== JSON.stringify(routineToEdit.weekdays) ||
              color !== routineToEdit.color;
     }
-    return title.trim().length > 0 || items.some(i => i.trim().length > 0);
+    return title.trim().length > 0 || items.some(i => i.value.trim().length > 0);
   };
 
   const handleRequestClose = () => checkIsDirty() ? setShowConfirmClose(true) : onClose();
@@ -64,7 +80,6 @@ export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: Rout
     return () => window.removeEventListener('request-modal-close', handleGlobalClose);
   }, [isOpen, title, items, selectedWeekdays, color, routineToEdit]);
 
-  // === INTERCEPTAÇÃO DE NAVEGAÇÃO ===
   useBackHandler(isOpen && !showConfirmClose, () => { handleRequestClose(); return true; });
   useBackHandler(showConfirmClose, () => { setShowConfirmClose(false); return true; });
 
@@ -73,7 +88,7 @@ export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: Rout
   };
 
   const handleSave = () => {
-    const validItems = items.filter(i => i.trim().length > 0);
+    const validItems = items.map(i => i.value.trim()).filter(i => i.length > 0);
     if (!title.trim() || validItems.length === 0 || selectedWeekdays.length === 0) return;
 
     if (routineToEdit) {
@@ -111,7 +126,6 @@ export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: Rout
 
               <div className="p-6 overflow-y-auto flex-1 space-y-8 scrollbar-hide">
                 
-                {/* ALERTA DE EDIÇÃO E PUNIÇÕES (MODO HARDCORE) */}
                 {enableEditWindow && !hasDismissedEditWarning && !routineToEdit && (
                     <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl relative flex gap-3 items-start text-amber-600 dark:text-amber-500 mb-2">
                         <AlertTriangle className="shrink-0 mt-0.5" size={20} />
@@ -150,32 +164,24 @@ export const RoutineModal = ({ isOpen, onClose, routineToEdit, onSuccess }: Rout
                 <div className="space-y-3 pt-2">
                   <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold">Itens da Rotina (Obrigatório)</span>
                   
-                  <div className="space-y-2">
-                    {items.map((item, index) => (
-                      <div key={index} className="flex items-center gap-2">
-                         <div className="w-5 h-5 rounded-md border-2 border-zinc-300 dark:border-zinc-700 shrink-0" />
-                         <input 
-                            type="text" maxLength={120} value={item} 
-                            placeholder={`Item ${index + 1}`}
-                            onChange={(e) => { const newItems = [...items]; newItems[index] = e.target.value; setItems(newItems); }} 
-                            onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); setItems([...items, '']); } }}
-                            className="flex-1 bg-transparent border-b border-zinc-200 dark:border-zinc-800 p-2 text-sm outline-none focus:border-indigo-500 transition-colors" 
+                  <Reorder.Group axis="y" values={items} onReorder={setItems} className="pt-2">
+                      {items.map((item) => (
+                         <RoutineItemRow 
+                            key={item.id} item={item} 
+                            onChange={(val) => { const n = [...items]; const idx = n.findIndex(i => i.id === item.id); n[idx].value = val; setItems(n); }}
+                            onRemove={() => setItems(items.filter(i => i.id !== item.id))}
                          />
-                         {items.length > 1 && (
-                            <button onClick={() => setItems(items.filter((_, i) => i !== index))} className="p-2 text-zinc-400 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
-                         )}
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                  </Reorder.Group>
 
-                  <button onClick={() => setItems([...items, ''])} className="w-full flex items-center justify-center gap-2 p-3 mt-2 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors font-bold text-sm">
+                  <button onClick={() => setItems([...items, {id: uuidv4(), value: ''}])} className="w-full flex items-center justify-center gap-2 p-3 mt-2 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors font-bold text-sm">
                     <Plus size={16} /> Adicionar Item
                   </button>
                 </div>
               </div>
 
               <div className="p-6 pb-28 md:pb-6 bg-zinc-100 dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-800">
-                <button onClick={handleSave} disabled={!title.trim() || items.filter(i => i.trim().length > 0).length === 0 || selectedWeekdays.length === 0} className="w-full py-4 rounded-xl bg-indigo-600 text-white font-bold text-lg disabled:opacity-50 transition-all hover:bg-indigo-500 shadow-lg shadow-indigo-600/20">
+                <button onClick={handleSave} disabled={!title.trim() || items.filter(i => i.value.trim().length > 0).length === 0 || selectedWeekdays.length === 0} className="w-full py-4 rounded-xl bg-indigo-600 text-white font-bold text-lg disabled:opacity-50 transition-all hover:bg-indigo-500 shadow-lg shadow-indigo-600/20">
                   {routineToEdit ? 'Salvar Alterações' : 'Forjar Rotina'}
                 </button>
               </div>

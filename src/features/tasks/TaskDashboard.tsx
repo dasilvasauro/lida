@@ -185,11 +185,9 @@ export const TaskDashboard = () => {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-black tracking-tight">Tarefas</h1>
-              
               <button onClick={() => updatePomodoro({ isOpen: true, isMinimized: false })} className="mt-1 p-2 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors" title="Rádio Relógio Pomodoro">
                   <Timer size={20}/>
               </button>
-              
               <button onClick={() => setBrainDumpOpen(true)} className="mt-1 p-2 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 transition-colors" title="Brain Dump (Esvaziamento Mental)">
                   <BrainCircuit size={20}/>
               </button>
@@ -289,8 +287,8 @@ export const TaskDashboard = () => {
                             <CheckCircle2 size={14} /> Tarefas
                         </h3>
                         <div className="flex items-center bg-zinc-100 dark:bg-zinc-800/80 rounded-xl p-1 border border-zinc-200 dark:border-zinc-700 shadow-inner">
-                           <button onClick={() => setIsSortedByPriority(!isSortedByPriority)} className={`p-1.5 rounded-lg transition-all ${isSortedByPriority ? 'bg-white dark:bg-zinc-700 text-blue-500 shadow-sm' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`} title="Ordenar por Prioridade"><ArrowDownUp size={14} /></button>
-                           <button onClick={() => setCompactView(!isCompactView)} className={`p-1.5 rounded-lg transition-all ${isCompactView ? 'bg-white dark:bg-zinc-700 text-blue-500 shadow-sm' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`} title="Visão Compacta"><AlignJustify size={14} /></button>
+                           <button onClick={() => setIsSortedByPriority(!isSortedByPriority)} className={`p-1.5 rounded-lg transition-colors ${isSortedByPriority ? 'bg-white dark:bg-zinc-700 text-blue-500 shadow-sm' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`} title="Ordenar por Prioridade"><ArrowDownUp size={14} /></button>
+                           <button onClick={() => setCompactView(!isCompactView)} className={`p-1.5 rounded-lg transition-colors ${isCompactView ? 'bg-white dark:bg-zinc-700 text-blue-500 shadow-sm' : 'text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`} title="Visão Compacta"><AlignJustify size={14} /></button>
                         </div>
                     </div>
 
@@ -305,7 +303,7 @@ export const TaskDashboard = () => {
 
           {hasCompletedTasks && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-center mt-8">
-              <button onClick={() => setConfirmDialog({ type: 'clear_completed', taskId: 'all', title: 'Arquivar Concluídas?', subtitle: 'As tarefas serão arquivadas para manter seu histórico limpo.' })} className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all">
+              <button onClick={() => setConfirmDialog({ type: 'clear_completed', taskId: 'all', title: 'Arquivar Concluídas?', subtitle: 'As tarefas serão arquivadas para manter seu histórico limpo.' })} className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors">
                 <Trash2 size={14} /> Arquivar tarefas concluídas
               </button>
             </motion.div>
@@ -313,22 +311,23 @@ export const TaskDashboard = () => {
         </main>
       </div>
 
+      {/* FAB - BOTÃO FLUTUANTE OTIMIZADO (SEM SCALE/ORIGIN) */}
       <div className="fixed bottom-28 right-6 md:right-12 md:bottom-12 z-40 flex flex-col items-end gap-3">
          <AnimatePresence>
             {isMenuOpen && (
-               <motion.div initial={{ opacity: 0, y: 10, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.9 }} className="flex flex-col items-end gap-3 mb-2 origin-bottom-right">
-                  <button onClick={handleOpenRoutineForm} className="flex items-center gap-3 bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold shadow-xl hover:scale-105 transition-transform shadow-indigo-500/20">
+               <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }} transition={{ duration: 0.15, ease: "easeOut" }} className="flex flex-col items-end gap-3 mb-2">
+                  <button onClick={handleOpenRoutineForm} className="flex items-center gap-3 bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold shadow-lg hover:bg-indigo-500 transition-colors">
                      Nova Rotina <Repeat size={18}/>
                   </button>
-                  <button onClick={() => { setTaskToEdit(null); setIsModalOpen(true); setIsMenuOpen(false); }} className="flex items-center gap-3 bg-zinc-800 text-white dark:bg-zinc-200 dark:text-black px-5 py-3 rounded-xl font-bold shadow-xl hover:scale-105 transition-transform">
+                  <button onClick={() => { setTaskToEdit(null); setIsModalOpen(true); setIsMenuOpen(false); }} className="flex items-center gap-3 bg-zinc-800 text-white dark:bg-zinc-200 dark:text-black px-5 py-3 rounded-xl font-bold shadow-lg hover:bg-zinc-700 dark:hover:bg-zinc-300 transition-colors">
                      Nova Tarefa <CheckCircle2 size={18}/>
                   </button>
                </motion.div>
             )}
          </AnimatePresence>
          
-         <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-4 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] flex items-center justify-center transition-transform hover:scale-105">
-            <motion.div animate={{ rotate: isMenuOpen ? 45 : 0 }} transition={{ duration: 0.2 }}><Plus size={28} strokeWidth={3} /></motion.div>
+         <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-4 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] flex items-center justify-center transition-colors">
+            <motion.div animate={{ rotate: isMenuOpen ? 45 : 0 }} transition={{ duration: 0.15, ease: "linear" }}><Plus size={28} strokeWidth={3} /></motion.div>
          </button>
       </div>
 

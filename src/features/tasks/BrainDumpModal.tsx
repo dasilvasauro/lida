@@ -22,7 +22,7 @@ const quadrants: { id: BrainDumpQuadrant; label: string; desc: string; icon: any
 ];
 
 export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpModalProps) => {
-  const { brainDump, setBrainDump, updateBrainDumpItem, removeBrainDumpItem, markBrainDumpItemConverted } = useTaskStore();
+  const { brainDump, setBrainDump, updateBrainDumpItem, removeBrainDumpItem, markBrainDumpItemConverted, clearBrainDump } = useTaskStore();
   
   const [mode, setMode] = useState<'intro' | 'dumping' | 'organizing'>('intro');
   const [localItems, setLocalItems] = useState<BrainDumpItem[]>([]);
@@ -30,15 +30,15 @@ export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpMo
   const [timeLeft, setTimeLeft] = useState(5 * 60);
   
   const [selectedItem, setSelectedItem] = useState<BrainDumpItem | null>(null);
+  const [showConfirmClear, setShowConfirmClear] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // CORREÇÃO: Removida a dependência do brainDump.items.length para evitar 
-  // que o usuário seja ejetado da tela de organização ao deletar/descartar um item.
   useEffect(() => {
     if (isOpen) {
       setMode('intro');
+      setShowConfirmClear(false);
     } else {
       setMode('intro');
       setSelectedItem(null);
@@ -56,7 +56,8 @@ export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpMo
   }, [mode, timeLeft]);
 
   useBackHandler(isOpen && !!selectedItem, () => { setSelectedItem(null); return true; });
-  useBackHandler(isOpen && !selectedItem, () => { onClose(); return true; });
+  useBackHandler(showConfirmClear, () => { setShowConfirmClear(false); return true; });
+  useBackHandler(isOpen && !selectedItem && !showConfirmClear, () => { onClose(); return true; });
 
   const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); };
 
@@ -183,12 +184,20 @@ export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpMo
     return (
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="bg-white dark:bg-black w-full min-h-screen pt-12 pb-32">
         <div className="max-w-4xl mx-auto px-6 md:px-8">
+          
           <header className="flex justify-between items-center mb-10 pb-6 border-b border-zinc-100 dark:border-zinc-900">
             <div>
               <h2 className="text-3xl font-black tracking-tight flex items-center gap-3"><BrainCircuit className="text-purple-500"/> Matriz de Foco</h2>
               <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Organize seus pensamentos ou transforme-os em ação.</p>
             </div>
-            <button onClick={onClose} className="p-3 bg-zinc-100 dark:bg-zinc-900 rounded-full hover:bg-zinc-200 transition-colors"><X size={24} /></button>
+            <div className="flex gap-2 items-center">
+               {hasAny && (
+                   <button onClick={() => setShowConfirmClear(true)} className="p-2 md:p-3 bg-red-500/10 text-red-500 rounded-full hover:bg-red-500/20 transition-colors" title="Limpar Todo o Brain Dump">
+                      <Trash2 size={24} />
+                   </button>
+               )}
+               <button onClick={onClose} className="p-2 md:p-3 bg-zinc-100 dark:bg-zinc-900 rounded-full hover:bg-zinc-200 transition-colors"><X size={24} /></button>
+            </div>
           </header>
 
           {!hasAny ? (
@@ -204,7 +213,6 @@ export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpMo
                      {unorganized.map(item => {
                        const isConverted = !!item.convertedTo;
                        return (
-                         // CORREÇÃO: Removido o '!isConverted &&' para permitir mover após convertido
                          <button key={item.id} onClick={() => setSelectedItem(item)} className={`text-left p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 shadow-sm transition-colors ${isConverted ? 'opacity-50 grayscale' : 'hover:border-purple-500'}`}>
                            <div className="flex justify-between items-start gap-2">
                               <span className={`font-medium text-sm text-zinc-900 dark:text-zinc-100 line-clamp-2 ${isConverted ? 'line-through' : ''}`}>{item.text}</span>
@@ -231,7 +239,6 @@ export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpMo
                          {qItems.map(item => {
                            const isConverted = !!item.convertedTo;
                            return (
-                             // CORREÇÃO: Mesma coisa aqui, permitindo reagendar ou mover itens já convertidos
                              <button key={item.id} onClick={() => setSelectedItem(item)} className={`w-full text-left p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 shadow-sm transition-colors ${isConverted ? 'opacity-50 grayscale' : 'hover:border-current'}`}>
                                <div className="flex justify-between items-start gap-2">
                                   <span className={`font-medium text-sm text-zinc-900 dark:text-zinc-100 line-clamp-2 ${isConverted ? 'line-through' : ''}`}>{item.text}</span>
@@ -266,6 +273,25 @@ export const BrainDumpModal = ({ isOpen, onClose, onConvertToTask }: BrainDumpMo
           <div className="fixed inset-0 z-[200] bg-white dark:bg-black overflow-y-auto">
              {renderOrganizing()}
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Limpeza Total */}
+      <AnimatePresence>
+        {showConfirmClear && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 z-[400] flex justify-center items-center p-4 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} className="bg-white dark:bg-zinc-950 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-red-500/20 text-center">
+              <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center text-red-500 mx-auto mb-4">
+                 <Trash2 size={32} />
+              </div>
+              <h4 className="text-xl font-black mb-2">Limpar Tudo?</h4>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">Esta ação apagará permanentemente todos os itens da sua Matriz de Foco.</p>
+              <div className="flex gap-3">
+                 <button onClick={() => setShowConfirmClear(false)} className="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 font-bold transition-colors">Cancelar</button>
+                 <button onClick={() => { clearBrainDump(); setShowConfirmClear(false); showToast("Brain Dump limpo com sucesso!"); }} className="flex-1 p-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-500 transition-colors">Apagar Tudo</button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 

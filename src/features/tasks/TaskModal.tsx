@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Zap, Timer, Gift, CheckCircle2, Calendar, Clock, Plus, RotateCcw, Info, Lock, Check, AlertTriangle, Footprints } from 'lucide-react';
+import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
+import { X, Zap, Timer, Gift, CheckCircle2, Calendar, Clock, Plus, RotateCcw, Info, Lock, Check, AlertTriangle, Footprints, GripVertical } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
@@ -19,6 +19,17 @@ interface TaskModalProps {
   brainDumpItemId?: string;
   onSuccess?: (message: string) => void; 
 }
+
+const SubtaskRow = ({ item, onRemove }: { item: any, onRemove: () => void }) => {
+    const dragControls = useDragControls();
+    return (
+        <Reorder.Item value={item} dragListener={false} dragControls={dragControls} className="flex items-center justify-between bg-zinc-100 dark:bg-zinc-800/50 p-2 pl-2 rounded-lg gap-2">
+            <div className="cursor-grab touch-none p-1 shrink-0 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300" onPointerDown={(e) => dragControls.start(e)}><GripVertical size={16} /></div>
+            <span className="flex-1 text-sm text-zinc-900 dark:text-zinc-100 line-clamp-1">{item.title}</span>
+            <button onClick={(e) => { e.preventDefault(); onRemove(); }} className="p-1 text-zinc-400 hover:text-red-500 transition-colors"><X size={16} /></button>
+        </Reorder.Item>
+    );
+};
 
 export const TaskModal = ({ isOpen, onClose, taskToEdit, initialTitle, brainDumpItemId, onSuccess }: TaskModalProps) => {
   const { addTask, updateTask, tasks, folders, addFolder, markBrainDumpItemConverted } = useTaskStore();
@@ -242,7 +253,14 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, initialTitle, brainDump
                 <div className="space-y-3 pt-2">
                   <span className="text-xs uppercase tracking-widest text-zinc-500 block font-bold">Subtarefas {type === 'sprint' ? '(Obrigatório)' : '(Opcional)'}</span>
                   <div className="flex gap-2"><input type="text" maxLength={120} value={subtaskInput} onChange={(e) => setSubtaskInput(e.target.value)} onKeyDown={(e) => { if(e.key === 'Enter'){ e.preventDefault(); addSubtask(); } }} placeholder="Ex: Definir escopo" className="flex-1 bg-zinc-100 dark:bg-zinc-800 p-3 rounded-lg text-sm outline-none" /><button onClick={(e) => { e.preventDefault(); addSubtask(); }} className="bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black p-3 rounded-lg"><Plus size={20} /></button></div>
-                  <div className="space-y-2">{subtasks.map((st) => (<div key={st.id} className="flex items-center justify-between bg-zinc-100 dark:bg-zinc-800/50 p-2 pl-4 rounded-lg"><span className="text-sm text-zinc-900 dark:text-zinc-100">{st.title}</span><button onClick={(e) => { e.preventDefault(); setSubtasks(subtasks.filter(s => s.id !== st.id)); }} className="p-1 text-zinc-400 hover:text-red-500 transition-colors"><X size={16} /></button></div>))}</div>
+                  
+                  {subtasks.length > 0 && (
+                      <Reorder.Group axis="y" values={subtasks} onReorder={setSubtasks} className="space-y-2 pt-2">
+                          {subtasks.map((st) => (
+                             <SubtaskRow key={st.id} item={st} onRemove={() => setSubtasks(subtasks.filter(s => s.id !== st.id))} />
+                          ))}
+                      </Reorder.Group>
+                  )}
                 </div>
 
                 <div>

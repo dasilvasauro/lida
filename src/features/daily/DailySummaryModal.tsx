@@ -29,7 +29,6 @@ export const DailySummaryModal = () => {
 
   const [currentDateStr, setCurrentDateStr] = useState(format(new Date(), 'yyyy-MM-dd'));
   
-  // Controle de Fases do Modal
   const [step, setStep] = useState<'init' | 'grace' | 'summary'>('init');
   const [graceTasks, setGraceTasks] = useState<Task[]>([]);
   const [completedGraceIds, setCompletedGraceIds] = useState<string[]>([]);
@@ -48,17 +47,18 @@ export const DailySummaryModal = () => {
 
   const isVisible = isOnboarded && lastLoginDate !== null && lastLoginDate < currentDateStr;
 
-  // Lógica para detectar tarefas que ficaram pendentes e oferecer o Perdão
   useEffect(() => {
     if (!isVisible || step !== 'init') return;
     
+    const yesterdayStr = format(subDays(new Date(currentDateStr + 'T12:00:00'), 1), 'yyyy-MM-dd');
+    
     const overdue = tasks.filter(t => {
         if (t.isCompleted || t.isFailed || t.isArchived) return false;
-        const isDailyChallengeOverdue = t.type === 'daily_challenge' && format(new Date(t.createdAt), 'yyyy-MM-dd') < currentDateStr;
-        const isSprintOverdue = t.type === 'sprint' && t.deadlineDate && t.deadlineDate < currentDateStr;
-        const isNormalOverdue = t.type === 'normal' && t.deadlineDate && t.deadlineDate < currentDateStr;
-        const isRoutineOverdue = t.type === 'routine' && t.deadlineDate && t.deadlineDate < currentDateStr;
-        return isDailyChallengeOverdue || isSprintOverdue || isNormalOverdue || isRoutineOverdue;
+        const isDailyChallengeYesterday = t.type === 'daily_challenge' && format(new Date(t.createdAt), 'yyyy-MM-dd') === yesterdayStr;
+        const isSprintYesterday = t.type === 'sprint' && t.deadlineDate === yesterdayStr;
+        const isNormalYesterday = t.type === 'normal' && t.deadlineDate === yesterdayStr;
+        const isRoutineYesterday = t.type === 'routine' && t.deadlineDate === yesterdayStr;
+        return isDailyChallengeYesterday || isSprintYesterday || isNormalYesterday || isRoutineYesterday;
     });
 
     if (overdue.length > 0) {

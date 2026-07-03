@@ -53,8 +53,6 @@ interface TaskState {
   setGlobalModalOpen: (isOpen: boolean) => void; setRoutineModalOpen: (isOpen: boolean) => void; 
   addTask: (task: Task) => void; toggleTaskCompletion: (taskId: string) => void; deleteTask: (taskId: string) => void;
   updateTask: (taskId: string, updatedTask: Partial<Task>) => void;
-  
-  // NOVO: Conclui a tarefa assinando a data de ontem
   retroactiveCompleteTask: (taskId: string, dateStr: string) => void;
 
   addFolder: (folder: Folder) => void; deleteFolder: (folderId: string) => void; setFolderId: (folderId: string) => void;
@@ -71,6 +69,7 @@ interface TaskState {
   updateBrainDumpItem: (id: string, quadrant: BrainDumpQuadrant) => void;
   removeBrainDumpItem: (id: string) => void;
   markBrainDumpItemConverted: (id: string, type: 'task' | 'note') => void;
+  clearBrainDump: () => void; 
 
   updatePomodoro: (partial: Partial<PomodoroState>) => void;
   tickPomodoro: () => void;
@@ -128,24 +127,53 @@ export const useTaskStore = create<TaskState>()(
       updateBrainDumpItem: (id, quadrant) => set((state) => ({ brainDump: { ...state.brainDump, items: state.brainDump.items.map(i => i.id === id ? { ...i, quadrant } : i) } })),
       removeBrainDumpItem: (id) => set((state) => ({ brainDump: { ...state.brainDump, items: state.brainDump.items.filter(i => i.id !== id) } })),
       markBrainDumpItemConverted: (id, type) => set((state) => ({ brainDump: { ...state.brainDump, items: state.brainDump.items.map(i => i.id === id ? { ...i, convertedTo: type } : i) } })),
+      clearBrainDump: () => set((state) => ({ brainDump: { ...state.brainDump, items: [] } })),
 
       setGlobalModalOpen: (isOpen) => set({ isGlobalModalOpen: isOpen }), setRoutineModalOpen: (isOpen) => set({ isRoutineModalOpen: isOpen }),
       addTask: (task) => set((state) => ({ tasks: [...state.tasks, { ...task, updatedAt: Date.now() }] })),
+      
       toggleTaskCompletion: (taskId) => set((state) => {
-        const task = state.tasks.find(t => t.id === taskId);
-        if (!task) return state;
+        const taskIndex = state.tasks.findIndex(t => t.id === taskId);
+        if (taskIndex === -1) return state;
+        const task = state.tasks[taskIndex];
         const isCompleting = !task.isCompleted;
         const isCompletingActive = state.activeFocusSession?.taskId === taskId;
-        return { tasks: state.tasks.map((t) => t.id === taskId ? { ...t, isCompleted: isCompleting, completedAt: isCompleting ? Date.now() : undefined, updatedAt: Date.now() } : t), ...(isCompletingActive ? { activeFocusSession: null, isFocusModeOpen: false } : {}) };
+        
+        let newTasks = [...state.tasks];
+        const updatedTask = { ...task, isCompleted: isCompleting, completedAt: isCompleting ? Date.now() : undefined, updatedAt: Date.now() };
+        newTasks[taskIndex] = updatedTask;
+
+        // MÁGICA DO BACKLOG: Se completou uma rotina/recorrência, gera a próxima INSTANTANEAMENTE
+        if (isCompleting && !task.nextRecurrenceGenerated) {
+            if (task.type === 'routine' && task.routineTemplateId) {
+                const routine = state.routines.find(r => r.id === task.routineTemplateId);
+                if (routine && routine.weekdays.length > 0) {
+                    let nextDate = addDays(new Date((task.deadlineDate || format(new Date(), 'yyyy-MM-dd')) + 'T12:00:00'), 1);
+                    while (!routine.weekdays.includes(nextDate.getDay())) {
+                        nextDate = addDays(nextDate, 1);
+                    }
+                    const nextDateStr = format(nextDate, 'yyyy-MM-dd');
+                    newTasks.push({ ...task, id: uuidv4(), isCompleted: false, completedAt: undefined, deadlineDate: nextDateStr, nextRecurrenceGenerated: false, isFailed: false, isArchived: false, subtasks: task.subtasks?.map(st => ({...st, completed: false})), updatedAt: Date.now() });
+                    updatedTask.nextRecurrenceGenerated = true;
+                }
+            } else if (task.recurrence && task.recurrence.type !== 'none') {
+                const nextDateStr = calculateNextRecurrence(task.deadlineDate, task.recurrence);
+                if (nextDateStr) {
+                    newTasks.push({ ...task, id: uuidv4(), isCompleted: false, completedAt: undefined, deadlineDate: nextDateStr, nextRecurrenceGenerated: false, isFailed: false, isArchived: false, subtasks: task.subtasks?.map(st => ({...st, completed: false})), updatedAt: Date.now() });
+                    updatedTask.nextRecurrenceGenerated = true;
+                }
+            }
+        }
+
+        return { tasks: newTasks, ...(isCompletingActive ? { activeFocusSession: null, isFocusModeOpen: false } : {}) };
       }),
+
       deleteTask: (taskId) => { useConfigStore.getState().addTombstone(taskId); set((state) => ({ tasks: state.tasks.filter((t) => t.id !== taskId) })); },
       updateTask: (taskId, updatedTask) => set((state) => ({ tasks: state.tasks.map((t) => t.id === taskId ? { ...t, ...updatedTask, updatedAt: Date.now() } : t) })),
       
       retroactiveCompleteTask: (taskId, dateStr) => set((state) => {
         const retroTime = new Date(dateStr + 'T23:59:59').getTime();
-        return {
-            tasks: state.tasks.map(t => t.id === taskId ? { ...t, isCompleted: true, completedAt: retroTime, updatedAt: Date.now() } : t)
-        };
+        return { tasks: state.tasks.map(t => t.id === taskId ? { ...t, isCompleted: true, completedAt: retroTime, updatedAt: Date.now() } : t) };
       }),
 
       addFolder: (folder) => set((state) => ({ folders: [...state.folders, { ...folder, updatedAt: Date.now() }] })), setFolderId: (folderId) => set({ selectedFolderId: folderId }),
@@ -179,25 +207,25 @@ export const useTaskStore = create<TaskState>()(
         const { enablePunishments } = useConfigStore.getState();
         const newTasks = [...tasks]; let changed = false; let totalLostXp = 0; let totalLostGold = 0;
 
-        // NOVO: Garantir que sempre há um mood registrado no dia anterior
         const yesterdayObj = new Date(todayStr + 'T12:00:00');
         yesterdayObj.setDate(yesterdayObj.getDate() - 1);
         const yStr = format(yesterdayObj, 'yyyy-MM-dd');
         
         let newMoodHistory = { ...moodHistory };
         let moodChanged = false;
-        if (!newMoodHistory[yStr]) {
-            newMoodHistory[yStr] = 'normal';
-            moodChanged = true;
-        }
+        if (!newMoodHistory[yStr]) { newMoodHistory[yStr] = 'normal'; moodChanged = true; }
 
         for (let i = 0; i < newTasks.length; i++) {
           const t = newTasks[i];
-          const isDailyChallengeOverdue = t.type === 'daily_challenge' && format(new Date(t.createdAt), 'yyyy-MM-dd') < todayStr;
-          const isSprintOverdue = t.type === 'sprint' && t.deadlineDate && t.deadlineDate < todayStr;
-          const isNormalOverdue = t.type === 'normal' && t.deadlineDate && t.deadlineDate < todayStr;
+          const isRecurring = t.recurrence && t.recurrence.type !== 'none';
+          const isRoutine = t.type === 'routine';
 
-          if (!t.isCompleted && !t.isFailed && !t.isArchived) {
+          // EXCLUSÃO DO AUTO-FAIL para Rotinas e Tarefas Recorrentes (Eles se tornam backlog)
+          if (!t.isCompleted && !t.isFailed && !t.isArchived && !isRecurring && !isRoutine) {
+             const isDailyChallengeOverdue = t.type === 'daily_challenge' && format(new Date(t.createdAt), 'yyyy-MM-dd') < todayStr;
+             const isSprintOverdue = t.type === 'sprint' && t.deadlineDate && t.deadlineDate < todayStr;
+             const isNormalOverdue = t.type === 'normal' && t.deadlineDate && t.deadlineDate < todayStr;
+
              if (isDailyChallengeOverdue || isSprintOverdue || isNormalOverdue) {
                  newTasks[i] = { ...t, isFailed: true, updatedAt: Date.now() }; changed = true;
                  if (enablePunishments) {
@@ -206,23 +234,6 @@ export const useTaskStore = create<TaskState>()(
                     totalLostXp += baseXp; totalLostGold += baseGold;
                  }
              }
-          }
-
-          if (t.type === 'routine' && t.deadlineDate && t.deadlineDate < todayStr && !t.isArchived) {
-            if (t.isCompleted) { newTasks[i] = { ...t, isArchived: true, updatedAt: Date.now() }; changed = true; } 
-            else { newTasks[i] = { ...t, deadlineDate: todayStr, subtasks: t.subtasks?.map(st => ({ ...st, completed: false })), updatedAt: Date.now() }; changed = true; }
-          }
-
-          if (t.isCompleted && t.recurrence && t.recurrence.type !== 'none' && !t.nextRecurrenceGenerated) {
-            const completedDateStr = t.completedAt ? format(new Date(t.completedAt), 'yyyy-MM-dd') : '';
-            if (completedDateStr && completedDateStr < todayStr) {
-              const nextDateStr = calculateNextRecurrence(t.deadlineDate, t.recurrence);
-              if (nextDateStr) {
-                const isDuplicate = newTasks.some(existing => existing.title === t.title && existing.deadlineDate === nextDateStr && existing.id !== t.id);
-                if (!isDuplicate) { newTasks.push({ ...t, id: uuidv4(), isCompleted: false, completedAt: undefined, deadlineDate: nextDateStr, isArchived: false, nextRecurrenceGenerated: false, isFailed: false, subtasks: t.subtasks?.map(st => ({ ...st, completed: false })), isFreeEditExpired: true, updatedAt: Date.now() }); }
-                newTasks[i] = { ...t, nextRecurrenceGenerated: true, updatedAt: Date.now() }; changed = true;
-              }
-            }
           }
         }
 
@@ -238,11 +249,7 @@ export const useTaskStore = create<TaskState>()(
         });
 
         if (totalLostXp > 0 || totalLostGold > 0) useEconomyStore.getState().applyPenalty(totalLostXp, totalLostGold);
-        
-        // Zera o humor do dia se tivermos mudado de dia, e salva as mudanças
-        if (changed || moodChanged) {
-            set({ tasks: newTasks, moodHistory: newMoodHistory });
-        }
+        if (changed || moodChanged) set({ tasks: newTasks, moodHistory: newMoodHistory });
       }
     }),
     { name: 'lida-tasks', storage: createJSONStorage(() => obfuscatedStorage) }
