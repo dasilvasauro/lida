@@ -43,14 +43,13 @@ const obfuscatedStorage: StateStorage = {
   removeItem: (name) => localStorage.removeItem(name),
 };
 
-// Mapa de Pesos Lógicos para Score
 const PRIORITY_WEIGHTS: Record<Priority, number> = { P0: 0, P1: 1, P2: 2, P3: 3, P4: 4 };
 const PRIORITY_SCORE_VALUE: Record<Priority, number> = { P0: 5, P1: 4, P2: 3, P3: 2, P4: 1 };
 const PRIORITY_FAIL_PENALTY: Record<Priority, number> = { P0: 8, P1: 6, P2: 4, P3: 2, P4: 1 };
 
 interface TaskState {
   tasks: Task[]; folders: Folder[]; routines: RoutineTemplate[]; dailyMood: Mood | null; moodHistory: Record<string, Mood>;
-  selectedFilter: 'today' | 'week' | 'month' | 'all'; selectedFolderId: string;
+  selectedFilter: 'all' | 'today' | 'week' | 'month' | 'unplanned'; selectedFolderId: string;
   activeFocusSession: { taskId: string; startTime: number; duration: number } | null;
   isFocusModeOpen: boolean; isGlobalModalOpen: boolean; isRoutineModalOpen: boolean;
   brainDump: BrainDumpState;
@@ -64,7 +63,7 @@ interface TaskState {
 
   addFolder: (folder: Folder) => void; deleteFolder: (folderId: string) => void; setFolderId: (folderId: string) => void;
   addRoutine: (routine: RoutineTemplate) => void; updateRoutine: (id: string, updated: Partial<RoutineTemplate>) => void; deleteRoutine: (id: string) => void;
-  setDailyMood: (mood: Mood) => void; setFilter: (filter: 'today' | 'week' | 'month' | 'all') => void;
+  setDailyMood: (mood: Mood) => void; setFilter: (filter: 'all' | 'today' | 'week' | 'month' | 'unplanned') => void;
   toggleSubtask: (taskId: string, subtaskId: string) => void;
   startFocus: (taskId: string, durationMinutes: number) => void; stopFocus: () => void;
   toggleFocusMode: (isOpen: boolean) => void; 
@@ -87,7 +86,7 @@ export const useTaskStore = create<TaskState>()(
   persist(
     (set, get) => ({
       tasks: [], folders: [{ id: 'default', name: 'Geral', updatedAt: 0 }], routines: [], dailyMood: null, moodHistory: {},
-      selectedFilter: 'today', selectedFolderId: 'all', activeFocusSession: null, 
+      selectedFilter: 'all', selectedFolderId: 'all', activeFocusSession: null, 
       isFocusModeOpen: false, isGlobalModalOpen: false, isRoutineModalOpen: false,
       brainDump: { lastDumpAt: null, items: [] },
 
@@ -151,14 +150,13 @@ export const useTaskStore = create<TaskState>()(
         const updatedTask = { ...task, isCompleted: isCompleting, completedAt: isCompleting ? Date.now() : undefined, updatedAt: Date.now() };
         newTasks[taskIndex] = updatedTask;
 
+        // NOVO NÚCLEO DE REPETIÇÃO
         if (isCompleting && !task.nextRecurrenceGenerated) {
             if (task.type === 'routine' && task.routineTemplateId) {
                 const routine = state.routines.find(r => r.id === task.routineTemplateId);
                 if (routine && routine.weekdays.length > 0) {
                     let nextDate = addDays(new Date((task.deadlineDate || format(new Date(), 'yyyy-MM-dd')) + 'T12:00:00'), 1);
-                    while (!routine.weekdays.includes(nextDate.getDay())) {
-                        nextDate = addDays(nextDate, 1);
-                    }
+                    while (!routine.weekdays.includes(nextDate.getDay())) { nextDate = addDays(nextDate, 1); }
                     const nextDateStr = format(nextDate, 'yyyy-MM-dd');
                     newTasks.push({ ...task, id: uuidv4(), isCompleted: false, completedAt: undefined, deadlineDate: nextDateStr, nextRecurrenceGenerated: false, isFailed: false, isArchived: false, subtasks: task.subtasks?.map(st => ({...st, completed: false})), updatedAt: Date.now() });
                     updatedTask.nextRecurrenceGenerated = true;
@@ -184,15 +182,8 @@ export const useTaskStore = create<TaskState>()(
             let pCount = t.postponedCount || 0;
             let rCount = t.reprioritizedCount || 0;
 
-            // Tracking Adiados (Se a data limite nova for maior que a anterior)
-            if (updatedTask.deadlineDate && t.deadlineDate && updatedTask.deadlineDate > t.deadlineDate) {
-                pCount += 1;
-            }
-
-            // Tracking Repriorizado (Se a prioridade subiu. Ex: P2 para P1. P0=0 < P2=2)
-            if (updatedTask.priority && t.priority && PRIORITY_WEIGHTS[updatedTask.priority] < PRIORITY_WEIGHTS[t.priority]) {
-                rCount += 1;
-            }
+            if (updatedTask.deadlineDate && t.deadlineDate && updatedTask.deadlineDate > t.deadlineDate) { pCount += 1; }
+            if (updatedTask.priority && t.priority && PRIORITY_WEIGHTS[updatedTask.priority] < PRIORITY_WEIGHTS[t.priority]) { rCount += 1; }
 
             return { ...t, ...updatedTask, postponedCount: pCount, reprioritizedCount: rCount, updatedAt: Date.now() };
         })};
@@ -200,10 +191,37 @@ export const useTaskStore = create<TaskState>()(
       
       retroactiveCompleteTask: (taskId, dateStr) => set((state) => {
         const retroTime = new Date(dateStr + 'T23:59:59').getTime();
-        return { tasks: state.tasks.map(t => t.id === taskId ? { ...t, isCompleted: true, completedAt: retroTime, updatedAt: Date.now() } : t) };
+        const task = state.tasks.find(t => t.id === taskId);
+        if (!task) return state;
+
+        const updatedTask = { ...task, isCompleted: true, completedAt: retroTime, updatedAt: Date.now() };
+        let newTasks = state.tasks.map(t => t.id === taskId ? updatedTask : t);
+
+        // Gera a próxima recorrência mesmo no perdão
+        if (!task.nextRecurrenceGenerated) {
+             if (task.type === 'routine' && task.routineTemplateId) {
+                const routine = state.routines.find(r => r.id === task.routineTemplateId);
+                if (routine && routine.weekdays.length > 0) {
+                    let nextDate = addDays(new Date((task.deadlineDate || format(new Date(), 'yyyy-MM-dd')) + 'T12:00:00'), 1);
+                    while (!routine.weekdays.includes(nextDate.getDay())) { nextDate = addDays(nextDate, 1); }
+                    newTasks.push({ ...task, id: uuidv4(), isCompleted: false, completedAt: undefined, deadlineDate: format(nextDate, 'yyyy-MM-dd'), nextRecurrenceGenerated: false, isFailed: false, isArchived: false, subtasks: task.subtasks?.map(st => ({...st, completed: false})), updatedAt: Date.now() });
+                    updatedTask.nextRecurrenceGenerated = true;
+                }
+            } else if (task.recurrence && task.recurrence.type !== 'none') {
+                const nextDateStr = calculateNextRecurrence(task.deadlineDate, task.recurrence);
+                if (nextDateStr) {
+                    newTasks.push({ ...task, id: uuidv4(), isCompleted: false, completedAt: undefined, deadlineDate: nextDateStr, nextRecurrenceGenerated: false, isFailed: false, isArchived: false, subtasks: task.subtasks?.map(st => ({...st, completed: false})), updatedAt: Date.now() });
+                    updatedTask.nextRecurrenceGenerated = true;
+                }
+            }
+        }
+        
+        newTasks = newTasks.map(t => t.id === taskId ? updatedTask : t);
+        return { tasks: newTasks };
       }),
 
-      addFolder: (folder) => set((state) => ({ folders: [...state.folders, { ...folder, updatedAt: Date.now() }] })), setFolderId: (folderId) => set({ selectedFolderId: folderId }),
+      addFolder: (folder) => set((state) => ({ folders: [...state.folders, { ...folder, updatedAt: Date.now() }] })), 
+      setFolderId: (folderId) => set({ selectedFolderId: folderId }),
       deleteFolder: (folderId) => { useConfigStore.getState().addTombstone(folderId); set((state) => ({ folders: state.folders.filter(f => f.id !== folderId), tasks: state.tasks.map(t => t.folderId === folderId ? { ...t, folderId: 'default', updatedAt: Date.now() } : t), selectedFolderId: state.selectedFolderId === folderId ? 'all' : state.selectedFolderId })); },
 
       addRoutine: (routine) => set((state) => {
@@ -229,7 +247,6 @@ export const useTaskStore = create<TaskState>()(
 
       applyPowerUp: (taskId, type) => set((state) => ({ tasks: state.tasks.map(t => { if (t.id !== taskId) return t; if (type === 'magicDice') return { ...t, hasMagicDice: true, updatedAt: Date.now() }; if (type === 'respite') { let newTime = t.deadlineTime; if (newTime) { const [h, m] = newTime.split(':').map(Number); const newH = Math.min(23, h + 3); newTime = `${newH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`; } return { ...t, hasRespite: true, deadlineTime: newTime, updatedAt: Date.now() }; } if (type === 'relief') { let newDate = t.deadlineDate; if (newDate) { const dateObj = new Date(newDate + 'T12:00:00'); dateObj.setDate(dateObj.getDate() + 1); newDate = dateObj.toISOString().split('T')[0]; } return { ...t, hasRelief: true, deadlineDate: newDate, updatedAt: Date.now() }; } return t; }) })),
 
-      // === NÚCLEO DE PASSAGEM DE DIAS E CÁLCULO DE SCORE ===
       processNewDay: (todayStr, lastLoginStr) => {
         const { tasks, routines, moodHistory } = get();
         const { enablePunishments, defaultDaysOff } = useConfigStore.getState();
@@ -240,13 +257,11 @@ export const useTaskStore = create<TaskState>()(
         let newMoodHistory = { ...moodHistory };
         let changed = false;
 
-        // Se o lastLogin for nulo (primeira vez no app), assume o próprio dia de hoje.
         const startProcessingDate = lastLoginStr ? new Date(lastLoginStr + 'T12:00:00') : new Date(todayStr + 'T12:00:00');
         const todayObj = new Date(todayStr + 'T12:00:00');
 
-        // Proteção contra loops infinitos caso o relógio mude bizarramente
         const diffTotal = differenceInDays(todayObj, startProcessingDate);
-        const maxDaysToProcess = Math.min(diffTotal, 30); // Limite de 30 dias retroativos para não congelar o app
+        const maxDaysToProcess = Math.min(diffTotal, 30); 
 
         let processDate = new Date(startProcessingDate);
 
@@ -257,8 +272,7 @@ export const useTaskStore = create<TaskState>()(
 
             let totalLostXp = 0; let totalLostGold = 0;
             
-            // --- MÉTRICAS DO SCORE PARA O DIA 'loopDateStr' ---
-            let dayScore = 50; // Base neutra
+            let dayScore = 50; 
             let tasksDoneCount = 0;
             let habitsDoneCount = 0;
             let penaltiesCount = 0;
@@ -268,24 +282,18 @@ export const useTaskStore = create<TaskState>()(
                 changed = true;
             }
 
-            // 1. Processar Falhas e Atrasos das Tarefas
             for (let i = 0; i < newTasks.length; i++) {
                 const t = newTasks[i];
-                const isRecurring = t.recurrence && t.recurrence.type !== 'none';
-                const isRoutine = t.type === 'routine';
-
-                // Avaliar tarefas que deveriam ter sido feitas até ESTE dia (loopDateStr)
-                if (!t.isCompleted && !t.isFailed && !t.isArchived && !isRecurring && !isRoutine) {
-                    const isDailyChallengeOverdue = t.type === 'daily_challenge' && format(new Date(t.createdAt), 'yyyy-MM-dd') === loopDateStr;
-                    const isSprintOverdue = t.type === 'sprint' && t.deadlineDate === loopDateStr;
-                    const isNormalOverdue = t.type === 'normal' && t.deadlineDate === loopDateStr;
-
-                    if (isDailyChallengeOverdue || isSprintOverdue || isNormalOverdue) {
+                
+                // Repare: O isRecurring sumiu daqui! Tarefas recorrentes também vão falhar se você deixá-las expirar, e gerar punição.
+                if (!t.isCompleted && !t.isFailed && !t.isArchived && t.type !== 'routine') {
+                    const isOverdue = t.deadlineDate === loopDateStr;
+                    
+                    if (isOverdue) {
                         newTasks[i] = { ...t, isFailed: true, updatedAt: Date.now() }; 
                         changed = true;
                         penaltiesCount++;
                         
-                        // Penalidade Pura no Score baseada na prioridade
                         dayScore -= PRIORITY_FAIL_PENALTY[t.priority];
 
                         if (enablePunishments) {
@@ -296,17 +304,14 @@ export const useTaskStore = create<TaskState>()(
                     }
                 }
 
-                // Avaliar Tarefas Feitas Neste Dia (Para o Score)
                 if (t.isCompleted && t.completedAt && format(new Date(t.completedAt), 'yyyy-MM-dd') === loopDateStr) {
                     tasksDoneCount++;
                     let taskPoints = PRIORITY_SCORE_VALUE[t.priority];
                     
-                    // Bônus/Penalidade temporal: P0 feita rápido ganha mais. P0 feita depois de 3 dias ganha menos.
                     const daysTaken = differenceInDays(new Date(t.completedAt), new Date(t.createdAt));
                     if (t.priority === 'P0' && daysTaken > 2) taskPoints = Math.max(1, taskPoints - 2);
                     if (t.priority === 'P4' && daysTaken === 0) taskPoints += 1;
 
-                    // Punição se foi adiada
                     if (t.postponedCount && t.postponedCount > 0) {
                         taskPoints -= (t.postponedCount * 2);
                         penaltiesCount++;
@@ -316,40 +321,31 @@ export const useTaskStore = create<TaskState>()(
                 }
             }
 
-            // 2. Avaliar Hábitos do Dia (Para o Score)
             habitStore.habits.forEach(habit => {
                 const logs = habitStore.logs[habit.id]?.[loopDateStr] || 0;
                 const isFrozen = habitStore.modifiers[habit.id]?.[loopDateStr] === 'freeze';
                 
                 if (logs >= (habit.goal || 1)) {
                     habitsDoneCount++;
-                    dayScore += 3; // +3 por hábito concluído
-                } else if (isFrozen) {
-                    // Neutro, não ganha nem perde
-                } else {
-                    // Penalidade de hábito
+                    dayScore += 3; 
+                } else if (!isFrozen) {
                     dayScore -= 2;
                     penaltiesCount++;
                 }
             });
 
-            // 3. Aplica Punições Econômicas e Salva o Score do Dia
             if (totalLostXp > 0 || totalLostGold > 0) {
                 useEconomyStore.getState().applyPenalty(totalLostXp, totalLostGold);
             }
 
-            // Bônus Supremo: Dia de Folga produtivo!
             if (isDayOff && (tasksDoneCount > 0 || habitsDoneCount > 0)) {
                 dayScore += 10;
             }
 
             scoreStore.recordDailyScore(loopDateStr, dayScore, tasksDoneCount, habitsDoneCount, penaltiesCount);
-
-            // Avança pro próximo dia do loop
             processDate.setDate(processDate.getDate() + 1);
         }
 
-        // --- PREPARAÇÃO DO DIA ATUAL (Hoje) ---
         const currentDayOfWeek = todayObj.getDay();
         routines.forEach(routine => {
             if (routine.weekdays.includes(currentDayOfWeek)) {
@@ -361,9 +357,8 @@ export const useTaskStore = create<TaskState>()(
             }
         });
 
-        // Verificação se virou o Mês para Arquivamento Automático
         if (lastLoginStr) {
-            const lastMonth = lastLoginStr.substring(0, 7); // yyyy-MM
+            const lastMonth = lastLoginStr.substring(0, 7); 
             const currentMonth = todayStr.substring(0, 7);
             if (lastMonth !== currentMonth) {
                 scoreStore.archiveMonth(lastMonth);

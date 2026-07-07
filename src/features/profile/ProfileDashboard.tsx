@@ -183,7 +183,7 @@ export const ProfileDashboard = () => {
     { level: 50, label: 'Darcula + 40V', icon: Crown },
   ];
 
-  // === LPI CALCS ===
+  // === LPI CALCS E DIAGNÓSTICO ===
   const currentScore = getCurrentMonthScore();
   const currentGrade = calculateGrade(currentScore);
   const gradeMessage = getGradeMessage(currentGrade);
@@ -215,6 +215,35 @@ export const ProfileDashboard = () => {
       if (grade.startsWith('C')) return 'text-amber-500 bg-amber-500/10 border-amber-500/20';
       return 'text-red-500 bg-red-500/10 border-red-500/20';
   };
+
+  // DIAGNÓSTICO INTELIGENTE
+  const getDiagnostics = () => {
+    const diags = [];
+    const total = tasks.length;
+    if (total === 0) return diags;
+
+    const postponed = tasks.filter(t => (t.postponedCount || 0) > 0).length;
+    const failed = tasks.filter(t => t.isFailed).length;
+    
+    let early = 0;
+    tasks.forEach(t => {
+        if (t.isCompleted && t.completedAt && t.deadlineDate) {
+            const compDate = format(new Date(t.completedAt), 'yyyy-MM-dd');
+            if (compDate < t.deadlineDate) early++;
+        }
+    });
+
+    if (postponed > total * 0.15) diags.push({ type: 'warn', text: 'Você tem o costume de adiar muitas tarefas. Cuidado com a inércia e procrastinação contínua.' });
+    if (failed > total * 0.05) diags.push({ type: 'warn', text: 'Você tem deixado tarefas expirarem e falharem. Revise seus prazos de agendamento.' });
+    
+    if (currentScore >= 60) {
+        if (early > total * 0.05) diags.push({ type: 'positive', text: 'Excelente antecipação! Você tem o ótimo costume de concluir as tarefas antes da data limite.' });
+        if (activeStreak >= 7) diags.push({ type: 'positive', text: `Assiduidade fantástica. Você mantém uma ofensiva global ativa de ${activeStreak} dias no aplicativo!` });
+    }
+
+    return diags.slice(0, 3);
+  };
+  const diagnostics = getDiagnostics();
 
   const hasLocalState = !!viewerReflection || isCreatorOpen || !!infoModal || isModusModalOpen;
   useBackHandler(hasLocalState, () => {
@@ -402,7 +431,10 @@ export const ProfileDashboard = () => {
                 <div className="bg-zinc-50 dark:bg-zinc-900/50 rounded-3xl p-6 md:p-8 border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
                        <div>
-                          <h2 className="text-2xl font-black flex items-center gap-2"><BarChart3 className="text-blue-500"/> Lida Productivity Index</h2>
+                          <div className="flex items-center gap-3">
+                              <h2 className="text-2xl font-black flex items-center gap-2"><BarChart3 className="text-blue-500"/> Lida Productivity Index</h2>
+                              <button onClick={() => setInfoModal({ title: 'Como funciona o LPI?', desc: 'O LPI é um algoritmo que converte a sua consistência em uma nota rigorosa, equilibrada diariamente.\n\n• Tarefas mais difíceis (P0/P1) garantem mais pontos ao serem concluídas.\n• Adiar ou atrasar tarefas subtrai pontos e sabota sua nota.\n• Hábitos concluídos são cruciais, pois formam a base da consistência (+3 pontos), enquanto o esquecimento deles gera punições (-2 pontos).\n• Ser produtivo nos Dias de Folga gera grandes recompensas.' })} className="p-1 rounded-full text-zinc-400 hover:text-blue-500 transition-colors"><Info size={18} /></button>
+                          </div>
                           <p className="text-sm text-zinc-500 mt-1 font-medium">Mês Atual: {format(new Date(), "MMMM 'de' yyyy", { locale: ptBR })}</p>
                        </div>
                        
@@ -422,13 +454,27 @@ export const ProfileDashboard = () => {
                        </div>
                     </div>
 
-                    <div className="bg-white dark:bg-black p-4 rounded-2xl mb-6 shadow-inner border border-zinc-100 dark:border-zinc-800">
-                        <p className="text-sm italic font-medium text-zinc-600 dark:text-zinc-400">"{gradeMessage}"</p>
+                    <div className="bg-white dark:bg-black p-4 rounded-2xl shadow-inner border border-zinc-100 dark:border-zinc-800">
+                        <p className="text-sm italic font-medium text-zinc-600 dark:text-zinc-400 mb-4 border-b border-zinc-100 dark:border-zinc-800 pb-4">"{gradeMessage}"</p>
+                        
+                        {/* DIAGNÓSTICOS INTELIGENTES */}
+                        {diagnostics.length > 0 ? (
+                            <div className="space-y-2">
+                                {diagnostics.map((diag, idx) => (
+                                    <div key={idx} className="flex items-start gap-2 text-xs font-bold leading-relaxed">
+                                        {diag.type === 'warn' ? <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" /> : <Sparkles size={14} className="text-emerald-500 shrink-0 mt-0.5" />}
+                                        <span className={diag.type === 'warn' ? 'text-amber-600 dark:text-amber-500' : 'text-emerald-600 dark:text-emerald-400'}>{diag.text}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Sem Diagnósticos para Exibir</span>
+                        )}
                     </div>
 
                     {/* Gráfico Linear Dinâmico */}
                     {dailyScores.length > 1 ? (
-                        <div className="h-40 w-full relative mt-4">
+                        <div className="h-40 w-full relative mt-6">
                             <svg viewBox="0 0 300 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
                                 <path d={getLineChartPath(dailyScores)} fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500" />
                                 {dailyScores.map((s, i) => {
@@ -439,7 +485,7 @@ export const ProfileDashboard = () => {
                             </svg>
                         </div>
                     ) : (
-                        <div className="h-40 w-full flex items-center justify-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl text-zinc-400 text-sm font-bold">
+                        <div className="h-40 w-full flex items-center justify-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl text-zinc-400 text-sm font-bold mt-6">
                             Poucos dados para gerar o gráfico este mês.
                         </div>
                     )}

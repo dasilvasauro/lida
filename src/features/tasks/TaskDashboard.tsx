@@ -11,7 +11,7 @@ import { BrainDumpModal } from './BrainDumpModal';
 import { RewardToast, type RewardBreakdown } from '../../components/ui/RewardToast';
 import type { Task, Mood, Priority, RoutineTemplate } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
-import { format } from 'date-fns';
+import { format, endOfWeek } from 'date-fns';
 
 export const TaskDashboard = () => {
   const { userClass, defaultDaysOff, hasDismissedDayOffWarning, dismissDayOffWarning, isCompactView, setCompactView } = useConfigStore();
@@ -39,7 +39,7 @@ export const TaskDashboard = () => {
 
   const [rewardBreakdown, setRewardBreakdown] = useState<RewardBreakdown | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [confirmDialog, setConfirmDialog] = useState<{ type: 'delete' | 'complete' | 'clear_completed' | 'delete_routine'; taskId: string; title: string; subtitle: string } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ type: 'delete' | 'complete' | 'future_complete' | 'clear_completed' | 'delete_routine'; taskId: string; title: string; subtitle: string } | null>(null);
 
   const isXpBoosted = activeXpBoostUntil && Date.now() < activeXpBoostUntil;
   const isGoldBoosted = activeGoldBoostUntil && Date.now() < activeGoldBoostUntil;
@@ -117,16 +117,27 @@ export const TaskDashboard = () => {
 
   const requestToggle = (taskId: string) => {
     const task = tasks.find(t => t.id === taskId); if (!task) return;
+    
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    
+    if (!task.isCompleted && task.deadlineDate && task.deadlineDate > todayStr) {
+      setConfirmDialog({ type: 'future_complete', taskId, title: 'Concluir Antecipadamente?', subtitle: 'Esta tarefa está planejada para uma data no futuro. Tem certeza que deseja concluí-la hoje?' });
+      return;
+    }
+
     if (!task.isCompleted && task.subtasks && task.subtasks.some(st => !st.completed)) {
       setConfirmDialog({ type: 'complete', taskId, title: 'Concluir com pendências?', subtitle: 'Ainda existem subtarefas não finalizadas. Deseja marcar como concluída mesmo assim?' });
-    } else { executeToggle(taskId); }
+      return;
+    } 
+
+    executeToggle(taskId);
   };
 
   const requestDelete = (taskId: string) => { setConfirmDialog({ type: 'delete', taskId, title: 'Excluir Tarefa?', subtitle: 'Essa ação não pode ser desfeita e a tarefa será removida permanentemente.' }); };
 
   const handleConfirmAction = () => {
     if (!confirmDialog) return;
-    if (confirmDialog.type === 'complete') executeToggle(confirmDialog.taskId);
+    if (confirmDialog.type === 'complete' || confirmDialog.type === 'future_complete') executeToggle(confirmDialog.taskId);
     else if (confirmDialog.type === 'delete') { deleteTask(confirmDialog.taskId); showToast('Tarefa excluída com sucesso.'); }
     else if (confirmDialog.type === 'delete_routine') { deleteRoutine(confirmDialog.taskId); showToast('Rotina excluída com sucesso.'); }
     else if (confirmDialog.type === 'clear_completed') { clearCompletedTasks(); showToast('Tarefas arquivadas com sucesso.'); }
@@ -135,12 +146,20 @@ export const TaskDashboard = () => {
 
   const priorityWeight: Record<Priority, number> = { P0: 0, P1: 1, P2: 2, P3: 3, P4: 4 };
 
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const weekEndStr = format(endOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd');
+  const monthPrefix = todayStr.substring(0, 7);
+
   const filteredTasks = tasks.filter((task) => {
     if (task.isArchived) return false; 
     if (selectedFolderId !== 'all' && task.folderId !== selectedFolderId) return false;
-    if (selectedFilter === 'all') return true;
-    if (selectedFilter === 'today') return !task.deadlineDate || task.deadlineDate === format(new Date(), 'yyyy-MM-dd');
-    return true;
+    
+    if (selectedFilter === 'today') return task.deadlineDate === todayStr;
+    if (selectedFilter === 'week') return task.deadlineDate && task.deadlineDate >= todayStr && task.deadlineDate <= weekEndStr;
+    if (selectedFilter === 'month') return task.deadlineDate && task.deadlineDate.startsWith(monthPrefix);
+    if (selectedFilter === 'unplanned') return !task.deadlineDate;
+
+    return true; // selectedFilter === 'all'
   }).sort((a, b) => {
     if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
     if (isSortedByPriority) { if (priorityWeight[a.priority] !== priorityWeight[b.priority]) { return priorityWeight[a.priority] - priorityWeight[b.priority]; } }
@@ -161,7 +180,12 @@ export const TaskDashboard = () => {
       { value: 'radiant', icon: Sparkles, label: 'Radiante' } 
   ];
   
-  const filters: { id: typeof selectedFilter; label: string }[] = [ { id: 'today', label: 'Hoje' }, { id: 'week', label: 'Semana' }, { id: 'month', label: 'Mês' }, { id: 'all', label: 'Tudo' } ];
+  const filters: { id: typeof selectedFilter; label: string }[] = [ 
+      { id: 'today', label: 'Hoje' }, 
+      { id: 'week', label: 'Semana' }, 
+      { id: 'month', label: 'Mês' }, 
+      { id: 'unplanned', label: 'Não Plan.' } 
+  ];
 
   const hasLocalState = !!confirmDialog || isMenuOpen || isCreatingFolder || !!infoModal || isBrainDumpOpen;
   useBackHandler(hasLocalState, () => {
@@ -196,7 +220,14 @@ export const TaskDashboard = () => {
           </div>
           <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
             <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900/80 rounded-xl w-full md:w-auto">
-              {filters.map((f) => ( <button key={f.id} onClick={() => setFilter(f.id)} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${selectedFilter === f.id ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}`}>{f.label}</button> ))}
+              {filters.map((f) => {
+                  const isActive = selectedFilter === f.id;
+                  return (
+                      <button key={f.id} onClick={() => setFilter(isActive ? 'all' : f.id as any)} className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-[11px] md:text-xs font-bold transition-all whitespace-nowrap ${isActive ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100' : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200'}`}>
+                          {f.label}
+                      </button>
+                  )
+              })}
             </div>
             <div className="flex p-1 bg-zinc-100 dark:bg-zinc-900/80 rounded-xl w-full md:w-auto">
               {moods.map((m) => { 
