@@ -75,6 +75,10 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
   const [channelPrompt, setChannelPrompt] = useState<{ pendingFeeds: string[] } | null>(null);
   const [newChannelPromptName, setNewChannelPromptName] = useState('');
 
+  // === ESTADOS PARA AUTOCOMPLETE ===
+  const [mentionContext, setMentionContext] = useState<{ type: 'feed' | 'channel'; query: string; startIndex: number; } | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -94,6 +98,98 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
   useBackHandler(isOpen && !channelPrompt && !confirmDialog && !showColorPicker && !activeMenuId && !replyingTo && !editingEntry && !isArchivedView, () => { onClose(); return true; });
 
   const activeFeeds = feeds.filter(f => f.channelId === activeChannelId && f.isArchived === isArchivedView).sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+
+  // === LÓGICA DO AUTOCOMPLETE ===
+  const filteredMentions = useMemo(() => {
+      if (!mentionContext) return [];
+      const q = mentionContext.query.toLowerCase();
+      if (mentionContext.type === 'channel') {
+          return channels.filter(c => c.name.toLowerCase().startsWith(q)).slice(0, 5);
+      } else {
+          return feeds.filter(f => f.name.toLowerCase().startsWith(q)).map(f => {
+              const c = channels.find(ch => ch.id === f.channelId);
+              return { ...f, channelName: c ? c.name : 'Sem Canal' };
+          }).slice(0, 5);
+      }
+  }, [mentionContext, channels, feeds]);
+
+  const applyMention = (item: any) => {
+      if (!mentionContext || !inputRef.current) return;
+      const before = inputText.substring(0, mentionContext.startIndex);
+      const after = inputText.substring(inputRef.current.selectionStart);
+      
+      let mentionText = '';
+      if (mentionContext.type === 'channel') {
+          mentionText = `#${item.name} `;
+      } else {
+          mentionText = `@${item.name} `;
+          if (item.channelName && item.channelName !== 'Sem Canal') {
+              mentionText += `#${item.channelName} `;
+          }
+      }
+      
+      const newVal = before + mentionText + after;
+      setInputText(newVal);
+      setMentionContext(null);
+      
+      setTimeout(() => {
+          if (inputRef.current) {
+              inputRef.current.focus();
+              const newCursorPos = before.length + mentionText.length;
+              inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+          }
+      }, 0);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const val = e.target.value;
+      setInputText(val);
+
+      const cursorPosition = e.target.selectionStart;
+      const textBeforeCursor = val.substring(0, cursorPosition);
+      
+      // Match para capturar @ ou # seguido de letras
+      const match = textBeforeCursor.match(/([@#])([\wÀ-ÿ-]*)$/);
+      
+      if (match) {
+          const type = match[1] === '@' ? 'feed' : 'channel';
+          const query = match[2];
+          const startIndex = match.index!;
+          setMentionContext({ type, query, startIndex });
+          setMentionIndex(0);
+      } else {
+          setMentionContext(null);
+      }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (mentionContext && filteredMentions.length > 0) {
+          if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              setMentionIndex((prev) => (prev + 1) % filteredMentions.length);
+              return;
+          }
+          if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              setMentionIndex((prev) => (prev - 1 + filteredMentions.length) % filteredMentions.length);
+              return;
+          }
+          if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              applyMention(filteredMentions[mentionIndex]);
+              return;
+          }
+          if (e.key === 'Escape') {
+              setMentionContext(null);
+              return;
+          }
+      }
+      
+      if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          handleSend();
+      }
+  };
 
   const displayedEntries = useMemo(() => {
       if (!activeFeedId) return [];
@@ -150,16 +246,33 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
       }
 
       const { feeds: mFeeds, channels: mChannels } = extractMentions(inputText);
-
       let targets: FeedTarget[] = [];
       let pendingFeedsWithoutChannel: string[] = [];
+
+      // Identifica o Canal principal mencionado, se houver
+      let mentionedChannelId: string | null = null;
+      if (mChannels.length > 0) {
+          const c = channels.find(ch => ch.name.toLowerCase() === mChannels[0].toLowerCase());
+          if (c) mentionedChannelId = c.id;
+      }
 
       if (mFeeds.length === 0) {
           if (activeFeedId) targets.push({ feedId: activeFeedId });
           else return; 
       } else {
           mFeeds.forEach(fName => {
-              const existingF = feeds.find(f => f.name.toLowerCase() === fName.toLowerCase());
+              // Resolução Inteligente de Feed: Prioriza Canal Mencionado > Canal Ativo > Qualquer
+              let existingF = null;
+              if (mentionedChannelId) {
+                  existingF = feeds.find(f => f.name.toLowerCase() === fName.toLowerCase() && f.channelId === mentionedChannelId);
+              }
+              if (!existingF && activeChannelId) {
+                  existingF = feeds.find(f => f.name.toLowerCase() === fName.toLowerCase() && f.channelId === activeChannelId);
+              }
+              if (!existingF) {
+                  existingF = feeds.find(f => f.name.toLowerCase() === fName.toLowerCase());
+              }
+
               if (existingF) {
                   targets.push({ feedId: existingF.id });
               } else {
@@ -220,7 +333,6 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
       </div>
   );
 
-  // === COMPONENTE: CARD RESUMO DO FEED ===
   const FeedSummaryCard = ({ feed }: { feed: Feed }) => {
       const latestEntry = entries.filter(e => e.feedId === feed.id).sort((a,b) => b.createdAt - a.createdAt)[0];
       const style = colorStyles[feed.color];
@@ -250,7 +362,6 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
   return (
     <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }} className="fixed inset-0 z-[150] bg-zinc-50 dark:bg-black flex flex-col md:flex-row overflow-hidden">
         
-        {/* SIDEBAR */}
         <div className="w-full md:w-80 h-auto md:h-full border-b md:border-r border-zinc-200 dark:border-zinc-900 flex flex-col shrink-0 bg-white dark:bg-zinc-950/50 shadow-sm z-20">
             <div className="p-4 md:p-6 border-b border-zinc-200 dark:border-zinc-900 flex items-center justify-between bg-zinc-50/50 dark:bg-transparent">
                 <div>
@@ -330,10 +441,8 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
             </div>
         </div>
 
-        {/* ÁREA PRINCIPAL (CHAT / VISÃO GERAL) */}
         <div className="flex-1 flex flex-col min-w-0 bg-transparent relative">
             
-            {/* CABEÇALHO */}
             <div className="h-16 border-b border-zinc-200 dark:border-zinc-900 flex items-center justify-between px-4 md:px-6 shrink-0 bg-white/80 dark:bg-black/80 backdrop-blur-md z-10">
                 <div className="flex items-center gap-3 min-w-0">
                     {activeFeedId ? (
@@ -374,10 +483,8 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                 </div>
             </div>
 
-            {/* CONTEÚDO (CHAT OU CARDS DE VISÃO GERAL) */}
             <div className="flex-1 overflow-y-auto p-4 md:p-8 scrollbar-thin">
                 {activeFeedId ? (
-                    // VISÃO DE CHAT DO FEED
                     displayedEntries.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-zinc-400">
                             <MessageSquareText size={48} className="mb-4 opacity-20" />
@@ -415,7 +522,6 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                                                     </div>
                                                     <p className="text-sm md:text-base leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap font-medium">{renderContentWithMentions(group.parent.content)}</p>
                                                     
-                                                    {/* CARD DE TAREFA INJETADA (Se houver) */}
                                                     {group.parent.linkedTaskId && (
                                                         <LinkedTaskCard taskId={group.parent.linkedTaskId} />
                                                     )}
@@ -437,7 +543,6 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                                                 </div>
                                             </div>
 
-                                            {/* RESPOSTAS */}
                                             {group.replies.map(reply => (
                                                 <div key={reply.id} className={`group/reply ml-8 md:ml-12 flex gap-4 relative z-10 p-4 rounded-2xl transition-colors ${editingEntry?.id === reply.id ? 'bg-blue-500/5 ring-1 ring-blue-500/30' : 'bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700'}`}>
                                                     <div className="w-8 h-8 rounded-full bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-800 text-zinc-400">
@@ -476,7 +581,6 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                         </div>
                     )
                 ) : activeChannelId ? (
-                    // VISÃO GERAL DO CANAL ESPECÍFICO
                     <div className="space-y-6">
                         <div className="flex items-center justify-between mb-8 pb-4 border-b border-zinc-200 dark:border-zinc-800">
                            <h3 className="font-bold text-zinc-500 uppercase tracking-widest text-xs flex items-center gap-2"><Hash size={16}/> Feeds no Canal</h3>
@@ -491,7 +595,6 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                         )}
                     </div>
                 ) : (
-                    // VISÃO GERAL DE TODOS OS CANAIS
                     <div className="space-y-12 pb-12">
                         {channels.map(c => {
                             const cFeeds = feeds.filter(f => f.channelId === c.id && f.isArchived === isArchivedView).sort((a,b) => b.lastActivityAt - a.lastActivityAt);
@@ -520,9 +623,50 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                 <div ref={messagesEndRef} className="h-4" />
             </div>
 
-            {/* INPUT DE MENSAGEM (FIXO NO RODAPÉ) */}
+            {/* INPUT COM AUTOCOMPLETE */}
             {!isArchivedView && (
-                <div className="p-4 bg-white/80 dark:bg-black/80 backdrop-blur-md border-t border-zinc-200 dark:border-zinc-900">
+                <div className="p-4 bg-white/80 dark:bg-black/80 backdrop-blur-md border-t border-zinc-200 dark:border-zinc-900 relative">
+                    
+                    <AnimatePresence>
+                        {mentionContext && filteredMentions.length > 0 && (
+                            <motion.div 
+                                initial={{ opacity: 0, y: 10 }} 
+                                animate={{ opacity: 1, y: 0 }} 
+                                exit={{ opacity: 0, y: 10 }}
+                                className="absolute bottom-full left-4 mb-4 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl shadow-2xl p-2 z-[200] min-w-[240px] max-w-[90%] max-h-60 overflow-y-auto"
+                            >
+                                <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-2 px-2">
+                                    {mentionContext.type === 'feed' ? 'Selecionar Feed' : 'Selecionar Canal'}
+                                </div>
+                                {filteredMentions.map((item, idx) => {
+                                    const isSelected = mentionIndex === idx;
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => applyMention(item)}
+                                            onMouseEnter={() => setMentionIndex(idx)}
+                                            className={`w-full flex items-center justify-between p-3 rounded-xl text-sm transition-colors ${isSelected ? 'bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100' : 'text-zinc-600 dark:text-zinc-400'}`}
+                                        >
+                                            <div className="flex items-center gap-2 truncate">
+                                                {mentionContext.type === 'channel' ? (
+                                                    <Hash size={16} className={isSelected ? 'text-amber-500' : ''} />
+                                                ) : (
+                                                    <AtSign size={16} className={isSelected ? 'text-blue-500' : ''} />
+                                                )}
+                                                <span className="font-bold truncate">{item.name}</span>
+                                            </div>
+                                            {mentionContext.type === 'feed' && (
+                                                <span className={`text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded-md shrink-0 ml-3 ${isSelected ? 'bg-zinc-200 dark:bg-zinc-600 text-zinc-500 dark:text-zinc-300' : 'bg-zinc-100 dark:bg-zinc-900/50'}`}>
+                                                    {(item as any).channelName}
+                                                </span>
+                                            )}
+                                        </button>
+                                    )
+                                })}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
                     <AnimatePresence>
                         {replyingTo && (
                             <motion.div initial={{ opacity: 0, y: 10, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="flex items-center justify-between bg-blue-500/10 text-blue-600 dark:text-blue-400 px-4 py-2 rounded-t-xl border border-blue-500/20 border-b-0">
@@ -548,13 +692,8 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                         <textarea
                             ref={inputRef}
                             value={inputText}
-                            onChange={(e) => setInputText(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleSend();
-                                }
-                            }}
+                            onChange={handleInputChange}
+                            onKeyDown={handleKeyDown}
                             placeholder={replyingTo ? "Sua resposta..." : "Documente algo ou mencione @Feed e #Canal..."}
                             className={`flex-1 max-h-40 min-h-[56px] resize-none bg-zinc-50 dark:bg-zinc-900 border outline-none px-4 py-4 text-sm rounded-2xl shadow-sm transition-colors ${replyingTo ? 'rounded-tl-none border-blue-500/30 focus:border-blue-500' : editingEntry ? 'rounded-tl-none border-amber-500/30 focus:border-amber-500' : 'border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600'}`}
                             rows={1}
