@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Hash, AtSign, Send, MessageSquareText, Search, Calendar as CalendarIcon, MoreVertical, Archive, ArchiveRestore, Edit2, Trash2, ChevronLeft, ChevronRight, CornerDownRight, PaintBucket } from 'lucide-react';
+import { X, Hash, AtSign, Send, MessageSquareText, Search, Calendar as CalendarIcon, MoreVertical, Archive, ArchiveRestore, Edit2, Trash2, CornerDownRight, PaintBucket } from 'lucide-react';
 import { useFeedStore, extractMentions } from '../../store/useFeedStore';
 import { useBackHandler } from '../../store/useConfigStore';
 import { format, isSameDay } from 'date-fns';
