@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Hash, AtSign, Send, MessageSquareText, Search, Calendar as CalendarIcon, MoreVertical, Archive, ArchiveRestore, Edit2, Trash2, ChevronLeft, ChevronRight, CornerDownRight, PaintBucket } from 'lucide-react';
+import { X, Hash, AtSign, Send, MessageSquareText, Search, Calendar as CalendarIcon, MoreVertical, Archive, ArchiveRestore, Edit2, Trash2, CornerDownRight, PaintBucket } from 'lucide-react';
 import { useFeedStore, extractMentions } from '../../store/useFeedStore';
-import { useBackHandler, useConfigStore } from '../../store/useConfigStore';
+import { useBackHandler } from '../../store/useConfigStore';
 import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { v4 as uuidv4 } from 'uuid';
 import type { ItemColor, FeedEntry } from '../../types';
 
 const colorStyles: Record<ItemColor, { text: string, bg: string, border: string }> = {
@@ -20,7 +19,7 @@ const colorStyles: Record<ItemColor, { text: string, bg: string, border: string 
 };
 
 export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: boolean, onClose: () => void, focusInputSignal: number }) => {
-  const { channels, feeds, entries, processMentionsAndCreateEntry, updateEntry, deleteEntry, updateFeed, archiveFeed, unarchiveFeed, deleteFeed, updateChannel, deleteChannel, cleanupArchivedFeeds } = useFeedStore();
+  const { channels, feeds, entries, processMentionsAndCreateEntry, updateEntry, deleteEntry, updateFeed, archiveFeed, unarchiveFeed,  updateChannel, cleanupArchivedFeeds } = useFeedStore();
   
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [activeFeedId, setActiveFeedId] = useState<string | null>(null);

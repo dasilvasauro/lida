@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { StateStorage } from 'zustand/middleware';
-import type { Channel, Feed, FeedEntry, ItemColor } from '../types';
+import type { Channel, Feed, FeedEntry } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { useConfigStore } from './useConfigStore';
 
@@ -48,7 +48,7 @@ export const extractMentions = (text: string) => {
 
 export const useFeedStore = create<FeedState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       channels: [],
       feeds: [],
       entries: [],
