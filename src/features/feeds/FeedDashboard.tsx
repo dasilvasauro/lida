@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Hash, AtSign, Send, MessageSquareText, Search, Calendar as CalendarIcon, MoreVertical, Archive, ArchiveRestore, Edit2, Trash2, CornerDownRight, PaintBucket } from 'lucide-react';
+import { X, Hash, AtSign, Send, MessageSquareText, Search, Calendar as CalendarIcon, MoreVertical, Archive, ArchiveRestore, Edit2, Trash2, ChevronLeft, ChevronRight, CornerDownRight, PaintBucket } from 'lucide-react';
 import { useFeedStore, extractMentions } from '../../store/useFeedStore';
 import { useBackHandler } from '../../store/useConfigStore';
 import { format, isSameDay } from 'date-fns';
@@ -19,7 +19,7 @@ const colorStyles: Record<ItemColor, { text: string, bg: string, border: string 
 };
 
 export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: boolean, onClose: () => void, focusInputSignal: number }) => {
-  const { channels, feeds, entries, processMentionsAndCreateEntry, updateEntry, deleteEntry, updateFeed, archiveFeed, unarchiveFeed,  updateChannel, cleanupArchivedFeeds } = useFeedStore();
+  const { channels, feeds, entries, processMentionsAndCreateEntry, updateEntry, deleteEntry, updateFeed, archiveFeed, unarchiveFeed, updateChannel, cleanupArchivedFeeds } = useFeedStore();
   
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [activeFeedId, setActiveFeedId] = useState<string | null>(null);
@@ -42,14 +42,12 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
     if (isOpen) cleanupArchivedFeeds();
   }, [isOpen, cleanupArchivedFeeds]);
 
-  // Efeito para focar o input quando o usuário pressionar a barra '/' 
   useEffect(() => {
     if (isOpen && focusInputSignal > 0) {
         inputRef.current?.focus();
     }
   }, [focusInputSignal, isOpen]);
 
-  // Scroll automático para as mensagens mais recentes
   useEffect(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [entries.length, activeFeedId, replyingTo]);
@@ -61,13 +59,9 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
   useBackHandler(isOpen && isArchivedView, () => { setIsArchivedView(false); return true; });
   useBackHandler(isOpen && !showColorPicker && !activeMenuId && !replyingTo && !editingEntry && !isArchivedView, () => { onClose(); return true; });
 
-  if (!isOpen) return null;
-
-  // Organização dos Feeds dentro do Canal Ativo
   const activeFeeds = feeds.filter(f => f.channelId === activeChannelId && f.isArchived === isArchivedView)
                            .sort((a, b) => b.lastActivityAt - a.lastActivityAt);
 
-  // Auto-selecionar o primeiro feed se o canal mudar
   useEffect(() => {
       if (activeChannelId && !activeFeeds.find(f => f.id === activeFeedId)) {
           setActiveFeedId(activeFeeds.length > 0 ? activeFeeds[0].id : null);
@@ -86,7 +80,6 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
           filtered = filtered.filter(e => isSameDay(new Date(e.createdAt), new Date(selectedDate + 'T12:00:00')));
       }
 
-      // Separa threads (respostas)
       const parents = filtered.filter(e => !e.parentId).sort((a, b) => a.createdAt - b.createdAt);
       const withThreads: { parent: FeedEntry, replies: FeedEntry[] }[] = parents.map(p => ({
           parent: p,
@@ -96,10 +89,12 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
       return withThreads;
   }, [entries, activeFeedId, searchQuery, selectedDate]);
 
+  // AQUI O RETORNO ANTECIPADO AGORA ESTÁ SEGURO APÓS OS HOOKS
+  if (!isOpen) return null;
+
   const handleSend = () => {
       if (!inputText.trim()) return;
 
-      // Se estiver editando
       if (editingEntry) {
           updateEntry(editingEntry.id, inputText);
           setEditingEntry(null);
@@ -107,7 +102,6 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
           return;
       }
 
-      // Se não digitou @ ou # e está dentro de um feed, injeta o contexto do feed atual para o parser
       let contentToSend = inputText;
       const { feedName, channelName } = extractMentions(inputText);
       if (!feedName && !channelName && activeFeedId) {
@@ -123,7 +117,6 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
   };
 
   const renderContentWithMentions = (text: string) => {
-      // Regex para colorir @[Feed] e #[Canal]
       const parts = text.split(/(@\[[^\]]+\]|#\[[^\]]+\])/g);
       return parts.map((part, i) => {
           if (part.startsWith('@[') && part.endsWith(']')) {

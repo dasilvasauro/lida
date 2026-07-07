@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, AlertTriangle, Frown, CloudRain, Meh, Smile, Sparkles, Trash2, TrendingUp, Coins, X, Check, ArrowDownUp, Info, Repeat, CheckCircle2, BrainCircuit, Timer, AlignJustify } from 'lucide-react';
+import { Plus, AlertTriangle, Frown, CloudRain, Meh, Smile, Sparkles, Trash2, TrendingUp, Coins, X, Check, ArrowDownUp, Info, Repeat, CheckCircle2, BrainCircuit, Timer, AlignJustify, Hash } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
@@ -240,6 +240,9 @@ export const TaskDashboard = () => {
               </button>
               <button onClick={() => setBrainDumpOpen(true)} className="mt-1 p-2 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 transition-colors" title="Brain Dump (Esvaziamento Mental)">
                   <BrainCircuit size={20}/>
+              </button>
+              <button onClick={() => setIsFeedOpen(true)} className="mt-1 p-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors" title="Acessar Feeds">
+                  <Hash size={20}/>
               </button>
             </div>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium mt-1">Como vai? E o que tem pra hoje?</p>
