@@ -218,7 +218,7 @@ export const ProfileDashboard = () => {
 
   // DIAGNÓSTICO INTELIGENTE
   const getDiagnostics = () => {
-    const diags = { type: 'warn' | 'positive', text: string }[] = [];
+    const diags = Array<{ type: 'warn' | 'positive', text: string }> = [];
     const total = tasks.length;
     if (total === 0) return diags;
 
