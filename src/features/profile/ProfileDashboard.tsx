@@ -217,8 +217,10 @@ export const ProfileDashboard = () => {
   };
 
   // DIAGNÓSTICO INTELIGENTE
+  type DiagnosticItem = { type: 'warn' | 'positive'; text: string };
+
   const getDiagnostics = () => {
-    const diags = Array<{ type: 'warn' | 'positive', text: string }> = [];
+    const diags: DiagnosticItem[] = [];
     const total = tasks.length;
     if (total === 0) return diags;
 
@@ -244,7 +246,7 @@ export const ProfileDashboard = () => {
     return diags.slice(0, 3);
   };
   const diagnostics = getDiagnostics();
-
+  
   const hasLocalState = !!viewerReflection || isCreatorOpen || !!infoModal || isModusModalOpen;
   useBackHandler(hasLocalState, () => {
       const tStore = useTaskStore.getState();
