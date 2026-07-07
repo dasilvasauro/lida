@@ -15,14 +15,19 @@ const obfuscatedStorage: StateStorage = {
   removeItem: (name) => localStorage.removeItem(name),
 };
 
+export interface FeedTarget {
+    feedId?: string;
+    newFeedName?: string;
+    channelId?: string;
+    newChannelName?: string;
+}
+
 interface FeedState {
   channels: Channel[];
   feeds: Feed[];
   entries: FeedEntry[];
 
-  // Processamento automático de menções
-  processMentionsAndCreateEntry: (content: string, linkedTaskId?: string, parentId?: string) => void;
-  
+  publishMessage: (content: string, targets: FeedTarget[], parentId?: string, linkedTaskId?: string) => void;
   updateEntry: (id: string, newContent: string) => void;
   deleteEntry: (id: string) => void;
 
@@ -38,11 +43,14 @@ interface FeedState {
 }
 
 export const extractMentions = (text: string) => {
-    const feedMatch = text.match(/@\[([^\]]+)\]/);
-    const channelMatch = text.match(/#\[([^\]]+)\]/);
+    // Captura palavras iniciadas com @ ou #, permitindo letras com acentos, números e hífens.
+    const feedMatches = [...text.matchAll(/@([\wÀ-ÿ-]+)/g)].map(m => m[1]);
+    const channelMatches = [...text.matchAll(/#([\wÀ-ÿ-]+)/g)].map(m => m[1]);
+    
+    // Remove duplicatas
     return {
-        feedName: feedMatch ? feedMatch[1].trim() : null,
-        channelName: channelMatch ? channelMatch[1].trim() : null
+        feeds: [...new Set(feedMatches)],
+        channels: [...new Set(channelMatches)]
     };
 };
 
@@ -53,113 +61,121 @@ export const useFeedStore = create<FeedState>()(
       feeds: [],
       entries: [],
 
-      processMentionsAndCreateEntry: (content, linkedTaskId, parentId) => {
-          const { feedName, channelName } = extractMentions(content);
-          if (!feedName && !channelName) return; // Se não tem @ nem #, ignoramos se for tarefa. Se for o chat, forçaremos um feed atual na UI.
-
-          set((state) => {
-              let targetChannelId: string | null = null;
-              let targetFeedId: string | null = null;
-              let newChannels = [...state.channels];
-              let newFeeds = [...state.feeds];
+      publishMessage: (content, targets, parentId, linkedTaskId) => set((state) => {
+          let newChannels = [...state.channels];
+          let newFeeds = [...state.feeds];
+          let newEntries = [...state.entries];
+          
+          targets.forEach(t => {
+              let targetChannelId = t.channelId;
               
-              // 1. Resolve o Canal (#[Canal])
-              if (channelName) {
-                  const existingChannel = newChannels.find(c => c.name.toLowerCase() === channelName.toLowerCase());
-                  if (existingChannel) {
-                      targetChannelId = existingChannel.id;
+              // 1. Resolve o Canal (Cria se não existir)
+              if (t.newChannelName) {
+                  const existingC = newChannels.find(c => c.name.toLowerCase() === t.newChannelName!.toLowerCase());
+                  if (existingC) {
+                      targetChannelId = existingC.id;
                   } else {
                       targetChannelId = uuidv4();
-                      newChannels.push({ id: targetChannelId, name: channelName, color: 'zinc', createdAt: Date.now(), updatedAt: Date.now() });
+                      newChannels.push({ id: targetChannelId, name: t.newChannelName, color: 'zinc', createdAt: Date.now(), updatedAt: Date.now() });
                   }
               }
 
-              // 2. Resolve o Feed (@[Feed])
-              const actualFeedName = feedName || 'Geral'; // Se usou só #, cai num feed Geral
-              const existingFeed = newFeeds.find(f => f.name.toLowerCase() === actualFeedName.toLowerCase() && f.channelId === targetChannelId);
+              let targetFeedId = t.feedId;
               
-              if (existingFeed) {
-                  targetFeedId = existingFeed.id;
-                  existingFeed.lastActivityAt = Date.now(); // Joga pro topo
-                  existingFeed.isArchived = false; // Desarquiva automaticamente se voltar a falar nele
-              } else {
-                  targetFeedId = uuidv4();
-                  newFeeds.push({ id: targetFeedId, channelId: targetChannelId, name: actualFeedName, color: 'blue', isArchived: false, createdAt: Date.now(), updatedAt: Date.now(), lastActivityAt: Date.now() });
+              // 2. Resolve o Feed (Cria se não existir, associando ao Canal)
+              if (t.newFeedName && targetChannelId) {
+                  const existingF = newFeeds.find(f => f.name.toLowerCase() === t.newFeedName!.toLowerCase());
+                  if (existingF) {
+                      targetFeedId = existingF.id;
+                      existingF.lastActivityAt = Date.now();
+                      existingF.isArchived = false; // Desarquiva automaticamente
+                  } else {
+                      targetFeedId = uuidv4();
+                      newFeeds.push({ id: targetFeedId, channelId: targetChannelId, name: t.newFeedName, color: 'blue', isArchived: false, createdAt: Date.now(), updatedAt: Date.now(), lastActivityAt: Date.now() });
+                  }
+              } else if (targetFeedId) {
+                  const existingF = newFeeds.find(f => f.id === targetFeedId);
+                  if (existingF) {
+                      existingF.lastActivityAt = Date.now();
+                      existingF.isArchived = false;
+                  }
               }
 
-              const newEntry: FeedEntry = {
-                  id: uuidv4(),
-                  feedId: targetFeedId,
-                  content,
-                  parentId,
-                  linkedTaskId,
-                  createdAt: Date.now(),
-                  updatedAt: Date.now()
-              };
-
-              return { channels: newChannels, feeds: newFeeds, entries: [...state.entries, newEntry] };
+              // 3. Cria a Entrada
+              if (targetFeedId) {
+                  newEntries.push({
+                      id: uuidv4(),
+                      feedId: targetFeedId,
+                      content,
+                      parentId,
+                      linkedTaskId,
+                      createdAt: Date.now(),
+                      updatedAt: Date.now()
+                  });
+              }
           });
-      },
+
+          return { channels: newChannels, feeds: newFeeds, entries: newEntries };
+      }),
 
       updateEntry: (id, newContent) => set((state) => {
-          // Se o usuário mudar o @ ou # na edição, o registro "viaja" de feed!
-          const { feedName, channelName } = extractMentions(newContent);
-          
+          // Se o usuário editar a entrada e mudar a PRIMEIRA menção @, o feed viaja de pasta.
+          const { feeds: mFeeds, channels: mChannels } = extractMentions(newContent);
           const entry = state.entries.find(e => e.id === id);
           if (!entry) return state;
 
-          let targetFeedId = entry.feedId;
           let newChannels = [...state.channels];
           let newFeeds = [...state.feeds];
+          let targetFeedId = entry.feedId;
 
-          // Se a edição mudou os parâmetros
-          if (feedName || channelName) {
-              let targetChannelId: string | null = null;
-              if (channelName) {
-                  const existingChannel = newChannels.find(c => c.name.toLowerCase() === channelName.toLowerCase());
-                  if (existingChannel) targetChannelId = existingChannel.id;
-                  else {
-                      targetChannelId = uuidv4();
-                      newChannels.push({ id: targetChannelId, name: channelName, color: 'zinc', createdAt: Date.now(), updatedAt: Date.now() });
+          if (mFeeds.length > 0) {
+              const firstFeedName = mFeeds[0];
+              const existingF = newFeeds.find(f => f.name.toLowerCase() === firstFeedName.toLowerCase());
+              
+              if (existingF) {
+                  targetFeedId = existingF.id;
+              } else {
+                  // Resolve o canal para o novo feed
+                  let tChannelId = mChannels.length > 0 ? null : newFeeds.find(f => f.id === entry.feedId)?.channelId;
+                  if (mChannels.length > 0) {
+                      const existingC = newChannels.find(c => c.name.toLowerCase() === mChannels[0].toLowerCase());
+                      if (existingC) tChannelId = existingC.id;
+                      else {
+                          tChannelId = uuidv4();
+                          newChannels.push({ id: tChannelId, name: mChannels[0], color: 'zinc', createdAt: Date.now(), updatedAt: Date.now() });
+                      }
+                  }
+                  
+                  if (tChannelId) {
+                      targetFeedId = uuidv4();
+                      newFeeds.push({ id: targetFeedId, channelId: tChannelId, name: firstFeedName, color: 'blue', isArchived: false, createdAt: Date.now(), updatedAt: Date.now(), lastActivityAt: Date.now() });
                   }
               }
-
-              const actualFeedName = feedName || 'Geral';
-              const existingFeed = newFeeds.find(f => f.name.toLowerCase() === actualFeedName.toLowerCase() && f.channelId === targetChannelId);
-              if (existingFeed) {
-                  targetFeedId = existingFeed.id;
-                  existingFeed.lastActivityAt = Date.now();
-              } else {
-                  targetFeedId = uuidv4();
-                  newFeeds.push({ id: targetFeedId, channelId: targetChannelId, name: actualFeedName, color: 'blue', isArchived: false, createdAt: Date.now(), updatedAt: Date.now(), lastActivityAt: Date.now() });
-              }
           }
-
-          return { 
-              channels: newChannels, 
-              feeds: newFeeds, 
-              entries: state.entries.map(e => e.id === id ? { ...e, content: newContent, feedId: targetFeedId, updatedAt: Date.now() } : e) 
-          };
+          
+          return { channels: newChannels, feeds: newFeeds, entries: state.entries.map(e => e.id === id ? { ...e, content: newContent, feedId: targetFeedId, updatedAt: Date.now() } : e) };
       }),
 
       deleteEntry: (id) => {
           useConfigStore.getState().addTombstone(id);
-          // Deleta a entrada e também todas as respostas (filhas)
+          // Efeito cascata: deleta a entrada e todas as respostas (threads) ligadas a ela
           set((state) => ({ entries: state.entries.filter(e => e.id !== id && e.parentId !== id) }));
       },
 
       updateFeed: (id, updated) => set((state) => ({ feeds: state.feeds.map(f => f.id === id ? { ...f, ...updated, updatedAt: Date.now() } : f) })),
       archiveFeed: (id) => set((state) => ({ feeds: state.feeds.map(f => f.id === id ? { ...f, isArchived: true, archivedAt: Date.now(), updatedAt: Date.now() } : f) })),
       unarchiveFeed: (id) => set((state) => ({ feeds: state.feeds.map(f => f.id === id ? { ...f, isArchived: false, archivedAt: undefined, updatedAt: Date.now() } : f) })),
+      
       deleteFeed: (id) => {
           useConfigStore.getState().addTombstone(id);
           set((state) => ({ 
               feeds: state.feeds.filter(f => f.id !== id),
-              entries: state.entries.filter(e => e.feedId !== id) // Cascade delete
+              entries: state.entries.filter(e => e.feedId !== id) 
           }));
       },
 
       updateChannel: (id, updated) => set((state) => ({ channels: state.channels.map(c => c.id === id ? { ...c, ...updated, updatedAt: Date.now() } : c) })),
+      
       deleteChannel: (id) => {
           useConfigStore.getState().addTombstone(id);
           set((state) => {

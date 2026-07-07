@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Hash, AtSign, Send, MessageSquareText, Search, Calendar as CalendarIcon, MoreVertical, Archive, ArchiveRestore, Edit2, Trash2, CornerDownRight, PaintBucket } from 'lucide-react';
-import { useFeedStore, extractMentions } from '../../store/useFeedStore';
+import { X, Hash, AtSign, Send, MessageSquareText, Search, Calendar as CalendarIcon, MoreVertical, Archive, ArchiveRestore, Edit2, Trash2, CornerDownRight, PaintBucket, AlertTriangle, AlertCircle } from 'lucide-react';
+import { useFeedStore, extractMentions, type FeedTarget } from '../../store/useFeedStore';
 import { useBackHandler } from '../../store/useConfigStore';
 import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -19,7 +19,7 @@ const colorStyles: Record<ItemColor, { text: string, bg: string, border: string 
 };
 
 export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: boolean, onClose: () => void, focusInputSignal: number }) => {
-  const { channels, feeds, entries, processMentionsAndCreateEntry, updateEntry, deleteEntry, updateFeed, archiveFeed, unarchiveFeed, updateChannel, cleanupArchivedFeeds } = useFeedStore();
+  const { channels, feeds, entries, publishMessage, updateEntry, deleteEntry, updateFeed, archiveFeed, unarchiveFeed, deleteFeed, updateChannel, deleteChannel, cleanupArchivedFeeds } = useFeedStore();
   
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [activeFeedId, setActiveFeedId] = useState<string | null>(null);
@@ -34,33 +34,31 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
 
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [showColorPicker, setShowColorPicker] = useState<{ type: 'channel'|'feed', id: string } | null>(null);
+  const [toastMessage, setToastMessage] = useState<{msg: string, type: 'error'|'success'} | null>(null);
+  
+  const [confirmDialog, setConfirmDialog] = useState<{ type: 'archive_feed' | 'delete_feed' | 'delete_channel' | 'delete_entry', id: string, title: string, subtitle: string } | null>(null);
+  const [channelPrompt, setChannelPrompt] = useState<{ pendingFeeds: string[] } | null>(null);
+  const [newChannelPromptName, setNewChannelPromptName] = useState('');
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (isOpen) cleanupArchivedFeeds();
-  }, [isOpen, cleanupArchivedFeeds]);
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => { setToastMessage({msg, type}); setTimeout(() => setToastMessage(null), 3000); };
 
-  useEffect(() => {
-    if (isOpen && focusInputSignal > 0) {
-        inputRef.current?.focus();
-    }
-  }, [focusInputSignal, isOpen]);
+  useEffect(() => { if (isOpen) cleanupArchivedFeeds(); }, [isOpen, cleanupArchivedFeeds]);
+  useEffect(() => { if (isOpen && focusInputSignal > 0) inputRef.current?.focus(); }, [focusInputSignal, isOpen]);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [entries.length, activeFeedId, replyingTo]);
 
-  useEffect(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [entries.length, activeFeedId, replyingTo]);
-
+  useBackHandler(isOpen && !!channelPrompt, () => { setChannelPrompt(null); return true; });
+  useBackHandler(isOpen && !!confirmDialog, () => { setConfirmDialog(null); return true; });
   useBackHandler(isOpen && !!showColorPicker, () => { setShowColorPicker(null); return true; });
   useBackHandler(isOpen && !!activeMenuId, () => { setActiveMenuId(null); return true; });
   useBackHandler(isOpen && !!replyingTo, () => { setReplyingTo(null); return true; });
   useBackHandler(isOpen && !!editingEntry, () => { setEditingEntry(null); setInputText(''); return true; });
   useBackHandler(isOpen && isArchivedView, () => { setIsArchivedView(false); return true; });
-  useBackHandler(isOpen && !showColorPicker && !activeMenuId && !replyingTo && !editingEntry && !isArchivedView, () => { onClose(); return true; });
+  useBackHandler(isOpen && !channelPrompt && !confirmDialog && !showColorPicker && !activeMenuId && !replyingTo && !editingEntry && !isArchivedView, () => { onClose(); return true; });
 
-  const activeFeeds = feeds.filter(f => f.channelId === activeChannelId && f.isArchived === isArchivedView)
-                           .sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+  const activeFeeds = feeds.filter(f => f.channelId === activeChannelId && f.isArchived === isArchivedView).sort((a, b) => b.lastActivityAt - a.lastActivityAt);
 
   useEffect(() => {
       if (activeChannelId && !activeFeeds.find(f => f.id === activeFeedId)) {
@@ -81,50 +79,103 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
       }
 
       const parents = filtered.filter(e => !e.parentId).sort((a, b) => a.createdAt - b.createdAt);
-      const withThreads: { parent: FeedEntry, replies: FeedEntry[] }[] = parents.map(p => ({
+      return parents.map(p => ({
           parent: p,
           replies: entries.filter(e => e.parentId === p.id).sort((a, b) => a.createdAt - b.createdAt)
       }));
-
-      return withThreads;
   }, [entries, activeFeedId, searchQuery, selectedDate]);
 
-  // AQUI O RETORNO ANTECIPADO AGORA ESTÁ SEGURO APÓS OS HOOKS
   if (!isOpen) return null;
+
+  const handleRequestDeleteChannel = (id: string) => {
+      const hasFeeds = feeds.some(f => f.channelId === id);
+      if (hasFeeds) {
+          showToast('Não é possível excluir um canal que possui feeds associados.', 'error');
+          return;
+      }
+      setConfirmDialog({ type: 'delete_channel', id, title: 'Excluir Canal?', subtitle: 'Esta ação não pode ser desfeita.' });
+  };
+
+  const executeConfirmAction = () => {
+      if (!confirmDialog) return;
+      if (confirmDialog.type === 'delete_channel') { deleteChannel(confirmDialog.id); setActiveChannelId(null); }
+      if (confirmDialog.type === 'delete_feed') { deleteFeed(confirmDialog.id); setActiveFeedId(null); }
+      if (confirmDialog.type === 'archive_feed') { archiveFeed(confirmDialog.id); setActiveFeedId(null); }
+      if (confirmDialog.type === 'delete_entry') { deleteEntry(confirmDialog.id); }
+      setConfirmDialog(null);
+  };
+
+  const executeSend = (targets: FeedTarget[]) => {
+      publishMessage(inputText, targets, replyingTo?.id);
+      setInputText('');
+      setReplyingTo(null);
+  };
 
   const handleSend = () => {
       if (!inputText.trim()) return;
 
       if (editingEntry) {
           updateEntry(editingEntry.id, inputText);
-          setEditingEntry(null);
-          setInputText('');
+          setEditingEntry(null); setInputText('');
           return;
       }
 
-      let contentToSend = inputText;
-      const { feedName, channelName } = extractMentions(inputText);
-      if (!feedName && !channelName && activeFeedId) {
-          const currentFeed = feeds.find(f => f.id === activeFeedId);
-          const currentChannel = channels.find(c => c.id === currentFeed?.channelId);
-          if (currentFeed) contentToSend = `@[${currentFeed.name}] ` + contentToSend;
-          if (currentChannel && !contentToSend.includes(`#[`)) contentToSend = `#[${currentChannel.name}] ` + contentToSend;
+      const { feeds: mFeeds, channels: mChannels } = extractMentions(inputText);
+
+      let targets: FeedTarget[] = [];
+      let pendingFeedsWithoutChannel: string[] = [];
+
+      if (mFeeds.length === 0) {
+          if (activeFeedId) targets.push({ feedId: activeFeedId });
+          else return; // Não faz nada se não há feed ativo nem feed mencionado
+      } else {
+          mFeeds.forEach(fName => {
+              const existingF = feeds.find(f => f.name.toLowerCase() === fName.toLowerCase());
+              if (existingF) {
+                  targets.push({ feedId: existingF.id });
+              } else {
+                  // Feed Novo. Precisamos de um Canal para ele.
+                  if (mChannels.length > 0) targets.push({ newFeedName: fName, newChannelName: mChannels[0] });
+                  else if (activeChannelId) targets.push({ newFeedName: fName, channelId: activeChannelId });
+                  else pendingFeedsWithoutChannel.push(fName);
+              }
+          });
       }
 
-      processMentionsAndCreateEntry(contentToSend, undefined, replyingTo?.id);
-      setInputText('');
-      setReplyingTo(null);
+      if (pendingFeedsWithoutChannel.length > 0) {
+          setChannelPrompt({ pendingFeeds: pendingFeedsWithoutChannel });
+          return; // Pausa o envio e abre o modal de seleção de canal
+      }
+
+      executeSend(targets);
+  };
+
+  const resolveChannelPrompt = (channelIdOrName: string, isNew: boolean) => {
+      if (!channelPrompt) return;
+      
+      const { feeds: mFeeds } = extractMentions(inputText);
+      let targets: FeedTarget[] = [];
+      
+      mFeeds.forEach(fName => {
+          const existingF = feeds.find(f => f.name.toLowerCase() === fName.toLowerCase());
+          if (existingF) {
+              targets.push({ feedId: existingF.id });
+          } else {
+              if (isNew) targets.push({ newFeedName: fName, newChannelName: channelIdOrName });
+              else targets.push({ newFeedName: fName, channelId: channelIdOrName });
+          }
+      });
+
+      setChannelPrompt(null);
+      setNewChannelPromptName('');
+      executeSend(targets);
   };
 
   const renderContentWithMentions = (text: string) => {
-      const parts = text.split(/(@\[[^\]]+\]|#\[[^\]]+\])/g);
+      const parts = text.split(/([@#][\wÀ-ÿ-]+)/g);
       return parts.map((part, i) => {
-          if (part.startsWith('@[') && part.endsWith(']')) {
-              return <span key={i} className="text-blue-500 font-bold bg-blue-500/10 px-1 rounded">{part}</span>;
-          }
-          if (part.startsWith('#[') && part.endsWith(']')) {
-              return <span key={i} className="text-amber-500 font-bold bg-amber-500/10 px-1 rounded">{part}</span>;
-          }
+          if (part.startsWith('@')) return <span key={i} className="text-blue-500 font-bold bg-blue-500/10 px-1 rounded">{part}</span>;
+          if (part.startsWith('#')) return <span key={i} className="text-amber-500 font-bold bg-amber-500/10 px-1 rounded">{part}</span>;
           return <span key={i}>{part}</span>;
       });
   };
@@ -141,10 +192,12 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
       </div>
   );
 
+  let lastDateDivider = '';
+
   return (
     <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }} className="fixed inset-0 z-[150] bg-white dark:bg-black flex flex-col md:flex-row overflow-hidden">
         
-        {/* SIDEBAR (Canais e Feeds) */}
+        {/* SIDEBAR */}
         <div className="w-full md:w-80 h-auto md:h-full border-b md:border-r border-zinc-200 dark:border-zinc-900 flex flex-col shrink-0 bg-zinc-50 dark:bg-zinc-950/50">
             <div className="p-4 md:p-6 border-b border-zinc-200 dark:border-zinc-900 flex items-center justify-between">
                 <div>
@@ -155,8 +208,6 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
             </div>
 
             <div className="flex-1 overflow-y-auto scrollbar-hide p-4 space-y-6">
-                
-                {/* LISTA DE CANAIS */}
                 <div>
                    <div className="flex justify-between items-center mb-3">
                        <span className="text-xs uppercase font-bold text-zinc-400 tracking-widest">Canais (#)</span>
@@ -179,9 +230,8 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                                   </button>
                                   {isActive && (
                                       <div className="absolute right-1 flex gap-1">
-                                          <button onClick={(e) => { e.stopPropagation(); setShowColorPicker(showColorPicker?.id === c.id ? null : {type:'channel', id: c.id}); }} className={`p-1.5 rounded-lg bg-zinc-800 text-zinc-400 hover:text-white transition-colors`}>
-                                             <PaintBucket size={12}/>
-                                          </button>
+                                          <button onClick={(e) => { e.stopPropagation(); setShowColorPicker(showColorPicker?.id === c.id ? null : {type:'channel', id: c.id}); }} className={`p-1.5 rounded-lg bg-zinc-800 text-zinc-400 hover:text-white transition-colors`}><PaintBucket size={12}/></button>
+                                          <button onClick={(e) => { e.stopPropagation(); handleRequestDeleteChannel(c.id); }} className={`p-1.5 rounded-lg bg-zinc-800 text-zinc-400 hover:text-red-500 transition-colors`}><Trash2 size={12}/></button>
                                           {showColorPicker?.type === 'channel' && showColorPicker.id === c.id && <ColorPicker type="channel" id={c.id} />}
                                       </div>
                                   )}
@@ -191,13 +241,12 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                    </div>
                 </div>
 
-                {/* LISTA DE FEEDS DO CANAL */}
                 {(activeChannelId || activeFeeds.length > 0) && (
                     <div>
                        <span className="text-xs uppercase font-bold text-zinc-400 tracking-widest mb-3 block">Feeds (@)</span>
                        {activeFeeds.length === 0 ? (
                            <div className="text-xs font-bold text-zinc-400 p-3 bg-zinc-100 dark:bg-zinc-900/50 rounded-xl text-center border border-dashed border-zinc-300 dark:border-zinc-800">
-                               Nenhum feed {isArchivedView ? 'arquivado' : 'ativo'}.<br/>Crie um usando <b>@[Nome]</b> no chat.
+                               Nenhum feed {isArchivedView ? 'arquivado' : 'ativo'}.<br/>Crie um usando <b>@Nome</b> no chat.
                            </div>
                        ) : (
                            <div className="space-y-1">
@@ -213,7 +262,8 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                                           {isActive && (
                                               <div className="absolute right-1 flex gap-1 bg-zinc-100 dark:bg-zinc-900 p-1 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-sm">
                                                   <button onClick={(e) => { e.stopPropagation(); setShowColorPicker(showColorPicker?.id === f.id ? null : {type:'feed', id: f.id}); }} className={`p-1.5 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors ${style.text}`}><PaintBucket size={12}/></button>
-                                                  <button onClick={(e) => { e.stopPropagation(); isArchivedView ? unarchiveFeed(f.id) : archiveFeed(f.id); }} className={`p-1.5 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors text-zinc-500`} title={isArchivedView ? 'Restaurar' : 'Arquivar'}><Archive size={12}/></button>
+                                                  <button onClick={(e) => { e.stopPropagation(); isArchivedView ? unarchiveFeed(f.id) : setConfirmDialog({ type: 'archive_feed', id: f.id, title: 'Arquivar Feed?', subtitle: 'Ele desaparecerá da lista ativa, mas será excluído para sempre após 60 dias.' }); }} className={`p-1.5 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors text-zinc-500`} title={isArchivedView ? 'Restaurar' : 'Arquivar'}><Archive size={12}/></button>
+                                                  <button onClick={(e) => { e.stopPropagation(); setConfirmDialog({ type: 'delete_feed', id: f.id, title: 'Deletar Permanentemente?', subtitle: 'Isso apagará o feed e todos os registros dele.'}); }} className={`p-1.5 rounded-md hover:bg-red-500/10 transition-colors text-red-500`} title="Deletar"><Trash2 size={12}/></button>
                                                   {showColorPicker?.type === 'feed' && showColorPicker.id === f.id && <ColorPicker type="feed" id={f.id} />}
                                               </div>
                                           )}
@@ -227,10 +277,9 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
             </div>
         </div>
 
-        {/* ÁREA PRINCIPAL (CHAT / LOGS) */}
+        {/* ÁREA PRINCIPAL (CHAT) */}
         <div className="flex-1 flex flex-col min-w-0 bg-white dark:bg-black relative">
             
-            {/* CABEÇALHO DO CHAT */}
             <div className="h-16 border-b border-zinc-200 dark:border-zinc-900 flex items-center justify-between px-4 md:px-6 shrink-0 bg-white/80 dark:bg-black/80 backdrop-blur-md z-10">
                 <div className="flex items-center gap-3 min-w-0">
                     {activeFeedId ? (
@@ -262,98 +311,92 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                 </div>
             </div>
 
-            {/* MENSAGENS (ENTRADAS DO FEED) */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 scrollbar-thin">
+            <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scrollbar-thin">
                 {displayedEntries.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-zinc-400">
                         <MessageSquareText size={48} className="mb-4 opacity-20" />
                         <p className="font-bold text-sm">Nada por aqui.</p>
-                        <p className="text-xs mt-2 opacity-60 max-w-xs text-center">Use a caixa abaixo e mencione @[Feed] ou #[Canal] para criar um registro e começar a documentar.</p>
+                        <p className="text-xs mt-2 opacity-60 max-w-xs text-center">Use a caixa abaixo e mencione @Feed ou #Canal para criar um registro e começar a documentar.</p>
                     </div>
                 ) : (
-                    displayedEntries.map(group => (
-                        <div key={group.parent.id} className="group/parent flex flex-col gap-2 relative">
-                            {/* LINHA CONECTORA DAS THREADS */}
-                            {group.replies.length > 0 && (
-                                <div className="absolute left-5 top-12 bottom-6 w-0.5 bg-zinc-200 dark:bg-zinc-800 z-0 rounded-full" />
-                            )}
-                            
-                            {/* MENSAGEM PAI */}
-                            <div className={`flex gap-4 relative z-10 p-4 rounded-2xl transition-colors ${editingEntry?.id === group.parent.id || replyingTo?.id === group.parent.id ? 'bg-blue-500/5 ring-1 ring-blue-500/30' : 'hover:bg-zinc-50 dark:hover:bg-zinc-900/50'}`}>
-                                <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center shrink-0 border border-zinc-300 dark:border-zinc-700 shadow-sm text-zinc-500">
-                                   <AtSign size={18} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
-                                            {format(new Date(group.parent.createdAt), "dd MMM, HH:mm", { locale: ptBR })}
-                                        </span>
-                                        {group.parent.linkedTaskId && (
-                                            <span className="text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold uppercase tracking-wider">Via Tarefa</span>
-                                        )}
-                                        {group.parent.createdAt !== group.parent.updatedAt && (
-                                            <span className="text-[9px] text-zinc-400 italic">(Editado)</span>
-                                        )}
-                                    </div>
-                                    <p className="text-sm md:text-base leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap font-medium">
-                                        {renderContentWithMentions(group.parent.content)}
-                                    </p>
-                                </div>
+                    displayedEntries.map(group => {
+                        const entryDate = format(new Date(group.parent.createdAt), 'yyyy-MM-dd');
+                        const isNewDate = entryDate !== lastDateDivider;
+                        if (isNewDate) lastDateDivider = entryDate;
 
-                                {/* Ações da Mensagem */}
-                                <div className="opacity-0 group-hover/parent:opacity-100 transition-opacity flex flex-col gap-1 shrink-0">
-                                    <button onClick={() => setReplyingTo(group.parent)} className="p-2 text-zinc-400 hover:text-blue-500 bg-white dark:bg-black rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800"><CornerDownRight size={14}/></button>
-                                    <div className="relative">
-                                        <button onClick={() => setActiveMenuId(activeMenuId === group.parent.id ? null : group.parent.id)} className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-white dark:bg-black rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800"><MoreVertical size={14}/></button>
-                                        <AnimatePresence>
-                                            {activeMenuId === group.parent.id && (
-                                                <motion.div initial={{opacity:0, scale:0.95}} animate={{opacity:1, scale:1}} exit={{opacity:0, scale:0.95}} className="absolute right-full top-0 mr-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl flex flex-col p-1 z-50 min-w-[120px]">
-                                                    <button onClick={() => { setEditingEntry(group.parent); setInputText(group.parent.content); setActiveMenuId(null); inputRef.current?.focus(); }} className="flex items-center gap-2 p-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-lg text-xs font-bold"><Edit2 size={12}/> Editar</button>
-                                                    <button onClick={() => { deleteEntry(group.parent.id); setActiveMenuId(null); }} className="flex items-center gap-2 p-2 hover:bg-red-500/10 text-red-500 rounded-lg text-xs font-bold"><Trash2 size={12}/> Apagar Thread</button>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
+                        return (
+                            <React.Fragment key={group.parent.id}>
+                                {isNewDate && (
+                                    <div className="flex items-center gap-4 my-8">
+                                        <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800" />
+                                        <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest bg-zinc-100 dark:bg-zinc-900 px-3 py-1 rounded-full">{format(new Date(group.parent.createdAt), "dd 'de' MMMM", { locale: ptBR })}</span>
+                                        <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800" />
                                     </div>
-                                </div>
-                            </div>
-
-                            {/* RESPOSTAS (THREADS) */}
-                            {group.replies.map(reply => (
-                                <div key={reply.id} className={`group/reply ml-8 md:ml-12 flex gap-4 relative z-10 p-3 rounded-2xl transition-colors ${editingEntry?.id === reply.id ? 'bg-blue-500/5 ring-1 ring-blue-500/30' : 'hover:bg-zinc-50 dark:hover:bg-zinc-900/50'}`}>
-                                    <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-800 text-zinc-400">
-                                       <CornerDownRight size={14} />
-                                    </div>
-                                    <div className="flex-1 min-w-0 pt-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
-                                                {format(new Date(reply.createdAt), "dd MMM, HH:mm", { locale: ptBR })}
-                                            </span>
-                                            {reply.createdAt !== reply.updatedAt && (
-                                                <span className="text-[9px] text-zinc-400 italic">(Editado)</span>
-                                            )}
+                                )}
+                                
+                                <div className="group/parent flex flex-col gap-2 relative">
+                                    {group.replies.length > 0 && ( <div className="absolute left-5 top-12 bottom-6 w-0.5 bg-zinc-200 dark:bg-zinc-800 z-0 rounded-full" /> )}
+                                    
+                                    <div className={`flex gap-4 relative z-10 p-4 rounded-2xl transition-colors ${editingEntry?.id === group.parent.id || replyingTo?.id === group.parent.id ? 'bg-blue-500/5 ring-1 ring-blue-500/30' : 'hover:bg-zinc-50 dark:hover:bg-zinc-900/50'}`}>
+                                        <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center shrink-0 border border-zinc-300 dark:border-zinc-700 shadow-sm text-zinc-500">
+                                        <AtSign size={18} />
                                         </div>
-                                        <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">
-                                            {renderContentWithMentions(reply.content)}
-                                        </p>
-                                    </div>
-                                    {/* Ações da Resposta */}
-                                    <div className="opacity-0 group-hover/reply:opacity-100 transition-opacity flex flex-col gap-1 shrink-0">
-                                        <div className="relative">
-                                            <button onClick={() => setActiveMenuId(activeMenuId === reply.id ? null : reply.id)} className="p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-white dark:bg-black rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800"><MoreVertical size={14}/></button>
-                                            <AnimatePresence>
-                                                {activeMenuId === reply.id && (
-                                                    <motion.div initial={{opacity:0, scale:0.95}} animate={{opacity:1, scale:1}} exit={{opacity:0, scale:0.95}} className="absolute right-full top-0 mr-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl flex flex-col p-1 z-50 min-w-[120px]">
-                                                        <button onClick={() => { setEditingEntry(reply); setInputText(reply.content); setActiveMenuId(null); inputRef.current?.focus(); }} className="flex items-center gap-2 p-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-lg text-xs font-bold"><Edit2 size={12}/> Editar</button>
-                                                        <button onClick={() => { deleteEntry(reply.id); setActiveMenuId(null); }} className="flex items-center gap-2 p-2 hover:bg-red-500/10 text-red-500 rounded-lg text-xs font-bold"><Trash2 size={12}/> Apagar Resposta</button>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{format(new Date(group.parent.createdAt), "HH:mm")}</span>
+                                                {group.parent.linkedTaskId && <span className="text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 font-bold uppercase tracking-wider">Via Tarefa</span>}
+                                                {group.parent.createdAt !== group.parent.updatedAt && <span className="text-[9px] text-zinc-400 italic">(Editado)</span>}
+                                            </div>
+                                            <p className="text-sm md:text-base leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap font-medium">{renderContentWithMentions(group.parent.content)}</p>
+                                        </div>
+
+                                        <div className="opacity-0 group-hover/parent:opacity-100 transition-opacity flex flex-col gap-1 shrink-0">
+                                            <button onClick={() => setReplyingTo(group.parent)} className="p-2 text-zinc-400 hover:text-blue-500 bg-white dark:bg-black rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800"><CornerDownRight size={14}/></button>
+                                            <div className="relative">
+                                                <button onClick={() => setActiveMenuId(activeMenuId === group.parent.id ? null : group.parent.id)} className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-white dark:bg-black rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800"><MoreVertical size={14}/></button>
+                                                <AnimatePresence>
+                                                    {activeMenuId === group.parent.id && (
+                                                        <motion.div initial={{opacity:0, scale:0.95}} animate={{opacity:1, scale:1}} exit={{opacity:0, scale:0.95}} className="absolute right-full top-0 mr-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl flex flex-col p-1 z-50 min-w-[120px]">
+                                                            <button onClick={() => { setEditingEntry(group.parent); setInputText(group.parent.content); setActiveMenuId(null); inputRef.current?.focus(); }} className="flex items-center gap-2 p-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-lg text-xs font-bold"><Edit2 size={12}/> Editar</button>
+                                                            <button onClick={() => { setConfirmDialog({ type: 'delete_entry', id: group.parent.id, title: 'Apagar Thread?', subtitle: 'Todas as respostas desta linha também serão apagadas.' }); setActiveMenuId(null); }} className="flex items-center gap-2 p-2 hover:bg-red-500/10 text-red-500 rounded-lg text-xs font-bold"><Trash2 size={12}/> Apagar Thread</button>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
                                         </div>
                                     </div>
+
+                                    {group.replies.map(reply => (
+                                        <div key={reply.id} className={`group/reply ml-8 md:ml-12 flex gap-4 relative z-10 p-3 rounded-2xl transition-colors ${editingEntry?.id === reply.id ? 'bg-blue-500/5 ring-1 ring-blue-500/30' : 'hover:bg-zinc-50 dark:hover:bg-zinc-900/50'}`}>
+                                            <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-800 text-zinc-400">
+                                            <CornerDownRight size={14} />
+                                            </div>
+                                            <div className="flex-1 min-w-0 pt-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{format(new Date(reply.createdAt), "HH:mm")}</span>
+                                                    {reply.createdAt !== reply.updatedAt && <span className="text-[9px] text-zinc-400 italic">(Editado)</span>}
+                                                </div>
+                                                <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{renderContentWithMentions(reply.content)}</p>
+                                            </div>
+                                            <div className="opacity-0 group-hover/reply:opacity-100 transition-opacity flex flex-col gap-1 shrink-0">
+                                                <div className="relative">
+                                                    <button onClick={() => setActiveMenuId(activeMenuId === reply.id ? null : reply.id)} className="p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-white dark:bg-black rounded-lg shadow-sm border border-zinc-200 dark:border-zinc-800"><MoreVertical size={14}/></button>
+                                                    <AnimatePresence>
+                                                        {activeMenuId === reply.id && (
+                                                            <motion.div initial={{opacity:0, scale:0.95}} animate={{opacity:1, scale:1}} exit={{opacity:0, scale:0.95}} className="absolute right-full top-0 mr-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl flex flex-col p-1 z-50 min-w-[120px]">
+                                                                <button onClick={() => { setEditingEntry(reply); setInputText(reply.content); setActiveMenuId(null); inputRef.current?.focus(); }} className="flex items-center gap-2 p-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-lg text-xs font-bold"><Edit2 size={12}/> Editar</button>
+                                                                <button onClick={() => { setConfirmDialog({ type: 'delete_entry', id: reply.id, title: 'Apagar Resposta?', subtitle: 'Esta resposta será removida permanentemente.' }); setActiveMenuId(null); }} className="flex items-center gap-2 p-2 hover:bg-red-500/10 text-red-500 rounded-lg text-xs font-bold"><Trash2 size={12}/> Apagar Resposta</button>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    ))
+                            </React.Fragment>
+                        );
+                    })
                 )}
                 <div ref={messagesEndRef} className="h-4" />
             </div>
@@ -393,15 +436,11 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                                     handleSend();
                                 }
                             }}
-                            placeholder={replyingTo ? "Sua resposta..." : "Documente algo ou mencione @[Feed] e #[Canal]..."}
+                            placeholder={replyingTo ? "Sua resposta..." : "Documente algo ou mencione @Feed e #Canal..."}
                             className={`flex-1 max-h-40 min-h-[56px] resize-none bg-white dark:bg-zinc-900 border outline-none px-4 py-4 text-sm rounded-2xl shadow-sm transition-colors ${replyingTo ? 'rounded-tl-none border-blue-500/30 focus:border-blue-500' : editingEntry ? 'rounded-tl-none border-amber-500/30 focus:border-amber-500' : 'border-zinc-300 dark:border-zinc-700 focus:border-zinc-500 dark:focus:border-zinc-500'}`}
                             rows={1}
                         />
-                        <button 
-                           onClick={handleSend} 
-                           disabled={!inputText.trim()} 
-                           className="p-4 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black rounded-2xl font-bold disabled:opacity-50 hover:opacity-90 transition-opacity shadow-lg flex items-center justify-center shrink-0"
-                        >
+                        <button onClick={handleSend} disabled={!inputText.trim()} className="p-4 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black rounded-2xl font-bold disabled:opacity-50 hover:opacity-90 transition-opacity shadow-lg flex items-center justify-center shrink-0">
                             <Send size={20} className={inputText.trim() ? "translate-x-0.5 -translate-y-0.5 transition-transform" : ""} />
                         </button>
                     </div>
@@ -409,6 +448,60 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                 </div>
             )}
         </div>
+
+        {/* MODAL DE CONFIRMAÇÃO DE DELEÇÃO */}
+        <AnimatePresence>
+            {confirmDialog && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1200] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
+                <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 text-center">
+                <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4"><AlertTriangle size={32} /></div>
+                <h3 className="text-xl font-black mb-2 dark:text-white">{confirmDialog.title}</h3>
+                <p className="text-zinc-500 dark:text-zinc-400 mb-6 text-sm">{confirmDialog.subtitle}</p>
+                <div className="flex gap-3">
+                    <button onClick={() => setConfirmDialog(null)} className="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
+                    <button onClick={executeConfirmAction} className="flex-1 p-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-500 transition-colors">Confirmar</button>
+                </div>
+                </motion.div>
+            </motion.div>
+            )}
+        </AnimatePresence>
+
+        {/* MODAL DE PROMPT DE CANAL (QUANDO USUÁRIO CRIA UM FEED NOVO SEM CONTEXTO) */}
+        <AnimatePresence>
+            {channelPrompt && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1200] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
+                <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-3xl p-8 shadow-2xl border border-blue-500/20 text-center">
+                <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4"><AlertCircle size={32} /></div>
+                <h3 className="text-xl font-black mb-2 dark:text-white">Para qual Canal?</h3>
+                <p className="text-zinc-500 dark:text-zinc-400 mb-6 text-sm">O feed <span className="font-bold text-blue-500">@{channelPrompt.pendingFeeds.join(', @')}</span> é novo e precisa morar dentro de um Canal. Escolha um ou crie um agora.</p>
+                
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto scrollbar-hide">
+                        {channels.map(c => (
+                            <button key={c.id} onClick={() => resolveChannelPrompt(c.id, false)} className="p-3 bg-zinc-100 dark:bg-zinc-800/50 hover:bg-blue-500/10 border border-transparent hover:border-blue-500/30 rounded-xl text-sm font-bold text-zinc-700 dark:text-zinc-300 transition-colors truncate">
+                                {c.name}
+                            </button>
+                        ))}
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                        <input autoFocus type="text" placeholder="Nome do novo canal..." value={newChannelPromptName} onChange={e=>setNewChannelPromptName(e.target.value)} className="flex-1 bg-zinc-100 dark:bg-zinc-800 p-3 rounded-xl outline-none font-bold text-sm" />
+                        <button onClick={() => { if(newChannelPromptName.trim()) resolveChannelPrompt(newChannelPromptName.trim(), true); }} disabled={!newChannelPromptName.trim()} className="p-3 bg-blue-600 text-white rounded-xl font-bold disabled:opacity-50">Criar</button>
+                    </div>
+                </div>
+
+                <div className="mt-8 border-t border-zinc-200 dark:border-zinc-800 pt-4">
+                    <button onClick={() => setChannelPrompt(null)} className="text-sm font-bold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">Cancelar Envio</button>
+                </div>
+                </motion.div>
+            </motion.div>
+            )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+            {toastMessage && ( <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className={`fixed top-6 left-1/2 -translate-x-1/2 z-[3000] px-6 py-3 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.12)] font-bold text-sm tracking-wide border ${toastMessage.type === 'error' ? 'bg-red-500 text-white border-red-600' : 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black border-zinc-800 dark:border-zinc-200'}`}>{toastMessage.msg}</motion.div> )}
+        </AnimatePresence>
+
     </motion.div>
   );
 };

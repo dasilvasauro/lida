@@ -4,7 +4,7 @@ import { X, Zap, Timer, Gift, CheckCircle2, Calendar, Clock, Plus, RotateCcw, In
 import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
-import { useFeedStore } from '../../store/useFeedStore';
+import { useFeedStore, extractMentions } from '../../store/useFeedStore';
 import type { Priority, TaskType, Task } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { CustomDatePicker } from '../../components/ui/CustomDatePicker';
@@ -141,18 +141,33 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, initialTitle, brainDump
     } else { 
         addTask({ id: taskId, createdAt: Date.now(), isCompleted: false, ...taskData } as Task); 
         onSuccess?.('Tarefa criada!'); 
-        if (brainDumpItemId) {
-            markBrainDumpItemConverted(brainDumpItemId, 'task');
-        }
+        if (brainDumpItemId) markBrainDumpItemConverted(brainDumpItemId, 'task');
     }
 
-    // === INTEGRAÇÃO COM FEEDS ===
-    if (description && (description.includes('@[') || description.includes('#[')) && isDescriptionChanged) {
-        const actionText = taskToEdit ? 'Tarefa Atualizada' : 'Nova Tarefa';
-        useFeedStore.getState().processMentionsAndCreateEntry(
-            `${actionText}: **${title}**\n\n${description}`, 
-            taskId
-        );
+    // === INTEGRAÇÃO COM FEEDS (MENÇÕES SEM COLCHETES) ===
+    if (description && (description.includes('@') || description.includes('#')) && isDescriptionChanged) {
+        const { feeds: mFeeds, channels: mChannels } = extractMentions(description);
+        
+        if (mFeeds.length > 0 || mChannels.length > 0) {
+            const feedStore = useFeedStore.getState();
+            let targets: any[] = [];
+            
+            mFeeds.forEach(fName => {
+                const existing = feedStore.feeds.find(f => f.name.toLowerCase() === fName.toLowerCase());
+                if (existing) targets.push({ feedId: existing.id });
+                else {
+                    const channelToUse = mChannels.length > 0 ? mChannels[0] : 'Geral';
+                    targets.push({ newFeedName: fName, newChannelName: channelToUse });
+                }
+            });
+
+            if (mFeeds.length === 0 && mChannels.length > 0) {
+                targets.push({ newFeedName: 'Geral', newChannelName: mChannels[0] });
+            }
+
+            const actionText = taskToEdit ? 'Tarefa Atualizada' : 'Nova Tarefa';
+            feedStore.publishMessage(`${actionText}: **${title}**\n\n${description}`, targets, undefined, taskId);
+        }
     }
 
     onClose();
@@ -194,7 +209,7 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, initialTitle, brainDump
 
                 <div className="space-y-2">
                   <input type="text" maxLength={120} placeholder="O que precisa ser feito?" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full text-2xl font-bold bg-transparent border-none outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-600" autoFocus />
-                  <textarea maxLength={500} placeholder="Detalhes (Opcional)..." value={description} onChange={(e) => setDescription(e.target.value)} className="w-full resize-none bg-transparent border-none outline-none text-sm text-zinc-600 dark:text-zinc-400 h-16" />
+                  <textarea maxLength={500} placeholder="Detalhes ou @Feed (Opcional)..." value={description} onChange={(e) => setDescription(e.target.value)} className="w-full resize-none bg-transparent border-none outline-none text-sm text-zinc-600 dark:text-zinc-400 h-16" />
                   
                   <div className="bg-blue-500/5 border border-blue-500/20 p-3 rounded-xl mt-2">
                     <span className="text-[10px] uppercase font-bold text-blue-500 tracking-widest mb-1 block">Status (Opcional)</span>
