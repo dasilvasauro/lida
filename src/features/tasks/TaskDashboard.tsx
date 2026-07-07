@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, AlertTriangle, Frown, CloudRain, Meh, Smile, Sparkles, Trash2, TrendingUp, Coins, X, Check, ArrowDownUp, Info, Repeat, CheckCircle2, BrainCircuit, Timer, AlignJustify } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
@@ -8,6 +8,7 @@ import { TaskModal } from './TaskModal';
 import { RoutineModal } from './RoutineModal';
 import { TaskItem } from './TaskItem';
 import { BrainDumpModal } from './BrainDumpModal';
+import { FeedDashboard } from '../feeds/FeedDashboard';
 import { RewardToast, type RewardBreakdown } from '../../components/ui/RewardToast';
 import type { Task, Mood, Priority, RoutineTemplate } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
@@ -37,6 +38,10 @@ export const TaskDashboard = () => {
   const [brainDumpInitialTitle, setBrainDumpInitialTitle] = useState('');
   const [brainDumpItemId, setBrainDumpItemId] = useState<string | undefined>(undefined);
 
+  // === FEED STATES ===
+  const [isFeedOpen, setIsFeedOpen] = useState(false);
+  const [feedFocusSignal, setFeedFocusSignal] = useState(0);
+
   const [rewardBreakdown, setRewardBreakdown] = useState<RewardBreakdown | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ type: 'delete' | 'complete' | 'future_complete' | 'clear_completed' | 'delete_routine'; taskId: string; title: string; subtitle: string } | null>(null);
@@ -45,6 +50,26 @@ export const TaskDashboard = () => {
   const isGoldBoosted = activeGoldBoostUntil && Date.now() < activeGoldBoostUntil;
 
   const showToast = (msg: string) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 3000); };
+
+  // === HOTKEYS PARA FEEDS ===
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.ctrlKey || e.altKey || e.metaKey) return;
+        const isTyping = document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA';
+        
+        if (e.key === '/') {
+            if (!isFeedOpen && !isTyping) {
+                e.preventDefault();
+                setIsFeedOpen(true);
+            } else if (isFeedOpen && !isTyping) {
+                e.preventDefault();
+                setFeedFocusSignal(prev => prev + 1);
+            }
+        }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFeedOpen]);
 
   const handleCreateFolder = () => {
     if (newFolderName.trim()) { addFolder({ id: uuidv4(), name: newFolderName, updatedAt: Date.now() }); setNewFolderName(''); setIsCreatingFolder(false); }
@@ -187,12 +212,13 @@ export const TaskDashboard = () => {
       { id: 'unplanned', label: 'Não Plan.' } 
   ];
 
-  const hasLocalState = !!confirmDialog || isMenuOpen || isCreatingFolder || !!infoModal || isBrainDumpOpen;
+  const hasLocalState = !!confirmDialog || isMenuOpen || isCreatingFolder || !!infoModal || isBrainDumpOpen || isFeedOpen;
   useBackHandler(hasLocalState, () => {
       const tStore = useTaskStore.getState();
       const cStore = useConfigStore.getState();
       if (tStore.isGlobalModalOpen || tStore.isRoutineModalOpen || tStore.isFocusModeOpen || cStore.isSettingsOpen || cStore.isVisionOpen || cStore.isGoogleConnectOpen || cStore.isChangelogOpen || cStore.isExitModalOpen) return false;
 
+      if (isFeedOpen) { setIsFeedOpen(false); return true; }
       if (isBrainDumpOpen) return false; 
       if (infoModal) { setInfoModal(null); return true; }
       if (confirmDialog) { setConfirmDialog(null); return true; }
@@ -425,6 +451,12 @@ export const TaskDashboard = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <FeedDashboard 
+         isOpen={isFeedOpen} 
+         onClose={() => setIsFeedOpen(false)} 
+         focusInputSignal={feedFocusSignal} 
+      />
     </div>
   );
 };

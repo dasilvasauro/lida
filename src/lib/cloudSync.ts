@@ -7,6 +7,7 @@ import { useVisionStore } from '../store/useVisionStore';
 import { useConfigStore } from '../store/useConfigStore';
 import { useReflectionStore } from '../store/useReflectionStore';
 import { useNoteStore } from '../store/useNoteStore';
+import { useFeedStore } from '../store/useFeedStore';
 
 let unsubscribeSnapshot: (() => void) | null = null;
 let isApplyingCloudData = false;
@@ -29,6 +30,7 @@ export const syncToCloud = async (force = false) => {
     vision: encryptData(JSON.stringify(useVisionStore.getState()), config.e2eePin),
     reflections: encryptData(JSON.stringify(useReflectionStore.getState()), config.e2eePin),
     notes: encryptData(JSON.stringify(useNoteStore.getState()), config.e2eePin),
+    feeds: encryptData(JSON.stringify(useFeedStore.getState()), config.e2eePin),
     config: encryptData(JSON.stringify({
       theme: config.theme, font: config.font, userClass: config.userClass, userName: config.userName,
       isOnboarded: config.isOnboarded, lastLoginDate: config.lastLoginDate, defaultDaysOff: config.defaultDaysOff, 
@@ -90,12 +92,11 @@ const applyCloudData = (data: any, pin: string) => {
         return Array.from(map.values());
     };
 
+    // MERGE DE NOTAS E ATALHOS
     const localNotes = useNoteStore.getState();
     const cloudNotes = JSON.parse(decryptData(data.notes, pin));
     const mergedNotebooks = mergeArrays(localNotes.notebooks, cloudNotes.notebooks);
     let mergedNotes = mergeArrays(localNotes.notes, cloudNotes.notes);
-    
-    // FUNDE TAMBÉM OS ATALHOS
     const mergedShortcutCategories = mergeArrays(localNotes.shortcutCategories || [], cloudNotes.shortcutCategories || []);
 
     mergedNotes = mergedNotes.map(note => {
@@ -104,13 +105,20 @@ const applyCloudData = (data: any, pin: string) => {
         }
         return note;
     });
-    
-    useNoteStore.setState({ 
-        notebooks: mergedNotebooks, 
-        notes: mergedNotes, 
-        shortcutCategories: mergedShortcutCategories 
-    });
+    useNoteStore.setState({ notebooks: mergedNotebooks, notes: mergedNotes, shortcutCategories: mergedShortcutCategories });
 
+    // MERGE DE FEEDS
+    if (data.feeds) {
+        const localFeeds = useFeedStore.getState();
+        const cloudFeeds = JSON.parse(decryptData(data.feeds, pin));
+        useFeedStore.setState({
+            channels: mergeArrays(localFeeds.channels, cloudFeeds.channels),
+            feeds: mergeArrays(localFeeds.feeds, cloudFeeds.feeds),
+            entries: mergeArrays(localFeeds.entries, cloudFeeds.entries)
+        });
+    }
+
+    // MERGE DE TAREFAS
     const localTasks = useTaskStore.getState();
     const cloudTasks = JSON.parse(decryptData(data.tasks, pin));
     
@@ -118,9 +126,7 @@ const applyCloudData = (data: any, pin: string) => {
     if (cloudTasks.brainDump) {
         const cloudTime = cloudTasks.brainDump.lastDumpAt || 0;
         const localTime = localTasks.brainDump.lastDumpAt || 0;
-        if (cloudTime > localTime) {
-            mergedBrainDump = cloudTasks.brainDump;
-        }
+        if (cloudTime > localTime) mergedBrainDump = cloudTasks.brainDump;
     }
 
     useTaskStore.setState({
@@ -130,6 +136,7 @@ const applyCloudData = (data: any, pin: string) => {
         brainDump: mergedBrainDump,
     });
 
+    // MERGE HABITOS E ECONOMIA (Mantidos inalterados)
     const localHabits = useHabitStore.getState();
     const cloudHabits = JSON.parse(decryptData(data.habits, pin));
     const mergeLogs = (localLogs: any, cloudLogs: any) => {
@@ -213,8 +220,9 @@ export const setupAutoSync = () => {
   const unsub5 = useConfigStore.subscribe(handleStoreChange);
   const unsub6 = useReflectionStore.subscribe(handleStoreChange);
   const unsub7 = useNoteStore.subscribe(handleStoreChange); 
+  const unsub8 = useFeedStore.subscribe(handleStoreChange); 
 
-  return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); unsub7(); };
+  return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); unsub7(); unsub8(); };
 };
 
 export const deleteCloudVault = async (uid: string) => {

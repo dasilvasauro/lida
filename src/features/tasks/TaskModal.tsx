@@ -4,6 +4,7 @@ import { X, Zap, Timer, Gift, CheckCircle2, Calendar, Clock, Plus, RotateCcw, In
 import { useTaskStore } from '../../store/useTaskStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
+import { useFeedStore } from '../../store/useFeedStore';
 import type { Priority, TaskType, Task } from '../../types';
 import { v4 as uuidv4 } from 'uuid';
 import { CustomDatePicker } from '../../components/ui/CustomDatePicker';
@@ -105,7 +106,14 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, initialTitle, brainDump
 
   const addSubtask = () => { if (!subtaskInput.trim()) return; setSubtasks([...subtasks, { id: uuidv4(), title: subtaskInput, completed: false }]); setSubtaskInput(''); };
   const toggleWeekday = (day: number) => setSelectedWeekdays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
-  const handleCreateFolder = () => { if (newFolderName.trim()) { const newId = uuidv4(); addFolder({ id: newId, name: newFolderName, updatedAt: Date.now() }); setFolderId(newId); setNewFolderName(''); setIsCreatingFolder(false); } };
+  
+  const handleCreateFolder = () => { 
+    if (newFolderName.trim()) { 
+        const newId = uuidv4(); 
+        addFolder({ id: newId, name: newFolderName, updatedAt: Date.now() }); 
+        setFolderId(newId); setNewFolderName(''); setIsCreatingFolder(false); 
+    } 
+  };
 
   const handleSave = () => {
     if (!title.trim() || (type === 'sprint' && subtasks.length === 0)) return;
@@ -116,6 +124,9 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, initialTitle, brainDump
       if (level < 40 && priority === 'P1' && countP1 >= 2) useItem('extraP1');
     }
 
+    const taskId = taskToEdit ? taskToEdit.id : uuidv4();
+    const isDescriptionChanged = description !== (taskToEdit?.description || '');
+
     const dateObj = deadlineDate ? new Date(deadlineDate + 'T12:00:00') : new Date();
     const taskData: Partial<Task> = {
       title, description, status: status.trim() || undefined, type, priority, folderId,
@@ -125,15 +136,25 @@ export const TaskModal = ({ isOpen, onClose, taskToEdit, initialTitle, brainDump
     };
 
     if (taskToEdit) { 
-        updateTask(taskToEdit.id, taskData); 
+        updateTask(taskId, taskData); 
         onSuccess?.('Tarefa atualizada!'); 
     } else { 
-        addTask({ id: uuidv4(), createdAt: Date.now(), isCompleted: false, ...taskData } as Task); 
+        addTask({ id: taskId, createdAt: Date.now(), isCompleted: false, ...taskData } as Task); 
         onSuccess?.('Tarefa criada!'); 
         if (brainDumpItemId) {
             markBrainDumpItemConverted(brainDumpItemId, 'task');
         }
     }
+
+    // === INTEGRAÇÃO COM FEEDS ===
+    if (description && (description.includes('@[') || description.includes('#[')) && isDescriptionChanged) {
+        const actionText = taskToEdit ? 'Tarefa Atualizada' : 'Nova Tarefa';
+        useFeedStore.getState().processMentionsAndCreateEntry(
+            `${actionText}: **${title}**\n\n${description}`, 
+            taskId
+        );
+    }
+
     onClose();
   };
 

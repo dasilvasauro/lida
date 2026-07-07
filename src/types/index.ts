@@ -209,3 +209,34 @@ export interface Vision {
   checkpoints: string[];
   createdAt: number;
 }
+
+// === FEEDS E CANAIS ===
+export interface Channel {
+  id: string;
+  name: string; // Criado via #[Nome]
+  color: ItemColor;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Feed {
+  id: string;
+  channelId: string | null;
+  name: string; // Criado via @[Nome]
+  color: ItemColor;
+  isArchived: boolean;
+  archivedAt?: number;
+  createdAt: number;
+  updatedAt: number;
+  lastActivityAt: number; // Para subir os feeds respondidos para o topo
+}
+
+export interface FeedEntry {
+  id: string;
+  feedId: string;
+  content: string;
+  parentId?: string; // Para as threads (respostas)
+  linkedTaskId?: string; // Se foi gerado a partir de uma tarefa
+  createdAt: number;
+  updatedAt: number;
+}
