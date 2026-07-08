@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Hash, AtSign, Send, MessageSquareText, Search, Calendar as CalendarIcon, MoreVertical, Archive, ArchiveRestore, Edit2, Trash2, CornerDownRight, PaintBucket, AlertTriangle, AlertCircle, CheckCircle2, Zap, Footprints, Timer, Gift, Repeat, Check, Bold, Italic, Code, AlignJustify, ChevronLeft, List } from 'lucide-react';
+import { X, Hash, AtSign, Send, MessageSquareText, Search, Calendar as CalendarIcon, MoreVertical, Archive, ArchiveRestore, Edit2, Trash2, CornerDownRight, PaintBucket, AlertTriangle, AlertCircle, CheckCircle2, Zap, Footprints, Timer, Gift, Repeat, Check, Clock, Bold, Italic, Code, AlignJustify, ChevronLeft, List } from 'lucide-react';
 import { useFeedStore, extractMentions, type FeedTarget } from '../../store/useFeedStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useBackHandler } from '../../store/useConfigStore';
@@ -27,7 +27,7 @@ const priorityBadgeStyles = {
     P4: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50',
 };
 
-// === COMPONENTES AUXILIARES ===
+// === COMPONENTE: CARD COMPACTO DE TAREFA ===
 const LinkedTaskCard = ({ taskId, isCompact }: { taskId: string, isCompact?: boolean }) => {
     const task = useTaskStore(s => s.tasks.find(t => t.id === taskId));
     if (!task) return null;
@@ -52,9 +52,30 @@ const LinkedTaskCard = ({ taskId, isCompact }: { taskId: string, isCompact?: boo
     );
 };
 
-const FeedSummaryCard = ({ feed, entries, onSelect }: { feed: Feed, entries: FeedEntry[], onSelect: () => void }) => {
+// === COMPONENTE: RESUMO DO FEED ===
+const FeedSummaryCard = ({ feed, entries, onSelect, isCompact }: { feed: Feed, entries: FeedEntry[], onSelect: () => void, isCompact: boolean }) => {
     const latestEntry = entries.filter(e => e.feedId === feed.id).sort((a,b) => b.createdAt - a.createdAt)[0];
     const style = colorStyles[feed.color];
+    
+    if (isCompact) {
+        return (
+            <button onClick={onSelect} className={`flex items-center p-3 rounded-xl border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors text-left w-full gap-3 group`}>
+                <div className={`p-2 rounded-lg ${style.bg} ${style.text} shrink-0`}><AtSign size={16}/></div>
+                <div className="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
+                    <span className="font-black text-sm text-zinc-900 dark:text-zinc-100 truncate w-32 shrink-0">{feed.name}</span>
+                    {latestEntry ? (
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400 truncate flex-1">{latestEntry.content.replace(/<[^>]*>?/gm, '')}</span>
+                    ) : (
+                        <span className="text-xs text-zinc-400 italic flex-1">Vazio</span>
+                    )}
+                </div>
+                <div className="shrink-0 text-[10px] font-bold uppercase text-zinc-400 hidden md:block">
+                    {latestEntry ? format(new Date(latestEntry.createdAt), "dd MMM, HH:mm", { locale: ptBR }) : ''}
+                </div>
+            </button>
+        )
+    }
+
     return (
         <button onClick={onSelect} className={`flex flex-col p-5 rounded-2xl border text-left transition-transform hover:scale-[1.02] bg-white dark:bg-zinc-900/50 hover:border-current shadow-sm ${style.text} ${style.border} h-full`}>
            <div className="flex items-center gap-3 mb-3 w-full">
@@ -138,7 +159,8 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
       else return feeds.filter(f => f.name.toLowerCase().startsWith(q)).map(f => { const c = channels.find(ch => ch.id === f.channelId); return { ...f, channelName: c ? c.name : 'Sem Canal' }; }).slice(0, 5);
   }, [mentionContext, channels, feeds]);
 
-  const displayedEntries = useMemo(() => {
+  // AGRUPAMENTO DE MENSAGENS POR DATA DA ÚLTIMA ATIVIDADE (BUMP)
+  const groupedEntries = useMemo(() => {
       if (!activeFeedId) return [];
       let filtered = entries.filter(e => e.feedId === activeFeedId);
       
@@ -151,12 +173,32 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
       }
 
       const parents = filtered.filter(e => !e.parentId);
-      return parents.map(p => {
+      
+      const threadsWithActivity = parents.map(p => {
           const replies = entries.filter(e => e.parentId === p.id).sort((a, b) => a.createdAt - b.createdAt);
           const lastActivity = replies.length > 0 ? replies[replies.length - 1].createdAt : p.createdAt;
           return { parent: p, replies, lastActivity };
-      }).sort((a, b) => a.lastActivity - b.lastActivity);
+      });
+
+      const groups: Record<string, typeof threadsWithActivity> = {};
+      
+      threadsWithActivity.forEach(thread => {
+          const dateStr = format(new Date(thread.lastActivity), 'yyyy-MM-dd');
+          if (!groups[dateStr]) groups[dateStr] = [];
+          groups[dateStr].push(thread);
+      });
+
+      return Object.keys(groups).sort().map(dateStr => {
+          const sortedThreads = groups[dateStr].sort((a, b) => a.lastActivity - b.lastActivity);
+          return {
+              dateStr,
+              dateObj: new Date(dateStr + 'T12:00:00'),
+              threads: sortedThreads
+          };
+      });
   }, [entries, activeFeedId, searchQuery, selectedDate]);
+
+  if (!isOpen) return null;
 
   const applyMention = (item: any) => {
       if (!mentionContext || !inputRef.current) return;
@@ -289,7 +331,7 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
             
             {/* SIDEBAR */}
             <div className={`w-full md:w-80 h-full border-r border-zinc-200 dark:border-zinc-900 flex-col shrink-0 bg-white dark:bg-zinc-950/50 shadow-sm z-20 ${isMobileChatView ? 'hidden md:flex' : 'flex'}`}>
-                <div className="p-4 md:p-6 border-b border-zinc-200 dark:border-zinc-900 flex items-center justify-between bg-zinc-50/50 dark:bg-transparent">
+                <div className="p-4 md:p-6 border-b border-zinc-200 dark:border-zinc-900 flex items-center justify-between bg-zinc-50/50 dark:bg-transparent shrink-0">
                     <div>
                        <h2 className="text-xl font-black flex items-center gap-2 tracking-tight"><Hash className="text-blue-500"/> Feeds</h2>
                        <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-widest block mt-1">Sua Base de Conhecimento</span>
@@ -297,7 +339,7 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                     <button onClick={onClose} className="p-2 bg-zinc-200 dark:bg-zinc-800 rounded-full hover:bg-red-500 hover:text-white transition-colors"><X size={18}/></button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto scrollbar-hide p-4 space-y-6">
+                <div className="flex-1 overflow-y-auto scrollbar-hide p-4 space-y-6 min-h-0">
                     <div>
                        <div className="flex justify-between items-center mb-3">
                            <span className="text-xs uppercase font-bold text-zinc-400 tracking-widest">Canais (#)</span>
@@ -363,9 +405,10 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                 </div>
             </div>
 
-            {/* ÁREA PRINCIPAL */}
-            <div className={`flex-1 flex-col min-w-0 bg-transparent relative h-full ${!isMobileChatView ? 'hidden md:flex' : 'flex'}`}>
+            {/* ÁREA PRINCIPAL (CHAT / VISÃO GERAL) */}
+            <div className={`flex-1 flex flex-col min-w-0 min-h-0 bg-transparent relative h-full ${!isMobileChatView ? 'hidden md:flex' : 'flex'}`}>
                 
+                {/* CABEÇALHO DO CHAT */}
                 <div className="h-16 border-b border-zinc-200 dark:border-zinc-900 flex items-center justify-between px-4 md:px-6 shrink-0 bg-white/80 dark:bg-black/80 backdrop-blur-md z-10">
                     <div className="flex items-center gap-3 min-w-0">
                         <button onClick={() => { setActiveChannelId(null); setActiveFeedId(null); }} className="md:hidden p-2 -ml-2 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
@@ -391,16 +434,15 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
+                        <button onClick={() => setIsCompact(!isCompact)} className={`p-2 rounded-lg transition-colors flex ${isCompact ? 'bg-blue-500/10 text-blue-500' : 'bg-white dark:bg-zinc-900 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200'}`} title="Visão Compacta">
+                            {isCompact ? <List size={18} /> : <AlignJustify size={18} />}
+                        </button>
+                        
                         {activeFeedId && (
-                            <div className="flex items-center gap-2">
-                                <button onClick={() => setIsCompact(!isCompact)} className={`p-2 rounded-lg transition-colors hidden md:flex ${isCompact ? 'bg-blue-500/10 text-blue-500' : 'bg-white dark:bg-zinc-900 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200'}`} title="Visão Compacta">
-                                    {isCompact ? <List size={18} /> : <AlignJustify size={18} />}
-                                </button>
-                                <div className="relative hidden lg:flex items-center bg-zinc-100 dark:bg-zinc-900 rounded-full px-3 py-1.5 focus-within:ring-2 ring-blue-500 transition-shadow ml-2">
-                                    <Search size={14} className="text-zinc-400" />
-                                    <input type="text" placeholder="Pesquisar..." value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} className="bg-transparent border-none outline-none text-xs font-bold w-24 focus:w-40 transition-all px-2 placeholder:text-zinc-500" />
-                                    {searchQuery && <button onClick={() => setSearchQuery('')}><X size={12} className="text-zinc-400 hover:text-zinc-600" /></button>}
-                                </div>
+                            <div className="relative hidden lg:flex items-center bg-zinc-100 dark:bg-zinc-900 rounded-full px-3 py-1.5 focus-within:ring-2 ring-blue-500 transition-shadow ml-2">
+                                <Search size={14} className="text-zinc-400" />
+                                <input type="text" placeholder="Pesquisar..." value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} className="bg-transparent border-none outline-none text-xs font-bold w-24 focus:w-40 transition-all px-2 placeholder:text-zinc-500" />
+                                {searchQuery && <button onClick={() => setSearchQuery('')}><X size={12} className="text-zinc-400 hover:text-zinc-600" /></button>}
                             </div>
                         )}
                         
@@ -414,9 +456,9 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-2 md:p-8 scrollbar-thin">
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2 md:p-8 scrollbar-thin">
                     {activeFeedId ? (
-                        displayedEntries.length === 0 ? (
+                        groupedEntries.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center text-zinc-400">
                                 <MessageSquareText size={48} className="mb-4 opacity-20" />
                                 <p className="font-bold text-sm">Nada por aqui.</p>
@@ -424,83 +466,93 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                             </div>
                         ) : (
                             <div className={`space-y-${isCompact ? '2' : '6'}`}>
-                                {displayedEntries.map(group => {
-                                    return (
-                                        <div key={group.parent.id} className="group/parent flex flex-col relative">
-                                            {group.replies.length > 0 && !isCompact && ( <div className="absolute left-5 top-12 bottom-6 w-0.5 bg-zinc-200 dark:bg-zinc-800 z-0 rounded-full" /> )}
-                                            
-                                            <div className={`flex relative z-10 transition-colors ${isCompact ? 'gap-3 py-3 px-3 rounded-xl border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-900/50' : 'gap-4 p-4 rounded-2xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700'} ${editingEntry?.id === group.parent.id || replyingTo?.id === group.parent.id ? 'bg-blue-500/5 ring-1 ring-blue-500/30' : ''}`}>
-                                                {!isCompact && (
-                                                    <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-700 text-zinc-500">
-                                                        <AtSign size={18} />
-                                                    </div>
-                                                )}
-                                                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                                    <div className="flex items-center gap-2 mb-1.5">
-                                                        <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded shadow-sm ${isCompact ? 'text-zinc-100 bg-blue-500' : 'text-zinc-500 bg-zinc-100 dark:bg-zinc-800'}`}>
-                                                            {format(new Date(group.parent.createdAt), "dd MMM, HH:mm", { locale: ptBR })}
-                                                        </span>
-                                                        {group.parent.createdAt !== group.parent.updatedAt && <span className="text-[9px] text-zinc-400 italic">(Editado)</span>}
-                                                    </div>
-                                                    <p className="text-sm md:text-base leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap font-medium">
-                                                        <span dangerouslySetInnerHTML={{ __html: parseContent(group.parent.content) }} />
-                                                    </p>
-                                                    {group.parent.linkedTaskId && <LinkedTaskCard taskId={group.parent.linkedTaskId} isCompact={isCompact} />}
-                                                </div>
+                                {groupedEntries.map(group => (
+                                    <React.Fragment key={group.dateStr}>
+                                        <div className="flex items-center gap-4 my-8">
+                                            <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800" />
+                                            <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 shadow-sm">
+                                                {format(group.dateObj, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+                                            </span>
+                                            <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800" />
+                                        </div>
 
-                                                <div className={`opacity-0 group-hover/parent:opacity-100 transition-opacity flex ${isCompact ? 'flex-row items-start' : 'flex-col'} gap-1 shrink-0`}>
-                                                    <button onClick={() => setReplyingTo(group.parent)} className="p-2 text-zinc-400 hover:text-blue-500 bg-zinc-50 dark:bg-black rounded-lg border border-zinc-200 dark:border-zinc-800"><CornerDownRight size={14}/></button>
-                                                    <div className="relative">
-                                                        <button onClick={() => setActiveMenuId(activeMenuId === group.parent.id ? null : group.parent.id)} className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-50 dark:bg-black rounded-lg border border-zinc-200 dark:border-zinc-800"><MoreVertical size={14}/></button>
-                                                        <AnimatePresence>
-                                                            {activeMenuId === group.parent.id && (
-                                                                <motion.div initial={{opacity:0, scale:0.95}} animate={{opacity:1, scale:1}} exit={{opacity:0, scale:0.95}} className="absolute right-full top-0 mr-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl flex flex-col p-1 z-50 min-w-[120px]">
-                                                                    <button onClick={() => { setEditingEntry(group.parent); setInputText(group.parent.content); setActiveMenuId(null); inputRef.current?.focus(); }} className="flex items-center gap-2 p-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-lg text-xs font-bold"><Edit2 size={12}/> Editar</button>
-                                                                    <button onClick={() => { setConfirmDialog({ type: 'delete_entry', id: group.parent.id, title: 'Apagar Thread?', subtitle: 'Todas as respostas desta linha também serão apagadas.' }); setActiveMenuId(null); }} className="flex items-center gap-2 p-2 hover:bg-red-500/10 text-red-500 rounded-lg text-xs font-bold"><Trash2 size={12}/> Apagar Thread</button>
-                                                                </motion.div>
-                                                            )}
-                                                        </AnimatePresence>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {group.replies.map(reply => (
-                                                <div key={reply.id} className={`group/reply flex relative z-10 transition-colors ${isCompact ? 'ml-6 gap-3 py-2 px-3 border-l-2 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/50' : 'ml-8 md:ml-12 gap-4 p-4 rounded-2xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 mt-2'} ${editingEntry?.id === reply.id ? 'bg-blue-500/5 ring-1 ring-blue-500/30' : ''}`}>
+                                        {group.threads.map(thread => (
+                                            <div key={thread.parent.id} className="group/parent flex flex-col relative">
+                                                {thread.replies.length > 0 && !isCompact && ( <div className="absolute left-5 top-12 bottom-6 w-0.5 bg-zinc-200 dark:bg-zinc-800 z-0 rounded-full" /> )}
+                                                
+                                                <div className={`flex relative z-10 transition-colors ${isCompact ? 'gap-3 py-3 px-3 rounded-xl border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-900/50' : 'gap-4 p-4 rounded-2xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700'} ${editingEntry?.id === thread.parent.id || replyingTo?.id === thread.parent.id ? 'bg-blue-500/5 ring-1 ring-blue-500/30' : ''}`}>
                                                     {!isCompact && (
-                                                        <div className="w-8 h-8 rounded-full bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-800 text-zinc-400">
-                                                            <CornerDownRight size={14} />
+                                                        <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-700 text-zinc-500">
+                                                            <AtSign size={18} />
                                                         </div>
                                                     )}
                                                     <div className="flex-1 min-w-0 flex flex-col justify-center">
                                                         <div className="flex items-center gap-2 mb-1.5">
-                                                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded shadow-sm ${isCompact ? 'text-zinc-600 dark:text-zinc-300 bg-zinc-200 dark:bg-zinc-800' : 'text-zinc-500 bg-zinc-100 dark:bg-zinc-800'}`}>
-                                                                {format(new Date(reply.createdAt), "dd MMM, HH:mm", { locale: ptBR })}
+                                                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded shadow-sm ${isCompact ? 'bg-zinc-800 text-zinc-100 dark:bg-zinc-200 dark:text-zinc-900 border border-zinc-900 dark:border-zinc-100' : 'text-zinc-500 bg-zinc-100 dark:bg-zinc-800'}`}>
+                                                                {format(new Date(thread.parent.createdAt), isCompact ? "EEEE, dd/MM - HH:mm" : "HH:mm", { locale: ptBR })}
                                                             </span>
-                                                            {reply.createdAt !== reply.updatedAt && <span className="text-[9px] text-zinc-400 italic">(Editado)</span>}
+                                                            {thread.parent.createdAt !== thread.parent.updatedAt && <span className="text-[9px] text-zinc-400 italic">(Editado)</span>}
                                                         </div>
-                                                        <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">
-                                                            <span dangerouslySetInnerHTML={{ __html: parseContent(reply.content) }} />
+                                                        <p className="text-sm md:text-base leading-relaxed text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap font-medium">
+                                                            <span dangerouslySetInnerHTML={{ __html: parseContent(thread.parent.content) }} />
                                                         </p>
-                                                        {reply.linkedTaskId && <LinkedTaskCard taskId={reply.linkedTaskId} isCompact={isCompact} />}
+                                                        {thread.parent.linkedTaskId && <LinkedTaskCard taskId={thread.parent.linkedTaskId} isCompact={isCompact} />}
                                                     </div>
-                                                    <div className={`opacity-0 group-hover/reply:opacity-100 transition-opacity flex ${isCompact ? 'flex-row items-start' : 'flex-col'} gap-1 shrink-0`}>
+
+                                                    <div className={`opacity-0 group-hover/parent:opacity-100 transition-opacity flex ${isCompact ? 'flex-row items-start' : 'flex-col'} gap-1 shrink-0`}>
+                                                        <button onClick={() => setReplyingTo(thread.parent)} className="p-2 text-zinc-400 hover:text-blue-500 bg-zinc-50 dark:bg-black rounded-lg border border-zinc-200 dark:border-zinc-800"><CornerDownRight size={14}/></button>
                                                         <div className="relative">
-                                                            <button onClick={() => setActiveMenuId(activeMenuId === reply.id ? null : reply.id)} className="p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-50 dark:bg-black rounded-lg border border-zinc-200 dark:border-zinc-800"><MoreVertical size={14}/></button>
+                                                            <button onClick={() => setActiveMenuId(activeMenuId === thread.parent.id ? null : thread.parent.id)} className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-50 dark:bg-black rounded-lg border border-zinc-200 dark:border-zinc-800"><MoreVertical size={14}/></button>
                                                             <AnimatePresence>
-                                                                {activeMenuId === reply.id && (
+                                                                {activeMenuId === thread.parent.id && (
                                                                     <motion.div initial={{opacity:0, scale:0.95}} animate={{opacity:1, scale:1}} exit={{opacity:0, scale:0.95}} className="absolute right-full top-0 mr-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl flex flex-col p-1 z-50 min-w-[120px]">
-                                                                        <button onClick={() => { setEditingEntry(reply); setInputText(reply.content); setActiveMenuId(null); inputRef.current?.focus(); }} className="flex items-center gap-2 p-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-lg text-xs font-bold"><Edit2 size={12}/> Editar</button>
-                                                                        <button onClick={() => { setConfirmDialog({ type: 'delete_entry', id: reply.id, title: 'Apagar Resposta?', subtitle: 'Esta resposta será removida permanentemente.' }); setActiveMenuId(null); }} className="flex items-center gap-2 p-2 hover:bg-red-500/10 text-red-500 rounded-lg text-xs font-bold"><Trash2 size={12}/> Apagar Resposta</button>
+                                                                        <button onClick={() => { setEditingEntry(thread.parent); setInputText(thread.parent.content); setActiveMenuId(null); inputRef.current?.focus(); }} className="flex items-center gap-2 p-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-lg text-xs font-bold"><Edit2 size={12}/> Editar</button>
+                                                                        <button onClick={() => { setConfirmDialog({ type: 'delete_entry', id: thread.parent.id, title: 'Apagar Thread?', subtitle: 'Todas as respostas desta linha também serão apagadas.' }); setActiveMenuId(null); }} className="flex items-center gap-2 p-2 hover:bg-red-500/10 text-red-500 rounded-lg text-xs font-bold"><Trash2 size={12}/> Apagar Thread</button>
                                                                     </motion.div>
                                                                 )}
                                                             </AnimatePresence>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    );
-                                })}
+
+                                                {thread.replies.map(reply => (
+                                                    <div key={reply.id} className={`group/reply flex relative z-10 transition-colors ${isCompact ? 'ml-6 gap-3 py-2 px-3 border-l-2 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/50' : 'ml-8 md:ml-12 gap-4 p-4 rounded-2xl bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 mt-2'} ${editingEntry?.id === reply.id ? 'bg-blue-500/5 ring-1 ring-blue-500/30' : ''}`}>
+                                                        {!isCompact && (
+                                                            <div className="w-8 h-8 rounded-full bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-800 text-zinc-400">
+                                                                <CornerDownRight size={14} />
+                                                            </div>
+                                                        )}
+                                                        <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                                            <div className="flex items-center gap-2 mb-1.5">
+                                                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded shadow-sm ${isCompact ? 'bg-zinc-800 text-zinc-100 dark:bg-zinc-200 dark:text-zinc-900 border border-zinc-900 dark:border-zinc-100' : 'text-zinc-500 bg-zinc-100 dark:bg-zinc-800'}`}>
+                                                                    {format(new Date(reply.createdAt), isCompact ? "EEEE, dd/MM - HH:mm" : "HH:mm", { locale: ptBR })}
+                                                                </span>
+                                                                {reply.createdAt !== reply.updatedAt && <span className="text-[9px] text-zinc-400 italic">(Editado)</span>}
+                                                            </div>
+                                                            <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">
+                                                                <span dangerouslySetInnerHTML={{ __html: parseContent(reply.content) }} />
+                                                            </p>
+                                                            {reply.linkedTaskId && <LinkedTaskCard taskId={reply.linkedTaskId} isCompact={isCompact} />}
+                                                        </div>
+                                                        <div className={`opacity-0 group-hover/reply:opacity-100 transition-opacity flex ${isCompact ? 'flex-row items-start' : 'flex-col'} gap-1 shrink-0`}>
+                                                            <div className="relative">
+                                                                <button onClick={() => setActiveMenuId(activeMenuId === reply.id ? null : reply.id)} className="p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-50 dark:bg-black rounded-lg border border-zinc-200 dark:border-zinc-800"><MoreVertical size={14}/></button>
+                                                                <AnimatePresence>
+                                                                    {activeMenuId === reply.id && (
+                                                                        <motion.div initial={{opacity:0, scale:0.95}} animate={{opacity:1, scale:1}} exit={{opacity:0, scale:0.95}} className="absolute right-full top-0 mr-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl flex flex-col p-1 z-50 min-w-[120px]">
+                                                                            <button onClick={() => { setEditingEntry(reply); setInputText(reply.content); setActiveMenuId(null); inputRef.current?.focus(); }} className="flex items-center gap-2 p-2 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded-lg text-xs font-bold"><Edit2 size={12}/> Editar</button>
+                                                                            <button onClick={() => { setConfirmDialog({ type: 'delete_entry', id: reply.id, title: 'Apagar Resposta?', subtitle: 'Esta resposta será removida permanentemente.' }); setActiveMenuId(null); }} className="flex items-center gap-2 p-2 hover:bg-red-500/10 text-red-500 rounded-lg text-xs font-bold"><Trash2 size={12}/> Apagar Resposta</button>
+                                                                        </motion.div>
+                                                                    )}
+                                                                </AnimatePresence>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ))}
+                                    </React.Fragment>
+                                ))}
                             </div>
                         )
                     ) : activeChannelId ? (
@@ -512,8 +564,8 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                             {activeFeeds.length === 0 ? (
                                <div className="text-center text-zinc-400 py-12 font-medium">Nenhum feed ativo neste canal.</div>
                             ) : (
-                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                   {activeFeeds.map(f => <FeedSummaryCard key={f.id} feed={f} entries={entries} onSelect={() => { setActiveChannelId(f.channelId); setActiveFeedId(f.id); }} />)}
+                               <div className={isCompact ? "flex flex-col gap-1" : "grid grid-cols-1 lg:grid-cols-2 gap-4"}>
+                                   {activeFeeds.map(f => <FeedSummaryCard key={f.id} feed={f} entries={entries} isCompact={isCompact} onSelect={() => { setActiveChannelId(f.channelId); setActiveFeedId(f.id); }} />)}
                                </div>
                             )}
                         </div>
@@ -529,8 +581,8 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                                            <div className={`p-1.5 rounded-lg ${style.bg} ${style.text}`}><Hash size={16}/></div>
                                            <h3 className="font-black text-xl tracking-tight text-zinc-900 dark:text-zinc-100">{c.name}</h3>
                                         </div>
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                            {cFeeds.map(f => <FeedSummaryCard key={f.id} feed={f} entries={entries} onSelect={() => { setActiveChannelId(f.channelId); setActiveFeedId(f.id); }} />)}
+                                        <div className={isCompact ? "flex flex-col gap-1" : "grid grid-cols-1 lg:grid-cols-2 gap-4"}>
+                                            {cFeeds.map(f => <FeedSummaryCard key={f.id} feed={f} entries={entries} isCompact={isCompact} onSelect={() => { setActiveChannelId(f.channelId); setActiveFeedId(f.id); }} />)}
                                         </div>
                                     </div>
                                 )
