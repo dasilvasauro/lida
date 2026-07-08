@@ -281,6 +281,7 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
   );
 
   const isMobileChatView = activeFeedId !== null || activeChannelId !== null;
+  let lastDateDivider = '';
 
   return (
     <AnimatePresence>
@@ -499,188 +500,188 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                                                 </div>
                                             ))}
                                         </div>
-                                    </React.Fragment>
-                                );
-                            })}
-                        </div>
-                    )
-                ) : activeChannelId ? (
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between mb-8 pb-4 border-b border-zinc-200 dark:border-zinc-800">
-                           <h3 className="font-bold text-zinc-500 uppercase tracking-widest text-xs flex items-center gap-2"><Hash size={16}/> Feeds no Canal</h3>
-                           <span className="text-xs font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-900 px-3 py-1 rounded-full">{activeFeeds.length} feeds</span>
-                        </div>
-                        {activeFeeds.length === 0 ? (
-                           <div className="text-center text-zinc-400 py-12 font-medium">Nenhum feed ativo neste canal.</div>
-                        ) : (
-                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                               {activeFeeds.map(f => <FeedSummaryCard key={f.id} feed={f} entries={entries} onSelect={() => { setActiveChannelId(f.channelId); setActiveFeedId(f.id); }} />)}
-                           </div>
-                        )}
-                    </div>
-                ) : (
-                    <div className="space-y-12 pb-12">
-                        {channels.map(c => {
-                            const cFeeds = feeds.filter(f => f.channelId === c.id && f.isArchived === isArchivedView).sort((a,b) => b.lastActivityAt - a.lastActivityAt);
-                            if (cFeeds.length === 0) return null;
-                            const style = colorStyles[c.color];
-                            return (
-                                <div key={c.id}>
-                                    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-zinc-200 dark:border-zinc-800">
-                                       <div className={`p-1.5 rounded-lg ${style.bg} ${style.text}`}><Hash size={16}/></div>
-                                       <h3 className="font-black text-xl tracking-tight text-zinc-900 dark:text-zinc-100">{c.name}</h3>
-                                    </div>
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                        {cFeeds.map(f => <FeedSummaryCard key={f.id} feed={f} entries={entries} onSelect={() => { setActiveChannelId(f.channelId); setActiveFeedId(f.id); }} />)}
-                                    </div>
-                                </div>
-                            )
-                        })}
-                        {channels.length === 0 && (
-                            <div className="h-full flex flex-col items-center justify-center text-zinc-400 py-20">
-                                <Hash size={48} className="mb-4 opacity-20" />
-                                <p className="font-bold text-sm text-center max-w-sm">A sua Base de Conhecimento está vazia.<br/><br/>Use a caixa abaixo para criar seu primeiro canal e feed usando a sintaxe <b className="text-zinc-600 dark:text-zinc-300">@Nome</b> e <b className="text-zinc-600 dark:text-zinc-300">#Canal</b>.</p>
-                            </div>
-                        )}
-                    </div>
-                )}
-                <div ref={messagesEndRef} className="h-4" />
-            </div>
-
-            {/* INPUT COM AUTOCOMPLETE E FORMATADORES */}
-            {!isArchivedView && (
-                <div className="bg-white dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-900 relative shrink-0">
-                    
-                    <AnimatePresence>
-                        {mentionContext && filteredMentions.length > 0 && (
-                            <motion.div 
-                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                                className="absolute bottom-full left-4 mb-4 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl shadow-2xl p-2 z-[200] min-w-[240px] max-w-[90%] max-h-60 overflow-y-auto"
-                            >
-                                <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-2 px-2">
-                                    {mentionContext.type === 'feed' ? 'Selecionar Feed' : 'Selecionar Canal'}
-                                </div>
-                                {filteredMentions.map((item, idx) => {
-                                    const isSelected = mentionIndex === idx;
-                                    return (
-                                        <button
-                                            key={item.id} onClick={() => applyMention(item)} onMouseEnter={() => setMentionIndex(idx)}
-                                            className={`w-full flex items-center justify-between p-3 rounded-xl text-sm transition-colors ${isSelected ? 'bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100' : 'text-zinc-600 dark:text-zinc-400'}`}
-                                        >
-                                            <div className="flex items-center gap-2 truncate">
-                                                {mentionContext.type === 'channel' ? <Hash size={16} className={isSelected ? 'text-amber-500' : ''} /> : <AtSign size={16} className={isSelected ? 'text-blue-500' : ''} />}
-                                                <span className="font-bold truncate">{item.name}</span>
-                                            </div>
-                                            {mentionContext.type === 'feed' && (
-                                                <span className={`text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded-md shrink-0 ml-3 ${isSelected ? 'bg-zinc-200 dark:bg-zinc-600 text-zinc-500 dark:text-zinc-300' : 'bg-zinc-100 dark:bg-zinc-900/50'}`}>
-                                                    {(item as any).channelName}
-                                                </span>
-                                            )}
-                                        </button>
-                                    )
+                                    );
                                 })}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    <div className="p-4 relative">
-                        <AnimatePresence>
-                            {replyingTo && (
-                                <motion.div initial={{ opacity: 0, y: 10, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="flex items-center justify-between bg-blue-500/10 text-blue-600 dark:text-blue-400 px-4 py-2 rounded-t-xl border border-blue-500/20 border-b-0">
-                                    <div className="flex items-center gap-2 text-xs font-bold truncate">
-                                        <CornerDownRight size={14} className="shrink-0"/>
-                                        <span className="truncate">Respondendo: {replyingTo.content}</span>
-                                    </div>
-                                    <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-blue-500/20 rounded-lg transition-colors"><X size={14}/></button>
-                                </motion.div>
+                            </div>
+                        )
+                    ) : activeChannelId ? (
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between mb-8 pb-4 border-b border-zinc-200 dark:border-zinc-800">
+                               <h3 className="font-bold text-zinc-500 uppercase tracking-widest text-xs flex items-center gap-2"><Hash size={16}/> Feeds no Canal</h3>
+                               <span className="text-xs font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-900 px-3 py-1 rounded-full">{activeFeeds.length} feeds</span>
+                            </div>
+                            {activeFeeds.length === 0 ? (
+                               <div className="text-center text-zinc-400 py-12 font-medium">Nenhum feed ativo neste canal.</div>
+                            ) : (
+                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                   {activeFeeds.map(f => <FeedSummaryCard key={f.id} feed={f} entries={entries} onSelect={() => { setActiveChannelId(f.channelId); setActiveFeedId(f.id); }} />)}
+                               </div>
                             )}
-                            {editingEntry && (
-                                <motion.div initial={{ opacity: 0, y: 10, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="flex items-center justify-between bg-amber-500/10 text-amber-600 dark:text-amber-400 px-4 py-2 rounded-t-xl border border-amber-500/20 border-b-0">
-                                    <div className="flex items-center gap-2 text-xs font-bold truncate">
-                                        <Edit2 size={14} className="shrink-0"/>
-                                        <span className="truncate">Editando registro original</span>
+                        </div>
+                    ) : (
+                        <div className="space-y-12 pb-12">
+                            {channels.map(c => {
+                                const cFeeds = feeds.filter(f => f.channelId === c.id && f.isArchived === isArchivedView).sort((a,b) => b.lastActivityAt - a.lastActivityAt);
+                                if (cFeeds.length === 0) return null;
+                                const style = colorStyles[c.color];
+                                return (
+                                    <div key={c.id}>
+                                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-zinc-200 dark:border-zinc-800">
+                                           <div className={`p-1.5 rounded-lg ${style.bg} ${style.text}`}><Hash size={16}/></div>
+                                           <h3 className="font-black text-xl tracking-tight text-zinc-900 dark:text-zinc-100">{c.name}</h3>
+                                        </div>
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                            {cFeeds.map(f => <FeedSummaryCard key={f.id} feed={f} entries={entries} onSelect={() => { setActiveChannelId(f.channelId); setActiveFeedId(f.id); }} />)}
+                                        </div>
                                     </div>
-                                    <button onClick={() => { setEditingEntry(null); setInputText(''); }} className="p-1 hover:bg-amber-500/20 rounded-lg transition-colors"><X size={14}/></button>
+                                )
+                            })}
+                            {channels.length === 0 && (
+                                <div className="h-full flex flex-col items-center justify-center text-zinc-400 py-20">
+                                    <Hash size={48} className="mb-4 opacity-20" />
+                                    <p className="font-bold text-sm text-center max-w-sm">A sua Base de Conhecimento está vazia.<br/><br/>Use a caixa abaixo para criar seu primeiro canal e feed usando a sintaxe <b className="text-zinc-600 dark:text-zinc-300">@Nome</b> e <b className="text-zinc-600 dark:text-zinc-300">#Canal</b>.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    <div ref={messagesEndRef} className="h-4" />
+                </div>
+
+                {/* INPUT COM AUTOCOMPLETE E FORMATADORES */}
+                {!isArchivedView && (
+                    <div className="bg-white dark:bg-zinc-950 border-t border-zinc-200 dark:border-zinc-900 relative shrink-0">
+                        
+                        <AnimatePresence>
+                            {mentionContext && filteredMentions.length > 0 && (
+                                <motion.div 
+                                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                                    className="absolute bottom-full left-4 mb-4 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl shadow-2xl p-2 z-[200] min-w-[240px] max-w-[90%] max-h-60 overflow-y-auto"
+                                >
+                                    <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-2 px-2">
+                                        {mentionContext.type === 'feed' ? 'Selecionar Feed' : 'Selecionar Canal'}
+                                    </div>
+                                    {filteredMentions.map((item, idx) => {
+                                        const isSelected = mentionIndex === idx;
+                                        return (
+                                            <button
+                                                key={item.id} onClick={() => applyMention(item)} onMouseEnter={() => setMentionIndex(idx)}
+                                                className={`w-full flex items-center justify-between p-3 rounded-xl text-sm transition-colors ${isSelected ? 'bg-zinc-100 dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100' : 'text-zinc-600 dark:text-zinc-400'}`}
+                                            >
+                                                <div className="flex items-center gap-2 truncate">
+                                                    {mentionContext.type === 'channel' ? <Hash size={16} className={isSelected ? 'text-amber-500' : ''} /> : <AtSign size={16} className={isSelected ? 'text-blue-500' : ''} />}
+                                                    <span className="font-bold truncate">{item.name}</span>
+                                                </div>
+                                                {mentionContext.type === 'feed' && (
+                                                    <span className={`text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded-md shrink-0 ml-3 ${isSelected ? 'bg-zinc-200 dark:bg-zinc-600 text-zinc-500 dark:text-zinc-300' : 'bg-zinc-100 dark:bg-zinc-900/50'}`}>
+                                                        {(item as any).channelName}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        )
+                                    })}
                                 </motion.div>
                             )}
                         </AnimatePresence>
-                        
-                        <div className={`flex flex-col bg-zinc-50 dark:bg-zinc-900 border rounded-2xl shadow-sm transition-colors ${replyingTo ? 'rounded-tl-none border-blue-500/30 focus-within:border-blue-500' : editingEntry ? 'rounded-tl-none border-amber-500/30 focus-within:border-amber-500' : 'border-zinc-200 dark:border-zinc-800 focus-within:border-zinc-400 dark:focus-within:border-zinc-600'}`}>
-                            <div className="flex items-center gap-1 p-2 border-b border-zinc-200 dark:border-zinc-800">
-                               <button onClick={() => insertFormat('bold')} className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded transition-colors"><Bold size={14}/></button>
-                               <button onClick={() => insertFormat('italic')} className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded transition-colors"><Italic size={14}/></button>
-                               <button onClick={() => insertFormat('code')} className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded transition-colors"><Code size={14}/></button>
-                            </div>
-                            <div className="flex items-end gap-2 p-2 relative">
-                                <textarea
-                                    ref={inputRef} value={inputText} onChange={handleInputChange} onKeyDown={handleKeyDown}
-                                    placeholder={replyingTo ? "Sua resposta..." : "Documente algo ou mencione @Feed e #Canal..."}
-                                    className="flex-1 max-h-40 min-h-[40px] resize-none bg-transparent outline-none px-2 py-2 text-sm"
-                                    rows={1}
-                                />
-                                <button onClick={handleSend} disabled={!inputText.trim()} className="p-3 bg-blue-600 text-white rounded-xl font-bold disabled:opacity-50 hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/20 flex items-center justify-center shrink-0">
-                                    <Send size={18} className={inputText.trim() ? "translate-x-0.5 -translate-y-0.5 transition-transform" : ""} />
-                                </button>
+
+                        <div className="p-4 relative">
+                            <AnimatePresence>
+                                {replyingTo && (
+                                    <motion.div initial={{ opacity: 0, y: 10, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="flex items-center justify-between bg-blue-500/10 text-blue-600 dark:text-blue-400 px-4 py-2 rounded-t-xl border border-blue-500/20 border-b-0">
+                                        <div className="flex items-center gap-2 text-xs font-bold truncate">
+                                            <CornerDownRight size={14} className="shrink-0"/>
+                                            <span className="truncate">Respondendo: {replyingTo.content}</span>
+                                        </div>
+                                        <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-blue-500/20 rounded-lg transition-colors"><X size={14}/></button>
+                                    </motion.div>
+                                )}
+                                {editingEntry && (
+                                    <motion.div initial={{ opacity: 0, y: 10, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="flex items-center justify-between bg-amber-500/10 text-amber-600 dark:text-amber-400 px-4 py-2 rounded-t-xl border border-amber-500/20 border-b-0">
+                                        <div className="flex items-center gap-2 text-xs font-bold truncate">
+                                            <Edit2 size={14} className="shrink-0"/>
+                                            <span className="truncate">Editando registro original</span>
+                                        </div>
+                                        <button onClick={() => { setEditingEntry(null); setInputText(''); }} className="p-1 hover:bg-amber-500/20 rounded-lg transition-colors"><X size={14}/></button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                            
+                            <div className={`flex flex-col bg-zinc-50 dark:bg-zinc-900 border rounded-2xl shadow-sm transition-colors ${replyingTo ? 'rounded-tl-none border-blue-500/30 focus-within:border-blue-500' : editingEntry ? 'rounded-tl-none border-amber-500/30 focus-within:border-amber-500' : 'border-zinc-200 dark:border-zinc-800 focus-within:border-zinc-400 dark:focus-within:border-zinc-600'}`}>
+                                <div className="flex items-center gap-1 p-2 border-b border-zinc-200 dark:border-zinc-800">
+                                   <button onClick={() => insertFormat('bold')} className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded transition-colors"><Bold size={14}/></button>
+                                   <button onClick={() => insertFormat('italic')} className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded transition-colors"><Italic size={14}/></button>
+                                   <button onClick={() => insertFormat('code')} className="p-1.5 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded transition-colors"><Code size={14}/></button>
+                                </div>
+                                <div className="flex items-end gap-2 p-2 relative">
+                                    <textarea
+                                        ref={inputRef} value={inputText} onChange={handleInputChange} onKeyDown={handleKeyDown}
+                                        placeholder={replyingTo ? "Sua resposta..." : "Documente algo ou mencione @Feed e #Canal..."}
+                                        className="flex-1 max-h-40 min-h-[40px] resize-none bg-transparent outline-none px-2 py-2 text-sm"
+                                        rows={1}
+                                    />
+                                    <button onClick={handleSend} disabled={!inputText.trim()} className="p-3 bg-blue-600 text-white rounded-xl font-bold disabled:opacity-50 hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/20 flex items-center justify-center shrink-0">
+                                        <Send size={18} className={inputText.trim() ? "translate-x-0.5 -translate-y-0.5 transition-transform" : ""} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )}
+            </div>
 
-        {/* MODAIS DE CONFIRMAÇÃO E CRIAÇÃO */}
-        <AnimatePresence>
-            {confirmDialog && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1200] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
-                <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 text-center">
-                <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4"><AlertTriangle size={32} /></div>
-                <h3 className="text-xl font-black mb-2 dark:text-white">{confirmDialog.title}</h3>
-                <p className="text-zinc-500 dark:text-zinc-400 mb-6 text-sm">{confirmDialog.subtitle}</p>
-                <div className="flex gap-3">
-                    <button onClick={() => setConfirmDialog(null)} className="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
-                    <button onClick={executeConfirmAction} className="flex-1 p-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-500 transition-colors">Confirmar</button>
-                </div>
-                </motion.div>
-            </motion.div>
-            )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-            {channelPrompt && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1200] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
-                <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-3xl p-8 shadow-2xl border border-blue-500/20 text-center">
-                <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4"><AlertCircle size={32} /></div>
-                <h3 className="text-xl font-black mb-2 dark:text-white">Para qual Canal?</h3>
-                <p className="text-zinc-500 dark:text-zinc-400 mb-6 text-sm">Os novos feeds <span className="font-bold text-blue-500">@{channelPrompt.pendingFeeds.join(', @')}</span> precisam morar dentro de um Canal. Escolha um ou crie um agora.</p>
-                
-                <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto scrollbar-hide">
-                        {channels.map(c => (
-                            <button key={c.id} onClick={() => resolveChannelPrompt(c.id, false)} className="p-3 bg-zinc-100 dark:bg-zinc-800/50 hover:bg-blue-500/10 border border-transparent hover:border-blue-500/30 rounded-xl text-sm font-bold text-zinc-700 dark:text-zinc-300 transition-colors truncate">
-                                {c.name}
-                            </button>
-                        ))}
+            {/* MODAIS DE CONFIRMAÇÃO E CRIAÇÃO */}
+            <AnimatePresence>
+                {confirmDialog && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1200] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
+                    <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 text-center">
+                    <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4"><AlertTriangle size={32} /></div>
+                    <h3 className="text-xl font-black mb-2 dark:text-white">{confirmDialog.title}</h3>
+                    <p className="text-zinc-500 dark:text-zinc-400 mb-6 text-sm">{confirmDialog.subtitle}</p>
+                    <div className="flex gap-3">
+                        <button onClick={() => setConfirmDialog(null)} className="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">Cancelar</button>
+                        <button onClick={executeConfirmAction} className="flex-1 p-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-500 transition-colors">Confirmar</button>
                     </div>
+                    </motion.div>
+                </motion.div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {channelPrompt && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1200] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
+                    <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-3xl p-8 shadow-2xl border border-blue-500/20 text-center">
+                    <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4"><AlertCircle size={32} /></div>
+                    <h3 className="text-xl font-black mb-2 dark:text-white">Para qual Canal?</h3>
+                    <p className="text-zinc-500 dark:text-zinc-400 mb-6 text-sm">Os novos feeds <span className="font-bold text-blue-500">@{channelPrompt.pendingFeeds.join(', @')}</span> precisam morar dentro de um Canal. Escolha um ou crie um agora.</p>
                     
-                    <div className="flex items-center gap-2">
-                        <input autoFocus type="text" placeholder="Nome do novo canal..." value={newChannelPromptName} onChange={e=>setNewChannelPromptName(e.target.value)} onKeyDown={e=>e.key==='Enter' && newChannelPromptName.trim() && resolveChannelPrompt(newChannelPromptName.trim(), true)} className="flex-1 bg-zinc-100 dark:bg-zinc-800 p-3 rounded-xl outline-none font-bold text-sm border border-zinc-200 dark:border-zinc-700" />
-                        <button onClick={() => { if(newChannelPromptName.trim()) resolveChannelPrompt(newChannelPromptName.trim(), true); }} disabled={!newChannelPromptName.trim()} className="p-3 bg-blue-600 text-white rounded-xl font-bold disabled:opacity-50">Criar</button>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto scrollbar-hide">
+                            {channels.map(c => (
+                                <button key={c.id} onClick={() => resolveChannelPrompt(c.id, false)} className="p-3 bg-zinc-100 dark:bg-zinc-800/50 hover:bg-blue-500/10 border border-transparent hover:border-blue-500/30 rounded-xl text-sm font-bold text-zinc-700 dark:text-zinc-300 transition-colors truncate">
+                                    {c.name}
+                                </button>
+                            ))}
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                            <input autoFocus type="text" placeholder="Nome do novo canal..." value={newChannelPromptName} onChange={e=>setNewChannelPromptName(e.target.value)} onKeyDown={e=>e.key==='Enter' && newChannelPromptName.trim() && resolveChannelPrompt(newChannelPromptName.trim(), true)} className="flex-1 bg-zinc-100 dark:bg-zinc-800 p-3 rounded-xl outline-none font-bold text-sm border border-zinc-200 dark:border-zinc-700" />
+                            <button onClick={() => { if(newChannelPromptName.trim()) resolveChannelPrompt(newChannelPromptName.trim(), true); }} disabled={!newChannelPromptName.trim()} className="p-3 bg-blue-600 text-white rounded-xl font-bold disabled:opacity-50">Criar</button>
+                        </div>
                     </div>
-                </div>
 
-                <div className="mt-8 border-t border-zinc-200 dark:border-zinc-800 pt-4">
-                    <button onClick={() => setChannelPrompt(null)} className="text-sm font-bold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">Cancelar Envio</button>
-                </div>
+                    <div className="mt-8 border-t border-zinc-200 dark:border-zinc-800 pt-4">
+                        <button onClick={() => setChannelPrompt(null)} className="text-sm font-bold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors">Cancelar Envio</button>
+                    </div>
+                    </motion.div>
                 </motion.div>
-            </motion.div>
-            )}
-        </AnimatePresence>
+                )}
+            </AnimatePresence>
 
-        <AnimatePresence>
-            {toastMessage && ( <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className={`fixed top-6 left-1/2 -translate-x-1/2 z-[3000] px-6 py-3 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.12)] font-bold text-sm tracking-wide border ${toastMessage.type === 'error' ? 'bg-red-500 text-white border-red-600' : 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black border-zinc-800 dark:border-zinc-200'}`}>{toastMessage.msg}</motion.div> )}
-        </AnimatePresence>
+            <AnimatePresence>
+                {toastMessage && ( <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className={`fixed top-6 left-1/2 -translate-x-1/2 z-[3000] px-6 py-3 rounded-full shadow-[0_8px_30px_rgba(0,0,0,0.12)] font-bold text-sm tracking-wide border ${toastMessage.type === 'error' ? 'bg-red-500 text-white border-red-600' : 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black border-zinc-800 dark:border-zinc-200'}`}>{toastMessage.msg}</motion.div> )}
+            </AnimatePresence>
 
+        </motion.div>
       )}
-    </motion.div>
+    </AnimatePresence>
   );
 };
