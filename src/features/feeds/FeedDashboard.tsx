@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Hash, AtSign, Send, MessageSquareText, Search, Calendar as CalendarIcon, MoreVertical, Archive, ArchiveRestore, Edit2, Trash2, CornerDownRight, PaintBucket, AlertTriangle, AlertCircle, CheckCircle2, Zap, Footprints, Timer, Gift, Repeat, Check, Clock, Bold, Italic, Code, AlignJustify, ChevronLeft, List } from 'lucide-react';
+import { X, Hash, AtSign, Send, MessageSquareText, Search, Calendar as CalendarIcon, MoreVertical, Archive, ArchiveRestore, Edit2, Trash2, CornerDownRight, PaintBucket, AlertTriangle, AlertCircle, CheckCircle2, Zap, Footprints, Timer, Gift, Repeat, Check, Bold, Italic, Code, AlignJustify, ChevronLeft, List } from 'lucide-react';
 import { useFeedStore, extractMentions, type FeedTarget } from '../../store/useFeedStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useBackHandler } from '../../store/useConfigStore';
@@ -281,7 +281,6 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
   );
 
   const isMobileChatView = activeFeedId !== null || activeChannelId !== null;
-  let lastDateDivider = '';
 
   return (
     <AnimatePresence>
