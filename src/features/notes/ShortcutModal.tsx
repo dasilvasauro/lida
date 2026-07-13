@@ -139,7 +139,7 @@ const CategoryView = ({ categoryId, isSplit, onSelectCategory }: CategoryViewPro
     const [type, setType] = useState<ShortcutType>('keys');
 
     if (!category) return null;
-    const style = catStyles[category.color as ShortcutColor];
+    const style = catStyles[category.color as ShortcutColor] || catStyles.zinc;
 
     const handleAddItem = () => {
         if (!label.trim() || !value.trim()) return;
