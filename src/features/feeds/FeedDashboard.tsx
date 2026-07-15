@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Hash, AtSign, Send, MessageSquareText, Search, Calendar as CalendarIcon, MoreVertical, Archive, ArchiveRestore, Edit2, Trash2, CornerDownRight, PaintBucket, AlertTriangle, AlertCircle, CheckCircle2, Zap, Footprints, Timer, Gift, Repeat, Check, Clock, Bold, Italic, Code, AlignJustify, ChevronLeft, List, Menu } from 'lucide-react';
+import { X, Hash, AtSign, Send, MessageSquareText, Search, Calendar as CalendarIcon, MoreVertical, Archive, ArchiveRestore, Edit2, Trash2, CornerDownRight, PaintBucket, AlertTriangle, AlertCircle, CheckCircle2, Zap, Footprints, Timer, Gift, Repeat, Check, Bold, Italic, Code, AlignJustify, ChevronLeft, List } from 'lucide-react';
 import { useFeedStore, extractMentions, type FeedTarget } from '../../store/useFeedStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useBackHandler } from '../../store/useConfigStore';
@@ -112,7 +112,6 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [activeFeedId, setActiveFeedId] = useState<string | null>(null);
   
-  // ESTADO DE CONTROLE DA SIDEBAR
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
   const [inputText, setInputText] = useState('');
@@ -170,7 +169,6 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
   useBackHandler(isOpen && !!editingEntry, () => { setEditingEntry(null); setInputText(''); return true; });
   useBackHandler(isOpen && isArchivedView, () => { setIsArchivedView(false); return true; });
   
-  // BackHandler inteligente: Retorna para a Sidebar se estiver no mobile e no chat, senão fecha o Modal
   useBackHandler(isOpen && !channelPrompt && !confirmDialog && !showColorPicker && !activeMenuId && !replyingTo && !editingEntry && !isArchivedView, () => { 
       if (!isSidebarOpen && window.innerWidth < 768) {
           setIsSidebarOpen(true);
@@ -351,7 +349,7 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
       </div>
   );
 
-  let lastDateDivider = '';
+  const isMobileChatView = activeFeedId !== null || activeChannelId !== null;
 
   return (
     <AnimatePresence>
@@ -446,7 +444,7 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                     <div className="flex items-center gap-3 min-w-0">
                         <button onClick={() => setIsSidebarOpen(true)} className={`${isSidebarOpen ? 'hidden' : 'flex'} p-2 -ml-2 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors`}>
                             <span className="md:hidden"><ChevronLeft size={20} /></span>
-                            <span className="hidden md:block"><Menu size={20} /></span>
+                            <span className="hidden md:block"><List size={20} /></span>
                         </button>
                         {activeFeedId ? (
                             <>
@@ -505,12 +503,14 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                                         <div className="flex items-center gap-4 my-8">
                                             <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800" />
                                             <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 shadow-sm">
-                                                {format(group.dateObj, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+                                                {format(group.dateObj, "dd 'de' MMMM", { locale: ptBR })}
                                             </span>
                                             <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800" />
                                         </div>
 
-                                        {group.threads.map(thread => (
+                                        {group.threads.map(thread => {
+                                            const activeStyle = colorStyles[feeds.find(f => f.id === activeFeedId)?.color || 'zinc'];
+                                            return (
                                             <div key={thread.parent.id} className="group/parent flex flex-col relative">
                                                 {thread.replies.length > 0 && !isCompact && ( <div className="absolute left-5 top-12 bottom-6 w-0.5 bg-zinc-200 dark:bg-zinc-800 z-0 rounded-full" /> )}
                                                 
@@ -522,7 +522,7 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                                                     )}
                                                     <div className="flex-1 min-w-0 flex flex-col justify-center">
                                                         <div className="flex items-center gap-2 mb-1.5">
-                                                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded shadow-sm ${isCompact ? `text-${colorStyles[feeds.find(f => f.id === activeFeedId)?.color || 'zinc'].hex.split(' ')[0].replace('text-', '')} bg-${colorStyles[feeds.find(f => f.id === activeFeedId)?.color || 'zinc'].hex.split(' ')[0].replace('text-', '')}/10` : 'text-zinc-500 bg-zinc-100 dark:bg-zinc-800'}`}>
+                                                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded shadow-sm ${isCompact ? `${activeStyle.text} ${activeStyle.bg}` : 'text-zinc-500 bg-zinc-100 dark:bg-zinc-800'}`}>
                                                                 {format(new Date(thread.parent.createdAt), isCompact ? "EEE, HH:mm" : "HH:mm", { locale: ptBR })}
                                                             </span>
                                                             {thread.parent.createdAt !== thread.parent.updatedAt && <span className="text-[9px] text-zinc-400 italic">(Editado)</span>}
@@ -558,7 +558,7 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                                                         )}
                                                         <div className="flex-1 min-w-0 flex flex-col justify-center">
                                                             <div className="flex items-center gap-2 mb-1.5">
-                                                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded shadow-sm ${isCompact ? `text-${colorStyles[feeds.find(f => f.id === activeFeedId)?.color || 'zinc'].hex.split(' ')[0].replace('text-', '')} bg-${colorStyles[feeds.find(f => f.id === activeFeedId)?.color || 'zinc'].hex.split(' ')[0].replace('text-', '')}/10` : 'text-zinc-500 bg-zinc-100 dark:bg-zinc-800'}`}>
+                                                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded shadow-sm ${isCompact ? `${activeStyle.text} ${activeStyle.bg}` : 'text-zinc-500 bg-zinc-100 dark:bg-zinc-800'}`}>
                                                                     {format(new Date(reply.createdAt), isCompact ? "EEE, HH:mm" : "HH:mm", { locale: ptBR })}
                                                                 </span>
                                                                 {reply.createdAt !== reply.updatedAt && <span className="text-[9px] text-zinc-400 italic">(Editado)</span>}
@@ -584,7 +584,8 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                                                     </div>
                                                 ))}
                                             </div>
-                                        ))}
+                                            )
+                                        })}
                                     </React.Fragment>
                                 ))}
                             </div>
