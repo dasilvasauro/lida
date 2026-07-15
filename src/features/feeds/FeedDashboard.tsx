@@ -349,7 +349,7 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
       </div>
   );
 
-  const isMobileChatView = activeFeedId !== null || activeChannelId !== null;
+/*const isMobileChatView = activeFeedId !== null || activeChannelId !== null;*/
 
   return (
     <AnimatePresence>
