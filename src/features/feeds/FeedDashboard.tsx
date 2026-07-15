@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Hash, AtSign, Send, MessageSquareText, Search, Calendar as CalendarIcon, MoreVertical, Archive, ArchiveRestore, Edit2, Trash2, CornerDownRight, PaintBucket, AlertTriangle, AlertCircle, CheckCircle2, Zap, Footprints, Timer, Gift, Repeat, Check, Bold, Italic, Code, AlignJustify, ChevronLeft, List } from 'lucide-react';
+import { X, Hash, AtSign, Send, MessageSquareText, Search, Calendar as CalendarIcon, MoreVertical, Archive, ArchiveRestore, Edit2, Trash2, CornerDownRight, PaintBucket, AlertTriangle, AlertCircle, CheckCircle2, Zap, Footprints, Timer, Gift, Repeat, Check, Clock, Bold, Italic, Code, AlignJustify, ChevronLeft, List, Menu } from 'lucide-react';
 import { useFeedStore, extractMentions, type FeedTarget } from '../../store/useFeedStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useBackHandler } from '../../store/useConfigStore';
@@ -112,6 +112,9 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
   const [activeFeedId, setActiveFeedId] = useState<string | null>(null);
   
+  // ESTADO DE CONTROLE DA SIDEBAR
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -137,9 +140,27 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => { setToastMessage({msg, type}); setTimeout(() => setToastMessage(null), 3000); };
 
-  useEffect(() => { if (isOpen) cleanupArchivedFeeds(); }, [isOpen, cleanupArchivedFeeds]);
+  useEffect(() => { 
+      if (isOpen) {
+          cleanupArchivedFeeds();
+          if (window.innerWidth < 768) setIsSidebarOpen(true);
+      }
+  }, [isOpen, cleanupArchivedFeeds]);
+  
   useEffect(() => { if (isOpen && focusInputSignal > 0) inputRef.current?.focus(); }, [focusInputSignal, isOpen]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [entries.length, activeFeedId, replyingTo]);
+
+  const handleSelectFeed = (feedId: string, channelId: string | null) => {
+      setActiveChannelId(channelId);
+      setActiveFeedId(feedId);
+      if (window.innerWidth < 768) setIsSidebarOpen(false);
+  };
+
+  const handleSelectChannel = (channelId: string | null) => {
+      setActiveChannelId(channelId);
+      setActiveFeedId(null);
+      if (window.innerWidth < 768) setIsSidebarOpen(false);
+  };
 
   useBackHandler(isOpen && !!channelPrompt, () => { setChannelPrompt(null); return true; });
   useBackHandler(isOpen && !!confirmDialog, () => { setConfirmDialog(null); return true; });
@@ -148,7 +169,16 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
   useBackHandler(isOpen && !!replyingTo, () => { setReplyingTo(null); return true; });
   useBackHandler(isOpen && !!editingEntry, () => { setEditingEntry(null); setInputText(''); return true; });
   useBackHandler(isOpen && isArchivedView, () => { setIsArchivedView(false); return true; });
-  useBackHandler(isOpen && !channelPrompt && !confirmDialog && !showColorPicker && !activeMenuId && !replyingTo && !editingEntry && !isArchivedView, () => { onClose(); return true; });
+  
+  // BackHandler inteligente: Retorna para a Sidebar se estiver no mobile e no chat, senão fecha o Modal
+  useBackHandler(isOpen && !channelPrompt && !confirmDialog && !showColorPicker && !activeMenuId && !replyingTo && !editingEntry && !isArchivedView, () => { 
+      if (!isSidebarOpen && window.innerWidth < 768) {
+          setIsSidebarOpen(true);
+          return true;
+      }
+      onClose(); 
+      return true; 
+  });
 
   const activeFeeds = feeds.filter(f => f.channelId === activeChannelId && f.isArchived === isArchivedView).sort((a, b) => b.lastActivityAt - a.lastActivityAt);
 
@@ -159,7 +189,6 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
       else return feeds.filter(f => f.name.toLowerCase().startsWith(q)).map(f => { const c = channels.find(ch => ch.id === f.channelId); return { ...f, channelName: c ? c.name : 'Sem Canal' }; }).slice(0, 5);
   }, [mentionContext, channels, feeds]);
 
-  // AGRUPAMENTO DE MENSAGENS POR DATA DA ÚLTIMA ATIVIDADE (BUMP)
   const groupedEntries = useMemo(() => {
       if (!activeFeedId) return [];
       let filtered = entries.filter(e => e.feedId === activeFeedId);
@@ -322,7 +351,7 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
       </div>
   );
 
-  const isMobileChatView = activeFeedId !== null || activeChannelId !== null;
+  let lastDateDivider = '';
 
   return (
     <AnimatePresence>
@@ -330,13 +359,18 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
         <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }} className="fixed inset-0 z-[150] bg-zinc-50 dark:bg-black flex flex-col md:flex-row overflow-hidden h-[100dvh]">
             
             {/* SIDEBAR */}
-            <div className={`w-full md:w-80 h-full border-r border-zinc-200 dark:border-zinc-900 flex-col shrink-0 bg-white dark:bg-zinc-950/50 shadow-sm z-20 ${isMobileChatView ? 'hidden md:flex' : 'flex'}`}>
+            <div className={`${isSidebarOpen ? 'flex' : 'hidden'} w-full md:w-80 h-full border-r border-zinc-200 dark:border-zinc-900 flex-col shrink-0 bg-white dark:bg-zinc-950/50 shadow-sm z-20`}>
                 <div className="p-4 md:p-6 border-b border-zinc-200 dark:border-zinc-900 flex items-center justify-between bg-zinc-50/50 dark:bg-transparent shrink-0">
                     <div>
                        <h2 className="text-xl font-black flex items-center gap-2 tracking-tight"><Hash className="text-blue-500"/> Feeds</h2>
                        <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-widest block mt-1">Sua Base de Conhecimento</span>
                     </div>
-                    <button onClick={onClose} className="p-2 bg-zinc-200 dark:bg-zinc-800 rounded-full hover:bg-red-500 hover:text-white transition-colors"><X size={18}/></button>
+                    <div className="flex items-center gap-1">
+                        <button onClick={() => setIsSidebarOpen(false)} className="hidden md:flex p-2 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors" title="Recolher Sidebar">
+                            <ChevronLeft size={18} />
+                        </button>
+                        <button onClick={onClose} className="p-2 bg-zinc-200 dark:bg-zinc-800 rounded-full hover:bg-red-500 hover:text-white transition-colors"><X size={18}/></button>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto scrollbar-hide p-4 space-y-6 min-h-0">
@@ -348,12 +382,12 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                            </button>
                        </div>
                        <div className="space-y-1">
-                          <button onClick={() => { setActiveChannelId(null); setActiveFeedId(null); }} className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-colors ${!activeChannelId ? 'bg-zinc-900 text-white dark:bg-white dark:text-black shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900'}`}>Todos os Canais</button>
+                          <button onClick={() => handleSelectChannel(null)} className={`w-full text-left px-3 py-2 rounded-xl text-sm font-bold transition-colors ${!activeChannelId ? 'bg-zinc-900 text-white dark:bg-white dark:text-black shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900'}`}>Todos os Canais</button>
                           {channels.map(c => {
                               const style = colorStyles[c.color]; const isActive = activeChannelId === c.id;
                               return (
                                   <div key={c.id} className="group relative flex items-center">
-                                      <button onClick={() => { setActiveChannelId(c.id); setActiveFeedId(null); }} className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-colors ${isActive ? 'bg-zinc-900 text-white dark:bg-white dark:text-black shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900'}`}>
+                                      <button onClick={() => handleSelectChannel(c.id)} className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-colors ${isActive ? 'bg-zinc-900 text-white dark:bg-white dark:text-black shadow-md' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900'}`}>
                                           <Hash size={14} className={isActive ? (c.color === 'zinc' ? 'text-zinc-500' : style.text) : style.text} /> 
                                           <span className="truncate">{c.name}</span>
                                       </button>
@@ -383,7 +417,7 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                                       const style = colorStyles[f.color]; const isActive = activeFeedId === f.id;
                                       return (
                                           <div key={f.id} className="group relative flex items-center">
-                                              <button onClick={() => setActiveFeedId(f.id)} className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-colors ${isActive ? `${style.bg} ${style.border} border shadow-sm` : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-transparent'}`}>
+                                              <button onClick={() => handleSelectFeed(f.id, f.channelId)} className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold transition-colors ${isActive ? `${style.bg} ${style.border} border shadow-sm` : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-transparent'}`}>
                                                   <AtSign size={14} className={style.text} /> 
                                                   <span className={`truncate ${isActive ? style.text : ''}`}>{f.name}</span>
                                               </button>
@@ -405,14 +439,14 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                 </div>
             </div>
 
-            {/* ÁREA PRINCIPAL (CHAT / VISÃO GERAL) */}
-            <div className={`flex-1 flex flex-col min-w-0 min-h-0 bg-transparent relative h-full ${!isMobileChatView ? 'hidden md:flex' : 'flex'}`}>
+            {/* ÁREA PRINCIPAL */}
+            <div className={`flex-1 flex-col min-w-0 min-h-0 bg-transparent relative h-full ${!isSidebarOpen ? 'flex' : 'hidden md:flex'}`}>
                 
-                {/* CABEÇALHO DO CHAT */}
                 <div className="h-16 border-b border-zinc-200 dark:border-zinc-900 flex items-center justify-between px-4 md:px-6 shrink-0 bg-white/80 dark:bg-black/80 backdrop-blur-md z-10">
                     <div className="flex items-center gap-3 min-w-0">
-                        <button onClick={() => { setActiveChannelId(null); setActiveFeedId(null); }} className="md:hidden p-2 -ml-2 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors">
-                            <ChevronLeft size={20} />
+                        <button onClick={() => setIsSidebarOpen(true)} className={`${isSidebarOpen ? 'hidden' : 'flex'} p-2 -ml-2 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors`}>
+                            <span className="md:hidden"><ChevronLeft size={20} /></span>
+                            <span className="hidden md:block"><Menu size={20} /></span>
                         </button>
                         {activeFeedId ? (
                             <>
@@ -459,13 +493,13 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                 <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-2 md:p-8 scrollbar-thin">
                     {activeFeedId ? (
                         groupedEntries.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center text-zinc-400">
+                            <div className="h-full flex flex-col items-center justify-center text-zinc-400 min-h-[300px]">
                                 <MessageSquareText size={48} className="mb-4 opacity-20" />
                                 <p className="font-bold text-sm">Nada por aqui.</p>
                                 <p className="text-xs mt-2 opacity-60 max-w-xs text-center">Use a caixa abaixo e mencione @Feed ou #Canal para documentar.</p>
                             </div>
                         ) : (
-                            <div className={`space-y-${isCompact ? '2' : '6'}`}>
+                            <div className={`space-y-${isCompact ? '2' : '6'} pb-10`}>
                                 {groupedEntries.map(group => (
                                     <React.Fragment key={group.dateStr}>
                                         <div className="flex items-center gap-4 my-8">
@@ -488,8 +522,8 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                                                     )}
                                                     <div className="flex-1 min-w-0 flex flex-col justify-center">
                                                         <div className="flex items-center gap-2 mb-1.5">
-                                                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded shadow-sm ${isCompact ? 'bg-zinc-800 text-zinc-100 dark:bg-zinc-200 dark:text-zinc-900 border border-zinc-900 dark:border-zinc-100' : 'text-zinc-500 bg-zinc-100 dark:bg-zinc-800'}`}>
-                                                                {format(new Date(thread.parent.createdAt), isCompact ? "EEEE, dd/MM - HH:mm" : "HH:mm", { locale: ptBR })}
+                                                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded shadow-sm ${isCompact ? `text-${colorStyles[feeds.find(f => f.id === activeFeedId)?.color || 'zinc'].hex.split(' ')[0].replace('text-', '')} bg-${colorStyles[feeds.find(f => f.id === activeFeedId)?.color || 'zinc'].hex.split(' ')[0].replace('text-', '')}/10` : 'text-zinc-500 bg-zinc-100 dark:bg-zinc-800'}`}>
+                                                                {format(new Date(thread.parent.createdAt), isCompact ? "EEE, HH:mm" : "HH:mm", { locale: ptBR })}
                                                             </span>
                                                             {thread.parent.createdAt !== thread.parent.updatedAt && <span className="text-[9px] text-zinc-400 italic">(Editado)</span>}
                                                         </div>
@@ -524,8 +558,8 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                                                         )}
                                                         <div className="flex-1 min-w-0 flex flex-col justify-center">
                                                             <div className="flex items-center gap-2 mb-1.5">
-                                                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded shadow-sm ${isCompact ? 'bg-zinc-800 text-zinc-100 dark:bg-zinc-200 dark:text-zinc-900 border border-zinc-900 dark:border-zinc-100' : 'text-zinc-500 bg-zinc-100 dark:bg-zinc-800'}`}>
-                                                                    {format(new Date(reply.createdAt), isCompact ? "EEEE, dd/MM - HH:mm" : "HH:mm", { locale: ptBR })}
+                                                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded shadow-sm ${isCompact ? `text-${colorStyles[feeds.find(f => f.id === activeFeedId)?.color || 'zinc'].hex.split(' ')[0].replace('text-', '')} bg-${colorStyles[feeds.find(f => f.id === activeFeedId)?.color || 'zinc'].hex.split(' ')[0].replace('text-', '')}/10` : 'text-zinc-500 bg-zinc-100 dark:bg-zinc-800'}`}>
+                                                                    {format(new Date(reply.createdAt), isCompact ? "EEE, HH:mm" : "HH:mm", { locale: ptBR })}
                                                                 </span>
                                                                 {reply.createdAt !== reply.updatedAt && <span className="text-[9px] text-zinc-400 italic">(Editado)</span>}
                                                             </div>
@@ -556,7 +590,7 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                             </div>
                         )
                     ) : activeChannelId ? (
-                        <div className="space-y-6">
+                        <div className="space-y-6 pb-12">
                             <div className="flex items-center justify-between mb-8 pb-4 border-b border-zinc-200 dark:border-zinc-800">
                                <h3 className="font-bold text-zinc-500 uppercase tracking-widest text-xs flex items-center gap-2"><Hash size={16}/> Feeds no Canal</h3>
                                <span className="text-xs font-bold text-zinc-400 bg-zinc-100 dark:bg-zinc-900 px-3 py-1 rounded-full">{activeFeeds.length} feeds</span>
@@ -565,7 +599,7 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                                <div className="text-center text-zinc-400 py-12 font-medium">Nenhum feed ativo neste canal.</div>
                             ) : (
                                <div className={isCompact ? "flex flex-col gap-1" : "grid grid-cols-1 lg:grid-cols-2 gap-4"}>
-                                   {activeFeeds.map(f => <FeedSummaryCard key={f.id} feed={f} entries={entries} isCompact={isCompact} onSelect={() => { setActiveChannelId(f.channelId); setActiveFeedId(f.id); }} />)}
+                                   {activeFeeds.map(f => <FeedSummaryCard key={f.id} feed={f} entries={entries} isCompact={isCompact} onSelect={() => handleSelectFeed(f.id, f.channelId)} />)}
                                </div>
                             )}
                         </div>
@@ -582,13 +616,13 @@ export const FeedDashboard = ({ isOpen, onClose, focusInputSignal }: { isOpen: b
                                            <h3 className="font-black text-xl tracking-tight text-zinc-900 dark:text-zinc-100">{c.name}</h3>
                                         </div>
                                         <div className={isCompact ? "flex flex-col gap-1" : "grid grid-cols-1 lg:grid-cols-2 gap-4"}>
-                                            {cFeeds.map(f => <FeedSummaryCard key={f.id} feed={f} entries={entries} isCompact={isCompact} onSelect={() => { setActiveChannelId(f.channelId); setActiveFeedId(f.id); }} />)}
+                                            {cFeeds.map(f => <FeedSummaryCard key={f.id} feed={f} entries={entries} isCompact={isCompact} onSelect={() => handleSelectFeed(f.id, f.channelId)} />)}
                                         </div>
                                     </div>
                                 )
                             })}
                             {channels.length === 0 && (
-                                <div className="h-full flex flex-col items-center justify-center text-zinc-400 py-20">
+                                <div className="h-full flex flex-col items-center justify-center text-zinc-400 py-20 min-h-[300px]">
                                     <Hash size={48} className="mb-4 opacity-20" />
                                     <p className="font-bold text-sm text-center max-w-sm">A sua Base de Conhecimento está vazia.<br/><br/>Use a caixa abaixo para criar seu primeiro canal e feed usando a sintaxe <b className="text-zinc-600 dark:text-zinc-300">@Nome</b> e <b className="text-zinc-600 dark:text-zinc-300">#Canal</b>.</p>
                                 </div>

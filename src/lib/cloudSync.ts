@@ -8,12 +8,14 @@ import { useConfigStore } from '../store/useConfigStore';
 import { useReflectionStore } from '../store/useReflectionStore';
 import { useNoteStore } from '../store/useNoteStore';
 import { useFeedStore } from '../store/useFeedStore';
+import { useScoreStore } from '../store/useScoreStore';
 
 let unsubscribeSnapshot: (() => void) | null = null;
 let isApplyingCloudData = false;
 let syncTimeout: ReturnType<typeof setTimeout> | null = null;
 
 let hasSyncedOnce = false; 
+export const getSyncStatus = () => hasSyncedOnce;
 
 export const syncToCloud = async (force = false) => {
   const config = useConfigStore.getState();
@@ -31,6 +33,7 @@ export const syncToCloud = async (force = false) => {
     reflections: encryptData(JSON.stringify(useReflectionStore.getState()), config.e2eePin),
     notes: encryptData(JSON.stringify(useNoteStore.getState()), config.e2eePin),
     feeds: encryptData(JSON.stringify(useFeedStore.getState()), config.e2eePin),
+    scores: encryptData(JSON.stringify(useScoreStore.getState()), config.e2eePin),
     config: encryptData(JSON.stringify({
       theme: config.theme, font: config.font, userClass: config.userClass, userName: config.userName,
       isOnboarded: config.isOnboarded, lastLoginDate: config.lastLoginDate, defaultDaysOff: config.defaultDaysOff, 
@@ -92,6 +95,30 @@ const applyCloudData = (data: any, pin: string) => {
         return Array.from(map.values());
     };
 
+    // MERGE SCORES (LPI)
+    if (data.scores) {
+        const localScores = useScoreStore.getState();
+        const cloudScores = JSON.parse(decryptData(data.scores, pin));
+        
+        const mergedDaily = [...localScores.dailyScores];
+        cloudScores.dailyScores.forEach((cs: any) => {
+            const idx = mergedDaily.findIndex(d => d.date === cs.date);
+            if (idx >= 0) { if (cs.tasksDone >= mergedDaily[idx].tasksDone) mergedDaily[idx] = cs; } 
+            else { mergedDaily.push(cs); }
+        });
+
+        const mergedArchives = [...localScores.monthlyArchives];
+        cloudScores.monthlyArchives.forEach((ca: any) => {
+            if (!mergedArchives.find(a => a.month === ca.month)) mergedArchives.push(ca);
+        });
+
+        useScoreStore.setState({
+            dailyScores: mergedDaily.sort((a,b) => a.date.localeCompare(b.date)),
+            monthlyArchives: mergedArchives,
+            isInitialSetupDone: cloudScores.isInitialSetupDone || localScores.isInitialSetupDone
+        });
+    }
+
     // MERGE DE NOTAS E ATALHOS
     const localNotes = useNoteStore.getState();
     const cloudNotes = JSON.parse(decryptData(data.notes, pin));
@@ -136,7 +163,7 @@ const applyCloudData = (data: any, pin: string) => {
         brainDump: mergedBrainDump,
     });
 
-    // MERGE HABITOS E ECONOMIA (Mantidos inalterados)
+    // MERGE HABITOS E ECONOMIA
     const localHabits = useHabitStore.getState();
     const cloudHabits = JSON.parse(decryptData(data.habits, pin));
     const mergeLogs = (localLogs: any, cloudLogs: any) => {
@@ -221,8 +248,9 @@ export const setupAutoSync = () => {
   const unsub6 = useReflectionStore.subscribe(handleStoreChange);
   const unsub7 = useNoteStore.subscribe(handleStoreChange); 
   const unsub8 = useFeedStore.subscribe(handleStoreChange); 
+  const unsub9 = useScoreStore.subscribe(handleStoreChange); 
 
-  return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); unsub7(); unsub8(); };
+  return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); unsub7(); unsub8(); unsub9(); };
 };
 
 export const deleteCloudVault = async (uid: string) => {

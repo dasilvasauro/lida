@@ -13,10 +13,19 @@ import { FocusMode } from './features/tasks/FocusMode';
 import { DailySummaryModal } from './features/daily/DailySummaryModal';
 import { Navbar, type Tab } from './components/layout/Navbar';
 import { AnimatePresence, motion } from 'framer-motion';
-import { startCloudListener, stopCloudListener, setupAutoSync, syncToCloud } from './lib/cloudSync';
-import { WifiOff, LogOut, CloudLightning, CloudOff, Timer, X } from 'lucide-react';
+import { startCloudListener, stopCloudListener, setupAutoSync, syncToCloud, getSyncStatus } from './lib/cloudSync';
+import { WifiOff, LogOut, CloudLightning, CloudOff, Timer, X, Loader2 } from 'lucide-react';
 import { LevelUpModal } from './components/ui/LevelUpModal';
 import { PomodoroModal } from './features/pomodoro/PomodoroModal';
+
+// === TELA DE CARREGAMENTO (SPLASH) ===
+const SplashLoading = () => (
+    <motion.div exit={{ opacity: 0, scale: 1.05 }} transition={{ duration: 0.4 }} className="fixed inset-0 z-[9999] bg-white dark:bg-black flex flex-col items-center justify-center text-zinc-900 dark:text-white">
+        <Loader2 size={48} className="animate-spin text-blue-500 mb-6" />
+        <h2 className="text-xl font-black uppercase tracking-widest mb-2">Descriptografando Cofre</h2>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">Sincronizando com a Nuvem E2EE...</p>
+    </motion.div>
+);
 
 function App() {
   const config = useConfigStore();
@@ -25,11 +34,35 @@ function App() {
   const [currentTab, setCurrentTab] = useState<Tab>('tasks');
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  
+  const [isAppReady, setIsAppReady] = useState(false);
 
   const isAuth = (config.uid && config.e2eePin) || config.isLocalMode;
 
   const currentTabRef = useRef(currentTab);
   useEffect(() => { currentTabRef.current = currentTab; }, [currentTab]);
+
+  // === VALIDADOR DE CARREGAMENTO DA NUVEM (SPLASH SCREEN LOGIC) ===
+  useEffect(() => {
+      if (!isAuth || config.isLocalMode || config.isManualOffline) {
+          setIsAppReady(true);
+          return;
+      }
+      
+      const checkSync = setInterval(() => {
+         if (getSyncStatus()) {
+             setIsAppReady(true);
+             clearInterval(checkSync);
+         }
+      }, 100);
+      
+      const timeout = setTimeout(() => {
+         setIsAppReady(true); // Força a liberação após 10 segundos
+         clearInterval(checkSync);
+      }, 10000);
+      
+      return () => { clearInterval(checkSync); clearTimeout(timeout); };
+  }, [isAuth, config.isLocalMode, config.isManualOffline]);
 
   const handleTabSwitch = (tab: Tab) => {
     setCurrentTab(tab);
@@ -88,7 +121,6 @@ function App() {
 
     const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') { const handled = executeBackAction(); if (!handled) window.history.back(); } };
     const handleForceExit = () => { window.history.back(); setTimeout(() => window.close(), 100); };
-    
     const handleInternalBack = () => { executeBackAction(); };
 
     window.addEventListener('popstate', handlePopState);
@@ -147,16 +179,12 @@ function App() {
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.connect(gain); gain.connect(ctx.destination);
-            
-            // Som curto e abafado simulando um relógio mecânico (tic-tac)
             osc.type = 'square';
             osc.frequency.setValueAtTime(120, ctx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.05);
-            gain.gain.setValueAtTime(0.015, ctx.currentTime); // Volume bem baixo para não incomodar
+            gain.gain.setValueAtTime(0.015, ctx.currentTime); 
             gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
-            
-            osc.start(ctx.currentTime); 
-            osc.stop(ctx.currentTime + 0.05);
+            osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.05);
          } catch(e) {}
       };
 
@@ -197,9 +225,7 @@ function App() {
 
       const interval = setInterval(() => {
           const p = useTaskStore.getState().pomodoro;
-          if (p.isActive && p.soundEnabled) {
-              playTick();
-          }
+          if (p.isActive && p.soundEnabled) { playTick(); }
           useTaskStore.getState().tickPomodoro();
       }, 1000);
 
@@ -221,90 +247,100 @@ function App() {
       <LevelUpModal />
       <PomodoroModal />
       
-      <AnimatePresence>
-        {/* BARRA GLOBAL DO POMODORO MINIMIZADO */}
-        {tasks.pomodoro.isOpen && tasks.pomodoro.isMinimized && (
-           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} 
-              className="bg-red-600 text-white font-bold text-xs py-2.5 px-6 flex justify-between items-center z-[999] relative cursor-pointer shadow-md" 
-              onClick={() => tasks.updatePomodoro({ isMinimized: false })}>
-              <div className="flex items-center gap-2">
-                 <Timer size={14} className={tasks.pomodoro.isActive ? "animate-pulse" : ""} />
-                 <span className="uppercase tracking-widest text-[10px]">Pomodoro {tasks.pomodoro.mode === 'focus' ? 'Foco' : 'Pausa'}</span>
-              </div>
-              <div className="flex items-center gap-4">
-                 <span className="font-mono text-sm tracking-widest">{formatTime(tasks.pomodoro.timeLeft)}</span>
-                 <button onClick={(e) => { e.stopPropagation(); tasks.updatePomodoro({ isOpen: false }); }} className="p-1 hover:bg-red-700 rounded-full transition-colors"><X size={14}/></button>
-              </div>
-           </motion.div>
-        )}
-
-        {config.isManualOffline && !config.isLocalMode && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-blue-500 text-white font-bold text-xs py-2 px-4 flex justify-center items-center gap-2 z-[999] relative">
-            <CloudOff size={14} /> Offline Manual. Salvando apenas no dispositivo.
-          </motion.div>
-        )}
-
-        {isOffline && !config.isLocalMode && !config.isManualOffline && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-amber-500 text-white font-bold text-xs py-2 px-4 flex justify-center items-center gap-2 z-[999] relative">
-            <WifiOff size={14} /> Você está offline.
-          </motion.div>
-        )}
-        
-        {syncMessage && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-emerald-500 text-white font-bold text-xs py-2 px-4 flex justify-center items-center gap-2 z-[999] relative">
-            <CloudLightning size={14} /> {syncMessage}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {isAuth && config.isOnboarded && <DailySummaryModal />}
-
       <AnimatePresence mode="wait">
-        {!isAuth ? (
-          <motion.div key="auth" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }}><AuthScreen /></motion.div>
-        ) : !config.isOnboarded ? (
-          <motion.div key="onboarding" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, filter: 'blur(10px)' }} transition={{ duration: 0.6 }}><OnboardingFlow /></motion.div>
-        ) : (
-          <motion.div key="dashboard" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }} className="relative min-h-screen pb-24">
-            <AnimatePresence mode="wait">
-              <motion.div key={currentTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-                {currentTab === 'tasks' && <TaskDashboard />}
-                {currentTab === 'habits' && <HabitDashboard />}
-                {currentTab === 'notes' && <NotesDashboard />}
-                {currentTab === 'shop' && <ShopDashboard />}
-                {currentTab === 'profile' && <ProfileDashboard />}
-              </motion.div>
-            </AnimatePresence>
+         {!isAppReady && <SplashLoading key="splash" />}
+      </AnimatePresence>
 
-            {!tasks.isGlobalModalOpen && !tasks.isRoutineModalOpen && !tasks.isFocusModeOpen && (
-              <Navbar currentTab={currentTab} setCurrentTab={handleTabSwitch} />
+      {isAppReady && (
+          <AnimatePresence>
+            {/* BARRA GLOBAL DO POMODORO MINIMIZADO */}
+            {tasks.pomodoro.isOpen && tasks.pomodoro.isMinimized && (
+               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} 
+                  className="bg-red-600 text-white font-bold text-xs py-2.5 px-6 flex justify-between items-center z-[999] relative cursor-pointer shadow-md" 
+                  onClick={() => tasks.updatePomodoro({ isMinimized: false })}>
+                  <div className="flex items-center gap-2">
+                     <Timer size={14} className={tasks.pomodoro.isActive ? "animate-pulse" : ""} />
+                     <span className="uppercase tracking-widest text-[10px]">Pomodoro {tasks.pomodoro.mode === 'focus' ? 'Foco' : 'Pausa'}</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                     <span className="font-mono text-sm tracking-widest">{formatTime(tasks.pomodoro.timeLeft)}</span>
+                     <button onClick={(e) => { e.stopPropagation(); tasks.updatePomodoro({ isOpen: false }); }} className="p-1 hover:bg-red-700 rounded-full transition-colors"><X size={14}/></button>
+                  </div>
+               </motion.div>
             )}
-            <FocusMode />
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      <AnimatePresence>
-        {config.isExitModalOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1000] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
-            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 text-center">
-              <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4"><LogOut size={32} className="ml-1" /></div>
-              <h3 className="text-xl font-black mb-2 dark:text-white">Sair do Lida?</h3>
-              <p className="text-zinc-500 dark:text-zinc-400 mb-6 text-sm font-medium">Deseja fechar o aplicativo?</p>
-              
-              <label className="flex items-center justify-center gap-3 mb-6 cursor-pointer group">
-                <input type="checkbox" checked={!config.showExitWarning} className="w-5 h-5 rounded border-2 border-zinc-300 dark:border-zinc-700 accent-blue-500 transition-colors cursor-pointer" onChange={(e) => config.setShowExitWarning(!e.target.checked)} />
-                <span className="text-sm font-bold text-zinc-600 dark:text-zinc-300">Não perguntar novamente</span>
-              </label>
+            {config.isManualOffline && !config.isLocalMode && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-blue-500 text-white font-bold text-xs py-2 px-4 flex justify-center items-center gap-2 z-[999] relative">
+                <CloudOff size={14} /> Offline Manual. Salvando apenas no dispositivo.
+              </motion.div>
+            )}
 
-              <div className="flex gap-3">
-                <button onClick={() => config.setExitModalOpen(false)} className="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold transition-colors">Cancelar</button>
-                <button onClick={() => window.dispatchEvent(new CustomEvent('force-app-exit'))} className="flex-1 p-3 rounded-xl bg-blue-600 text-white font-bold transition-colors">Sair</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            {isOffline && !config.isLocalMode && !config.isManualOffline && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-amber-500 text-white font-bold text-xs py-2 px-4 flex justify-center items-center gap-2 z-[999] relative">
+                <WifiOff size={14} /> Você está offline.
+              </motion.div>
+            )}
+            
+            {syncMessage && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-emerald-500 text-white font-bold text-xs py-2 px-4 flex justify-center items-center gap-2 z-[999] relative">
+                <CloudLightning size={14} /> {syncMessage}
+              </motion.div>
+            )}
+          </AnimatePresence>
+      )}
+
+      {isAppReady && isAuth && config.isOnboarded && <DailySummaryModal />}
+
+      {isAppReady && (
+          <AnimatePresence mode="wait">
+            {!isAuth ? (
+              <motion.div key="auth" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }}><AuthScreen /></motion.div>
+            ) : !config.isOnboarded ? (
+              <motion.div key="onboarding" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, filter: 'blur(10px)' }} transition={{ duration: 0.6 }}><OnboardingFlow /></motion.div>
+            ) : (
+              <motion.div key="dashboard" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }} className="relative min-h-screen pb-24">
+                <AnimatePresence mode="wait">
+                  <motion.div key={currentTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                    {currentTab === 'tasks' && <TaskDashboard />}
+                    {currentTab === 'habits' && <HabitDashboard />}
+                    {currentTab === 'notes' && <NotesDashboard />}
+                    {currentTab === 'shop' && <ShopDashboard />}
+                    {currentTab === 'profile' && <ProfileDashboard />}
+                  </motion.div>
+                </AnimatePresence>
+
+                {!tasks.isGlobalModalOpen && !tasks.isRoutineModalOpen && !tasks.isFocusModeOpen && (
+                  <Navbar currentTab={currentTab} setCurrentTab={handleTabSwitch} />
+                )}
+                <FocusMode />
+              </motion.div>
+            )}
+          </AnimatePresence>
+      )}
+
+      {isAppReady && (
+          <AnimatePresence>
+            {config.isExitModalOpen && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1000] bg-black/80 flex items-center justify-center p-6 backdrop-blur-sm">
+                <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-zinc-200 dark:border-zinc-800 text-center">
+                  <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4"><LogOut size={32} className="ml-1" /></div>
+                  <h3 className="text-xl font-black mb-2 dark:text-white">Sair do Lida?</h3>
+                  <p className="text-zinc-500 dark:text-zinc-400 mb-6 text-sm font-medium">Deseja fechar o aplicativo?</p>
+                  
+                  <label className="flex items-center justify-center gap-3 mb-6 cursor-pointer group">
+                    <input type="checkbox" checked={!config.showExitWarning} className="w-5 h-5 rounded border-2 border-zinc-300 dark:border-zinc-700 accent-blue-500 transition-colors cursor-pointer" onChange={(e) => config.setShowExitWarning(!e.target.checked)} />
+                    <span className="text-sm font-bold text-zinc-600 dark:text-zinc-300">Não perguntar novamente</span>
+                  </label>
+
+                  <div className="flex gap-3">
+                    <button onClick={() => config.setExitModalOpen(false)} className="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold transition-colors">Cancelar</button>
+                    <button onClick={() => window.dispatchEvent(new CustomEvent('force-app-exit'))} className="flex-1 p-3 rounded-xl bg-blue-600 text-white font-bold transition-colors">Sair</button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+      )}
     </ThemeWrapper>
   );
 }
