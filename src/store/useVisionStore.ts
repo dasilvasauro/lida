@@ -25,14 +25,14 @@ export const useVisionStore = create<VisionState>()(
         };
       }),
       checkAndGenerateCheckpoints: () => {
-        const { vision } = get();
-        if (!vision) return;
-        
-        const today = format(new Date(), 'yyyy-MM-dd');
-        const futureCheckpoints = vision.checkpoints.filter((cp: string) => cp >= today);
-        
-        // Se ainda houverem checkpoints no futuro, não fazemos nada
-        if (futureCheckpoints.length > 0) return;
+                const { vision } = get();
+                if (!vision) return;
+                
+                const checkpoints = vision.checkpoints || []; // Lida com o undefined
+                const today = format(new Date(), 'yyyy-MM-dd');
+                const futureCheckpoints = checkpoints.filter((cp: string) => cp >= today);
+                
+                if (futureCheckpoints.length > 0) return;
 
         // Caso contrário, gera 3 novos checkpoints até o fim do mês
         const now = new Date();

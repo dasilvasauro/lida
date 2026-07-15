@@ -316,24 +316,25 @@ export const ShortcutModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
                      /* === CARROSSEL (1x) === */
                      <div className="h-full relative flex items-center justify-center w-full">
                         <AnimatePresence mode="wait">
-                           <motion.div
-                             key={currentIndex}
-                             initial={{ opacity: 0, scale: 0.98 }}
-                             animate={{ opacity: 1, scale: 1 }}
-                             exit={{ opacity: 0, scale: 0.98 }}
-                             transition={{ duration: 0.15 }}
-                             // Gesto de Swipe personalizado (Evita conflitos com o Drag do Reorder)
-                             onPanEnd={(_: any, info: any) => {
-                                const isHorizontal = Math.abs(info.offset.x) > Math.abs(info.offset.y);
-                                if (isHorizontal) {
-                                    if (info.offset.x < -80 || info.velocity.x < -300) {
-                                        setCurrentIndex((i: number) => i < shortcutCategories.length - 1 ? i + 1 : 0);
-                                    } else if (info.offset.x > 80 || info.velocity.x > 300) {
-                                        setCurrentIndex((i: number) => i > 0 ? i - 1 : shortcutCategories.length - 1);
-                                    }
-                                }
-                             }}
-                             className="absolute inset-0 w-full h-full"
+                          <motion.div
+                               key={currentIndex}
+                               initial={{ opacity: 0, x: 50 }}
+                               animate={{ opacity: 1, x: 0 }}
+                               exit={{ opacity: 0, x: -50 }}
+                               transition={{ duration: 0.2 }}
+                               // Usa o Drag nativo do Framer para priorizar a física horizontal
+                               drag="x"
+                               dragConstraints={{ left: 0, right: 0 }}
+                               dragElastic={0.2}
+                               onDragEnd={(_: any, info: any) => {
+                                   const swipeThreshold = 50;
+                                   if (info.offset.x < -swipeThreshold || info.velocity.x < -300) {
+                                       setCurrentIndex((i: number) => i < shortcutCategories.length - 1 ? i + 1 : 0);
+                                   } else if (info.offset.x > swipeThreshold || info.velocity.x > 300) {
+                                       setCurrentIndex((i: number) => i > 0 ? i - 1 : shortcutCategories.length - 1);
+                                   }
+                               }}
+                               className="absolute inset-0 w-full h-full"
                            >
                               <div className="w-full h-full pointer-events-auto flex">
                                  <CategoryView categoryId={shortcutCategories[currentIndex].id} isSplit={false} />

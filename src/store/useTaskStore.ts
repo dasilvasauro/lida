@@ -140,38 +140,49 @@ export const useTaskStore = create<TaskState>()(
       addTask: (task) => set((state) => ({ tasks: [...state.tasks, { ...task, postponedCount: 0, reprioritizedCount: 0, updatedAt: Date.now() }] })),
       
       toggleTaskCompletion: (taskId) => set((state) => {
-        const taskIndex = state.tasks.findIndex(t => t.id === taskId);
-        if (taskIndex === -1) return state;
-        const task = state.tasks[taskIndex];
-        const isCompleting = !task.isCompleted;
-        const isCompletingActive = state.activeFocusSession?.taskId === taskId;
-        
-        let newTasks = [...state.tasks];
-        const updatedTask = { ...task, isCompleted: isCompleting, completedAt: isCompleting ? Date.now() : undefined, updatedAt: Date.now() };
-        newTasks[taskIndex] = updatedTask;
-
-        // NOVO NÚCLEO DE REPETIÇÃO
-        if (isCompleting && !task.nextRecurrenceGenerated) {
-            if (task.type === 'routine' && task.routineTemplateId) {
-                const routine = state.routines.find(r => r.id === task.routineTemplateId);
-                if (routine && routine.weekdays.length > 0) {
-                    let nextDate = addDays(new Date((task.deadlineDate || format(new Date(), 'yyyy-MM-dd')) + 'T12:00:00'), 1);
-                    while (!routine.weekdays.includes(nextDate.getDay())) { nextDate = addDays(nextDate, 1); }
-                    const nextDateStr = format(nextDate, 'yyyy-MM-dd');
-                    newTasks.push({ ...task, id: uuidv4(), isCompleted: false, completedAt: undefined, deadlineDate: nextDateStr, nextRecurrenceGenerated: false, isFailed: false, isArchived: false, subtasks: task.subtasks?.map(st => ({...st, completed: false})), updatedAt: Date.now() });
-                    updatedTask.nextRecurrenceGenerated = true;
-                }
-            } else if (task.recurrence && task.recurrence.type !== 'none') {
-                const nextDateStr = calculateNextRecurrence(task.deadlineDate, task.recurrence);
-                if (nextDateStr) {
-                    newTasks.push({ ...task, id: uuidv4(), isCompleted: false, completedAt: undefined, deadlineDate: nextDateStr, nextRecurrenceGenerated: false, isFailed: false, isArchived: false, subtasks: task.subtasks?.map(st => ({...st, completed: false})), updatedAt: Date.now() });
-                    updatedTask.nextRecurrenceGenerated = true;
-                }
-            }
-        }
-
-        return { tasks: newTasks, ...(isCompletingActive ? { activeFocusSession: null, isFocusModeOpen: false } : {}) };
-      }),
+              const taskIndex = state.tasks.findIndex(t => t.id === taskId);
+              if (taskIndex === -1) return state;
+              const task = state.tasks[taskIndex];
+              const isCompleting = !task.isCompleted;
+              const isCompletingActive = state.activeFocusSession?.taskId === taskId;
+              
+              let newTasks = [...state.tasks];
+              const updatedTask = { ...task, isCompleted: isCompleting, completedAt: isCompleting ? Date.now() : undefined, updatedAt: Date.now() };
+              newTasks[taskIndex] = updatedTask;
+      
+              // NOVO NÚCLEO DE REPETIÇÃO CORRIGIDO (Evita duplicações)
+              if (isCompleting && !task.nextRecurrenceGenerated) {
+                  if (task.type === 'routine' && task.routineTemplateId) {
+                      const routine = state.routines.find(r => r.id === task.routineTemplateId);
+                      if (routine && routine.weekdays.length > 0) {
+                          let nextDate = addDays(new Date((task.deadlineDate || format(new Date(), 'yyyy-MM-dd')) + 'T12:00:00'), 1);
+                          while (!routine.weekdays.includes(nextDate.getDay())) { nextDate = addDays(nextDate, 1); }
+                          const nextDateStr = format(nextDate, 'yyyy-MM-dd');
+                          
+                          // TRAVA DE DUPLICAÇÃO
+                          const alreadyExists = newTasks.some(t => t.routineTemplateId === routine.id && t.deadlineDate === nextDateStr && !t.isArchived);
+                          
+                          if (!alreadyExists) {
+                              newTasks.push({ ...task, id: uuidv4(), isCompleted: false, completedAt: undefined, deadlineDate: nextDateStr, nextRecurrenceGenerated: false, isFailed: false, isArchived: false, subtasks: task.subtasks?.map(st => ({...st, completed: false})), updatedAt: Date.now() });
+                          }
+                          updatedTask.nextRecurrenceGenerated = true;
+                      }
+                  } else if (task.recurrence && task.recurrence.type !== 'none') {
+                      const nextDateStr = calculateNextRecurrence(task.deadlineDate, task.recurrence);
+                      if (nextDateStr) {
+                          // TRAVA DE DUPLICAÇÃO
+                          const alreadyExists = newTasks.some(t => t.title === task.title && t.deadlineDate === nextDateStr && t.type === task.type && !t.isArchived);
+                          
+                          if (!alreadyExists) {
+                              newTasks.push({ ...task, id: uuidv4(), isCompleted: false, completedAt: undefined, deadlineDate: nextDateStr, nextRecurrenceGenerated: false, isFailed: false, isArchived: false, subtasks: task.subtasks?.map(st => ({...st, completed: false})), updatedAt: Date.now() });
+                          }
+                          updatedTask.nextRecurrenceGenerated = true;
+                      }
+                  }
+              }
+      
+              return { tasks: newTasks, ...(isCompletingActive ? { activeFocusSession: null, isFocusModeOpen: false } : {}) };
+            }),
 
       deleteTask: (taskId) => { useConfigStore.getState().addTombstone(taskId); set((state) => ({ tasks: state.tasks.filter((t) => t.id !== taskId) })); },
       
@@ -190,35 +201,43 @@ export const useTaskStore = create<TaskState>()(
       }),
       
       retroactiveCompleteTask: (taskId, dateStr) => set((state) => {
-        const retroTime = new Date(dateStr + 'T23:59:59').getTime();
-        const task = state.tasks.find(t => t.id === taskId);
-        if (!task) return state;
-
-        const updatedTask = { ...task, isCompleted: true, completedAt: retroTime, updatedAt: Date.now() };
-        let newTasks = state.tasks.map(t => t.id === taskId ? updatedTask : t);
-
-        // Gera a próxima recorrência mesmo no perdão
-        if (!task.nextRecurrenceGenerated) {
-             if (task.type === 'routine' && task.routineTemplateId) {
-                const routine = state.routines.find(r => r.id === task.routineTemplateId);
-                if (routine && routine.weekdays.length > 0) {
-                    let nextDate = addDays(new Date((task.deadlineDate || format(new Date(), 'yyyy-MM-dd')) + 'T12:00:00'), 1);
-                    while (!routine.weekdays.includes(nextDate.getDay())) { nextDate = addDays(nextDate, 1); }
-                    newTasks.push({ ...task, id: uuidv4(), isCompleted: false, completedAt: undefined, deadlineDate: format(nextDate, 'yyyy-MM-dd'), nextRecurrenceGenerated: false, isFailed: false, isArchived: false, subtasks: task.subtasks?.map(st => ({...st, completed: false})), updatedAt: Date.now() });
-                    updatedTask.nextRecurrenceGenerated = true;
-                }
-            } else if (task.recurrence && task.recurrence.type !== 'none') {
-                const nextDateStr = calculateNextRecurrence(task.deadlineDate, task.recurrence);
-                if (nextDateStr) {
-                    newTasks.push({ ...task, id: uuidv4(), isCompleted: false, completedAt: undefined, deadlineDate: nextDateStr, nextRecurrenceGenerated: false, isFailed: false, isArchived: false, subtasks: task.subtasks?.map(st => ({...st, completed: false})), updatedAt: Date.now() });
-                    updatedTask.nextRecurrenceGenerated = true;
-                }
-            }
-        }
-        
-        newTasks = newTasks.map(t => t.id === taskId ? updatedTask : t);
-        return { tasks: newTasks };
-      }),
+              const retroTime = new Date(dateStr + 'T23:59:59').getTime();
+              const task = state.tasks.find(t => t.id === taskId);
+              if (!task) return state;
+      
+              const updatedTask = { ...task, isCompleted: true, completedAt: retroTime, updatedAt: Date.now() };
+              let newTasks = state.tasks.map(t => t.id === taskId ? updatedTask : t);
+      
+              // Gera a próxima recorrência mesmo no perdão
+              if (!task.nextRecurrenceGenerated) {
+                   if (task.type === 'routine' && task.routineTemplateId) {
+                      const routine = state.routines.find(r => r.id === task.routineTemplateId);
+                      if (routine && routine.weekdays.length > 0) {
+                          let nextDate = addDays(new Date((task.deadlineDate || format(new Date(), 'yyyy-MM-dd')) + 'T12:00:00'), 1);
+                          while (!routine.weekdays.includes(nextDate.getDay())) { nextDate = addDays(nextDate, 1); }
+                          const nextDateStr = format(nextDate, 'yyyy-MM-dd');
+                          
+                          const alreadyExists = newTasks.some(t => t.routineTemplateId === routine.id && t.deadlineDate === nextDateStr && !t.isArchived);
+                          if (!alreadyExists) {
+                              newTasks.push({ ...task, id: uuidv4(), isCompleted: false, completedAt: undefined, deadlineDate: nextDateStr, nextRecurrenceGenerated: false, isFailed: false, isArchived: false, subtasks: task.subtasks?.map(st => ({...st, completed: false})), updatedAt: Date.now() });
+                          }
+                          updatedTask.nextRecurrenceGenerated = true;
+                      }
+                  } else if (task.recurrence && task.recurrence.type !== 'none') {
+                      const nextDateStr = calculateNextRecurrence(task.deadlineDate, task.recurrence);
+                      if (nextDateStr) {
+                          const alreadyExists = newTasks.some(t => t.title === task.title && t.deadlineDate === nextDateStr && t.type === task.type && !t.isArchived);
+                          if (!alreadyExists) {
+                              newTasks.push({ ...task, id: uuidv4(), isCompleted: false, completedAt: undefined, deadlineDate: nextDateStr, nextRecurrenceGenerated: false, isFailed: false, isArchived: false, subtasks: task.subtasks?.map(st => ({...st, completed: false})), updatedAt: Date.now() });
+                          }
+                          updatedTask.nextRecurrenceGenerated = true;
+                      }
+                  }
+              }
+              
+              newTasks = newTasks.map(t => t.id === taskId ? updatedTask : t);
+              return { tasks: newTasks };
+            }),
 
       addFolder: (folder) => set((state) => ({ folders: [...state.folders, { ...folder, updatedAt: Date.now() }] })), 
       setFolderId: (folderId) => set({ selectedFolderId: folderId }),
