@@ -1,14 +1,14 @@
 # **Lida: Arquitetura e Documentação Técnica**
 
-Este documento descreve o funcionamento interno do Lida, abordando sua lógica de negócios, fluxo de dados e infraestrutura técnica. O objetivo é fornecer uma visão clara de como a aplicação foi construída e como suas peças se conectam.
+Este documento descreve o funcionamento interno do Lida, abordando sua lógica de negócios, fluxo de dados e infraestrutura técnica. O objetivo é fornecer uma visão clara de como a aplicação foi construída e como as peças se conectam.
 
 ## **1\. O Conceito Base**
 
-O Lida é um motor de produtividade gamificado construído sob a premissa de que a inércia deve ter consequências. Diferente de listas de tarefas tradicionais, ele opera com um sistema de economia e pontuação (LPI \- Lida Productivity Index).
+O Lida é um motor de produtividade gamificado construído sob a premissa de que a inércia deve ter consequências. Eu me baseei principalmente na minha experiência para a criação da economia e loja. A aplicação conta  com um índice, um score, gerado para o usuário baseado em sua assiduidade em hábitos e realização de tarefas. (LPI \- Lida Productivity Index).
 
 O sistema pune omissões (tarefas expiradas ou hábitos ignorados) com a perda de recursos virtuais (XP e Ouro) e recompensa a conclusão de tarefas difíceis (Prioridades P0 e P1). Há também a "Zona de Desapego" (Quitter), um espaço desenhado para o rastreamento e abandono de vícios, onde recaídas geram punições severas no progresso do usuário.
 
-A aplicação foi desenhada para ser "Offline-First" e privada. Os dados pertencem exclusivamente ao usuário e são protegidos por criptografia ponta a ponta.
+Os dados sincronizados com a conta do Google são criptografados.Por ser um web-app, dizer que ele é "Offline First" pode soar equivocado, mas o app possui sim mecanismos para tratar os cenários onde não há conexão.
 
 ## **2\. Recursos e Possibilidades**
 
