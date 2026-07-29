@@ -6,26 +6,26 @@
 
 **Domínio:** Engenharia de Software, Arquitetura *Offline-First*, Sistemas Distribuídos, Segurança de Dados.
 
-**Objetivo:** Consolidar a topologia atual, expor vulnerabilidades estruturais (metodologia *Grill Me*) e definir um plano de ação estratégico para escalar a aplicação a custo zero, além de avaliar cenários alternativos.
+**Objetivo:** Consolidar a topologia atual, expor vulnerabilidades estruturais e definir um plano de ação estratégico para escalar a aplicação a custo zero, além de avaliar cenários alternativos.
 
 ## **Sumário**
 
-1. [Resumo Executivo (Abstract)](#bookmark=id.vh7aphgdozdb)  
-2. [Topologia e Fluxo de Dados (Data Flow)](#bookmark=id.qn1uybq9zpd5)  
-3. [Auditoria "Grill Me": Dívidas e Falhas Estruturais](#bookmark=id.12zxhqoickrt)  
+1. [Resumo](#bookmark=id.vh7aphgdozdb)  
+2. [Topologia e Fluxo de Dados](#bookmark=id.qn1uybq9zpd5)  
+3. [Dívidas e Falhas Estruturais](#bookmark=id.12zxhqoickrt)  
 4. [A Armadilha da Stack (Por que o JS/TS permitiu isso?)](#bookmark=id.dqzjwmdthsu7)  
 5. [Plano de Ação Estratégico (Refatoração a Custo Zero)](#bookmark=id.lwo2zi8glll5)  
-6. [Análise de Cenários Alternativos (Multiversos)](#bookmark=id.vxokywuckc1s)  
+6. [Análise de Cenários Alternativos](#bookmark=id.vxokywuckc1s)  
 7. [Conclusão](#bookmark=id.9imadj1pl6cn)  
 8. [Referências Bibliográficas](#bookmark=id.pkhq5995qjgm)
 
-## **1\. Resumo Executivo (Abstract)**
+## **1\. Resumo**
 
 O sistema "Lida" opera como uma Aplicação de Página Única (SPA) baseada no paradigma de **Cliente Gordo (*Fat Client*)** e **Offline-First**. O processamento de regras de negócios (gamificação, economia, lógica de punições) e o armazenamento primário residem inteiramente na memória e no disco do dispositivo do utilizador (navegador).
 
 O backend (Firebase) atua estritamente como um Cofre de Dados (*Data Vault*) passivo, fornecendo armazenamento persistente com **Criptografia de Ponta a Ponta (E2EE)** baseada em chaves AES. Esta arquitetura foi escolhida para maximizar a privacidade do utilizador e minimizar os custos de infraestrutura do lado do servidor a quase zero.
 
-## **2\. Topologia e Fluxo de Dados (Data Flow)**
+## **2\. Topologia e Fluxo de Dados**
 
 A arquitetura diverge das aplicações web tradicionais cliente-servidor (CRUD) da seguinte forma:
 
@@ -34,11 +34,11 @@ A arquitetura diverge das aplicações web tradicionais cliente-servidor (CRUD) 
 3. **Sincronização em Lote (*Blob Sync*):** Um observador (*debounced*) agrupa todo o estado da aplicação num único objeto JSON, criptografa-o e envia-o para o Firestore num único documento, contornando o modelo de precificação por leitura/gravação do Firebase.  
 4. **Resolução de Conflitos via Tombstones:** Entidades apagadas são registadas num dicionário de *Lápides* (tombstones) com carimbos de tempo. Durante o *pull* da nuvem, estas lápides impedem a ressurreição indesejada de dados obsoletos.
 
-## **3\. Auditoria "Grill Me": Dívidas e Falhas Estruturais**
+## **3\. Dívidas e Falhas Estruturais**
 
 Abaixo apresenta-se uma análise fria das vulnerabilidades inerentes à implementação atual da topologia.
 
-### **3.1. Gargalos de Armazenamento Local (O Colapso Iminente)**
+### **3.1. Gargalos de Armazenamento Local**
 
 A persistência em cache local utiliza a API síncrona localStorage, que possui um limite restrito de aproximadamente **5MB**. A ofuscação (Base64) aumenta o tamanho do *payload* em cerca de 33%.
 
@@ -88,7 +88,7 @@ A infraestrutura atual (Alojamento Estático \+ Firebase Blob Sync) é excelente
 | Fuga de Memória (Tombstones) | Adicionar função de Expurgamento (ex: apagar chaves \> 90 dias) no *boot* da app. | Prevenção de crescimento infinito do *payload* JSON. |
 | Efeitos Secundários Impuros | Mover setTimeout e window.dispatchEvent para useEffect nos componentes View. | Testabilidade restaurada; separação estrita entre Lógica de Estado e Camada de Apresentação. |
 
-## **6\. Análise de Cenários Alternativos (Multiversos)**
+## **6\. Análise de Cenários Alternativos**
 
 Se as restrições tecnológicas fossem alteradas, como se comportaria o Lida?
 
