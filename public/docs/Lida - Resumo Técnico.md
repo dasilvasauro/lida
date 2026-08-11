@@ -4,7 +4,7 @@ Este documento descreve o funcionamento interno do Lida, abordando sua lógica d
 
 ## **1\. O Conceito Base**
 
-O Lida é um motor de produtividade gamificado construído sob a premissa de que a inércia deve ter consequências. Eu me baseei principalmente na minha experiência para a criação da economia e loja. A aplicação conta  com um índice, um score, gerado para o usuário baseado em sua assiduidade em hábitos e realização de tarefas. (LPI \- Lida Productivity Index).
+O Lida é um motor de produtividade gamificado construído sob a premissa de que a inércia deve ter consequências. Eu me baseei principalmente na minha experiência com o Habitica para a criação da economia e loja. A aplicação conta  com um índice, um score, gerado para o usuário baseado em sua assiduidade em hábitos e realização de tarefas. (LPI \- Lida Productivity Index).
 
 O sistema pune omissões (tarefas expiradas ou hábitos ignorados) com a perda de recursos virtuais (XP e Ouro) e recompensa a conclusão de tarefas difíceis (Prioridades P0 e P1). Há também a "Zona de Desapego" (Quitter), um espaço desenhado para o rastreamento e abandono de vícios, onde recaídas geram punições severas no progresso do usuário.
 
