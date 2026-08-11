@@ -6,6 +6,8 @@ Este documento descreve o funcionamento interno do Lida, abordando sua lógica d
 
 O Lida é um motor de produtividade gamificado construído sob a premissa de que a inércia deve ter consequências. Eu me baseei principalmente na minha experiência com o Habitica para a criação da economia e loja. A aplicação conta  com um índice, um score, gerado para o usuário baseado em sua assiduidade em hábitos e realização de tarefas. (LPI \- Lida Productivity Index).
 
+A ideia é permitir não somente o gerenciamento de tarefas em um nível superficial e de curto prazo, mas também a definição de metas a longo prazo, se tornando para o usuário um hub de produtividade.
+
 O sistema pune omissões (tarefas expiradas ou hábitos ignorados) com a perda de recursos virtuais (XP e Ouro) e recompensa a conclusão de tarefas difíceis (Prioridades P0 e P1). Há também a "Zona de Desapego" (Quitter), um espaço desenhado para o rastreamento e abandono de vícios, onde recaídas geram punições severas no progresso do usuário.
 
 Os dados sincronizados com a conta do Google são criptografados.Por ser um web-app, dizer que ele é "Offline First" pode soar equivocado, mas o app possui sim mecanismos para tratar os cenários onde não há conexão.
@@ -18,7 +20,7 @@ A aplicação é dividida em módulos independentes que interagem entre si:
 * **Hábitos e Vícios:** Rastreamento diário de hábitos positivos e monitoramento de abstinência de hábitos negativos, com sistema de ciclos de recompensa de 7 dias.  
 * **Economia e Loja:** Ouro e XP acumulados são usados para comprar vantagens (congelamento de hábitos, dias de folga, extensões de prazo) ou temas visuais.  
 * **Base de Conhecimento:** Sistema de Notas e Feeds (estilo microblogging pessoal), permitindo vinculação de notas a tarefas e hábitos para contexto rápido.  
-* **Visão de Vida:** Área para definição de identidade e grandes objetivos, que norteiam as ações diárias.
+* **Visão de Vida:** Área para definição de identidade e grandes objetivos, que norteiam as ações diárias, inspirado por [esse artigo](https://letters.thedankoe.com/p/how-to-fix-your-entire-life-in-1).
 
 ## **3\. A Arquitetura em Camadas**
 
