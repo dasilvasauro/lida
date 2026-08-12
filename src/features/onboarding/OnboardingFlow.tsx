@@ -24,10 +24,10 @@ export const OnboardingFlow = () => {
       <motion.div key="step1" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="flex flex-col items-center text-center max-w-md">
       <h1 className="text-5xl font-black mb-4 tracking-tight">Lida</h1>
       <p className="text-zinc-500 dark:text-zinc-400 mb-8 leading-relaxed">
-      Sua vida organizada com propósito. Gerencie tarefas, hábitos e objetivos em um só lugar e com foco absoluto.
+      Dê propósito à sua rotina. Defina metas, desenvolva hábitos e gerencie suas tarefas.
       </p>
       <button onClick={handleNext} className="flex items-center gap-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black px-8 py-4 rounded-full font-bold hover:scale-105 transition-transform shadow-xl">
-      Começar Jornada <ArrowRight size={20} />
+      Começar <ArrowRight size={20} />
       </button>
       </motion.div>
     )}
@@ -55,8 +55,8 @@ export const OnboardingFlow = () => {
     {step === 3 && (
       <motion.div key="step3" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="w-full max-w-md space-y-8">
       <div className="text-center">
-      <h2 className="text-3xl font-black tracking-tight mb-2">Sua Estética</h2>
-      <p className="text-zinc-500 dark:text-zinc-400">Configure seu ambiente de trabalho.</p>
+      <h2 className="text-3xl font-black tracking-tight mb-2">Visual</h2>
+      <p className="text-zinc-500 dark:text-zinc-400">Defina suas preferências visuais</p>
       </div>
 
       <div className="space-y-6">
@@ -87,7 +87,7 @@ export const OnboardingFlow = () => {
       <motion.div key="step4" variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="w-full max-w-2xl space-y-8">
       <div className="text-center mb-8">
       <h2 className="text-3xl font-black tracking-tight mb-2">Modus Operandi</h2>
-      <p className="text-zinc-500 dark:text-zinc-400">Escolha a filosofia da sua rotina.</p>
+      <p className="text-zinc-500 dark:text-zinc-400">Como prefere lidar com suas tarefas?</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -105,7 +105,7 @@ export const OnboardingFlow = () => {
       />
       <ModusCard
       title="Pontual"
-      desc="A precisão é o seu lema. Bônus gigantesco por respeitar horários."
+      desc="A precisão é o seu lema. Bônus por respeitar horários."
       icon={<Clock size={24} />}
       onClick={() => { setUserClass('punctual'); completeOnboarding(); }}
       />
