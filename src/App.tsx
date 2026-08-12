@@ -23,7 +23,7 @@ const SplashLoading = () => (
     <motion.div exit={{ opacity: 0, scale: 1.05 }} transition={{ duration: 0.4 }} className="fixed inset-0 z-[9999] bg-white dark:bg-black flex flex-col items-center justify-center text-zinc-900 dark:text-white">
         <Loader2 size={48} className="animate-spin text-blue-500 mb-6" />
         <h2 className="text-xl font-black uppercase tracking-widest mb-2">Descriptografando Cofre</h2>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">Sincronizando com a Nuvem E2EE...</p>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 font-medium">Sincronizando com a nuvem</p>
     </motion.div>
 );
 
@@ -57,9 +57,9 @@ function App() {
       }, 100);
       
       const timeout = setTimeout(() => {
-         setIsAppReady(true); // Força a liberação após 10 segundos
+         setIsAppReady(true); // Força a liberação após 6 segundos
          clearInterval(checkSync);
-      }, 10000);
+      }, 6000);
       
       return () => { clearInterval(checkSync); clearTimeout(timeout); };
   }, [isAuth, config.isLocalMode, config.isManualOffline]);
@@ -144,7 +144,7 @@ function App() {
       const { uid, e2eePin, isLocalMode, isManualOffline } = useConfigStore.getState();
       if (!isLocalMode && !isManualOffline && uid && e2eePin) {
         setSyncMessage("Conexão restaurada. Sincronizando dados...");
-        await syncToCloud(); setSyncMessage("Nuvem atualizada com sucesso!"); setTimeout(() => setSyncMessage(null), 4000);
+        await syncToCloud(); setSyncMessage("Nuvem atualizada com sucesso"); setTimeout(() => setSyncMessage(null), 4000);
       }
     };
     const handleOffline = () => setIsOffline(true);
