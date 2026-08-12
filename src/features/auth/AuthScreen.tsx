@@ -115,7 +115,7 @@ export const AuthScreen = () => {
         {step === 'check' && (
           <motion.div key="check" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center">
             <ShieldCheck size={48} className="animate-pulse text-blue-500 mb-4" />
-            <p className="font-bold text-zinc-500">Consultando Nuvem Segura...</p>
+            <p className="font-bold text-zinc-500">Consultando Nuvem...</p>
           </motion.div>
         )}
 
