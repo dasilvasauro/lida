@@ -51,10 +51,24 @@ Após o push, um **Pull Request (PR)** deve ser aberto no GitHub.
 
 > * **Plataformas diferentes, mesmos conceitos:** O GitHub chama este processo de *Pull Request*. O GitLab chama de *Merge Request*. Ambos representam exatamente a mesma coisa: um pedido formal para que outros desenvolvedores revisem o seu código antes de ele ser integrado (mergeado) à branch principal.
 
+É possível criar *pull requests* dentro do próprio terminal, para isso você precisará instalar o `gh`.
+Estando na *feature branch* desejado, onde os commits, pushes e testes foram feitos, criamos um *pull request* com o comando abaixo:
+`gh pr create --base develop --title "feature: permite duplicar tarefas" --body "Closes #2"`
+O parametro `base` define a branch onde queremos subir as alterações feitas na feature branch, e `body` define o corpo do PR, onde é muito importante usarmos as keywords aceitas: Closes, Fixes e Resolves
+
+> É possivel utilizar o modo interativo utilizando apenas `gh pr create`
+
+Para visualizar os PRs abertos, utilize o comando `gh pr list` e para ver um especifico `gh pr view 2`
+
 ## **6\. O Comando Git Merge no GitHub**
 
 Para responder à dúvida comum: **Sim, o comando por trás dos panos continua sendo git merge**.  
 O Git é a ferramenta (o motor). O GitHub é apenas a plataforma de hospedagem. Independentemente de usar GitHub, GitLab ou Bitbucket, a ação de juntar o histórico de duas branches é nativa do Git e feita através do comando de merge. Quando você clica no botão verde "Merge Pull Request" no GitHub, o servidor do GitHub está essencialmente executando um git merge para unir a branch de trabalho à branch de destino.
+
+Há uma forma de realizar o merge utilizando o comando `git`, porém vamos utilizar o `gh`
+Quando você cria um pull request, o Github já sabe para onde você quer mandar aquele código e o que ele deve fazer com essa feature branch.
+
+`gh pr merge --merge --delete-branch` 
 
 ## **7\. Revisão de Código (Code Review)**
 
@@ -92,3 +106,22 @@ O rastreamento de defeitos deve ser feito exclusivamente pela aba "Issues" do Gi
 > * **Passos de Reprodução:** Caminho exato de cliques e ações até o erro.  
 > * **Comportamento Esperado:** O que o sistema deveria fazer caso o bug não existisse.  
 > * **Evidências:** Capturas de tela, logs de terminal ou registros de erro do navegador.
+
+Cada issue gera um número e é importante utiliza-lo na identificação das issues.
+
+**Exmeplos:**
+*feat: permitir duplicar tarefas*
+*enhancement: troca de localStorage por IndexedDB*
+
+## **11\. Feature Branches**
+
+Uma boa prática para lidar com features e melhorias no código é a criação de feature branches. Por mais que isso seja mais compreensível em um cenário corporativo (onde cada colaborador trabalha com uma task) mas isso é recomendável independente disso.
+Dessa forma, cada coisa pode ser testada em separado, antes de tudo ser integrado em uma develop ou main.
+
+Para criar uma feature branch, siga os passos:
+`git checkout develop`
+`git pull origin develop`
+`git checkout -b feature/2-dupliocar-tarefas`
+
+E depois de trabalhar e commitar coisas, sempre importante subir para a feature branch de forma explicita:
+`git push origin feature/2-duplicar-tarefas`
