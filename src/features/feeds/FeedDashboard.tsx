@@ -92,16 +92,31 @@ const FeedSummaryCard = ({ feed, entries, onSelect, isCompact }: { feed: Feed, e
     );
 };
 
-export const parseContent = (text: string) => {
-    if (!text) return '';
-    let html = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    html = html.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-500 underline break-all">$1</a>');
+const escapeHtml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+const formatSegment = (segment: string) => {
+    let html = escapeHtml(segment);
     html = html.replace(/\*\*(.*?)\*\*/gim, '<b>$1</b>');
     html = html.replace(/\*(.*?)\*/gim, '<i>$1</i>');
     html = html.replace(/~~(.*?)~~/gim, '<strike>$1</strike>');
     html = html.replace(/`([^`\n]+)`/g, '<code class="bg-black/10 dark:bg-white/10 px-1.5 py-0.5 rounded text-emerald-600 dark:text-emerald-400 font-mono text-[11px]">$1</code>');
     html = html.replace(/(@[\wÀ-ÿ-]+)/g, '<span class="text-blue-500 font-bold bg-blue-500/10 px-1 rounded">$1</span>');
     html = html.replace(/(#[\wÀ-ÿ-]+)/g, '<span class="text-amber-500 font-bold bg-amber-500/10 px-1 rounded">$1</span>');
+    return html;
+};
+
+// URLs são separadas antes da formatação: assim nenhum texto do usuário vira
+// atributo HTML, e #/@ dentro de links não são transformados em menções.
+export const parseContent = (text: string) => {
+    if (!text) return '';
+    const parts = text.split(/(https?:\/\/[^\s<>"]+)/g);
+    const html = parts.map((part, i) => {
+        if (i % 2 === 1) {
+            const safe = escapeHtml(part);
+            return `<a href="${safe}" target="_blank" rel="noopener noreferrer" class="text-blue-500 underline break-all">${safe}</a>`;
+        }
+        return formatSegment(part);
+    }).join('');
     return html.replace(/\n/g, '<br/>');
 };
 

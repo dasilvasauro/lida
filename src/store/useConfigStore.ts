@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { appStorage } from '../lib/storage';
 import { useEffect, useRef } from 'react';
 
 // === MOTOR DE NAVEGAÇÃO NATIVA ===
@@ -25,6 +26,8 @@ export const useBackHandler = (isActive: boolean, handler: () => boolean) => {
     }, [isActive]);
 };
 
+export const TOMBSTONE_TTL_MS = 180 * 24 * 60 * 60 * 1000;
+
 export type Theme = 'light' | 'dark-amoled' | 'soft-dark' | 'butter' | 'navy' | 'darcula' | 'macos' | 'matrix' | 'pink' | 'todoist' | 'light-gray' | 'orange';
 type Font = 'sans' | 'serif' | 'special';
 type ModusOperandi = 'multitask' | 'minimalist' | 'punctual' | 'ambitious' | null;
@@ -32,7 +35,14 @@ type ModusOperandi = 'multitask' | 'minimalist' | 'punctual' | 'ambitious' | nul
 interface ConfigState {
   theme: Theme; font: Font; userClass: ModusOperandi; userName: string;
   isOnboarded: boolean; lastLoginDate: string | null;
-  uid: string | null; e2eePin: string | null; isLocalMode: boolean;
+  uid: string | null; isLocalMode: boolean;
+  // true quando a chave do cofre (derivada da Chave Mestra) está guardada neste aparelho.
+  hasVaultKey: boolean;
+  // Quando as preferências sincronizadas foram alteradas neste aparelho (merge: mais recente vence).
+  configUpdatedAt: number;
+  // LEGADO: versões antigas guardavam a Chave Mestra em texto puro. Só é lida uma
+  // vez, para migrar o cofre, e depois apagada.
+  e2eePin: string | null;
   
   defaultDaysOff: number[]; hasDismissedDayOffWarning: boolean;
   enableEditWindow: boolean; enablePunishments: boolean; hasDismissedEditWarning: boolean;
@@ -45,12 +55,14 @@ interface ConfigState {
   tombstones: Record<string, number>;
   setManualOffline: (val: boolean) => void;
   addTombstone: (id: string) => void;
+  addTombstones: (ids: string[]) => void;
+  purgeOldTombstones: () => void;
   mergeTombstones: (cloudTombstones: Record<string, number>) => void;
 
   setTheme: (theme: Theme) => void; setFont: (font: Font) => void;
   setUserName: (name: string) => void; setUserClass: (userClass: ModusOperandi) => void;
   completeOnboarding: () => void; setLastLoginDate: (date: string) => void;
-  setAuth: (uid: string, pin: string) => void; setLocalMode: (isLocal: boolean) => void;
+  setAuth: (uid: string) => void; clearLegacyPin: () => void; setLocalMode: (isLocal: boolean) => void;
   logout: () => void;
   setDefaultDaysOff: (days: number[]) => void; dismissDayOffWarning: () => void; 
   setEnableEditWindow: (val: boolean) => void; setEnablePunishments: (val: boolean) => void; dismissEditWarning: () => void;
@@ -62,7 +74,7 @@ interface ConfigState {
 
 export const useConfigStore = create<ConfigState>()(persist((set) => ({
   theme: 'dark-amoled', font: 'sans', userClass: null, userName: '',
-  isOnboarded: false, lastLoginDate: null, uid: null, e2eePin: null, isLocalMode: false,
+  isOnboarded: false, lastLoginDate: null, uid: null, e2eePin: null, hasVaultKey: false, configUpdatedAt: 0, isLocalMode: false,
   defaultDaysOff: [], hasDismissedDayOffWarning: false,
   enableEditWindow: true, enablePunishments: true, hasDismissedEditWarning: false,
   showExitWarning: true, isExitModalOpen: false, isVisionOpen: false,
@@ -72,6 +84,21 @@ export const useConfigStore = create<ConfigState>()(persist((set) => ({
   isManualOffline: false, tombstones: {},
   setManualOffline: (val) => set({ isManualOffline: val }),
   addTombstone: (id) => set((state) => ({ tombstones: { ...state.tombstones, [id]: Date.now() } })),
+  addTombstones: (ids) => set((state) => {
+      const now = Date.now();
+      const next = { ...state.tombstones };
+      ids.forEach(id => { next[id] = now; });
+      return { tombstones: next };
+  }),
+  // Lápides com mais de 180 dias são descartadas. Um aparelho que ficar mais
+  // de 180 dias sem sincronizar pode reviver itens apagados nesse período.
+  purgeOldTombstones: () => set((state) => {
+      const limit = Date.now() - TOMBSTONE_TTL_MS;
+      const entries = Object.entries(state.tombstones || {});
+      const kept = entries.filter(([, t]) => t >= limit);
+      if (kept.length === entries.length) return state;
+      return { tombstones: Object.fromEntries(kept) };
+  }),
   mergeTombstones: (cloudTombstones) => set((state) => {
       const merged = { ...state.tombstones };
       for (const id in cloudTombstones) { merged[id] = Math.max(merged[id] || 0, cloudTombstones[id]); }
@@ -81,12 +108,21 @@ export const useConfigStore = create<ConfigState>()(persist((set) => ({
   setTheme: (theme) => set({ theme }), setFont: (font) => set({ font }),
   setUserName: (userName) => set({ userName }), setUserClass: (userClass) => set({ userClass }),
   completeOnboarding: () => set({ isOnboarded: true }), setLastLoginDate: (date) => set({ lastLoginDate: date }),
-  setAuth: (uid, pin) => set({ uid, e2eePin: pin, isLocalMode: false }), setLocalMode: (isLocalMode) => set({ isLocalMode }),
-  logout: () => set({ uid: null, e2eePin: null, isOnboarded: false, isLocalMode: false }),
+  setAuth: (uid) => set({ uid, hasVaultKey: true, e2eePin: null, isLocalMode: false }), clearLegacyPin: () => set({ e2eePin: null }), setLocalMode: (isLocalMode) => set({ isLocalMode }),
+  logout: () => set({ uid: null, e2eePin: null, hasVaultKey: false, isOnboarded: false, isLocalMode: false }),
   setDefaultDaysOff: (days) => set({ defaultDaysOff: days }), dismissDayOffWarning: () => set({ hasDismissedDayOffWarning: true }),
   setEnableEditWindow: (val) => set({ enableEditWindow: val }), setEnablePunishments: (val) => set({ enablePunishments: val }), dismissEditWarning: () => set({ hasDismissedEditWarning: true }),
   setShowExitWarning: (show) => set({ showExitWarning: show }), setExitModalOpen: (open) => set({ isExitModalOpen: open }),
   setVisionOpen: (open) => set({ isVisionOpen: open }), setSettingsOpen: (open) => set({ isSettingsOpen: open }),
   setGoogleConnectOpen: (open) => set({ isGoogleConnectOpen: open }), setChangelogOpen: (open) => set({ isChangelogOpen: open }),
   setCompactView: (val) => set({ isCompactView: val }),
-}), { name: 'lida-config' }));
+}), {
+  name: 'lida-config',
+  storage: appStorage,
+  // Modais abertos são estado de tela: não persistem entre sessões.
+  partialize: (state) => {
+    const { isExitModalOpen, isVisionOpen, isSettingsOpen, isGoogleConnectOpen, isChangelogOpen, ...rest } = state;
+    void isExitModalOpen; void isVisionOpen; void isSettingsOpen; void isGoogleConnectOpen; void isChangelogOpen;
+    return rest;
+  },
+}));

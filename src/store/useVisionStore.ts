@@ -1,10 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { appStorage } from '../lib/storage';
 import type { Vision, GoalState } from '../types';
 import { format, addDays, endOfMonth, differenceInDays } from 'date-fns';
 
 interface VisionState {
   vision: Vision | null;
+  updatedAt?: number;
   setVision: (vision: Vision) => void;
   updateGoalState: (goalId: string, newState: GoalState) => void;
   checkAndGenerateCheckpoints: () => void;
@@ -14,14 +16,16 @@ export const useVisionStore = create<VisionState>()(
   persist(
     (set, get) => ({
       vision: null,
-      setVision: (vision) => set({ vision }),
+      updatedAt: 0,
+      setVision: (vision) => set({ vision, updatedAt: Date.now() }),
       updateGoalState: (goalId, newState) => set((state) => {
         if (!state.vision) return state;
         return {
           vision: {
             ...state.vision,
-            goals: state.vision.goals.map((g: any) => g.id === goalId ? { ...g, state: newState } : g)
-          }
+            goals: state.vision.goals.map((g) => g.id === goalId ? { ...g, state: newState } : g)
+          },
+          updatedAt: Date.now()
         };
       }),
       checkAndGenerateCheckpoints: () => {
@@ -57,10 +61,11 @@ export const useVisionStore = create<VisionState>()(
           vision: {
             ...vision,
             checkpoints: [format(cp1, 'yyyy-MM-dd'), format(cp2, 'yyyy-MM-dd'), format(cp3, 'yyyy-MM-dd')]
-          }
+          },
+          updatedAt: Date.now()
         });
       }
     }),
-    { name: 'lida-vision' }
+    { name: 'lida-vision', storage: appStorage }
   )
 );

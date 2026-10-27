@@ -1,11 +1,11 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import type { StateStorage } from 'zustand/middleware';
-import type { Task, Mood, Folder, RoutineTemplate, BrainDumpState, BrainDumpItem, BrainDumpQuadrant, PomodoroState, Priority } from '../types';
-import { format, addDays, addMonths, differenceInDays } from 'date-fns';
+import { persist } from 'zustand/middleware';
+import { appStorage } from '../lib/storage';
+import type { Task, Mood, Folder, RoutineTemplate, BrainDumpState, BrainDumpItem, BrainDumpQuadrant, Priority } from '../types';
+import { format, addDays, addMonths, subDays, differenceInDays } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 import { useConfigStore } from './useConfigStore';
-import { useEconomyStore } from './useEconomyStore';
+import { useEconomyStore, withEconomyEvent } from './useEconomyStore';
 import { useHabitStore } from './useHabitStore';
 import { useScoreStore } from './useScoreStore';
 
@@ -33,15 +33,6 @@ const calculateNextRecurrence = (currentDateStr: string | undefined, recurrence:
   return null;
 };
 
-const obfuscatedStorage: StateStorage = {
-  getItem: (name) => {
-    const str = localStorage.getItem(name);
-    if (!str) return null;
-    try { JSON.parse(str); return str; } catch { try { return decodeURIComponent(atob(str)); } catch { return null; } }
-  },
-  setItem: (name, value) => { localStorage.setItem(name, btoa(encodeURIComponent(value))); },
-  removeItem: (name) => localStorage.removeItem(name),
-};
 
 const PRIORITY_WEIGHTS: Record<Priority, number> = { P0: 0, P1: 1, P2: 2, P3: 3, P4: 4 };
 const PRIORITY_SCORE_VALUE: Record<Priority, number> = { P0: 5, P1: 4, P2: 3, P3: 2, P4: 1 };
@@ -53,8 +44,6 @@ interface TaskState {
   activeFocusSession: { taskId: string; startTime: number; duration: number } | null;
   isFocusModeOpen: boolean; isGlobalModalOpen: boolean; isRoutineModalOpen: boolean;
   brainDump: BrainDumpState;
-  
-  pomodoro: PomodoroState; 
 
   setGlobalModalOpen: (isOpen: boolean) => void; setRoutineModalOpen: (isOpen: boolean) => void; 
   addTask: (task: Task) => void; toggleTaskCompletion: (taskId: string) => void; deleteTask: (taskId: string) => void;
@@ -77,9 +66,6 @@ interface TaskState {
   removeBrainDumpItem: (id: string) => void;
   markBrainDumpItemConverted: (id: string, type: 'task' | 'note') => void;
   clearBrainDump: () => void; 
-
-  updatePomodoro: (partial: Partial<PomodoroState>) => void;
-  tickPomodoro: () => void;
 }
 
 export const useTaskStore = create<TaskState>()(
@@ -90,51 +76,11 @@ export const useTaskStore = create<TaskState>()(
       isFocusModeOpen: false, isGlobalModalOpen: false, isRoutineModalOpen: false,
       brainDump: { lastDumpAt: null, items: [] },
 
-      pomodoro: { isOpen: false, isMinimized: false, isActive: false, mode: 'focus', timeLeft: 25 * 60, focusDuration: 25, breakDuration: 5, accumulatedSeconds: 0, soundEnabled: true },
-
-      updatePomodoro: (partial) => set((state) => ({ pomodoro: { ...state.pomodoro, ...partial } })),
-      
-      tickPomodoro: () => set((state) => {
-        const p = state.pomodoro;
-        if (!p.isActive) return state;
-
-        let newTimeLeft = p.timeLeft - 1;
-        let newAccumulated = p.accumulatedSeconds;
-
-        if (p.mode === 'focus') {
-            newAccumulated += 1;
-            if (newAccumulated >= 3600) {
-                setTimeout(() => {
-                    useEconomyStore.getState().addVouchers(1);
-                    window.dispatchEvent(new CustomEvent('pomodoro-voucher'));
-                }, 0);
-                newAccumulated -= 3600;
-            }
-        }
-
-        let newMode: 'focus' | 'break' = p.mode;
-        let newIsActive: boolean = p.isActive; 
-
-        if (newTimeLeft <= 0) {
-            setTimeout(() => window.dispatchEvent(new CustomEvent('pomodoro-ring')), 0); 
-            if (p.mode === 'focus') {
-                newMode = 'break';
-                newTimeLeft = p.breakDuration * 60;
-            } else {
-                newMode = 'focus';
-                newTimeLeft = p.focusDuration * 60;
-                newIsActive = false; 
-            }
-        }
-
-        return { pomodoro: { ...p, timeLeft: newTimeLeft, accumulatedSeconds: newAccumulated, mode: newMode, isActive: newIsActive } };
-      }),
-
-      setBrainDump: (items) => set({ brainDump: { lastDumpAt: Date.now(), items } }),
-      updateBrainDumpItem: (id, quadrant) => set((state) => ({ brainDump: { ...state.brainDump, items: state.brainDump.items.map(i => i.id === id ? { ...i, quadrant } : i) } })),
-      removeBrainDumpItem: (id) => set((state) => ({ brainDump: { ...state.brainDump, items: state.brainDump.items.filter(i => i.id !== id) } })),
-      markBrainDumpItemConverted: (id, type) => set((state) => ({ brainDump: { ...state.brainDump, items: state.brainDump.items.map(i => i.id === id ? { ...i, convertedTo: type } : i) } })),
-      clearBrainDump: () => set((state) => ({ brainDump: { ...state.brainDump, items: [] } })),
+      setBrainDump: (items) => set({ brainDump: { lastDumpAt: Date.now(), updatedAt: Date.now(), items } }),
+      updateBrainDumpItem: (id, quadrant) => set((state) => ({ brainDump: { ...state.brainDump, updatedAt: Date.now(), items: state.brainDump.items.map(i => i.id === id ? { ...i, quadrant } : i) } })),
+      removeBrainDumpItem: (id) => set((state) => ({ brainDump: { ...state.brainDump, updatedAt: Date.now(), items: state.brainDump.items.filter(i => i.id !== id) } })),
+      markBrainDumpItemConverted: (id, type) => set((state) => ({ brainDump: { ...state.brainDump, updatedAt: Date.now(), items: state.brainDump.items.map(i => i.id === id ? { ...i, convertedTo: type } : i) } })),
+      clearBrainDump: () => set((state) => ({ brainDump: { ...state.brainDump, updatedAt: Date.now(), items: [] } })),
 
       setGlobalModalOpen: (isOpen) => set({ isGlobalModalOpen: isOpen }), setRoutineModalOpen: (isOpen) => set({ isRoutineModalOpen: isOpen }),
       addTask: (task) => set((state) => ({ tasks: [...state.tasks, { ...task, postponedCount: 0, reprioritizedCount: 0, updatedAt: Date.now() }] })),
@@ -276,20 +222,21 @@ export const useTaskStore = create<TaskState>()(
         let newMoodHistory = { ...moodHistory };
         let changed = false;
 
-        const startProcessingDate = lastLoginStr ? new Date(lastLoginStr + 'T12:00:00') : new Date(todayStr + 'T12:00:00');
         const todayObj = new Date(todayStr + 'T12:00:00');
+        const lastLoginObj = lastLoginStr ? new Date(lastLoginStr + 'T12:00:00') : todayObj;
 
-        const diffTotal = differenceInDays(todayObj, startProcessingDate);
-        const maxDaysToProcess = Math.min(diffTotal, 30); 
+        // Processa no máximo os últimos 30 dias. Antes, uma ausência maior que 30 dias
+        // fazia o laço não processar dia nenhum.
+        const MAX_DAYS_TO_PROCESS = 30;
+        const oldestAllowed = subDays(todayObj, MAX_DAYS_TO_PROCESS);
+        let processDate = new Date(Math.max(lastLoginObj.getTime(), oldestAllowed.getTime()));
 
-        let processDate = new Date(startProcessingDate);
-
-        while (processDate < todayObj && differenceInDays(todayObj, processDate) <= maxDaysToProcess) {
+        while (processDate < todayObj) {
             const loopDateStr = format(processDate, 'yyyy-MM-dd');
             const dayOfWeek = processDate.getDay();
             const isDayOff = defaultDaysOff.includes(dayOfWeek);
 
-            let totalLostXp = 0; let totalLostGold = 0;
+            const dayPenalties: { taskId: string; xp: number; gold: number }[] = [];
             
             let dayScore = 50; 
             let tasksDoneCount = 0;
@@ -318,7 +265,7 @@ export const useTaskStore = create<TaskState>()(
                         if (enablePunishments) {
                             let baseGold = 15; let baseXp = 45;
                             switch (t.priority) { case 'P0': baseGold = 50; baseXp = 150; break; case 'P1': baseGold = 40; baseXp = 100; break; case 'P2': baseGold = 30; baseXp = 75; break; case 'P3': baseGold = 20; baseXp = 50; break; case 'P4': baseGold = 10; baseXp = 25; break; }
-                            totalLostXp += baseXp; totalLostGold += baseGold;
+                            dayPenalties.push({ taskId: t.id, xp: baseXp, gold: baseGold });
                         }
                     }
                 }
@@ -353,9 +300,11 @@ export const useTaskStore = create<TaskState>()(
                 }
             });
 
-            if (totalLostXp > 0 || totalLostGold > 0) {
-                useEconomyStore.getState().applyPenalty(totalLostXp, totalLostGold);
-            }
+            // Cada punição é um evento com o id da tarefa: se outro aparelho também
+            // processar este dia, a punição conta uma vez só na economia sincronizada.
+            dayPenalties.forEach(p => {
+                withEconomyEvent(`fail:${p.taskId}`, () => useEconomyStore.getState().applyPenalty(p.xp, p.gold));
+            });
 
             if (isDayOff && (tasksDoneCount > 0 || habitsDoneCount > 0)) {
                 dayScore += 10;
@@ -377,16 +326,26 @@ export const useTaskStore = create<TaskState>()(
         });
 
         if (lastLoginStr) {
-            const lastMonth = lastLoginStr.substring(0, 7); 
+            // Arquiva todos os meses anteriores ao atual (não só o do último login),
+            // para cobrir ausências que atravessam mais de uma virada de mês.
             const currentMonth = todayStr.substring(0, 7);
-            if (lastMonth !== currentMonth) {
-                scoreStore.archiveMonth(lastMonth);
-            }
+            const pendingMonths = new Set(useScoreStore.getState().dailyScores.map(d => d.date.substring(0, 7)).filter(m => m < currentMonth));
+            [...pendingMonths].sort().forEach(m => useScoreStore.getState().archiveMonth(m));
         }
 
         if (changed) set({ tasks: newTasks, moodHistory: newMoodHistory });
       }
     }),
-    { name: 'lida-tasks', storage: createJSONStorage(() => obfuscatedStorage) }
+    {
+      name: 'lida-tasks',
+      storage: appStorage,
+      // Estado de UI (modais abertos) não é persistido.
+      partialize: (state) => ({
+        tasks: state.tasks, folders: state.folders, routines: state.routines,
+        dailyMood: state.dailyMood, moodHistory: state.moodHistory, brainDump: state.brainDump,
+        selectedFilter: state.selectedFilter, selectedFolderId: state.selectedFolderId,
+        activeFocusSession: state.activeFocusSession,
+      }),
+    }
   )
 );

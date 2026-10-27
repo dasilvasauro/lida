@@ -9,7 +9,7 @@ O objetivo do Lida é ser um hub de gestão pessoal de produtividade, incorporan
 ## Principais Recursos
 
 * **Módulo Visão:** Estruturação de metas de longo prazo. Permite registrar características a serem desenvolvidas ou abandonadas e classificar grandes objetivos em estados de maturidade (de Inativo a Consistente);
-* **Offline-First e Criptografia (E2EE):** A aplicação funciona integralmente sem conexão com a internet (uma vez que carregada previamente), utilizando armazenamento local (`localStorage`). Na opção de sincronização em nuvem via conta Google, os dados são criptografados localmente com uma Chave Mestra definida pelo usuário antes de serem enviados ao banco de dados, garantindo *zero-knowledge*;
+* **Offline-First e Criptografia (E2EE):** A aplicação funciona integralmente sem conexão com a internet (uma vez que carregada previamente), utilizando armazenamento local (IndexedDB). Na opção de sincronização em nuvem via conta Google, os dados são criptografados localmente (AES-GCM, chave derivada da Chave Mestra com PBKDF2) antes de serem enviados ao Firestore, garantindo *zero-knowledge*. O cofre é dividido em vários documentos e só as partes alteradas trafegam;
 * **Foco e Priorização Estrita:** Sistema de prioridades hierárquicas (P0 a P4) com travas sistêmicas que limitam a criação de tarefas P0 e P1 no mesmo dia;
 * **Tipos diversos de tarefas:** Tarefas de Tempo (com timer integrado), Sprints para projetos de curto prazo;
 * **Gestão de Hábitos e Histórico Analítico:** Rastreamento de execução diária (visualização em grid de contribuições). Possui mecânicas de manutenção de histórico, como a aplicação de pausas programadas ("Congelamentos" ou "Dias de Folga"), para gerenciamento realista da rotina;
@@ -21,11 +21,11 @@ O objetivo do Lida é ser um hub de gestão pessoal de produtividade, incorporan
 A aplicação foi construída com foco em performance e fluidez, permitindo instalação nativa em dispositivos móveis e desktops via navegador.
 
 * **Frontend:** React + TypeScript (Vite)
-* **Gerenciamento de Estado:** Zustand (com middlewares de persistência)
+* **Gerenciamento de Estado:** Zustand (persistência em IndexedDB)
 * **Estilização:** Tailwind CSS v4
 * **Animações e UI:** Framer Motion
 * **Backend e Sincronização:** Firebase (Auth e Firestore)
-* **Segurança:** Crypto-JS (Padrão AES)
+* **Segurança:** Web Crypto API (PBKDF2 + AES-GCM). Crypto-JS é usado apenas para ler cofres no formato antigo durante a migração.
 
 ## Instalação e Execução Local
 
@@ -56,6 +56,9 @@ npm run dev
 ```
 
 A aplicação estará disponível em `http://localhost:5173`. Por utilizar a arquitetura Offline-First, é possível iniciar o uso e testes locais imediatamente, sem necessidade de configurar chaves de ambiente ou banco de dados externo num primeiro momento.
+
+## Regras do Firestore
+As regras de segurança estão em `firestore.rules`. Elas precisam estar publicadas no projeto Firebase para o cofre v2 funcionar.
 
 ## Deploy e PWA
 O projeto é compilado utilizando o `vite-plugin-pwa` para geração do Service Worker e manifesto, e pode ser publicado automaticamente através do GitHub Actions (GitHub Pages). Uma vez em produção, a aplicação lida nativamente com o cache de recursos e ações de navegação (como a interceptação do botão "Voltar" do Android).

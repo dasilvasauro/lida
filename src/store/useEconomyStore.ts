@@ -1,6 +1,7 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import type { StateStorage } from 'zustand/middleware';
+import { create, type StateCreator } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { extractCounters, diffTree, isEmptyTree, newLedger, recordDelta, recordEvent, getDeviceId, type Ledger } from '../lib/economyLedger';
+import { appStorage } from '../lib/storage';
 import { format } from 'date-fns';
 
 export type EconomyItem = 'freeze' | 'dayOff' | 'instantLuck' | 'magicDice' | 'xpBoost' | 'goldBoost' | 'extraP0' | 'extraP1' | 'respite' | 'relief' | 'bonusTask' | 'luckyCard' | 'changeModus' | 'extraQuitter';
@@ -13,6 +14,7 @@ interface EconomyState {
   claimedMilestones: number[]; 
   purchasedThemes: string[];
   updatedAt?: number;
+  ledger?: Ledger;
 
   buyTheme: (themeId: string, cost: number) => boolean;
   addReward: (finalXp: number, finalGold: number) => void;
@@ -27,22 +29,47 @@ interface EconomyState {
   clearLevelUp: () => void;
 }
 
-const calculateLevel = (xp: number) => Math.floor(Math.sqrt(xp / 100)) + 1;
+export const calculateLevel = (xp: number) => Math.floor(Math.sqrt(Math.max(0, xp) / 100)) + 1;
 
-// OFUSCAÇÃO DE DADOS PARA PREVENIR CÓDIGOS DE CONSOLE
-const obfuscatedStorage: StateStorage = {
-  getItem: (name) => {
-    const str = localStorage.getItem(name);
-    if (!str) return null;
-    try { JSON.parse(str); return str; } catch { try { return decodeURIComponent(atob(str)); } catch { return null; } }
-  },
-  setItem: (name, value) => { localStorage.setItem(name, btoa(encodeURIComponent(value))); },
-  removeItem: (name) => localStorage.removeItem(name),
+// === RASTREADOR DO REGISTRO ===
+// Toda alteração nos contadores (por ações da store ou por setState externo, como
+// o Desapego) vira uma variação na entrada deste aparelho no registro.
+// Dados vindos da nuvem são aplicados com applyRemote() e não geram variação.
+let applyingRemote = false;
+export const applyRemoteEconomy = (fn: () => void) => {
+  applyingRemote = true;
+  try { fn(); } finally { applyingRemote = false; }
 };
+
+// Variações feitas dentro de withEconomyEvent viram um evento identificado, que
+// conta uma vez só mesmo que mais de um aparelho o registre (ex.: punição de uma
+// tarefa que falhou, processada por dois aparelhos offline).
+let currentEventId: string | null = null;
+export const withEconomyEvent = (eventId: string, fn: () => void) => {
+  const prev = currentEventId;
+  currentEventId = eventId;
+  try { fn(); } finally { currentEventId = prev; }
+};
+
+const ledgerTracker = (config: StateCreator<EconomyState>): StateCreator<EconomyState> => (set, get, api) => {
+  const tracked = ((partial: Parameters<typeof set>[0], replace?: boolean) => {
+    const prev = get();
+    (set as (p: unknown, r?: boolean) => void)(partial, replace);
+    if (applyingRemote) return;
+    const next = get();
+    const delta = diffTree(extractCounters(prev), extractCounters(next));
+    if (isEmptyTree(delta)) return;
+    const ledger = next.ledger ?? newLedger(extractCounters(prev));
+    (set as (p: unknown) => void)({ ledger: currentEventId ? recordEvent(ledger, currentEventId, delta) : recordDelta(ledger, getDeviceId(), delta) });
+  }) as typeof set;
+  api.setState = tracked;
+  return config(tracked, get, api);
+};
+
 
 export const useEconomyStore = create<EconomyState>()(
   persist(
-    (set, get) => ({
+    ledgerTracker((set, get) => ({
       xp: 0, level: 1, gold: 1500, vouchers: 20, voucherProgress: 0,
       inventory: { freeze: 0, dayOff: 0, instantLuck: 0, magicDice: 0, xpBoost: 0, goldBoost: 0, extraP0: 0, extraP1: 0, respite: 0, relief: 0, bonusTask: 0, luckyCard: 0, changeModus: 0, extraQuitter: 0 },
       activeXpBoostUntil: null, activeGoldBoostUntil: null, dailyHistory: {}, levelUpData: null, claimedMilestones: [], purchasedThemes: [], 
@@ -127,7 +154,7 @@ export const useEconomyStore = create<EconomyState>()(
       buyItem: (item, cost, currency) => { const state = get(); if (state[currency] >= cost) { set({ [currency]: state[currency] - cost, inventory: { ...state.inventory, [item]: state.inventory[item] + 1 }, updatedAt: Date.now() }); return true; } return false; },
       useItem: (item) => { const state = get(); if (state.inventory[item] > 0) { set({ inventory: { ...state.inventory, [item]: state.inventory[item] - 1 }, updatedAt: Date.now() }); return true; } return false; },
       setBoost: (type, hours) => { const until = Date.now() + hours * 60 * 60 * 1000; set(() => ({ ...(type === 'xp' ? { activeXpBoostUntil: until } : { activeGoldBoostUntil: until }), updatedAt: Date.now() })); },
-    }),
-    { name: 'lida-economy-v3', storage: createJSONStorage(() => obfuscatedStorage) }
+    })),
+    { name: 'lida-economy-v3', storage: appStorage }
   )
 );

@@ -36,7 +36,7 @@ export const ProfileDashboard = () => {
   const { xp, level, gold, inventory, useItem } = useEconomyStore();
   const { tasks, moodHistory } = useTaskStore();
   const { habits, logs, modifiers } = useHabitStore();
-  const { uid, e2eePin, isLocalMode, defaultDaysOff, userClass, setUserClass, userName, setExitModalOpen } = useConfigStore();
+  const { uid, hasVaultKey, isLocalMode, defaultDaysOff, userClass, setUserClass, userName, setExitModalOpen } = useConfigStore();
   const { reflections } = useReflectionStore();
   const { dailyScores, monthlyArchives, getCurrentMonthScore } = useScoreStore();
 
@@ -60,11 +60,12 @@ export const ProfileDashboard = () => {
   const showToast = (msg: string, type?: 'error') => { setToastMessage({msg, type}); setTimeout(() => setToastMessage(null), 3000); };
 
   const handleForceSync = async () => {
-    if (!uid || !e2eePin || !navigator.onLine) return showToast("Não foi possível sincronizar. Verifique a rede.", "error");
+    if (!uid || !hasVaultKey || !navigator.onLine) return showToast("Não foi possível sincronizar. Verifique a rede.", "error");
     setIsSyncing(true);
     try { 
-        await syncToCloud(true); 
-        await syncFromCloud(uid, e2eePin); 
+        // Baixa o que mudou na nuvem e depois envia só o que mudou aqui.
+        await syncFromCloud(); 
+        await syncToCloud(); 
         showToast("Sincronização realizada com sucesso!"); 
     } 
     catch (e: any) { 

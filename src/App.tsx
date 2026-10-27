@@ -13,8 +13,11 @@ import { FocusMode } from './features/tasks/FocusMode';
 import { DailySummaryModal } from './features/daily/DailySummaryModal';
 import { Navbar, type Tab } from './components/layout/Navbar';
 import { AnimatePresence, motion } from 'framer-motion';
-import { startCloudListener, stopCloudListener, setupAutoSync, syncToCloud, getSyncStatus } from './lib/cloudSync';
-import { WifiOff, LogOut, CloudLightning, CloudOff, Timer, X, Loader2 } from 'lucide-react';
+import { startCloudListener, stopCloudListener, setupAutoSync, syncToCloud, ensureVaultReady } from './lib/cloudSync';
+import { useSyncStatus } from './lib/syncStatus';
+import { usePomodoroStore } from './store/usePomodoroStore';
+import { useEconomyStore } from './store/useEconomyStore';
+import { WifiOff, LogOut, CloudLightning, CloudOff, Timer, X, Loader2, AlertTriangle } from 'lucide-react';
 import { LevelUpModal } from './components/ui/LevelUpModal';
 import { PomodoroModal } from './features/pomodoro/PomodoroModal';
 
@@ -27,9 +30,47 @@ const SplashLoading = () => (
     </motion.div>
 );
 
+const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+};
+
+// Componente isolado: só ele re-renderiza a cada segundo do Pomodoro.
+const PomodoroMiniBar = () => {
+  const isOpen = usePomodoroStore((s) => s.isOpen);
+  const isMinimized = usePomodoroStore((s) => s.isMinimized);
+  const isActive = usePomodoroStore((s) => s.isActive);
+  const mode = usePomodoroStore((s) => s.mode);
+  const timeLeft = usePomodoroStore((s) => s.timeLeft);
+  const setMinimized = usePomodoroStore((s) => s.setMinimized);
+  const close = usePomodoroStore((s) => s.close);
+
+  if (!isOpen || !isMinimized) return null;
+  return (
+    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+      className="bg-red-600 text-white font-bold text-xs py-2.5 px-6 flex justify-between items-center z-[999] relative cursor-pointer shadow-md"
+      onClick={() => setMinimized(false)}>
+      <div className="flex items-center gap-2">
+        <Timer size={14} className={isActive ? "animate-pulse" : ""} />
+        <span className="uppercase tracking-widest text-[10px]">Pomodoro {mode === 'focus' ? 'Foco' : 'Pausa'}</span>
+      </div>
+      <div className="flex items-center gap-4">
+        <span className="font-mono text-sm tracking-widest">{formatTime(timeLeft)}</span>
+        <button onClick={(e) => { e.stopPropagation(); close(); }} className="p-1 hover:bg-red-700 rounded-full transition-colors"><X size={14}/></button>
+      </div>
+    </motion.div>
+  );
+};
+
 function App() {
   const config = useConfigStore();
-  const tasks = useTaskStore();
+  // Seletores: o App só re-renderiza quando estes campos mudam.
+  const isGlobalModalOpen = useTaskStore((s) => s.isGlobalModalOpen);
+  const isRoutineModalOpen = useTaskStore((s) => s.isRoutineModalOpen);
+  const isFocusModeOpen = useTaskStore((s) => s.isFocusModeOpen);
+  const initialSyncDone = useSyncStatus((s) => s.initialSyncDone);
+  const [syncAlert, setSyncAlert] = useState<{ type: 'error' | 'warning'; message: string } | null>(null);
   
   const [currentTab, setCurrentTab] = useState<Tab>('tasks');
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -37,7 +78,8 @@ function App() {
   
   const [isAppReady, setIsAppReady] = useState(false);
 
-  const isAuth = (config.uid && config.e2eePin) || config.isLocalMode;
+  // e2eePin: só durante a migração automática de quem vem da versão antiga.
+  const isAuth = (config.uid && (config.hasVaultKey || config.e2eePin)) || config.isLocalMode;
 
   const currentTabRef = useRef(currentTab);
   useEffect(() => { currentTabRef.current = currentTab; }, [currentTab]);
@@ -49,20 +91,29 @@ function App() {
           return;
       }
       
-      const checkSync = setInterval(() => {
-         if (getSyncStatus()) {
-             setIsAppReady(true);
-             clearInterval(checkSync);
-         }
-      }, 100);
+      if (initialSyncDone) {
+          setIsAppReady(true);
+          return;
+      }
       
-      const timeout = setTimeout(() => {
-         setIsAppReady(true); // Força a liberação após 6 segundos
-         clearInterval(checkSync);
-      }, 6000);
-      
-      return () => { clearInterval(checkSync); clearTimeout(timeout); };
-  }, [isAuth, config.isLocalMode, config.isManualOffline]);
+      // Força a liberação após 6 segundos. A virada do dia (DailySummaryModal)
+      // continua esperando o primeiro sync para não processar dados antigos.
+      const timeout = setTimeout(() => setIsAppReady(true), 6000);
+      return () => clearTimeout(timeout);
+  }, [isAuth, config.isLocalMode, config.isManualOffline, initialSyncDone]);
+
+  // === AVISOS DO MOTOR DE SINCRONIZAÇÃO ===
+  useEffect(() => {
+      let hideTimer: ReturnType<typeof setTimeout> | null = null;
+      const handleStatus = (e: Event) => {
+          const detail = (e as CustomEvent<{ type: 'error' | 'warning'; message: string }>).detail;
+          setSyncAlert(detail);
+          if (hideTimer) clearTimeout(hideTimer);
+          hideTimer = setTimeout(() => setSyncAlert(null), detail.type === 'error' ? 10000 : 6000);
+      };
+      window.addEventListener('lida-sync-status', handleStatus);
+      return () => { window.removeEventListener('lida-sync-status', handleStatus); if (hideTimer) clearTimeout(hideTimer); };
+  }, []);
 
   const handleTabSwitch = (tab: Tab) => {
     setCurrentTab(tab);
@@ -141,26 +192,49 @@ function App() {
   useEffect(() => {
     const handleOnline = async () => {
       setIsOffline(false);
-      const { uid, e2eePin, isLocalMode, isManualOffline } = useConfigStore.getState();
-      if (!isLocalMode && !isManualOffline && uid && e2eePin) {
+      const { uid, hasVaultKey, isLocalMode, isManualOffline } = useConfigStore.getState();
+      if (!isLocalMode && !isManualOffline && uid && hasVaultKey) {
         setSyncMessage("Conexão restaurada. Sincronizando dados...");
-        await syncToCloud(); setSyncMessage("Nuvem atualizada com sucesso"); setTimeout(() => setSyncMessage(null), 4000);
+        try {
+          await syncToCloud();
+          setSyncMessage("Nuvem atualizada com sucesso");
+        } catch {
+          setSyncMessage(null);
+          return;
+        }
+        setTimeout(() => setSyncMessage(null), 4000);
       }
     };
     const handleOffline = () => setIsOffline(true);
     window.addEventListener('online', handleOnline); window.addEventListener('offline', handleOffline);
     return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); };
-  }, [config.uid, config.e2eePin, config.isLocalMode, config.isManualOffline]);
+  }, [config.uid, config.hasVaultKey, config.isLocalMode, config.isManualOffline]);
 
   useEffect(() => {
-    if (!config.isLocalMode && !config.isManualOffline && config.uid && config.e2eePin && config.isOnboarded) {
-      startCloudListener(config.uid, config.e2eePin); 
-      const stopAutoSync = setupAutoSync(); 
-      return () => { stopCloudListener(); stopAutoSync(); };
-    } else {
+    if (config.isLocalMode || config.isManualOffline || !config.uid || !config.isOnboarded) {
       stopCloudListener();
+      return;
     }
-  }, [config.uid, config.e2eePin, config.isOnboarded, config.isLocalMode, config.isManualOffline]);
+    // Carrega a chave do cofre (ou migra da versão antiga) antes de ligar a sincronização.
+    let cancelled = false;
+    let stopAutoSync: (() => void) | null = null;
+    const start = async () => {
+      if (stopAutoSync) return;
+      const readiness = await ensureVaultReady();
+      if (cancelled || readiness !== 'ready') return;
+      startCloudListener();
+      stopAutoSync = setupAutoSync();
+    };
+    start();
+    const retryOnline = () => { start(); };
+    window.addEventListener('online', retryOnline);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('online', retryOnline);
+      stopCloudListener();
+      if (stopAutoSync) stopAutoSync();
+    };
+  }, [config.uid, config.hasVaultKey, config.isOnboarded, config.isLocalMode, config.isManualOffline]);
 
   // === MOTOR GLOBAL DO POMODORO E SINTETIZADOR NATIVO ===
   useEffect(() => {
@@ -217,30 +291,29 @@ function App() {
           } catch(e) {}
       };
 
-      const handleRing = () => { if (useTaskStore.getState().pomodoro.soundEnabled) playBell(); };
-      const handleVoucher = () => { if (useTaskStore.getState().pomodoro.soundEnabled) playChime(); };
+      const runTick = () => {
+          const pomodoro = usePomodoroStore.getState();
+          if (!pomodoro.isActive) return;
+          if (pomodoro.soundEnabled && document.visibilityState === 'visible') playTick();
+          const { rang, vouchers } = pomodoro.tick();
+          const soundEnabled = usePomodoroStore.getState().soundEnabled;
+          if (rang && soundEnabled) playBell();
+          if (vouchers > 0) {
+              useEconomyStore.getState().addVouchers(vouchers);
+              if (soundEnabled) playChime();
+          }
+      };
 
-      window.addEventListener('pomodoro-ring', handleRing);
-      window.addEventListener('pomodoro-voucher', handleVoucher);
-
-      const interval = setInterval(() => {
-          const p = useTaskStore.getState().pomodoro;
-          if (p.isActive && p.soundEnabled) { playTick(); }
-          useTaskStore.getState().tickPomodoro();
-      }, 1000);
+      const interval = setInterval(runTick, 1000);
+      // Ao voltar para o app, recupera imediatamente o tempo que passou em segundo plano.
+      const handleVisibility = () => { if (document.visibilityState === 'visible') runTick(); };
+      document.addEventListener('visibilitychange', handleVisibility);
 
       return () => {
           clearInterval(interval);
-          window.removeEventListener('pomodoro-ring', handleRing);
-          window.removeEventListener('pomodoro-voucher', handleVoucher);
+          document.removeEventListener('visibilitychange', handleVisibility);
       };
   }, []);
-
-  const formatTime = (seconds: number) => {
-      const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-      const s = (seconds % 60).toString().padStart(2, '0');
-      return `${m}:${s}`;
-  };
 
   return (
     <ThemeWrapper>
@@ -254,20 +327,7 @@ function App() {
       {isAppReady && (
           <AnimatePresence>
             {/* BARRA GLOBAL DO POMODORO MINIMIZADO */}
-            {tasks.pomodoro.isOpen && tasks.pomodoro.isMinimized && (
-               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} 
-                  className="bg-red-600 text-white font-bold text-xs py-2.5 px-6 flex justify-between items-center z-[999] relative cursor-pointer shadow-md" 
-                  onClick={() => tasks.updatePomodoro({ isMinimized: false })}>
-                  <div className="flex items-center gap-2">
-                     <Timer size={14} className={tasks.pomodoro.isActive ? "animate-pulse" : ""} />
-                     <span className="uppercase tracking-widest text-[10px]">Pomodoro {tasks.pomodoro.mode === 'focus' ? 'Foco' : 'Pausa'}</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                     <span className="font-mono text-sm tracking-widest">{formatTime(tasks.pomodoro.timeLeft)}</span>
-                     <button onClick={(e) => { e.stopPropagation(); tasks.updatePomodoro({ isOpen: false }); }} className="p-1 hover:bg-red-700 rounded-full transition-colors"><X size={14}/></button>
-                  </div>
-               </motion.div>
-            )}
+            <PomodoroMiniBar key="pomodoro-bar" />
 
             {config.isManualOffline && !config.isLocalMode && (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-blue-500 text-white font-bold text-xs py-2 px-4 flex justify-center items-center gap-2 z-[999] relative">
@@ -281,6 +341,12 @@ function App() {
               </motion.div>
             )}
             
+            {syncAlert && (
+              <motion.div key="sync-alert" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className={`${syncAlert.type === 'error' ? 'bg-red-600' : 'bg-amber-500'} text-white font-bold text-xs py-2 px-4 flex justify-center items-center gap-2 z-[999] relative text-center`} onClick={() => setSyncAlert(null)}>
+                <AlertTriangle size={14} className="shrink-0" /> {syncAlert.message}
+              </motion.div>
+            )}
+
             {syncMessage && (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-emerald-500 text-white font-bold text-xs py-2 px-4 flex justify-center items-center gap-2 z-[999] relative">
                 <CloudLightning size={14} /> {syncMessage}
@@ -309,7 +375,7 @@ function App() {
                   </motion.div>
                 </AnimatePresence>
 
-                {!tasks.isGlobalModalOpen && !tasks.isRoutineModalOpen && !tasks.isFocusModeOpen && (
+                {!isGlobalModalOpen && !isRoutineModalOpen && !isFocusModeOpen && (
                   <Navbar currentTab={currentTab} setCurrentTab={handleTabSwitch} />
                 )}
                 <FocusMode />

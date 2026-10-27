@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, AlertTriangle, Frown, CloudRain, Meh, Smile, Sparkles, Trash2, TrendingUp, Coins, X, Check, ArrowDownUp, Info, Repeat, CheckCircle2, BrainCircuit, Timer, AlignJustify, Hash } from 'lucide-react';
 import { useTaskStore } from '../../store/useTaskStore';
+import { usePomodoroStore } from '../../store/usePomodoroStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useConfigStore, useBackHandler } from '../../store/useConfigStore';
 import { TaskModal } from './TaskModal';
@@ -16,7 +17,8 @@ import { format, endOfWeek } from 'date-fns';
 
 export const TaskDashboard = () => {
   const { userClass, defaultDaysOff, hasDismissedDayOffWarning, dismissDayOffWarning, isCompactView, setCompactView } = useConfigStore();
-  const { tasks, folders, routines, selectedFolderId, setFolderId, addFolder, deleteFolder, toggleTaskCompletion, deleteTask, deleteRoutine, clearCompletedTasks, selectedFilter, setFilter, dailyMood, setDailyMood, updatePomodoro } = useTaskStore();
+  const { tasks, folders, routines, selectedFolderId, setFolderId, addFolder, deleteFolder, toggleTaskCompletion, deleteTask, deleteRoutine, clearCompletedTasks, selectedFilter, setFilter, moodHistory, setDailyMood } = useTaskStore();
+  const openPomodoro = usePomodoroStore((s) => s.open);
   const { activeXpBoostUntil, activeGoldBoostUntil, addReward, removeReward } = useEconomyStore();
 
   const isModalOpen = useTaskStore((state) => state.isGlobalModalOpen);
@@ -195,7 +197,8 @@ export const TaskDashboard = () => {
   const routineTasks = filteredTasks.filter(t => t.type === 'routine');
   const regularTasks = filteredTasks.filter(t => t.type !== 'routine');
 
-  const activeMood = dailyMood || 'normal';
+  // Humor do dia vem do histórico (sincronizado), não de um campo que nunca era zerado na virada do dia.
+  const activeMood = moodHistory[todayStr] || 'normal';
 
   const moods: { value: Mood; icon: any; label: string }[] = [ 
       { value: 'disappointed', icon: CloudRain, label: 'Desapontado' }, 
@@ -235,7 +238,7 @@ export const TaskDashboard = () => {
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-black tracking-tight">Tarefas</h1>
-              <button onClick={() => updatePomodoro({ isOpen: true, isMinimized: false })} className="mt-1 p-2 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors" title="Rádio Relógio Pomodoro">
+              <button onClick={openPomodoro} className="mt-1 p-2 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors" title="Rádio Relógio Pomodoro">
                   <Timer size={20}/>
               </button>
               <button onClick={() => setBrainDumpOpen(true)} className="mt-1 p-2 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 transition-colors" title="Brain Dump (Esvaziamento Mental)">

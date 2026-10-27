@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Flame, CheckCircle2, TrendingUp, Coins, AlertTriangle, Sunrise, Check, LineChart, TrendingDown, Minus, Award, Info, X, ShieldAlert, BarChart3 } from 'lucide-react';
 import { useConfigStore } from '../../store/useConfigStore';
+import { useSyncStatus } from '../../lib/syncStatus';
 import { useEconomyStore } from '../../store/useEconomyStore';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useHabitStore } from '../../store/useHabitStore';
@@ -23,7 +24,25 @@ const quotes = [
 ];
 
 export const DailySummaryModal = () => {
-  const { isOnboarded, userName, lastLoginDate, setLastLoginDate } = useConfigStore();
+  const { isOnboarded, userName, lastLoginDate, setLastLoginDate, isLocalMode, isManualOffline } = useConfigStore();
+  const initialSyncDone = useSyncStatus((s) => s.initialSyncDone);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  useEffect(() => {
+    const on = () => setIsOnline(true); const off = () => setIsOnline(false);
+    window.addEventListener('online', on); window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
+  // A virada do dia só é processada com os dados da nuvem já mesclados (ou sem nuvem):
+  // processar com dados antigos pode marcar como falha uma tarefa concluída em outro aparelho.
+  // Se a nuvem não responder em 15s, segue com os dados locais (o merge de tarefas
+  // dá preferência a "concluída" sobre "falhada" quando os dados chegarem).
+  const [syncWaitExpired, setSyncWaitExpired] = useState(false);
+  useEffect(() => {
+    if (initialSyncDone) return;
+    const t = setTimeout(() => setSyncWaitExpired(true), 15000);
+    return () => clearTimeout(t);
+  }, [initialSyncDone]);
+  const canProcessDay = isLocalMode || isManualOffline || !isOnline || initialSyncDone || syncWaitExpired;
   const { dailyHistory } = useEconomyStore();
   const { tasks, processNewDay, retroactiveCompleteTask } = useTaskStore(); 
   const { habits, logs, modifiers } = useHabitStore();
@@ -54,7 +73,7 @@ export const DailySummaryModal = () => {
     return () => { clearInterval(interval); window.removeEventListener('focus', handleFocus); };
   }, [currentDateStr]);
 
-  const isVisible = isOnboarded && lastLoginDate !== null && lastLoginDate < currentDateStr;
+  const isVisible = canProcessDay && isOnboarded && lastLoginDate !== null && lastLoginDate < currentDateStr;
 
   useEffect(() => {
     if (!isVisible || step !== 'init') return;

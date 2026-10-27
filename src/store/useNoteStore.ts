@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { appStorage } from '../lib/storage';
 import type { Note, Notebook, ShortcutCategory } from '../types';
 import { useConfigStore } from './useConfigStore';
 
@@ -72,7 +73,8 @@ export const useNoteStore = create<NoteState>()(
       }
     }),
     { 
-        name: 'lida-notes', 
+        name: 'lida-notes',
+        storage: appStorage,
         partialize: (state) => ({ 
             notebooks: state.notebooks, 
             notes: state.notes, 

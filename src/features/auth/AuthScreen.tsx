@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldCheck, KeyRound, ArrowRight, ShieldAlert, Fingerprint } from 'lucide-react';
 import { signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
-import { auth, googleProvider, db } from '../../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
-import { syncFromCloud, syncToCloud } from '../../lib/cloudSync';
+import { auth, googleProvider } from '../../lib/firebase';
+import { getVaultKind, unlockVault, createVault } from '../../lib/cloudSync';
 import { useConfigStore } from '../../store/useConfigStore';
 
 export const AuthScreen = () => {
@@ -17,6 +16,18 @@ export const AuthScreen = () => {
   const [confirmPin, setConfirmPin] = useState('');
   const [error, setError] = useState('');
 
+  // Descobre se a conta já tem cofre (novo ou antigo) e segue para o passo certo.
+  const routeAfterLogin = async (uid: string) => {
+    try {
+      const kind = await getVaultKind(uid);
+      setStep(kind === 'none' ? 'create_pin' : 'enter_pin');
+    } catch (err) {
+      console.error(err);
+      setError('Não foi possível consultar a nuvem. Verifique a conexão e tente novamente.');
+      setStep('login');
+    }
+  };
+
   // Captura o resultado do redirecionamento caso o pop-up tenha falhado/sido bloqueado
   useEffect(() => {
     const checkRedirect = async () => {
@@ -26,9 +37,7 @@ export const AuthScreen = () => {
         if (result?.user) {
           const uid = result.user.uid;
           setTempUid(uid);
-          const snap = await getDoc(doc(db, 'users', uid));
-          if (snap.exists()) setStep('enter_pin');
-          else setStep('create_pin');
+          await routeAfterLogin(uid);
         } else {
           setStep('login');
         }
@@ -42,18 +51,14 @@ export const AuthScreen = () => {
   }, [setAuth]);
 
   const handleGoogleLogin = async () => {
+    let uid: string;
     try {
       setError('');
       setStep('check');
       // Tenta primeiro por Pop-up
       const result = await signInWithPopup(auth, googleProvider);
-      const uid = result.user.uid;
+      uid = result.user.uid;
       setTempUid(uid);
-
-      const snap = await getDoc(doc(db, 'users', uid));
-      if (snap.exists()) setStep('enter_pin');
-      else setStep('create_pin');
-      
     } catch (err: any) {
       console.warn("Pop-up bloqueado por políticas COOP, alternando para redirecionamento...", err);
       // Fallback automático para Redirecionamento seguro contra COOP
@@ -63,7 +68,9 @@ export const AuthScreen = () => {
         setError('Falha na autenticação com o Google.');
         setStep('login');
       }
+      return;
     }
+    await routeAfterLogin(uid);
   };
 
   const handleCreatePin = async () => {
@@ -71,19 +78,30 @@ export const AuthScreen = () => {
     if (pin.length < 4) return setError('A chave deve ter no mínimo 4 caracteres.');
     
     setStep('loading');
-    setAuth(tempUid!, pin);
-    await syncToCloud();
+    try {
+      const result = await createVault(tempUid!, pin);
+      if (result === 'success') { setAuth(tempUid!); return; }
+      setError('Já existe um cofre nesta conta com outra Chave Mestra.');
+      setStep('enter_pin');
+    } catch (err) {
+      console.error(err);
+      setError('Não foi possível criar o cofre na nuvem. Verifique a conexão e tente novamente.');
+      setStep('create_pin');
+    }
   };
 
   const handleEnterPin = async () => {
     if (!pin) return;
     setStep('loading');
-    const result = await syncFromCloud(tempUid!, pin);
-    
-    if (result === 'success') {
-      setAuth(tempUid!, pin);
-    } else {
+    try {
+      const result = await unlockVault(tempUid!, pin);
+      if (result === 'success') { setAuth(tempUid!); return; }
+      if (result === 'no_data') { setStep('create_pin'); return; }
       setError('Chave Mestra Incorreta. Tente novamente.');
+      setStep('enter_pin');
+    } catch (err) {
+      console.error(err);
+      setError('Não foi possível acessar o cofre na nuvem. Verifique a conexão e tente novamente.');
       setStep('enter_pin');
     }
   };

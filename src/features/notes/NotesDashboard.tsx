@@ -638,7 +638,16 @@ export const NotesDashboard = () => {
                         noteFormat === 'markdown' ? (
                            <textarea value={noteContent} onChange={(e) => setNoteContent(e.target.value)} placeholder="Escreva aqui em Markdown (# Título, **Negrito**)..." className={`w-full min-h-full pb-32 bg-transparent outline-none resize-none leading-relaxed text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
                         ) : (
-                           <div ref={editorRef} contentEditable={true} suppressContentEditableWarning onInput={(e) => setNoteContent(e.currentTarget.innerHTML)} className={`w-full min-h-full pb-32 bg-transparent outline-none text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
+                           <div ref={editorRef} contentEditable={true} suppressContentEditableWarning onInput={(e) => setNoteContent(e.currentTarget.innerHTML)} onPaste={(e) => {
+                              // Imagens coladas viram texto embutido enorme no HTML e podem estourar o limite de 1 MB da nuvem.
+                              const cd = e.clipboardData;
+                              const hasImage = Array.from(cd.items).some(i => i.kind === 'file') || /<img[\s>]/i.test(cd.getData('text/html'));
+                              if (!hasImage) return;
+                              e.preventDefault();
+                              const text = cd.getData('text/plain');
+                              if (text) document.execCommand('insertText', false, text);
+                              setInfoModal({ title: 'Imagens não são suportadas', desc: 'Imagens ocupariam espaço demais no cofre da nuvem. Apenas o texto foi colado.' });
+                           }} className={`w-full min-h-full pb-32 bg-transparent outline-none text-zinc-700 dark:text-zinc-300 ${noteFont === 'handwriting' ? 'font-handwriting text-xl' : noteFont === 'serif' ? 'font-serif text-lg' : 'font-sans text-base'}`} />
                         )
                     )}
 

@@ -1,19 +1,10 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import type { StateStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
+import { appStorage } from '../lib/storage';
 import type { Channel, Feed, FeedEntry } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { useConfigStore } from './useConfigStore';
 
-const obfuscatedStorage: StateStorage = {
-  getItem: (name) => {
-    const str = localStorage.getItem(name);
-    if (!str) return null;
-    try { JSON.parse(str); return str; } catch { try { return decodeURIComponent(atob(str)); } catch { return null; } }
-  },
-  setItem: (name, value) => { localStorage.setItem(name, btoa(encodeURIComponent(value))); },
-  removeItem: (name) => localStorage.removeItem(name),
-};
 
 export interface FeedTarget {
     feedId?: string;
@@ -56,7 +47,7 @@ export const extractMentions = (text: string) => {
 
 export const useFeedStore = create<FeedState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       channels: [],
       feeds: [],
       entries: [],
@@ -157,8 +148,10 @@ export const useFeedStore = create<FeedState>()(
       }),
 
       deleteEntry: (id) => {
-          useConfigStore.getState().addTombstone(id);
-          // Efeito cascata: deleta a entrada e todas as respostas (threads) ligadas a ela
+          // Efeito cascata: deleta a entrada e todas as respostas (threads) ligadas a ela.
+          // Cada item removido ganha lápide, senão outro aparelho o traria de volta.
+          const removed = get().entries.filter(e => e.id === id || e.parentId === id).map(e => e.id);
+          useConfigStore.getState().addTombstones([id, ...removed]);
           set((state) => ({ entries: state.entries.filter(e => e.id !== id && e.parentId !== id) }));
       },
 
@@ -167,7 +160,7 @@ export const useFeedStore = create<FeedState>()(
       unarchiveFeed: (id) => set((state) => ({ feeds: state.feeds.map(f => f.id === id ? { ...f, isArchived: false, archivedAt: undefined, updatedAt: Date.now() } : f) })),
       
       deleteFeed: (id) => {
-          useConfigStore.getState().addTombstone(id);
+          useConfigStore.getState().addTombstones([id, ...get().entries.filter(e => e.feedId === id).map(e => e.id)]);
           set((state) => ({ 
               feeds: state.feeds.filter(f => f.id !== id),
               entries: state.entries.filter(e => e.feedId !== id) 
@@ -177,7 +170,9 @@ export const useFeedStore = create<FeedState>()(
       updateChannel: (id, updated) => set((state) => ({ channels: state.channels.map(c => c.id === id ? { ...c, ...updated, updatedAt: Date.now() } : c) })),
       
       deleteChannel: (id) => {
-          useConfigStore.getState().addTombstone(id);
+          const st = get();
+          const feedIds = st.feeds.filter(f => f.channelId === id).map(f => f.id);
+          useConfigStore.getState().addTombstones([id, ...feedIds, ...st.entries.filter(e => feedIds.includes(e.feedId)).map(e => e.id)]);
           set((state) => {
               const feedsToDelete = state.feeds.filter(f => f.channelId === id).map(f => f.id);
               return {
@@ -194,6 +189,7 @@ export const useFeedStore = create<FeedState>()(
           const feedsToKill = state.feeds.filter(f => f.isArchived && f.archivedAt && (now - f.archivedAt > sixtyDaysMs)).map(f => f.id);
           
           if (feedsToKill.length === 0) return state;
+          useConfigStore.getState().addTombstones([...feedsToKill, ...state.entries.filter(e => feedsToKill.includes(e.feedId)).map(e => e.id)]);
 
           return {
               feeds: state.feeds.filter(f => !feedsToKill.includes(f.id)),
@@ -202,6 +198,6 @@ export const useFeedStore = create<FeedState>()(
       })
 
     }),
-    { name: 'lida-feeds', storage: createJSONStorage(() => obfuscatedStorage) }
+    { name: 'lida-feeds', storage: appStorage }
   )
 );

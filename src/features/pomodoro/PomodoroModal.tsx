@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Play, Pause, Square, Volume2, VolumeX, Minimize2, Ticket } from 'lucide-react';
-import { useTaskStore } from '../../store/useTaskStore';
+import { usePomodoroStore } from '../../store/usePomodoroStore';
 import { useBackHandler } from '../../store/useConfigStore';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export const PomodoroModal = () => {
-    const { pomodoro, updatePomodoro } = useTaskStore();
+    const pomodoro = usePomodoroStore();
     const [currentTime, setCurrentTime] = useState(new Date());
 
     useEffect(() => {
@@ -17,7 +17,7 @@ export const PomodoroModal = () => {
     }, [pomodoro.isOpen, pomodoro.isMinimized]);
 
     useBackHandler(pomodoro.isOpen && !pomodoro.isMinimized, () => {
-        updatePomodoro({ isOpen: false });
+        pomodoro.close();
         return true;
     });
 
@@ -36,7 +36,7 @@ export const PomodoroModal = () => {
       <AnimatePresence>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 md:p-8">
             
-            <button onClick={() => updatePomodoro({ isOpen: false })} className="absolute top-6 right-6 p-3 rounded-full bg-white/10 hover:bg-red-500 text-white transition-colors z-[210]">
+            <button onClick={() => pomodoro.close()} className="absolute top-6 right-6 p-3 rounded-full bg-white/10 hover:bg-red-500 text-white transition-colors z-[210]">
                <X size={24} />
             </button>
 
@@ -113,8 +113,7 @@ export const PomodoroModal = () => {
                                     type="range" min="5" max="60" step="5" value={pomodoro.focusDuration} 
                                     disabled={pomodoro.isActive}
                                     onChange={e => {
-                                        const val = Number(e.target.value);
-                                        updatePomodoro({ focusDuration: val, timeLeft: pomodoro.mode === 'focus' ? val * 60 : pomodoro.timeLeft });
+                                        pomodoro.setFocusDuration(Number(e.target.value));
                                     }}
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-20"
                                 />
@@ -132,8 +131,7 @@ export const PomodoroModal = () => {
                                     type="range" min="1" max="15" step="1" value={pomodoro.breakDuration} 
                                     disabled={pomodoro.isActive}
                                     onChange={e => {
-                                        const val = Number(e.target.value);
-                                        updatePomodoro({ breakDuration: val, timeLeft: pomodoro.mode === 'break' ? val * 60 : pomodoro.timeLeft });
+                                        pomodoro.setBreakDuration(Number(e.target.value));
                                     }}
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-20"
                                 />
@@ -145,15 +143,15 @@ export const PomodoroModal = () => {
 
                     {/* Botões Mecânicos Inferiores */}
                     <div className="flex items-center justify-between gap-3 bg-zinc-900 p-3 rounded-xl border-[3px] border-zinc-700 shadow-inner">
-                        <button onClick={() => updatePomodoro({ soundEnabled: !pomodoro.soundEnabled })} className="p-3 text-zinc-400 hover:text-white transition-colors" title="Alternar Som do Relógio">
+                        <button onClick={() => pomodoro.toggleSound()} className="p-3 text-zinc-400 hover:text-white transition-colors" title="Alternar Som do Relógio">
                             {pomodoro.soundEnabled ? <Volume2 size={24} className="text-emerald-500"/> : <VolumeX size={24} />}
                         </button>
 
-                        <button onClick={() => updatePomodoro({ isActive: !pomodoro.isActive })} className="w-16 h-16 rounded-lg bg-red-600 text-white flex items-center justify-center shadow-[inset_0_2px_5px_rgba(255,255,255,0.4),0_5px_15px_rgba(220,38,38,0.5)] border border-red-800 hover:scale-105 active:scale-95 transition-all">
+                        <button onClick={() => pomodoro.toggleRunning()} className="w-16 h-16 rounded-lg bg-red-600 text-white flex items-center justify-center shadow-[inset_0_2px_5px_rgba(255,255,255,0.4),0_5px_15px_rgba(220,38,38,0.5)] border border-red-800 hover:scale-105 active:scale-95 transition-all">
                             {pomodoro.isActive ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" className="ml-1" />}
                         </button>
 
-                        <button onClick={() => updatePomodoro({ isActive: false, mode: 'focus', timeLeft: pomodoro.focusDuration * 60 })} className="p-3 text-zinc-400 hover:text-white transition-colors" title="Resetar Timer">
+                        <button onClick={() => pomodoro.reset()} className="p-3 text-zinc-400 hover:text-white transition-colors" title="Resetar Timer">
                             <Square size={24} fill="currentColor" />
                         </button>
                     </div>
@@ -161,7 +159,7 @@ export const PomodoroModal = () => {
                 </div>
 
                 <div className="mt-5 flex justify-center">
-                    <button onClick={() => updatePomodoro({ isMinimized: true })} className="px-6 py-2 bg-zinc-900 text-zinc-400 hover:text-white border-2 border-zinc-700 rounded font-bold text-xs uppercase tracking-widest shadow-md flex items-center gap-2 transition-colors hover:bg-zinc-800">
+                    <button onClick={() => pomodoro.setMinimized(true)} className="px-6 py-2 bg-zinc-900 text-zinc-400 hover:text-white border-2 border-zinc-700 rounded font-bold text-xs uppercase tracking-widest shadow-md flex items-center gap-2 transition-colors hover:bg-zinc-800">
                         Minimizar <Minimize2 size={14} />
                     </button>
                 </div>

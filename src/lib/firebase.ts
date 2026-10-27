@@ -17,18 +17,11 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Função auxiliar para E2EE (será usada nas próximas fases)
-export const encryptData = (data: string, key: string) => {
-  return CryptoJS.AES.encrypt(data, key).toString();
-};
-
-export const decryptData = (ciphertext: string, key: string) => {
-  try {
-    const bytes = CryptoJS.AES.decrypt(ciphertext, key);
-    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-    if (!decrypted) throw new Error("Chave inválida");
-    return decrypted;
-  } catch (error) {
-    throw new Error("Chave inválida");
-  }
+// LEGADO: formato antigo do cofre (CryptoJS AES com senha). Usado só para ler o
+// documento antigo durante a migração para o cofre v2 (Web Crypto).
+export const decryptLegacyData = (ciphertext: string, key: string) => {
+  const bytes = CryptoJS.AES.decrypt(ciphertext, key);
+  const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+  if (!decrypted) throw new Error("Chave inválida");
+  return decrypted;
 };

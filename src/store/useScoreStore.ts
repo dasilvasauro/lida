@@ -1,17 +1,8 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import type { StateStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
+import { appStorage } from '../lib/storage';
 import type { DailyScore, MonthlyArchive, ScoreGrade } from '../types';
 
-const obfuscatedStorage: StateStorage = {
-  getItem: (name) => {
-    const str = localStorage.getItem(name);
-    if (!str) return null;
-    try { JSON.parse(str); return str; } catch { try { return decodeURIComponent(atob(str)); } catch { return null; } }
-  },
-  setItem: (name, value) => { localStorage.setItem(name, btoa(encodeURIComponent(value))); },
-  removeItem: (name) => localStorage.removeItem(name),
-};
 
 export const calculateGrade = (score: number): ScoreGrade => {
   if (score >= 97) return 'A+';
@@ -102,13 +93,14 @@ export const useScoreStore = create<ScoreState>()(
         const finalScore = Math.round(monthScores.reduce((acc, curr) => acc + curr.score, 0) / monthScores.length);
         const grade = calculateGrade(finalScore);
         
-        const newArchives = [...state.monthlyArchives, { month: monthStr, finalScore, grade }];
+        // Idempotente: se o mês já foi arquivado (ex.: em outro dispositivo), substitui.
+        const newArchives = [...state.monthlyArchives.filter(a => a.month !== monthStr), { month: monthStr, finalScore, grade }];
         // Limpa os registros granulares do mês arquivado para poupar processamento
         const newDaily = state.dailyScores.filter(d => !d.date.startsWith(monthStr));
         
         return { monthlyArchives: newArchives, dailyScores: newDaily };
       })
     }),
-    { name: 'lida-scores', storage: createJSONStorage(() => obfuscatedStorage) }
+    { name: 'lida-scores', storage: appStorage }
   )
 );

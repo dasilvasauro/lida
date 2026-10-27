@@ -2,14 +2,13 @@ import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, LogOut, Trash2, History, AlertTriangle, Download, Upload, Lock, ShieldAlert, WifiOff, ShoppingBag } from 'lucide-react';
 import { useConfigStore, useBackHandler, type Theme } from '../../store/useConfigStore';
-import { useTaskStore } from '../../store/useTaskStore';
-import { useHabitStore } from '../../store/useHabitStore';
 import { useEconomyStore } from '../../store/useEconomyStore';
-import { useVisionStore } from '../../store/useVisionStore';
-import { deleteCloudVault, syncToCloud, syncFromCloud, startCloudListener } from '../../lib/cloudSync';
+import { deleteCloudVault, syncToCloud, syncFromCloud, startCloudListener, lockVault, hasUnsyncedChanges } from '../../lib/cloudSync';
+import { idbClearAll } from '../../lib/idb';
+import { createBackupBlob, parseBackup, restoreBackup } from '../../lib/backup';
 
 export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
-  const { theme, font, setTheme, setFont, uid, e2eePin, setChangelogOpen, isLocalMode, defaultDaysOff, setDefaultDaysOff, enableEditWindow, setEnableEditWindow, enablePunishments, setEnablePunishments, isManualOffline, setManualOffline } = useConfigStore();
+  const { theme, font, setTheme, setFont, uid, hasVaultKey, setChangelogOpen, isLocalMode, defaultDaysOff, setDefaultDaysOff, enableEditWindow, setEnableEditWindow, enablePunishments, setEnablePunishments, isManualOffline, setManualOffline } = useConfigStore();
   const { level, purchasedThemes } = useEconomyStore();
   
   const [confirmAction, setConfirmAction] = useState<'logout' | 'wipe' | null>(null);
@@ -22,16 +21,29 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
   const handleWipeData = async () => {
     if (uid) await deleteCloudVault(uid); 
-    localStorage.clear(); 
+    await clearLocalData();
     window.location.reload(); 
   };
 
-  const handleLogout = () => { localStorage.clear(); window.location.reload(); };
+  // Apaga tudo deste aparelho: dados (IndexedDB e localStorage) e a chave do cofre.
+  const clearLocalData = async () => {
+    await lockVault();
+    try { await idbClearAll(); } catch (e) { console.error(e); }
+    localStorage.clear();
+  };
+
+  const handleLogout = async () => {
+    // Antes de apagar os dados deste aparelho, tenta enviar o que ainda não subiu.
+    if (uid && !isLocalMode) {
+      try { if (hasVaultKey && navigator.onLine) await syncToCloud(); } catch { /* verificado abaixo */ }
+      if (hasUnsyncedChanges() && !window.confirm('Há alterações deste aparelho que ainda não foram enviadas para a nuvem e serão perdidas. Sair mesmo assim?')) return;
+    }
+    await clearLocalData();
+    window.location.reload();
+  };
 
   const handleExport = () => {
-    const data = { tasks: localStorage.getItem('lida-tasks'), habits: localStorage.getItem('lida-habits-v5'), economy: localStorage.getItem('lida-economy-v3'), vision: localStorage.getItem('lida-vision'), config: localStorage.getItem('lida-config'), notes: localStorage.getItem('lida-notes'), reflections: localStorage.getItem('lida-reflections') };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(createBackupBlob());
     const a = document.createElement('a'); a.href = url; a.download = `lida-backup-${new Date().toISOString().split('T')[0]}.json`; a.click(); URL.revokeObjectURL(url);
   };
 
@@ -41,17 +53,21 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
-        const data = JSON.parse(event.target?.result as string);
-        if (data.tasks) useTaskStore.setState(JSON.parse(data.tasks).state);
-        if (data.habits) useHabitStore.setState(JSON.parse(data.habits).state);
-        if (data.economy) useEconomyStore.setState(JSON.parse(data.economy).state);
-        if (data.vision) useVisionStore.setState(JSON.parse(data.vision).state);
-        if (data.config) { const importedConfig = JSON.parse(data.config).state; useConfigStore.setState({ ...importedConfig, uid, e2eePin, isLocalMode }); }
-        if (uid && e2eePin && navigator.onLine) await syncToCloud(true);
-        window.location.reload();
-      } catch (err) { alert("O arquivo de backup é inválido ou está corrompido."); }
+        restoreBackup(parseBackup(event.target?.result as string));
+      } catch (err) {
+        console.error(err);
+        alert("O arquivo de backup é inválido ou está corrompido.");
+        return;
+      }
+      try {
+        if (uid && hasVaultKey && navigator.onLine) await syncToCloud(true);
+      } catch {
+        alert("Backup restaurado neste dispositivo, mas não foi possível enviá-lo para a nuvem agora. Ele será sincronizado na próxima conexão.");
+      }
+      window.location.reload();
     };
     reader.readAsText(file);
+    e.target.value = '';
   };
 
   const themesList: { id: Theme; name: string; color1: string; color2: string; type: 'level' | 'premium'; req?: number }[] = [
@@ -139,11 +155,11 @@ export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: (
                      <input type="checkbox" className="peer sr-only" checked={isManualOffline} onChange={async (e) => { 
                          const isChecked = e.target.checked; 
                          setManualOffline(isChecked); 
-                         if (!isChecked && uid && e2eePin && navigator.onLine) { 
+                         if (!isChecked && uid && hasVaultKey && navigator.onLine) { 
                              try {
-                                 await syncFromCloud(uid, e2eePin); 
-                                 await syncToCloud(true); // Força envio
-                                 startCloudListener(uid, e2eePin); // Retoma o listener da nuvem!
+                                 await syncFromCloud(); // mescla o que mudou na nuvem
+                                 await syncToCloud();   // envia o que mudou aqui
+                                 startCloudListener(); // Retoma o listener da nuvem!
                              } catch (err) {
                                  console.error("Erro ao desativar offline manual", err);
                              }

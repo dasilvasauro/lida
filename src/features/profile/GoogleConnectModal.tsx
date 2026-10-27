@@ -2,10 +2,9 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Cloud, HardDrive, KeyRound, ArrowRight, Fingerprint } from 'lucide-react';
 import { signInWithPopup, signInWithRedirect } from 'firebase/auth';
-import { auth, googleProvider, db } from '../../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { auth, googleProvider } from '../../lib/firebase';
 import { useConfigStore } from '../../store/useConfigStore';
-import { syncFromCloud, syncToCloud } from '../../lib/cloudSync';
+import { getVaultKind, unlockVault, createVault, deleteCloudVault } from '../../lib/cloudSync';
 
 export const GoogleConnectModal = ({ isOpen, onClose, onSuccess }: { isOpen: boolean; onClose: () => void; onSuccess: () => void }) => {
   const [step, setStep] = useState<'intro' | 'loading' | 'conflict' | 'enter_pin' | 'create_pin'>('intro');
@@ -13,6 +12,7 @@ export const GoogleConnectModal = ({ isOpen, onClose, onSuccess }: { isOpen: boo
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [error, setError] = useState('');
+  const [cloudHasVault, setCloudHasVault] = useState(false);
   
   const { setAuth } = useConfigStore();
 
@@ -20,17 +20,11 @@ export const GoogleConnectModal = ({ isOpen, onClose, onSuccess }: { isOpen: boo
 
   const handleConnect = async () => {
     setStep('loading');
+    let uid: string;
     try {
       const res = await signInWithPopup(auth, googleProvider);
-      const uid = res.user.uid;
+      uid = res.user.uid;
       setTempUid(uid);
-      
-      const snap = await getDoc(doc(db, 'users', uid));
-      if (snap.exists()) {
-        setStep('conflict');
-      } else {
-        setStep('create_pin');
-      }
     } catch (e) {
       console.warn("Pop-up bloqueado, tentando via redirecionamento de segurança...", e);
       try {
@@ -39,18 +33,34 @@ export const GoogleConnectModal = ({ isOpen, onClose, onSuccess }: { isOpen: boo
         setError('A conexão com o Google falhou.');
         setStep('intro');
       }
+      return;
+    }
+    try {
+      const kind = await getVaultKind(uid);
+      setCloudHasVault(kind !== 'none');
+      setStep(kind === 'none' ? 'create_pin' : 'conflict');
+    } catch (err) {
+      console.error(err);
+      setError('Não foi possível consultar a nuvem.');
+      setStep('intro');
     }
   };
 
   const handlePullCloud = async () => {
     if (!pin) return;
     setStep('loading');
-    const result = await syncFromCloud(tempUid!, pin);
-    if (result === 'success') {
-      setAuth(tempUid!, pin);
-      onSuccess();
-    } else {
-      setError('Chave Mestra incorreta.');
+    try {
+      const result = await unlockVault(tempUid!, pin);
+      if (result === 'success') {
+        setAuth(tempUid!);
+        onSuccess();
+      } else {
+        setError(result === 'no_data' ? 'Nenhum cofre encontrado nesta conta.' : 'Chave Mestra incorreta.');
+        setStep('enter_pin');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Não foi possível acessar a nuvem.');
       setStep('enter_pin');
     }
   };
@@ -60,9 +70,19 @@ export const GoogleConnectModal = ({ isOpen, onClose, onSuccess }: { isOpen: boo
     if (pin.length < 4) return setError('Mínimo de 4 caracteres.');
     
     setStep('loading');
-    setAuth(tempUid!, pin);
-    await syncToCloud();
-    onSuccess();
+    try {
+      // "Forçar envio local": apaga o cofre que já existia nesta conta e cria um
+      // novo, com a nova Chave Mestra, a partir dos dados deste aparelho.
+      if (cloudHasVault) await deleteCloudVault(tempUid!);
+      const result = await createVault(tempUid!, pin);
+      if (result !== 'success') { setError('Já existe um cofre nesta conta com outra Chave Mestra.'); setStep('create_pin'); return; }
+      setAuth(tempUid!);
+      onSuccess();
+    } catch (err) {
+      console.error(err);
+      setError('Não foi possível criar o cofre na nuvem.');
+      setStep('create_pin');
+    }
   };
 
   return (
@@ -97,7 +117,7 @@ export const GoogleConnectModal = ({ isOpen, onClose, onSuccess }: { isOpen: boo
                 <button onClick={() => setStep('enter_pin')} className="w-full p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl flex items-center justify-between group hover:border-blue-500 hover:bg-blue-500/5 transition-all cursor-pointer">
                   <div className="text-left">
                     <span className="font-bold flex items-center gap-2 text-zinc-900 dark:text-zinc-100"><Cloud size={18} className="text-blue-500"/> Baixar da Nuvem</span>
-                    <span className="text-xs text-zinc-500 mt-1 block">Apaga os dados atuais e restaura o backup.</span>
+                    <span className="text-xs text-zinc-500 mt-1 block">Junta os dados deste aparelho com os da nuvem.</span>
                   </div>
                   <ArrowRight size={18} className="text-zinc-400 group-hover:text-blue-500"/>
                 </button>

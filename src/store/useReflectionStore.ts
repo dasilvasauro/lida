@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { appStorage } from '../lib/storage';
 import type { Reflection } from '../types';
 import { useConfigStore } from './useConfigStore';
 
@@ -23,6 +24,6 @@ export const useReflectionStore = create<ReflectionState>()(
         set((state) => ({ reflections: state.reflections.filter((r) => r.id !== id) }));
       }
     }),
-    { name: 'lida-reflections' }
+    { name: 'lida-reflections', storage: appStorage }
   )
 );

@@ -1,25 +1,18 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import type { StateStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
+import { appStorage } from '../lib/storage';
 import type { Habit, QuitterItem } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { useConfigStore } from './useConfigStore';
 import { useEconomyStore } from './useEconomyStore';
 
-// OFUSCAÇÃO
-const obfuscatedStorage: StateStorage = {
-  getItem: (name) => {
-    const str = localStorage.getItem(name);
-    if (!str) return null;
-    try { JSON.parse(str); return str; } catch { try { return decodeURIComponent(atob(str)); } catch { return null; } }
-  },
-  setItem: (name, value) => { localStorage.setItem(name, btoa(encodeURIComponent(value))); },
-  removeItem: (name) => localStorage.removeItem(name),
-};
 
 interface HabitState {
   habits: Habit[];
   logs: Record<string, Record<string, number>>;
+  // Quando cada registro foi alterado: permite que desmarcar um hábito também
+  // sincronize (antes o merge ficava sempre com o maior valor).
+  logTimes: Record<string, Record<string, number>>;
   modifiers: Record<string, Record<string, 'freeze' | 'dayOff'>>;
   
   quitterItems: QuitterItem[];
@@ -44,6 +37,7 @@ export const useHabitStore = create<HabitState>()(
     (set) => ({
       habits: [],
       logs: {},
+      logTimes: {},
       modifiers: {},
       quitterItems: [],
 
@@ -54,15 +48,19 @@ export const useHabitStore = create<HabitState>()(
       deleteHabit: (id) => set((state) => {
         const newLogs = { ...state.logs };
         const newMods = { ...state.modifiers };
+        const newTimes = { ...state.logTimes };
         delete newLogs[id];
         delete newMods[id];
+        delete newTimes[id];
         useConfigStore.getState().addTombstone(id);
-        return { habits: state.habits.filter(h => h.id !== id), logs: newLogs, modifiers: newMods };
+        return { habits: state.habits.filter(h => h.id !== id), logs: newLogs, modifiers: newMods, logTimes: newTimes };
       }),
       setLog: (habitId, date, count) => set((state) => {
         const habitLogs = state.logs[habitId] || {};
+        const habitTimes = state.logTimes?.[habitId] || {};
         return {
-          logs: { ...state.logs, [habitId]: { ...habitLogs, [date]: count } }
+          logs: { ...state.logs, [habitId]: { ...habitLogs, [date]: count } },
+          logTimes: { ...state.logTimes, [habitId]: { ...habitTimes, [date]: Date.now() } }
         };
       }),
       applyModifier: (habitId, date, type) => set((state) => {
@@ -128,6 +126,6 @@ export const useHabitStore = create<HabitState>()(
           })
       }))
     }),
-    { name: 'lida-habits-v5', storage: createJSONStorage(() => obfuscatedStorage) }
+    { name: 'lida-habits-v5', storage: appStorage }
   )
 );

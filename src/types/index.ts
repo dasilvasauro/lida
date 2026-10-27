@@ -73,20 +73,10 @@ export interface BrainDumpItem {
 
 export interface BrainDumpState {
   lastDumpAt: number | null;
+  updatedAt?: number;
   items: BrainDumpItem[];
 }
 
-export interface PomodoroState {
-  isOpen: boolean;
-  isMinimized: boolean;
-  isActive: boolean;
-  mode: 'focus' | 'break';
-  timeLeft: number;
-  focusDuration: number;
-  breakDuration: number;
-  accumulatedSeconds: number;
-  soundEnabled: boolean;
-}
 
 export interface Notebook {
   id: string;
