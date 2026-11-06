@@ -1,23 +1,80 @@
 rules_version = '2';
 
-// Regras do Lida — cofre v2.
-// Publique ANTES de colocar a nova versão do app no ar
-// (Firebase Console > Firestore Database > Regras > colar > Publicar).
+// Regras do Lida 3.
+// - Cada pessoa tem um espaço pessoal (só ela participa) e pode participar de um espaço compartilhado.
+// - Só membros de um espaço leem ou escrevem nele. Para entrar num espaço compartilhado é preciso
+//   apresentar o código de convite atual; a senha do espaço é combinada à parte e nunca chega aqui.
+// - Registros usam compare-and-swap: uma gravação só é aceita se a base (b) for a versão atual do
+//   servidor e a versão nova (u) for maior. Quem estava desatualizado é recusado, baixa a versão nova,
+//   junta campo a campo no aparelho e envia de novo.
+// - O conteúdo dos registros é sempre cifrado no aparelho; o servidor só vê metadados.
+// - users/{uid} e users/{uid}/vault são do Lida anterior: continuam legíveis para a importação.
 service cloud.firestore {
-  match /databases/{database}/documents {
+  match /databases/{db}/documents {
 
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function space(sid) { return get(/databases/$(db)/documents/spaces/$(sid)); }
+    function isMember(sid) {
+      return signedIn() && exists(/databases/$(db)/documents/spaces/$(sid)/members/$(me()));
+    }
+
+    // ----- Lida anterior (cofre v2): leitura e exclusão pelo dono -----
     match /users/{uid} {
-      // Documento antigo (cofre v1). Continua legível (é o backup da migração).
-      // Só aceita gravações enquanto o cofre novo ainda não existe: assim uma
-      // versão antiga do app, ainda aberta em algum aparelho, não sobrescreve nada
-      // depois da migração.
-      allow read, delete: if request.auth != null && request.auth.uid == uid;
-      allow create, update: if request.auth != null && request.auth.uid == uid
-        && !exists(/databases/$(database)/documents/users/$(uid)/vault/_meta);
-
-      // Cofre novo (v2): _meta + pedaços criptografados.
+      allow read, delete: if signedIn() && me() == uid;
+      allow create, update: if signedIn() && me() == uid
+        && !exists(/databases/$(db)/documents/users/$(uid)/vault/_meta);
       match /vault/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == uid;
+        allow read, write: if signedIn() && me() == uid;
+      }
+    }
+
+    // ----- Lida 3 -----
+    match /profiles/{uid} {
+      allow read, write: if signedIn() && me() == uid;
+    }
+
+    match /spaces/{sid} {
+      allow create: if signedIn()
+        && request.resource.data.owner == me()
+        && request.resource.data.kind in ['personal', 'shared']
+        && (request.resource.data.kind == 'personal'
+            || (request.resource.data.joinCode is string && request.resource.data.joinCode.size() >= 8));
+      allow read: if isMember(sid);
+      allow update: if isMember(sid)
+        && resource.data.owner == me()
+        && request.resource.data.owner == resource.data.owner
+        && request.resource.data.kind == resource.data.kind;
+      allow delete: if false;
+
+      match /members/{uid} {
+        allow read: if isMember(sid);
+        // O dono entra ao criar o espaço; os demais só com o código de convite atual de um espaço compartilhado.
+        allow create: if signedIn() && me() == uid
+          && (space(sid).data.owner == me()
+              || (space(sid).data.kind == 'shared' && request.resource.data.code == space(sid).data.joinCode));
+        allow update: if signedIn() && me() == uid
+          && request.resource.data.code == resource.data.code;
+        allow delete: if signedIn() && (me() == uid || space(sid).data.owner == me());
+      }
+
+      match /records/{rid} {
+        function valid() {
+          let d = request.resource.data;
+          return d.keys().hasOnly(['u', 'by', 'del', 'b', 'iv', 'ct', 'ts'])
+            && d.u is string && d.u.size() < 64
+            && d.by == me()
+            && d.del is bool
+            && (!('b' in d) || d.b == null || d.b is string)
+            && d.iv is bytes && d.ct is bytes && d.ct.size() < 1000000
+            && d.ts == request.time;
+        }
+        allow read: if isMember(sid);
+        allow create: if isMember(sid) && valid();
+        allow update: if isMember(sid) && valid()
+          && request.resource.data.u > resource.data.u
+          && request.resource.data.get('b', null) == resource.data.u;
+        allow delete: if isMember(sid) && resource.data.del == true;
       }
     }
   }

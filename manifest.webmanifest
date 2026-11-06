@@ -1,0 +1,21 @@
+{
+  "name": "Lida",
+  "short_name": "Lida",
+  "description": "Tarefas e hábitos num só lugar, com recompensas a cada passo concluído.",
+  "lang": "pt-BR",
+  "start_url": "./#hoje",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f1217",
+  "theme_color": "#0f1217",
+  "icons": [
+    { "src": "icons/pwa-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/pwa-512x512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/pwa-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Hoje", "url": "./#hoje" },
+    { "name": "Entrada", "url": "./#entrada" }
+  ]
+}

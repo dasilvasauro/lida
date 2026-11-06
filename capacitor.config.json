@@ -1,0 +1,21 @@
+{
+  "appId": "io.github.dasilvasauro.lida",
+  "appName": "Lida",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0f1217"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 400,
+      "launchAutoHide": true,
+      "backgroundColor": "#0f1217",
+      "showSpinner": false
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_lida",
+      "iconColor": "#7C8CFF"
+    }
+  }
+}
