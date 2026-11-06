@@ -82,8 +82,11 @@ export const settingsView = {
       <section class="set-group"><h2>Lembretes</h2><div class="set-list" data-notify>
         <label class="set-row">${icon('bell')}<span class="grow">Lembretes<small>${isNative() ? 'Agendados no próprio celular: funcionam sem internet e com o app fechado' : 'No navegador, chegam enquanto o Lida estiver aberto (mesmo em outra aba)'}</small></span>${toggle('notify', np.on, 'Lembretes')}</label>
         <div data-notify-more${np.on ? '' : ' hidden'}>
-          <label class="set-row"><span class="grow">Tarefas com horário<small>Na hora marcada em cada tarefa</small></span>${toggle('ntasks', np.tasks, 'Lembretes de tarefas')}</label>
+          <label class="set-row"><span class="grow">Tarefas com horário<small>Na hora marcada, com botões Concluir e Lembrar em 1 h</small></span>${toggle('ntasks', np.tasks, 'Lembretes de tarefas')}</label>
+          <label class="set-row"><span class="grow">Resumo da manhã<small>O que tem para hoje, logo cedo</small></span><input type="time" value="${esc(np.morningAt)}" data-morningat aria-label="Horário do resumo da manhã"${np.morning ? '' : ' disabled'}>${toggle('nmorning', np.morning, 'Resumo da manhã')}</label>
           <label class="set-row"><span class="grow">Fechamento do dia<small>Um aviso para revisar o dia e planejar o seguinte</small></span><input type="time" value="${esc(np.dailyAt)}" data-dailyat aria-label="Horário do fechamento do dia"${np.daily ? '' : ' disabled'}>${toggle('ndaily', np.daily, 'Fechamento do dia')}</label>
+          <label class="set-row"><span class="grow">Lembrar de beber água<small>A cada ${np.waterEvery} h, das ${esc(np.waterFrom)} às ${esc(np.waterTo)}, até bater a meta. Com botão "Bebi um copo"</small></span>${toggle('nwater', np.water, 'Lembretes de água')}</label>
+          <div class="set-row"><span class="grow">Som<small>Campainha de bicicleta${isNative() ? '' : ' (na web, toca com o Lida aberto)'}</small></span><button type="button" class="btn small" data-bell>${icon('volume')}Ouvir</button></div>
           <div class="set-row" data-perm hidden></div>
           <button type="button" class="set-row" data-test>${icon('bell')}<span class="grow">Enviar um lembrete de teste<small>Chega em 5 segundos</small></span></button>
         </div>
@@ -160,10 +163,14 @@ function bind(el, S) {
     } else if (t.matches('[data-ntasks]')) notify.setNotifyPrefs({ tasks: t.checked });
     else if (t.matches('[data-ndaily]')) notify.setNotifyPrefs({ daily: t.checked });
     else if (t.matches('[data-dailyat]')) notify.setNotifyPrefs({ dailyAt: t.value || '21:00' });
+    else if (t.matches('[data-nmorning]')) notify.setNotifyPrefs({ morning: t.checked });
+    else if (t.matches('[data-morningat]')) notify.setNotifyPrefs({ morningAt: t.value || '08:00' });
+    else if (t.matches('[data-nwater]')) notify.setNotifyPrefs({ water: t.checked });
     else return;
     app.actions.reschedule();
     rerender();
   });
+  el.querySelector('[data-bell]')?.addEventListener('click', () => play('bike'));
   el.querySelector('[data-test]').onclick = async () => {
     await notify.testNotification();
     toast('Lembrete de teste agendado para daqui a 5 segundos.');

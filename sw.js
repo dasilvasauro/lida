@@ -2,7 +2,7 @@
 // O app inteiro funciona offline depois da primeira abertura.
 // Ao publicar uma nova versão, aumente VERSION aqui e app.version em js/state.js.
 // A lista SHELL é conferida pelos testes (npm test): todo arquivo do app precisa estar nela.
-const VERSION = 'lida-v3.0.0-alfa.2';
+const VERSION = 'lida-v3.0.0-alfa.3';
 const SHELL = [
   './',
   'index.html',
@@ -26,6 +26,8 @@ const SHELL = [
   'js/core/legacy.js',
   'js/core/model.js',
   'js/core/notify.js',
+  'js/core/parse.js',
+  'js/core/reminders.js',
   'js/core/sound.js',
   'js/core/store.js',
   'js/core/sync.js',
@@ -39,10 +41,12 @@ const SHELL = [
   'js/main.js',
   'js/native.js',
   'js/state.js',
+  'js/ui/chart.js',
   'js/ui/haptics.js',
   'js/ui/pickers.js',
   'js/ui/qr.js',
   'js/ui/reward.js',
+  'js/ui/rich.js',
   'js/ui/theme.js',
   'js/ui/ui.js',
   'js/vendor/capacitor.js',
@@ -54,10 +58,13 @@ const SHELL = [
   'js/views/focus.js',
   'js/views/gate.js',
   'js/views/habits.js',
+  'js/views/me.js',
+  'js/views/search.js',
   'js/views/settings.js',
   'js/views/shop.js',
   'js/views/tasks.js',
   'js/views/today.js',
+  'sounds/sino_bicicleta.wav',
 ];
 const RUNTIME = 'lida-runtime';
 
@@ -78,15 +85,17 @@ self.addEventListener('message', (e) => {
   if (e.data === 'skip') self.skipWaiting();
 });
 
-// Toque na notificação: traz o Lida para a frente e abre a tarefa.
+// Toque na notificação (ou num botão dela): traz o Lida para a frente e repassa o pedido.
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
-  const route = e.notification.data?.route || '';
+  const data = e.notification.data || {};
+  const route = data.route || '';
+  const msg = { type: 'notification-click', route, action: e.action || '', extra: data.extra || {} };
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       const c = list[0];
       if (c) {
-        c.postMessage({ type: 'notification-click', route });
+        c.postMessage(msg);
         return c.focus();
       }
       return self.clients.openWindow(`./${route ? '#' + route : ''}`);

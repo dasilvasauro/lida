@@ -10,9 +10,11 @@ export async function seedDemo() {
   const items = [
     { type: 'project', id: P1, data: { name: 'Trabalho', color: '#7C8CFF', order: 0 } },
     { type: 'project', id: P2, data: { name: 'Casa', color: '#5FE3B5', order: 1 } },
+    { type: 'tag', id: 'demo_tag_contas', data: { name: 'contas', color: '#F2C14E' } },
+    { type: 'tag', id: 'demo_tag_rapido', data: { name: 'rápido', color: '#59C3F0' } },
     { type: 'prefs', id: 'prefs', data: { name: 'Alex', modus: 'punctual', lastDay: d, waterGoal: 2000, waterGlass: 250 } },
-    { type: 'task', data: { title: 'Revisar a proposta do cliente', priority: 'P1', due: d, time: '10:00', projectId: P1, notes: 'Conferir prazos e valores antes de enviar.', createdDay: addDays(d, -1) } },
-    { type: 'task', data: { title: 'Responder e-mails pendentes', priority: 'P3', due: d, projectId: P1, createdDay: d } },
+    { type: 'task', data: { title: 'Revisar a proposta do cliente', priority: 'P1', due: d, time: '10:00', projectId: P1, notes: 'Conferir prazos e **valores** antes de enviar.\n- [x] Planilha de custos\n- [ ] Revisar o contrato\nModelo: https://exemplo.com/proposta', createdDay: addDays(d, -1) } },
+    { type: 'task', data: { title: 'Responder e-mails pendentes', priority: 'P3', due: d, projectId: P1, tags: ['demo_tag_rapido'], createdDay: d } },
     { type: 'task', data: { title: 'Escrever o relatório do mês', kind: 'timed', duration: 45, priority: 'P2', due: d, projectId: P1, createdDay: d } },
     { type: 'task', data: { title: 'Arrumar a mesa antes das 18h', kind: 'challenge', priority: 'P3', due: d, createdDay: d } },
     { type: 'task', data: { title: 'Caminhada de 30 minutos', priority: 'P2', due: d, time: '18:30', recurrence: { type: 'daily' }, createdDay: d } },
@@ -49,7 +51,7 @@ export async function seedDemo() {
         ],
       },
     },
-    { type: 'task', data: { title: 'Pagar a conta de luz', priority: 'P0', due: addDays(d, -1), projectId: P2, createdDay: addDays(d, -3) } },
+    { type: 'task', data: { title: 'Pagar a conta de luz', priority: 'P0', due: addDays(d, -1), projectId: P2, tags: ['demo_tag_contas'], createdDay: addDays(d, -3) } },
     { type: 'task', data: { title: 'Preparar a apresentação de segunda', priority: 'P1', due: addDays(d, 2), projectId: P1, createdDay: d } },
     { type: 'task', data: { title: 'Ligar para o dentista', priority: 'P3', due: addDays(d, 1), time: '09:00', createdDay: d } },
     { type: 'task', data: { title: 'Revisão semanal', priority: 'P2', due: addDays(d, 4), recurrence: { type: 'weekly', weekdays: [weekday(addDays(d, 4))] }, createdDay: d } },
@@ -73,6 +75,19 @@ export async function seedDemo() {
     if (i < 9 || i % 4 === 1) items.push({ type: 'hlog', id: `hl_demo_meditar_${day}`, data: { habitId: 'demo_meditar', date: day, count: 1 } });
     if ([1, 3, 5].includes(weekday(day)) && i % 5 !== 0) items.push({ type: 'hlog', id: `hl_demo_treino_${day}`, data: { habitId: 'demo_treino', date: day, count: 1 } });
   }
+  // Humor, pontuação, XP e tarefas concluídas nos dias anteriores (alimentam a aba Eu).
+  const MO = ['happy', 'radiant', 'normal', 'happy', 'annoyed', 'happy', 'normal', 'radiant', 'happy', 'disappointed'];
+  for (let i = 1; i <= 24; i++) {
+    const day = addDays(d, -i);
+    if (i % 7 !== 3) items.push({ type: 'mood', id: `md_${day}`, data: { date: day, mood: MO[i % MO.length] } });
+    const n = 1 + ((i * 7) % 5);
+    items.push({ type: 'score', id: `sc_${day}`, data: { date: day, score: 58 + ((i * 13) % 37), tasksDone: n, habitsDone: 2, penalties: i % 4 === 0 ? 1 : 0 } });
+    items.push({ type: 'ev', id: `ev_demo_xp_${day}`, data: { kind: 'done', date: day, xp: 40 + ((i * 53) % 180), gold: 15 + ((i * 17) % 60) } });
+    for (let k = 0; k < n; k++) items.push({ type: 'task', data: { title: `Tarefa antiga ${i}.${k + 1}`, priority: 'P3', due: day, done: true, doneAt: new Date(`${day}T${String(9 + k).padStart(2, '0')}:00`).getTime(), createdDay: day } });
+    if (i % 3 === 0) items.push({ type: 'ev', id: `ev_focus_demo_${i}`, data: { kind: 'focus', date: day, focusSec: 1500 } });
+  }
+  items.push({ type: 'vision', id: 'vision', data: { goals: [{ id: 'g1', title: 'Correr 10 km', state: 3 }, { id: 'g2', title: 'Ler 12 livros no ano', state: 4 }, { id: 'g3', title: 'Aprender violão', state: 1 }], develop: ['Paciência', 'Constância'], abandon: ['Procrastinar'], checkpoints: [addDays(d, 6), addDays(d, 16)] } });
+  items.push({ type: 'refl', id: 'demo_refl', data: { title: 'O que aprendi este mês', color: '#C08CF5', cards: ['Feito é melhor que perfeito.', 'Descansar também é produtivo.', 'Uma tarefa por vez.'] } });
   items.push({ type: 'hlog', id: `hl_demo_ler_${d}`, data: { habitId: 'demo_ler', date: d, count: 4 } });
   items.push({ type: 'water', id: 'wa_demo1', data: { date: d, ml: 250, at: nowMs() - 7200000 } }, { type: 'water', id: 'wa_demo2', data: { date: d, ml: 500, at: nowMs() - 3600000 } });
   await personal.saveMany(items);

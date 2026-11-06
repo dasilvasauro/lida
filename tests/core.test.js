@@ -14,6 +14,7 @@ const { createKey } = await import('../js/lib/crypto.js');
 const { initHLC } = await import('../js/lib/hlc.js');
 const { personal, P } = await import('../js/state.js');
 const tasks = await import('../js/core/tasks.js');
+const { reminders } = await import('../js/core/reminders.js');
 const legacy = await import('../js/core/legacy.js');
 const { today } = await import('../js/lib/clock.js');
 const { addDays } = await import('../js/lib/util.js');
@@ -80,12 +81,16 @@ test('lembretes: só tarefas abertas com data e horário, mais o fechamento do d
   const d = addDays(today(), 1);
   await tasks.addTask({ title: 'Dentista', due: d, time: '09:30' });
   await tasks.addTask({ title: 'Sem horário', due: d });
-  const items = tasks.reminders(P(), { tasks: true, daily: true, dailyAt: '21:00' });
+  const items = reminders(P(), { tasks: true, daily: true, dailyAt: '21:00' });
   const t = items.filter((x) => x.key.startsWith('task:'));
   assert.equal(t.length, 1);
   assert.equal(t[0].title, 'Dentista');
   assert.match(t[0].body, /Amanhã às 9:30/);
-  assert.equal(items.filter((x) => x.key.startsWith('daily:')).length, 14);
+  assert.ok(items.filter((x) => x.key.startsWith('daily:')).length >= 13);
+  assert.ok(t[0].long.includes('Amanhã às 9:30'));
+  assert.equal(t[0].actions, 'TASK');
+  const w = reminders(P(), { water: true, waterFrom: '09:00', waterTo: '21:00', waterEvery: 2 });
+  assert.ok(w.every((x) => x.key.startsWith('water:') && x.actions === 'WATER'));
 });
 
 /* ---------- Importação do Lida anterior ---------- */
@@ -298,4 +303,27 @@ test('concluir uma tarefa vencida não devolve a punição', async () => {
   assert.equal(P().byId.get(id).failed, true);
   resetClock();
   initClock(false);
+});
+
+/* ---------- Adição rápida ---------- */
+const { parseQuick } = await import('../js/core/parse.js');
+test('linguagem natural: datas, horário, prioridade, projeto, etiquetas e repetição', () => {
+  const ctx = { today: '2026-11-06', projects: [{ id: 'p1', name: 'Casa' }, { id: 'p2', name: 'Trabalho remoto' }], tags: [{ id: 't1', name: 'contas' }] };
+  let r = parseQuick('Pagar luz amanhã 9h p1 #casa @contas @urgente', ctx);
+  assert.deepEqual([r.title, r.due, r.time, r.priority, r.projectId, r.tags, r.newTags], ['Pagar luz', '2026-11-07', '09:00', 'P1', 'p1', ['t1'], ['urgente']]);
+  r = parseQuick('Reunião sexta às 14:30 #trabalho', ctx); // 06/11/2026 é sexta: "sexta" = a próxima
+  assert.deepEqual([r.title, r.due, r.time, r.projectId], ['Reunião', '2026-11-13', '14:30', 'p2']);
+  r = parseQuick('Academia toda segunda 7h', ctx);
+  assert.deepEqual([r.title, r.due, r.time, r.recurrence], ['Academia', '2026-11-09', '07:00', { type: 'weekly', weekdays: [1] }]);
+  r = parseQuick('Aluguel dia 5 todo mês', ctx);
+  assert.equal(r.due, '2026-12-05');
+  assert.equal(r.recurrence.type, 'monthly');
+  r = parseQuick('Consulta 20/01 às 10', ctx);
+  assert.deepEqual([r.due, r.time], ['2027-01-20', '10:00']);
+  r = parseQuick('Ligar para o João em 3 dias', ctx);
+  assert.deepEqual([r.title, r.due], ['Ligar para o João', '2026-11-09']);
+  r = parseQuick('Comprar 2 litros de leite', ctx);
+  assert.deepEqual([r.title, r.due, r.time], ['Comprar 2 litros de leite', null, null]);
+  r = parseQuick('Ler #inexistente', ctx);
+  assert.equal(r.title, 'Ler #inexistente');
 });

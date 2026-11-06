@@ -1,11 +1,13 @@
 // Peças das listas de tarefas: linha (por tipo), cartão do sprint, adicionar rápido e o painel de edição.
-import { P, app, prefs } from '../state.js';
+import { P, app, prefs, personal } from '../state.js';
 import { PRIORITIES, TASK_KINDS, recurrenceLabel } from '../core/model.js';
 import { toggleTask, toggleSub, addTask, saveTask, removeTask, strip, checkTask, sprintInfo } from '../core/tasks.js';
 import { ITEMS, applyTaskItem } from '../core/game.js';
 import { esc, uid, relDay, fmtTime, plural, addDays } from '../lib/util.js';
 import { today } from '../lib/clock.js';
-import { icon, sheet, toast, confirmDialog, opt, readForm, bar } from '../ui/ui.js';
+import { icon, sheet, toast, confirmDialog, promptDialog, opt, readForm, bar, COLORS } from '../ui/ui.js';
+import { parseQuick } from '../core/parse.js';
+import { renderRich, richToolbar, bindToolbar, toggleCheckLine } from '../ui/rich.js';
 import { play } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
 import { celebrate } from './celebrate.js';
@@ -26,6 +28,10 @@ export function taskRow(t, { showDue = false, S = P(), i = 0 } = {}) {
   const subs = t.subtasks || [];
   if (subs.length && kind !== 'routine') meta.push(`<span>${icon('list')}${subs.filter((s) => s.done).length}/${subs.length}</span>`);
   if (t.notes) meta.push(`<span aria-label="Tem descrição">${icon('edit')}</span>`);
+  for (const tid of t.tags || []) {
+    const tg = S.byId.get(tid);
+    if (tg) meta.push(`<span class="tagchip" style="--c:${esc(tg.color || 'var(--dim)')}">@${esc(tg.name)}</span>`);
+  }
   const proj = t.projectId && S.byId.get(t.projectId);
   if (proj) meta.push(`<span class="tag"><i class="dot" style="--c:${esc(proj.color || 'var(--dim)')}"></i>${esc(proj.name)}</span>`);
   const label = t.done ? 'Reabrir tarefa' : 'Concluir tarefa';
@@ -144,28 +150,90 @@ export function bindSprint(root) {
 
 /* ---------- Adicionar rápido ---------- */
 // defaults: campos que a tarefa nova recebe (ex.: { due: hoje } na tela Hoje).
+// O texto é lido em linguagem natural: "Pagar luz amanhã 9h p1 #Casa @contas".
 export function quickAdd(defaults = {}) {
-  return `<form class="quick-add" data-quick="${esc(defaults.due || 'sem-data')}">
+  return `<form class="quick-add" data-quick="${esc(defaults.due || defaults.projectId || 'sem-data')}">
     <span class="qa-plus">${icon('plus')}</span>
-    <input name="title" placeholder="Adicionar tarefa" autocomplete="off" enterkeyhint="done" aria-label="Nova tarefa">
+    <input name="title" placeholder="Adicionar tarefa" autocomplete="off" enterkeyhint="done" aria-label="Nova tarefa" aria-describedby="qa-help">
     <button type="button" class="icon-btn qa-more" data-more aria-label="Mais opções">${icon('more')}</button>
     <input type="hidden" name="defaults" value="${esc(JSON.stringify(defaults))}">
+    <div class="qa-preview" data-preview aria-live="polite"></div>
   </form>`;
 }
+
+function previewChips(r, defaults) {
+  const chips = [];
+  const due = r.due || null;
+  if (due && due !== defaults.due) chips.push(`${icon('plan')}${esc(relDay(due))}`);
+  if (r.time) chips.push(`${icon('timer')}${esc(fmtTime(r.time))}`);
+  if (r.recurrence) chips.push(`${icon('repeat')}${esc(recurrenceLabel(r.recurrence))}`);
+  if (r.priority) chips.push(`${icon('flag')}${r.priority}`);
+  if (r.projectName) chips.push(`${icon('folder')}${esc(r.projectName)}`);
+  const S = P();
+  for (const id of r.tags) chips.push(`@${esc(S.byId.get(id)?.name || '')}`);
+  for (const n of r.newTags) chips.push(`@${esc(n)} <small>nova</small>`);
+  return chips.map((c) => `<span class="qa-chip">${c}</span>`).join('');
+}
+
+export async function createFromText(text, defaults = {}) {
+  const S = P();
+  const r = parseQuick(text, { today: today(), projects: S.project, tags: S.tag });
+  if (!r.title) return null;
+  const batch = [];
+  const newIds = [];
+  for (const name of r.newTags) {
+    const id = uid();
+    newIds.push(id);
+    batch.push({ type: 'tag', id, data: { name, color: COLORS[(S.tag.length + batch.length) % COLORS.length] } });
+  }
+  const data = { ...defaults, title: r.title };
+  if (r.due) data.due = r.due;
+  if (r.time) data.time = r.time;
+  if (r.priority) data.priority = r.priority;
+  if (r.projectId) data.projectId = r.projectId;
+  if (r.recurrence) data.recurrence = r.recurrence;
+  const tags = [...new Set([...(defaults.tags || []), ...r.tags, ...newIds])];
+  if (tags.length) data.tags = tags;
+  const c = checkTask({ kind: 'normal', priority: 'P4', ...data });
+  if (!c.ok) {
+    play('error');
+    toast(c.msg, c.shop ? { action: 'Ir à Loja', onAction: () => app.nav('loja'), ms: 5000 } : { ms: 5000 });
+    return null;
+  }
+  if (batch.length) await personal.saveMany(batch);
+  return addTask(data, c.consume);
+}
+
 export function bindQuick(root) {
   const f = root.querySelector('[data-quick]');
   if (!f) return;
   const defaults = () => JSON.parse(f.defaults.value || '{}');
-  f.querySelector('[data-more]').onclick = () => editTask(null, { ...defaults(), title: f.title.value.trim() });
+  const pv = f.querySelector('[data-preview]');
+  f.querySelector('[data-more]').onclick = () => {
+    const S = P();
+    const r = parseQuick(f.title.value, { today: today(), projects: S.project, tags: S.tag });
+    const d = { ...defaults(), title: r.title };
+    for (const k of ['due', 'time', 'priority', 'projectId', 'recurrence']) if (r[k]) d[k] = r[k];
+    if (r.tags.length) d.tags = r.tags;
+    editTask(null, d);
+  };
+  f.title.oninput = () => {
+    const S = P();
+    const v = f.title.value;
+    pv.innerHTML = v.trim() ? previewChips(parseQuick(v, { today: today(), projects: S.project, tags: S.tag }), defaults()) : '';
+  };
   f.onsubmit = async (e) => {
     e.preventDefault();
-    const title = f.title.value.trim();
-    if (!title) return;
+    const text = f.title.value.trim();
+    if (!text) return;
+    const key = f.dataset.quick;
+    const id = await createFromText(text, defaults());
+    if (!id) return;
     f.title.value = '';
+    pv.innerHTML = '';
     haptic('add');
     play('tick');
-    const key = f.dataset.quick;
-    app.lastAdded = await addTask({ ...defaults(), title });
+    app.lastAdded = id;
     // A lista é redesenhada: devolve o foco ao mesmo campo para anotar várias em sequência.
     setTimeout(() => document.querySelector(`[data-quick="${key}"] input[name=title]`)?.focus(), 80);
   };
@@ -205,6 +273,7 @@ export function editTask(id, defaults = {}) {
   if (t.kind === 'routine' && id) return import('./habits.js').then((m) => m.editRoutine(t.routineId, { fromTask: id }));
   let kind = t.kind || 'normal';
   let subs = (t.subtasks || []).map((s) => ({ ...s }));
+  let selTags = [...(t.tags || [])];
   const bonusN = S.money.items.bonusTask || 0;
   const subHtml = () =>
     subs
@@ -225,7 +294,8 @@ export function editTask(id, defaults = {}) {
       }).join('')}</div>
       <p class="form-meta kind-hint" data-hint>${esc(TASK_KINDS[kind].hint)}</p>
       <label class="field"><span>Título</span><input name="title" value="${esc(t.title || '')}" required autocomplete="off" ${id ? '' : 'autofocus'}></label>
-      <label class="field"><span>Descrição</span><textarea name="notes" rows="3" placeholder="Detalhes, links, o que for útil">${esc(t.notes || '')}</textarea></label>
+      <div class="field"><span>Descrição</span>${richToolbar()}<textarea name="notes" rows="3" placeholder="Detalhes, links, listas. Aceita **negrito**, *itálico* e [links](https://…)">${esc(t.notes || '')}</textarea>
+        <div class="rich rich-preview" data-rich${t.notes ? '' : ' hidden'}>${renderRich(t.notes || '')}</div></div>
       <div class="grid2 only-not-challenge">
         <label class="field only-sprint"><span>Início</span><input type="date" name="start" value="${esc(t.start || t.createdDay || today())}"></label>
         <label class="field"><span data-duelabel>${kind === 'sprint' ? 'Fim' : 'Data'}</span><input type="date" name="due" value="${esc(t.due || (kind === 'sprint' ? addDays(today(), 7) : ''))}"></label>
@@ -236,6 +306,7 @@ export function editTask(id, defaults = {}) {
         <label class="field"><span>Prioridade</span><select name="priority">${PRIORITIES.map((p) => opt(p.id, `${p.short} · ${p.id === 'P4' ? 'Nenhuma' : p.name}`, (t.priority || 'P4') === p.id)).join('')}</select></label>
         <label class="field only-repeat"><span>Repetir</span><select name="repeat">${REPEAT.map(([v, l]) => opt(v, l, repeatValue(t.recurrence) === v)).join('')}</select></label>
       </div>
+      <div class="field"><span>Etiquetas</span><div class="chips tag-pick" data-tags>${tagChips(S, t.tags || [])}</div></div>
       ${S.project.length ? `<label class="field"><span>Projeto</span><select name="projectId">${opt('', 'Nenhum', !t.projectId)}${S.project.map((p) => opt(p.id, p.name, p.id === t.projectId)).join('')}</select></label>` : ''}
       <div class="field"><span data-sublabel>${kind === 'sprint' ? 'Etapas do sprint' : 'Subtarefas'}</span>
         <ul class="subs" data-subs>${subHtml()}</ul>
@@ -256,6 +327,48 @@ export function editTask(id, defaults = {}) {
     onMount(el, close) {
       const f = el.querySelector('[data-f]');
       const list = el.querySelector('[data-subs]');
+      // Descrição: barra de formatação e pré-visualização ao vivo (com caixas de seleção clicáveis).
+      const rich = el.querySelector('[data-rich]');
+      const paintRich = () => {
+        rich.innerHTML = renderRich(f.notes.value);
+        rich.hidden = !f.notes.value.trim();
+        rich.querySelectorAll('[data-line]').forEach(
+          (b) =>
+            (b.onclick = () => {
+              f.notes.value = toggleCheckLine(f.notes.value, Number(b.dataset.line));
+              play('tick');
+              paintRich();
+            }),
+        );
+      };
+      paintRich();
+      f.notes.addEventListener('input', paintRich);
+      bindToolbar(el, f.notes, paintRich);
+      // Etiquetas: tocar alterna; "+ Nova" cria.
+      const tagsBox = el.querySelector('[data-tags]');
+      const bindTags = () => {
+        tagsBox.querySelectorAll('[data-tag]').forEach(
+          (b) =>
+            (b.onclick = () => {
+              const id = b.dataset.tag;
+              selTags = selTags.includes(id) ? selTags.filter((x) => x !== id) : [...selTags, id];
+              b.classList.toggle('on', selTags.includes(id));
+              b.setAttribute('aria-pressed', selTags.includes(id));
+              haptic('tick');
+            }),
+        );
+        tagsBox.querySelector('[data-tagnew]').onclick = async () => {
+          const name = (await promptDialog('Nova etiqueta', { label: 'Nome', ok: 'Criar' }))?.replace(/^@/, '').trim();
+          if (!name) return;
+          const S2 = P();
+          const ex = S2.tag.find((x) => x.name.toLowerCase() === name.toLowerCase());
+          const id = ex?.id || (await personal.save('tag', { name, color: COLORS[S2.tag.length % COLORS.length] }));
+          if (!selTags.includes(id)) selTags.push(id);
+          tagsBox.innerHTML = tagChips(P(), selTags);
+          bindTags();
+        };
+      };
+      bindTags();
       const setKind = (k) => {
         kind = k;
         f.dataset.kind = k;
@@ -342,6 +455,7 @@ export function editTask(id, defaults = {}) {
           kind,
           title: v.title.trim(),
           notes: v.notes.trim() || undefined,
+          tags: selTags.length ? selTags : undefined,
           due,
           time: due && v.time && kind !== 'sprint' ? v.time : undefined,
           start: kind === 'sprint' ? v.start || today() : undefined,
@@ -371,3 +485,7 @@ export function editTask(id, defaults = {}) {
   });
 }
 
+
+function tagChips(S, sel) {
+  return `${S.tag.map((tg) => `<button type="button" class="chip tag${sel.includes(tg.id) ? ' on' : ''}" data-tag="${esc(tg.id)}" aria-pressed="${sel.includes(tg.id)}" style="--c:${esc(tg.color || 'var(--dim)')}"><i class="dot"></i>${esc(tg.name)}</button>`).join('')}<button type="button" class="chip" data-tagnew>${icon('plus')}Nova</button>`;
+}

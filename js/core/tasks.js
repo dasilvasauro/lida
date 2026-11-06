@@ -4,7 +4,7 @@ import { personal, P } from '../state.js';
 import { PRIORITY_RANK, taskOpen, doneEventId, nextOccurrence, HABIT_DAYS_ALL } from './model.js';
 import { rewardFor, penaltyFor, priorityGate, commit, useItemEvent, ITEMS } from './game.js';
 import { today, nowMs } from '../lib/clock.js';
-import { addDays, fmtTime, relDay, daysBetween, weekday, uid } from '../lib/util.js';
+import { addDays, daysBetween, weekday, uid } from '../lib/util.js';
 
 export const byPriority = (a, b) =>
   (PRIORITY_RANK[a.priority] ?? 4) - (PRIORITY_RANK[b.priority] ?? 4) || (a.time || '99').localeCompare(b.time || '99') || (a.order ?? a._ca ?? 0) - (b.order ?? b._ca ?? 0);
@@ -277,31 +277,4 @@ export function habitsOnDay(S, day) {
     else if (!log?.mod) missed++;
   }
   return { done, missed };
-}
-
-/* ---------- Lembretes ---------- */
-// Tudo o que deveria estar agendado agora (notify.reconcile compara e agenda só a diferença).
-export function reminders(S, prefs) {
-  const out = [];
-  const projects = new Map(S.project.map((p) => [p.id, p.name]));
-  if (prefs.tasks) {
-    for (const t of S.task) {
-      if (!taskOpen(t) || !t.due || !t.time) continue;
-      const [y, m, d] = t.due.split('-').map(Number);
-      const [hh, mm] = t.time.split(':').map(Number);
-      const at = new Date(y, m - 1, d, hh, mm).getTime() - (t.remindBefore || 0) * 60000;
-      const where = projects.get(t.projectId);
-      out.push({ key: `task:${t.id}`, at, title: t.title, body: `${relDay(t.due)} às ${fmtTime(t.time)}${where ? ` · ${where}` : ''}`, route: `tarefa-${t.id}` });
-    }
-  }
-  if (prefs.daily && prefs.dailyAt) {
-    const [hh, mm] = prefs.dailyAt.split(':').map(Number);
-    const day0 = today();
-    for (let i = 0; i < 14; i++) {
-      const day = addDays(day0, i);
-      const [y, m, d] = day.split('-').map(Number);
-      out.push({ key: `daily:${day}`, at: new Date(y, m - 1, d, hh, mm).getTime(), title: 'Como foi o seu dia?', body: 'Revise o que ficou pendente e deixe amanhã planejado.', route: 'hoje' });
-    }
-  }
-  return out;
 }

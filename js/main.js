@@ -8,7 +8,9 @@ import * as cloud from './core/cloud.js';
 import { createSync } from './core/sync.js';
 import * as legacy from './core/legacy.js';
 import * as notify from './core/notify.js';
-import { reminders, processDays, buckets } from './core/tasks.js';
+import { processDays, buckets, toggleTask } from './core/tasks.js';
+import { reminders } from './core/reminders.js';
+import { addWater, waterGlass, waterToday, waterGoal, isScheduled, isDone } from './core/habits.js';
 import { seedDemo } from './core/demo.js';
 import { initSound } from './core/sound.js';
 import { app, personal, P } from './state.js';
@@ -21,24 +23,28 @@ import { todayView, planView } from './views/today.js';
 import { habitsView } from './views/habits.js';
 import { shopView } from './views/shop.js';
 import { settingsView } from './views/settings.js';
+import { meView } from './views/me.js';
+import { initChartTips } from './ui/chart.js';
 import { editTask } from './views/tasks.js';
 import { avatar } from './views/common.js';
 import { openPomodoro, initTimers, paintChip } from './views/focus.js';
 import { openBrain } from './views/brain.js';
-import { fmtInt } from './lib/util.js';
+import { openSearch } from './views/search.js';
+import { fmtInt, fmtTime } from './lib/util.js';
 
-const VIEWS = { hoje: todayView, planejar: planView, habitos: habitsView, loja: shopView, ajustes: settingsView };
+const VIEWS = { hoje: todayView, planejar: planView, habitos: habitsView, loja: shopView, eu: meView, ajustes: settingsView };
 const NAV = [
   ['hoje', 'Hoje', 'today'],
   ['planejar', 'Planejar', 'upcoming'],
   ['habitos', 'Hábitos', 'habit'],
   ['loja', 'Loja', 'shop'],
-  ['ajustes', 'Ajustes', 'settings'],
+  ['eu', 'Eu', 'user'],
 ];
-const ORDER = NAV.map((n) => n[0]);
+const ORDER = [...NAV.map((n) => n[0]), 'ajustes'];
 const DB_NAME = () => (app.demo ? 'lida3-demo' : 'lida3');
 
 let current = null;
+let lastTab = 'em-breve';
 
 const ls = {
   get: (k) => {
@@ -104,6 +110,7 @@ async function boot() {
         /* sem rede: segue para a tela inicial */
       }
     }
+    if (!res && ls.get('lida.intro') !== '1') await gate.intro();
     res ||= await gate.welcome();
     ({ sid, key } = res);
     Object.assign(app, { sid, wrap: res.wrap, mode: res.mode, me: res.uid, user: res.user || null });
@@ -208,6 +215,7 @@ function shell() {
         ${app.demo ? `<div class="testbar" data-demobar></div>` : ''}
         <header class="topbar"><h1><span data-title></span><span class="sub" data-sub></span></h1>
           <button type="button" class="timer-chip" data-timer-chip hidden></button>
+          <button type="button" class="icon-btn" data-search aria-label="Buscar (/)">${icon('search')}</button>
           <span class="sync-dot" data-dot hidden></span>
           <button type="button" class="me-btn" data-me aria-label="Ajustes e conta"></button></header>
       </div>
@@ -216,7 +224,8 @@ function shell() {
     <button type="button" class="fab" data-new aria-label="Adicionar tarefa">${icon('plus')}</button>`;
   document.querySelectorAll('[data-new]').forEach((b) => b.addEventListener('click', newTask));
   document.querySelectorAll('[data-rail-tool]').forEach((b) => b.addEventListener('click', () => app.actions.tool(b.dataset.railTool)));
-  $('[data-me]').onclick = () => (location.hash = 'ajustes');
+  $('[data-search]').onclick = () => openSearch();
+  $('[data-me]').onclick = () => (location.hash = current === 'eu' ? 'ajustes' : 'eu');
   if (app.sync) {
     const dot = $('[data-dot]');
     dot.hidden = false;
@@ -232,7 +241,8 @@ function shell() {
 
 function newTask() {
   const d = today();
-  editTask(null, current === 'planejar' && planView.tab === 'entrada' ? {} : { due: d });
+  if (current === 'planejar' && planView.tab === 'projeto') return editTask(null, { projectId: planView.pid });
+  editTask(null, current === 'planejar' && ['entrada', 'projetos'].includes(planView.tab) ? {} : { due: d });
 }
 
 // Rotas: #hoje, #planejar (#entrada e #em-breve abrem as abas), #habitos, #loja, #ajustes, #tarefa-<id>.
@@ -245,28 +255,37 @@ function route() {
     h = 'hoje';
   }
   let changedTab = false;
-  if (h === 'entrada' || h === 'em-breve') {
-    changedTab = planView.tab !== h;
-    planView.tab = h;
+  const pm = h.match(/^projeto-(.+)$/);
+  if (h === 'entrada' || h === 'em-breve' || h === 'projetos' || pm) {
+    const tab = pm ? 'projeto' : h;
+    changedTab = planView.tab !== tab || (pm && planView.pid !== pm[1]);
+    planView.tab = tab;
+    if (pm) planView.pid = decodeURIComponent(pm[1]);
     h = 'planejar';
   }
   const next = VIEWS[h] ? h : 'hoje';
   const prev = current;
   const changed = next !== prev;
   current = next;
+  const navKey = current === 'ajustes' ? 'eu' : current;
   document.querySelectorAll('[data-nav]').forEach((a) => {
-    a.classList.toggle('on', a.dataset.nav === current);
-    if (a.dataset.nav === current) a.setAttribute('aria-current', 'page');
+    a.classList.toggle('on', a.dataset.nav === navKey);
+    if (a.dataset.nav === navKey) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
   movePill();
   const v = VIEWS[current];
   $('[data-title]').textContent = v.title;
-  $('[data-me]').hidden = current === 'ajustes';
-  $('[data-me]').innerHTML = avatar(30);
-  document.querySelector('.fab').hidden = !['hoje', 'planejar'].includes(current);
+  // No topo: a foto leva à aba Eu; em Eu, uma engrenagem leva aos Ajustes; em Ajustes, voltar.
+  const me = $('[data-me]');
+  me.classList.toggle('as-icon', current === 'eu' || current === 'ajustes');
+  me.innerHTML = current === 'eu' ? icon('settings') : current === 'ajustes' ? icon('back') : avatar(30);
+  me.setAttribute('aria-label', current === 'eu' ? 'Ajustes' : current === 'ajustes' ? 'Voltar para Eu' : 'Abrir a aba Eu');
+  document.querySelector('.fab').hidden = !['hoje', 'planejar'].includes(current) || (current === 'planejar' && planView.tab === 'projetos');
   document.title = current === 'hoje' ? 'Lida' : `${v.title} · Lida`;
-  const dir = !prev ? 'up' : changedTab && !changed ? (planView.tab === 'entrada' ? 'left' : 'right') : ORDER.indexOf(next) >= ORDER.indexOf(prev) ? 'left' : 'right';
+  const TABS = ['em-breve', 'entrada', 'projetos', 'projeto'];
+  const dir = !prev ? 'up' : changedTab && !changed ? (TABS.indexOf(planView.tab) >= TABS.indexOf(lastTab) ? 'left' : 'right') : ORDER.indexOf(next) >= ORDER.indexOf(prev) ? 'left' : 'right';
+  lastTab = planView.tab;
   render(changed || changedTab ? dir : false);
   if (changed) window.scrollTo(0, 0);
 }
@@ -296,14 +315,18 @@ function render(animate = false) {
     paintChip();
     markNew(el);
   };
+  // A animação de entrada vale só para a troca de seção: redesenhos (marcar hábito, concluir
+  // tarefa, sincronização) não podem reanimar a tela inteira.
+  clearTimeout(render.t);
+  el.classList.remove('enter', 'from-left', 'from-right', 'from-up');
   if (!animate) {
     draw();
     return window.scrollTo(0, y);
   }
-  el.classList.remove('enter', 'from-left', 'from-right', 'from-up');
   draw();
   void el.offsetWidth;
   el.classList.add('enter', `from-${animate === 'right' ? 'left' : animate === 'left' ? 'right' : 'up'}`);
+  render.t = setTimeout(() => el.classList.remove('enter', 'from-left', 'from-right', 'from-up'), 900);
 }
 
 // A tarefa recém-criada entra com uma animação própria.
@@ -337,22 +360,52 @@ const rerender = (() => {
 // Agenda os lembretes de novo sempre que algo muda (só a diferença vai para o sistema).
 const reschedule = debounce(() => notify.reconcile(reminders(P(), notify.notifyPrefs())).catch(() => {}), 1200);
 
+// Widget do Android: um resumo pronto do dia (o widget só desenha).
+const updateWidget = debounce(() => {
+  if (!isNative()) return;
+  const S = P();
+  const d = today();
+  const B = buckets(S, d);
+  const hs = S.habit.filter((h) => !h.archived && isScheduled(h, d));
+  const hd = hs.filter((h) => isDone(S, h, d)).length;
+  const L = (ml) => (ml >= 1000 ? `${(ml / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L` : `${ml} ml`);
+  const footer = [hs.length ? `Hábitos ${hd}/${hs.length}` : '', `Água ${L(waterToday(S, d))} de ${L(waterGoal(S))}`].filter(Boolean).join('  ·  ');
+  const tasks = [...B.overdue, ...B.today].slice(0, 4).map((t) => ({ t: t.title, time: t.time ? fmtTime(t.time) : '' }));
+  call('LidaWidget', 'update', { data: JSON.stringify({ date: d, title: 'Hoje', done: B.doneToday.length, total: B.today.length + B.doneToday.length, tasks, footer }) });
+}, 1500);
+
+// Links lida://secao (vindos do widget) abrem a seção certa.
+function deepLinks() {
+  const A = plugin('App');
+  if (!A) return;
+  const go = (url) => {
+    const m = String(url || '').match(/^lida:\/\/([a-z-]+)/);
+    if (m) location.hash = m[1];
+  };
+  A.addListener('appUrlOpen', (e) => go(e?.url));
+  call('App', 'getLaunchUrl').then((r) => go(r?.url));
+}
+
 function start() {
   shell();
   initPickers();
+  initChartTips();
   app.nav = (r) => (location.hash = r);
   app.refresh = rerender;
   app.actions.reschedule = reschedule;
   window.addEventListener('hashchange', route);
   personal.subscribe(rerender);
   personal.subscribe(reschedule);
-  notify.initNotify((r) => (location.hash = r));
+  personal.subscribe(updateWidget);
+  notify.initNotify((r) => (location.hash = r), onNotifyAction);
   reschedule();
   route();
   initTimers();
   dismissBoot();
   call('SplashScreen', 'hide');
   nativeBack();
+  deepLinks();
+  updateWidget();
   runDay();
 
   // Virada do dia com o app aberto: fecha o dia anterior, redesenha e reagenda.
@@ -363,19 +416,46 @@ function start() {
     runDay();
     render(false);
     reschedule();
+    updateWidget();
   };
   setInterval(tickDay, 60000);
   document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && tickDay());
 
   document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && !document.body.classList.contains('has-sheet')) {
+      e.preventDefault();
+      return openSearch();
+    }
     if (e.ctrlKey || e.metaKey || e.altKey || document.body.classList.contains('has-sheet') || /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName)) return;
     if (e.key === 'q' || e.key === 'n') {
       e.preventDefault();
       newTask();
     } else if (e.key === 'p') app.actions.tool('focus');
     else if (e.key === 'b') app.actions.tool('brain');
+    else if (e.key === '/') {
+      e.preventDefault();
+      openSearch();
+    }
     else if (/^[1-5]$/.test(e.key)) location.hash = ORDER[Number(e.key) - 1];
   });
+}
+
+// Botões das notificações.
+async function onNotifyAction(action, extra = {}) {
+  const t = extra.taskId ? P().byId.get(extra.taskId) : null;
+  if (action === 'done' && t) {
+    if (!t.done) {
+      const res = await toggleTask(t.id);
+      toast(res?.reward?.xp ? `"${t.title}" concluída · +${res.reward.xp} XP` : `"${t.title}" concluída`);
+    }
+  } else if (action === 'snooze' && t) {
+    await notify.scheduleOne({ key: `snooze:${t.id}`, at: Date.now() + 3600000, title: t.title, body: 'Lembrete adiado em 1 hora', summary: 'Tarefas', actions: 'TASK', route: `tarefa-${t.id}`, extra: { taskId: t.id } });
+    toast('Vou lembrar de novo em 1 hora.');
+  } else if (action === 'water') {
+    const ml = waterGlass();
+    await addWater(ml);
+    toast(`+${ml} ml registrados.`);
+  }
 }
 
 // Tela de abertura (logo) some com um fade assim que o app está pronto.

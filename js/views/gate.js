@@ -16,7 +16,7 @@ function screen(html) {
   }
   host = document.getElementById('gate');
   host.hidden = false;
-  host.innerHTML = `<div class="gate-card"><img class="gate-logo" src="icons/pwa-192x192.png" alt="" width="60" height="60"><h1>Lida</h1>${html}</div>`;
+  host.innerHTML = html.includes('data-intro') ? `<div class="gate-card">${html}</div>` : `<div class="gate-card"><img class="gate-logo" src="icons/pwa-192x192.png" alt="" width="60" height="60"><h1>Lida</h1>${html}</div>`;
   host.querySelector('input')?.focus();
   return host;
 }
@@ -42,6 +42,85 @@ const passFields = (confirm, label = 'Senha do Lida') => `
   ${confirm ? `<label class="field"><span>Repita a senha</span><input name="p2" type="password" autocomplete="new-password" required></label>` : ''}`;
 
 const cloudAvailable = () => cloud.cloudConfigured() && !isNative();
+
+/* ---------- Apresentação (primeira abertura) ---------- */
+const SLIDES = [
+  {
+    title: 'Seu dia, em ordem',
+    text: 'Tarefas com prioridade, data, horário e subtarefas. Planeje a semana e veja só o que importa hoje.',
+    art: `<div class="art-card">
+      <div class="art-task"><i class="c p1"></i><span>Revisar a proposta</span><em>10:00</em></div>
+      <div class="art-task done"><i class="c p2">${icon('check')}</i><span>Responder e-mails</span></div>
+      <div class="art-task"><i class="c p3"></i><span>Caminhada de 30 min</span><em>18:30</em></div>
+    </div>`,
+  },
+  {
+    title: 'Cada passo conta',
+    text: 'Concluir rende XP e ouro. Suba de nível, ganhe títulos e troque o ouro por vantagens na Loja.',
+    art: `<div class="art-card art-level"><div class="lvl-badge">7</div><div class="grow"><b>Nível 7 · Praticante</b><div class="bar"><i style="width:68%"></i></div></div><span class="art-pop">+75 XP</span></div>`,
+  },
+  {
+    title: 'Hábitos que ficam',
+    text: 'Hábitos com metas e sequências, água e o que você quer largar. Incentivo em vez de cobrança.',
+    art: `<div class="art-card art-habit"><span class="art-ring">📚</span><div class="grow"><b>Ler</b><span class="art-dots">${'<i></i>'.repeat(6)}<i class="o"></i></span></div><span class="art-flame">${icon('flame')}12</span></div>`,
+  },
+  {
+    title: 'Foco quando precisa',
+    text: 'Pomodoro, modo foco para tarefas com tempo e um lugar para esvaziar a mente antes de organizar.',
+    art: `<div class="art-card art-focus"><div class="art-clock"><b>25:00</b><small>Foco</small></div><div class="art-chips"><span>Ligar para o banco</span><span>Ideia de presente</span><span>Agendar dentista</span></div></div>`,
+  },
+  {
+    title: 'Seus dados, só seus',
+    text: 'Funciona sem internet. Se sincronizar, tudo vai cifrado com a sua senha: nem quem guarda os dados consegue ler.',
+    art: `<div class="art-card art-lock"><span class="art-shield">${icon('lock')}</span><div class="art-tags"><span>${icon('phone')}Offline</span><span>${icon('cloud')}Sincroniza</span><span>${icon('shield')}Cifrado</span></div></div>`,
+  },
+];
+
+export function intro() {
+  return new Promise((resolve) => {
+    const h = screen(`<div class="intro" data-intro>
+      <div class="intro-brand"><img src="icons/pwa-192x192.png" alt="" width="32" height="32"><b>Lida</b></div>
+      <div class="intro-track" data-track>${SLIDES.map((sl, i) => `<section class="intro-slide" aria-roledescription="slide" aria-label="${i + 1} de ${SLIDES.length}"><div class="intro-art">${sl.art}</div><h2>${sl.title}</h2><p>${sl.text}</p></section>`).join('')}</div>
+      <div class="intro-dots" role="tablist">${SLIDES.map((_, i) => `<button type="button" role="tab" aria-label="Ir para ${i + 1}" data-dot="${i}"></button>`).join('')}</div>
+      <div class="intro-actions"><button type="button" class="gate-link" data-skip>Pular</button><button type="button" class="btn primary" data-next>Próximo</button></div>
+    </div>`);
+    h.querySelector('.gate-card').classList.add('wide');
+    const track = h.querySelector('[data-track]');
+    const dots = [...h.querySelectorAll('[data-dot]')];
+    const next = h.querySelector('[data-next]');
+    let cur = 0;
+    const done = () => {
+      try {
+        localStorage.setItem('lida.intro', '1');
+      } catch {
+        /* sem armazenamento */
+      }
+      resolve();
+    };
+    const paint = () => {
+      dots.forEach((d, i) => d.setAttribute('aria-selected', i === cur));
+      next.textContent = cur === SLIDES.length - 1 ? 'Começar' : 'Próximo';
+      track.querySelectorAll('.intro-slide').forEach((sl, i) => sl.classList.toggle('on', i === cur));
+    };
+    const go = (i) => track.scrollTo({ left: i * track.clientWidth, behavior: 'smooth' });
+    track.addEventListener('scroll', () => {
+      const i = Math.round(track.scrollLeft / track.clientWidth);
+      if (i !== cur) {
+        cur = i;
+        paint();
+      }
+    }, { passive: true });
+    dots.forEach((d, i) => (d.onclick = () => go(i)));
+    next.onclick = () => (cur < SLIDES.length - 1 ? go(cur + 1) : done());
+    h.querySelector('[data-skip]').onclick = done;
+    h.querySelector('[data-intro]').onkeydown = (e) => {
+      if (e.key === 'ArrowRight') go(Math.min(SLIDES.length - 1, cur + 1));
+      if (e.key === 'ArrowLeft') go(Math.max(0, cur - 1));
+    };
+    paint();
+    next.focus();
+  });
+}
 
 // Resultado de todas as telas: { sid, key, wrap, mode, uid, user, legacy }
 // legacy: dados do Lida anterior a importar (ou null).

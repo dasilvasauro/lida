@@ -3,7 +3,7 @@
 Tarefas e hábitos num só lugar, com uma pequena recompensa a cada passo concluído.
 Funciona no navegador (celular e computador) e como app Android, offline, com os dados cifrados no aparelho.
 
-> **Lida 3 — alfa 2.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
+> **Lida 3 — alfa 3.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
 > A versão anterior (React) continua no ar na branch `main` até a nova alcançar o que ela fazia.
 
 ---
@@ -40,11 +40,10 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | Fase | Conteúdo | Situação |
 |---|---|---|
 | 1 | Base nova, login, senha, importação, aparência, sons, lembretes, APK | Pronta |
-| 2–4 | **Tarefas**: tipos (com tempo e modo foco, sprint, desafio do dia, bônus, rotina), limites de P0/P1, power-ups, virada do dia com punições e pontuação. **Hábitos**: metas por dia, dias da semana, sequência, semana em pontos, congelamento e folga, **água**, rotinas, desapego. **Loja** com inventário, Dado Mágico, Carta da Sorte, impulsos e temas. **Pomodoro** comum, **Esvaziar a mente**. Animações de entrada, troca de seção e listas | **Esta versão** |
-| 5 | Etiquetas, descrição com formatação e links, adição rápida em linguagem natural ("amanhã 9h p1 #casa"), projetos, busca | Próxima |
-| 6 | Resumo diário e mensal redesenhados, perfil com gráficos e foto do Google, humor, visão e reflexões | |
-| 7 | **Espaço compartilhado** para duas pessoas (convite por QR Code, cifrado como o Pago/Zelo) | |
-| 8 | Login Google dentro do APK e widget de tela inicial | |
+| 2–4 | Tipos de tarefa, virada do dia, hábitos, água, rotinas, desapego, Loja, Pomodoro, Esvaziar a mente, animações | Pronta |
+| 5 | **Etiquetas**, **descrição com formatação** (negrito, links, listas de verificação), **adição rápida em linguagem natural**, **projetos**, **busca**. Aba **Eu** (perfil, nível, marcos, gráficos, constância, pontuação do mês, humor, visão, reflexões), **humor do dia** em Hoje, **apresentação** na primeira abertura, **notificações** completas com som de campainha de bicicleta e botões, **widget** Hoje no Android | **Esta versão** |
+| 6 | **Espaço compartilhado** para duas pessoas (convite por QR Code, cifrado como o Pago/Zelo) | Próxima |
+| 7 | Login Google dentro do APK | |
 
 ## Como o jogo funciona
 
@@ -85,11 +84,27 @@ avisa o fim do ciclo mesmo com o app fechado.
 **Esvaziar a mente:** escreva tudo de uma vez (uma coisa por linha) e depois distribua em Fazer agora, Agendar,
 Delegar ou largar e Incubadora. Qualquer item vira tarefa com um toque.
 
-Atalhos no computador: **Q**/**N** nova tarefa, **P** Pomodoro, **B** Esvaziar a mente, **1–5** seções.
+**Adição rápida em linguagem natural** (em qualquer "Adicionar tarefa"):
+
+| Escreva | Vira |
+|---|---|
+| `hoje`, `amanhã`, `depois de amanhã`, `sexta`, `próxima semana`, `em 3 dias`, `dia 15`, `20/01` | data |
+| `9h`, `9h30`, `14:15`, `às 10` | horário |
+| `p0` … `p4` | prioridade |
+| `#Casa` | projeto (o início do nome basta) |
+| `@contas` | etiqueta (é criada se não existir) |
+| `todo dia`, `dias úteis`, `toda segunda`, `toda semana`, `todo mês`, `todo ano` | repetição |
+
+Exemplo: `Pagar luz amanhã 9h p1 #Casa @contas`. Enquanto você digita, aparece o que foi entendido.
+
+**Descrição:** aceita `**negrito**`, `*itálico*`, `~~riscado~~`, `` `código` ``, `[texto](https://link)`, links soltos,
+listas com `- ` e listas de verificação com `- [ ] ` (clicáveis).
+
+Atalhos no computador: **Q**/**N** nova tarefa, **/** ou **Ctrl+K** buscar, **P** Pomodoro, **B** Esvaziar a mente, **1–5** seções.
 
 ## Usar na web
 
-Abra o endereço do Lida. Na primeira vez:
+Abra o endereço do Lida. Na primeira vez, uma apresentação curta mostra o que o app faz; depois:
 
 - **Continuar com Google**: sincroniza entre aparelhos. Os dados vão para a nuvem já cifrados com a sua senha.
 - **Usar só neste aparelho**: nada sai do aparelho. Dá para conectar a conta Google depois, em Ajustes.
@@ -115,12 +130,24 @@ assinatura diferente e o Android só instala depois de desinstalar a versão ant
 
 ## Lembretes
 
-- **Tarefas com horário**: aviso na hora marcada.
-- **Fechamento do dia**: um aviso diário (padrão 21h) para revisar o dia e planejar o seguinte.
-- São agendados as próximas duas semanas, e reagendados sempre que algo muda.
+- **Tarefas com horário**: na hora marcada, com o projeto, a prioridade e as subtarefas no texto expandido.
+  Botões **Concluir** (rende a recompensa normal) e **Lembrar em 1 h**.
+- **Resumo da manhã** (padrão 8h): quantas tarefas há no dia e quais são.
+- **Fechamento do dia** (padrão 21h): o que foi feito e o que ficou pendente.
+- **Água** (opcional): a cada 2 h, das 9h às 21h, até bater a meta. Botão **Bebi um copo**.
+- **Pomodoro e modo foco**: aviso no fim de cada ciclo.
+- Som: **campainha de bicicleta** (gerada para o Lida, arquivo em `sounds/`). No Android, é o som do canal
+  "Lembretes": dá para trocar em *Configurações > Apps > Lida > Notificações*.
 - No APK: agendados no sistema, funcionam com o app fechado, sem internet e depois de reiniciar.
 - Na web: o navegador não agenda notificações sem um servidor. Chegam enquanto o Lida estiver aberto
-  (mesmo em outra aba ou minimizado).
+  (mesmo em outra aba ou minimizado), com o mesmo som.
+
+## Widget (Android)
+
+Segure o dedo na tela inicial > **Widgets** > **Lida · Hoje**. Mostra o progresso do dia, as próximas tarefas
+e uma linha com hábitos e água. Tocar abre o Lida em Hoje; tocar na linha de baixo abre Hábitos.
+O widget só exibe: ele é atualizado pelo app sempre que algo muda. Depois da meia-noite, até o app abrir de novo,
+ele pede para abrir o Lida em vez de mostrar o dia anterior.
 
 ## Trazer os dados do Lida anterior
 
@@ -215,11 +242,8 @@ Ao publicar uma versão nova: aumente `VERSION` em `sw.js` e `app.version` em `j
 
 - **Login com Google no APK**: o Google bloqueia login dentro de WebView. Resolver exige um plugin nativo
   e o arquivo `google-services.json` com a impressão digital (SHA-1) da chave de assinatura — por isso
-  fica para a Fase 7, depois que a chave do passo 3 existir. Até lá, o APK funciona no modo "só neste
+  fica para a Fase 7, agora que a chave de assinatura existe. Até lá, o APK funciona no modo "só neste
   aparelho" (e a web segue com Google).
-- **Widget**: possível sem Android Studio (o código Kotlin é escrito aqui e compilado pelo Actions), mas
-  widgets Android não rodam o app: mostram dados que o app deixa prontos. O plano é um widget de
-  "Hoje" com a lista e o progresso, atualizado quando o app abre ou muda algo, com toque para abrir.
-  Marcar tarefas direto no widget é possível mas bem mais trabalhoso; avaliamos na Fase 7.
+- **Widget**: só exibe e abre o app (como combinado). Marcar tarefas direto no widget exigiria mais código nativo.
 - **Notificações na web**: só com o Lida aberto (limitação dos navegadores, não do app).
 - **Bubblewrap/TWA**: descartado. Um TWA é o site dentro do Chrome e não agenda notificações locais offline.
