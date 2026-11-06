@@ -3,7 +3,7 @@
 Tarefas e hábitos num só lugar, com uma pequena recompensa a cada passo concluído.
 Funciona no navegador (celular e computador) e como app Android, offline, com os dados cifrados no aparelho.
 
-> **Lida 3 — alfa 3.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
+> **Lida 3 — alfa 4.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
 > A versão anterior (React) continua no ar na branch `main` até a nova alcançar o que ela fazia.
 
 ---
@@ -41,9 +41,9 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 |---|---|---|
 | 1 | Base nova, login, senha, importação, aparência, sons, lembretes, APK | Pronta |
 | 2–4 | Tipos de tarefa, virada do dia, hábitos, água, rotinas, desapego, Loja, Pomodoro, Esvaziar a mente, animações | Pronta |
-| 5 | **Etiquetas**, **descrição com formatação** (negrito, links, listas de verificação), **adição rápida em linguagem natural**, **projetos**, **busca**. Aba **Eu** (perfil, nível, marcos, gráficos, constância, pontuação do mês, humor, visão, reflexões), **humor do dia** em Hoje, **apresentação** na primeira abertura, **notificações** completas com som de campainha de bicicleta e botões, **widget** Hoje no Android | **Esta versão** |
+| 5 | **Etiquetas**, **descrição com formatação** (negrito, links, listas de verificação), **adição rápida em linguagem natural**, **projetos**, **busca**. Aba **Eu** (perfil, nível, marcos, gráficos, constância, pontuação do mês, humor, visão, reflexões), **humor do dia** em Hoje, **apresentação** na primeira abertura, **notificações** completas com som de campainha de bicicleta e botões, **widget** Hoje no Android | Pronta |
 | 6 | **Espaço compartilhado** para duas pessoas (convite por QR Code, cifrado como o Pago/Zelo) | Próxima |
-| 7 | Login Google dentro do APK | |
+| 7 | **Login com Google no APK** (seletor de contas do Android) | **Esta versão** (precisa do passo 4 de "Sua parte") |
 
 ## Como o jogo funciona
 
@@ -206,7 +206,32 @@ gh secret set LIDA_KEY_PASSWORD --repo dasilvasauro/lida        # a mesma senha 
 **Guarde `lida.keystore` e a senha fora do repositório** (num gerenciador de senhas, por exemplo).
 Se perder a chave, o próximo APK não instala por cima: será preciso desinstalar e importar de novo.
 
-### 4. Testar
+### 4. Login com Google no APK (uma vez)
+
+1. Pegue as impressões digitais da sua chave (a mesma do passo 3):
+   ```bash
+   keytool -list -v -keystore lida.keystore -alias lida
+   ```
+   Copie as linhas **SHA1** e **SHA256**.
+2. No [Firebase Console](https://console.firebase.google.com/), projeto **lida-81429** > ⚙️ **Configurações do projeto** > aba
+   **Geral** > **Seus apps** > **Adicionar app** > ícone do **Android**.
+   - Nome do pacote: `io.github.dasilvasauro.lida`
+   - Apelido: `Lida Android`
+   - Certificado SHA-1: cole o SHA1 do item 1
+   - **Registrar app** > **Baixar google-services.json** > pode pular os passos seguintes do assistente.
+3. Ainda em **Configurações do projeto** > o app Android > **Adicionar impressão digital**: cole também o **SHA256**.
+4. Em **Authentication** > **Método de login**, confira se **Google** está ativado (já deve estar, é o mesmo da web).
+5. Guarde o arquivo como segredo do repositório:
+   ```bash
+   gh secret set GOOGLE_SERVICES_JSON --repo dasilvasauro/lida < google-services.json
+   ```
+6. Gere o APK de novo (push ou **Re-run all jobs**). No log do passo "Firebase (login com Google)" deve aparecer
+   `google-services.json configurado.`
+
+Se o login falhar com "O Google recusou o login", quase sempre é a impressão digital: confira se o SHA-1 cadastrado
+é o da chave que assina o APK (a do passo 3, não uma chave de depuração).
+
+### 5. Testar
 
 Abra **Actions > Android > Run workflow** (branch `v3`). Em uns 5 minutos o APK aparece em Artifacts.
 Para testar a versão web da `v3` sem tirar o Lida atual do ar, rode localmente (abaixo).
@@ -240,10 +265,9 @@ Ao publicar uma versão nova: aumente `VERSION` em `sw.js` e `app.version` em `j
 
 ## Limites honestos
 
-- **Login com Google no APK**: o Google bloqueia login dentro de WebView. Resolver exige um plugin nativo
-  e o arquivo `google-services.json` com a impressão digital (SHA-1) da chave de assinatura — por isso
-  fica para a Fase 7, agora que a chave de assinatura existe. Até lá, o APK funciona no modo "só neste
-  aparelho" (e a web segue com Google).
+- **Login com Google no APK**: usa o seletor de contas nativo do Android. Só funciona no APK assinado com a
+  sua chave (a impressão digital dela fica cadastrada no Firebase). Sem o segredo `GOOGLE_SERVICES_JSON`, o APK
+  sai sem login com Google.
 - **Widget**: só exibe e abre o app (como combinado). Marcar tarefas direto no widget exigiria mais código nativo.
 - **Notificações na web**: só com o Lida aberto (limitação dos navegadores, não do app).
 - **Bubblewrap/TWA**: descartado. Um TWA é o site dentro do Chrome e não agenda notificações locais offline.

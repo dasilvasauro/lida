@@ -5,7 +5,7 @@ import { soundPrefs, setSoundPrefs, play } from '../core/sound.js';
 import { hapticsOn, setHaptics, hapticsSupported, haptic } from '../ui/haptics.js';
 import * as notify from '../core/notify.js';
 import { isNative } from '../native.js';
-import { cloudConfigured } from '../core/cloud.js';
+import { googleAvailable } from '../core/cloud.js';
 import { esc, fmtInt } from '../lib/util.js';
 import { icon, toast, confirmDialog, promptDialog } from '../ui/ui.js';
 import { avatar } from './common.js';
@@ -42,7 +42,7 @@ export const settingsView = {
     el.innerHTML = `
       <section class="set-group"><h2>Conta</h2><div class="set-list">
         <div class="set-user">${avatar(52)}<div class="grow"><b>${esc(name)}</b><span>${esc(sub)}</span></div><button type="button" class="btn small" data-name>${icon('edit')}Nome</button></div>
-        ${!app.demo && app.mode === 'local' && cloudConfigured() && !isNative() ? `<button type="button" class="set-row" data-connect>${icon('cloud')}<span class="grow">Conectar conta Google<small>Sincronize entre aparelhos. Os dados continuam cifrados com a sua senha.</small></span>${icon('right', 'sm')}</button>` : ''}
+        ${!app.demo && app.mode === 'local' && googleAvailable() ? `<button type="button" class="set-row" data-connect>${icon('cloud')}<span class="grow">Conectar conta Google<small>Sincronize entre aparelhos. Os dados continuam cifrados com a sua senha.</small></span>${icon('right', 'sm')}</button>` : ''}
         ${!app.demo ? `<label class="set-row">${icon('lock')}<span class="grow">Pedir senha ao abrir<small>Mais privacidade em aparelhos compartilhados</small></span>${toggle('reqpass', requirePass, 'Pedir senha ao abrir')}</label>
         <button type="button" class="set-row" data-pass>${icon('edit')}<span class="grow">Alterar senha</span>${icon('right', 'sm')}</button>` : ''}
       </div></section>

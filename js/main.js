@@ -102,7 +102,7 @@ async function boot() {
   let key = null;
   let res = null;
   if (!sid) {
-    if (cloud.cloudConfigured() && !isNative()) {
+    if (cloud.googleAvailable()) {
       try {
         const u = await cloud.currentUser();
         if (u) res = await gate.afterGoogle(u);

@@ -44,6 +44,21 @@ jobs:
       - name: Testes
         run: npm test
 
+      # Login com Google no APK: precisa do google-services.json do Firebase (segredo GOOGLE_SERVICES_JSON).
+      # Sem ele, o plugin de login sai do APK (senão o app fecharia ao abrir) e o login fica só na web.
+      - name: Firebase (login com Google)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+            node -e "const j=require('./android/app/google-services.json'); const c=j.client.find(x=>x.client_info.android_client_info.package_name==='io.github.dasilvasauro.lida'); if(!c){console.error('google-services.json sem o app io.github.dasilvasauro.lida'); process.exit(1)} if(!(c.oauth_client||[]).some(o=>o.client_type===3)){console.error('google-services.json sem o cliente web (tipo 3): ative o login com Google no Firebase e baixe o arquivo de novo'); process.exit(1)} if(!(c.oauth_client||[]).some(o=>o.client_type===1)) console.log('::warning::Nenhuma impressão digital SHA-1 cadastrada no app Android do Firebase: o login com Google vai falhar.')"
+            echo "google-services.json configurado."
+          else
+            echo "::warning::Segredo GOOGLE_SERVICES_JSON ausente: o APK sai sem login com Google (veja o README)."
+            npm uninstall --no-save @capacitor-firebase/authentication
+          fi
+
       - name: Copiar o app para o projeto Android
         run: npm run android:sync
 

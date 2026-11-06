@@ -1,6 +1,6 @@
 {
   "name": "lida",
-  "version": "3.0.0-alfa.3",
+  "version": "3.0.0-alfa.4",
   "private": true,
   "type": "module",
   "description": "Tarefas e hábitos com recompensas. Web (PWA) e Android (Capacitor), sem etapa de build.",
@@ -11,10 +11,11 @@
     "android:sync": "node scripts/build-www.mjs && npx cap sync android"
   },
   "devDependencies": {
+    "@capacitor-firebase/authentication": "8.6.0",
     "@capacitor/android": "8.6.0",
+    "@capacitor/app": "8.1.2",
     "@capacitor/cli": "8.6.0",
     "@capacitor/core": "8.6.0",
-    "@capacitor/app": "8.1.2",
     "@capacitor/haptics": "8.0.2",
     "@capacitor/local-notifications": "8.3.1",
     "@capacitor/splash-screen": "8.0.2",

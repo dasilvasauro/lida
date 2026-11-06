@@ -9,6 +9,12 @@
 //   users/{uid}/vault/*               cofre da versão anterior do Lida (só leitura, para importar)
 //
 // O SDK do Firebase é carregado sob demanda: sem conta conectada, o app nunca baixa nada da rede.
+//
+// No app Android, o Google não permite login dentro de WebView. O login é feito pelo seletor de
+// contas nativo do Android (plugin @capacitor-firebase/authentication, só a parte do Google) e a
+// credencial devolvida entra no mesmo SDK web do Firebase, que cuida do resto (Firestore, sessão).
+import { isNative, plugin, hasPlugin } from '../native.js';
+
 const SDK = 'https://www.gstatic.com/firebasejs/10.14.1';
 
 let fb = null;
@@ -31,7 +37,8 @@ export async function loadFirebase() {
   if (fb) return fb;
   const [appM, A, F] = await Promise.all([import(`${SDK}/firebase-app.js`), import(`${SDK}/firebase-auth.js`), import(`${SDK}/firebase-firestore.js`)]);
   const app = appM.initializeApp(cloudConfig);
-  const auth = A.getAuth(app);
+  // No APK, sem o iframe de popup/redirect (não funciona em WebView); a sessão fica no IndexedDB.
+  const auth = isNative() ? A.initializeAuth(app, { persistence: A.indexedDBLocalPersistence }) : A.getAuth(app);
   const db = F.getFirestore(app);
   fb = { app, auth, db, A, F };
   return fb;
@@ -45,12 +52,19 @@ const wrapIn = (w) => ({ v: w.v, iter: w.iter, salt: U(w.salt), iv: U(w.iv), ct:
 const code = () => [...crypto.getRandomValues(new Uint8Array(9))].map((x) => 'abcdefghjkmnpqrstuvwxyz23456789'[x % 31]).join('');
 
 /* ---------- Autenticação ---------- */
+// O APK tem o login nativo do Google? (o plugin só entra no APK quando o Firebase está configurado)
+export const nativeGoogle = () => hasPlugin('FirebaseAuthentication');
+// Dá para entrar com Google neste aparelho?
+export const googleAvailable = () => cloudConfigured() && (!isNative() || nativeGoogle());
+
 export async function currentUser() {
   const { auth, A } = await loadFirebase();
-  try {
-    await A.getRedirectResult(auth);
-  } catch {
-    /* sem redirect pendente */
+  if (!isNative()) {
+    try {
+      await A.getRedirectResult(auth);
+    } catch {
+      /* sem redirect pendente */
+    }
   }
   await auth.authStateReady();
   return auth.currentUser;
@@ -58,6 +72,20 @@ export async function currentUser() {
 
 export async function signIn() {
   const { auth, A } = await loadFirebase();
+  if (isNative()) {
+    if (!nativeGoogle()) throw Object.assign(new Error('O login com Google não está disponível nesta versão do app.'), { code: 'auth/native-missing' });
+    let r;
+    try {
+      r = await plugin('FirebaseAuthentication').signInWithGoogle({ useCredentialManager: true });
+    } catch (e) {
+      const msg = String(e?.message || e);
+      if (/cancel/i.test(msg)) throw Object.assign(new Error(''), { code: 'auth/popup-closed-by-user' });
+      throw Object.assign(new Error(`O Google recusou o login: ${msg}`), { code: 'auth/native-failed' });
+    }
+    const idToken = r?.credential?.idToken;
+    if (!idToken) throw Object.assign(new Error('O Google não devolveu a credencial.'), { code: 'auth/no-token' });
+    return (await A.signInWithCredential(auth, A.GoogleAuthProvider.credential(idToken))).user;
+  }
   const provider = new A.GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
   try {
@@ -72,6 +100,7 @@ export async function signIn() {
 }
 
 export async function signOut() {
+  if (nativeGoogle()) await plugin('FirebaseAuthentication').signOut().catch(() => {});
   if (!fb) return;
   await fb.A.signOut(fb.auth);
 }
