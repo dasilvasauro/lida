@@ -32,6 +32,9 @@ test('repetição: próxima data', () => {
   // 06/11/2026 é sexta (5). Dias úteis: a próxima é segunda, 09/11.
   assert.equal(nextOccurrence('2026-11-06', { type: 'weekly', weekdays: [1, 2, 3, 4, 5] }), '2026-11-09');
   assert.equal(nextOccurrence('2026-11-06', { type: 'weekly', weekdays: [5] }), '2026-11-13');
+  // Segunda, quarta e sexta: depois de sexta vem segunda; depois de segunda, quarta.
+  assert.equal(nextOccurrence('2026-11-06', { type: 'weekly', weekdays: [1, 3, 5] }), '2026-11-09');
+  assert.equal(nextOccurrence('2026-11-09', { type: 'weekly', weekdays: [1, 3, 5] }), '2026-11-11');
   assert.equal(nextOccurrence('2026-01-31', { type: 'monthly', dayOfMonth: 31 }), '2026-02-28');
   assert.equal(nextOccurrence('2028-02-29', { type: 'yearly', dayOfMonth: 29, monthOfYear: 1 }), '2029-02-28');
   assert.equal(nextOccurrence('2026-11-06', { type: 'none' }), null);
@@ -315,6 +318,10 @@ test('linguagem natural: datas, horário, prioridade, projeto, etiquetas e repet
   assert.deepEqual([r.title, r.due, r.time, r.projectId], ['Reunião', '2026-11-13', '14:30', 'p2']);
   r = parseQuick('Academia toda segunda 7h', ctx);
   assert.deepEqual([r.title, r.due, r.time, r.recurrence], ['Academia', '2026-11-09', '07:00', { type: 'weekly', weekdays: [1] }]);
+  r = parseQuick('Tirar o lixo toda segunda, quarta e sexta 20h', ctx);
+  assert.deepEqual([r.title, r.due, r.time, r.recurrence], ['Tirar o lixo', '2026-11-06', '20:00', { type: 'weekly', weekdays: [1, 3, 5] }]);
+  r = parseQuick('Inglês todas as terças e quintas', ctx);
+  assert.deepEqual([r.title, r.due, r.recurrence.weekdays], ['Inglês', '2026-11-10', [2, 4]]);
   r = parseQuick('Aluguel dia 5 todo mês', ctx);
   assert.equal(r.due, '2026-12-05');
   assert.equal(r.recurrence.type, 'monthly');
@@ -326,4 +333,33 @@ test('linguagem natural: datas, horário, prioridade, projeto, etiquetas e repet
   assert.deepEqual([r.title, r.due, r.time], ['Comprar 2 litros de leite', null, null]);
   r = parseQuick('Ler #inexistente', ctx);
   assert.equal(r.title, 'Ler #inexistente');
+});
+
+test('prêmio do dia: cresce em 7 dias seguidos, volta ao 1 se pular', async () => {
+  initClock(true);
+  const st0 = game.checkinState();
+  const r1 = await game.claimCheckin();
+  assert.equal(r1.n, st0.n);
+  assert.equal(await game.claimCheckin(), null, 'um por dia');
+  const g = P().money.gold;
+  shiftDays(1);
+  const r2 = await game.claimCheckin();
+  assert.equal(r2.n, (st0.n % 7) + 1);
+  assert.equal(P().money.gold, g + game.CHECKIN[r2.n - 1].gold);
+  // Até o 7º dia.
+  while (game.checkinState().n !== 7 || game.checkinState().claimed) {
+    shiftDays(1);
+    if (game.checkinState().n === 7) break;
+    await game.claimCheckin();
+  }
+  const v = P().money.vouchers;
+  const r7 = await game.claimCheckin();
+  assert.equal(r7.n, 7);
+  assert.ok(P().money.vouchers >= v + 2);
+  // Pula um dia: volta ao 1.
+  shiftDays(2);
+  const st = game.checkinState();
+  assert.deepEqual([st.n, st.claimed], [1, false]);
+  resetClock();
+  initClock(false);
 });

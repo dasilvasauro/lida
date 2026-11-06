@@ -52,7 +52,7 @@ export function reminders(S, prefs) {
         at: at(day, prefs.morningAt),
         title: 'Bom dia! Seu dia no Lida',
         body,
-        long: list.length ? [body, ...list.slice(0, 5).map((t) => `• ${t.title}`), list.length > 5 ? `e mais ${list.length - 5}` : ''].filter(Boolean).join('\n') : body,
+        long: [body, ...list.slice(0, 5).map((t) => `• ${t.title}`), list.length > 5 ? `e mais ${list.length - 5}` : '', 'Seu prêmio do dia está esperando no Lida.'].filter(Boolean).join('\n'),
         summary: 'Resumo da manhã',
         route: 'hoje',
       });
