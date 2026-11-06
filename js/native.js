@@ -19,6 +19,15 @@ export const isNative = () => {
   }
 };
 
+// O plugin nativo existe neste APK? (alguns entram só quando a configuração deles está presente)
+export const hasPlugin = (name) => {
+  try {
+    return isNative() && !!core().Capacitor.isPluginAvailable(name);
+  } catch {
+    return false;
+  }
+};
+
 export const platform = () => (isNative() ? core().Capacitor.getPlatform() : 'web');
 
 const cache = new Map();

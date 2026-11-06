@@ -41,7 +41,7 @@ const passFields = (confirm, label = 'Senha do Lida') => `
   <label class="field"><span>${label}</span><input name="p1" type="password" autocomplete="${confirm ? 'new-password' : 'current-password'}" minlength="${confirm ? 8 : 1}" required></label>
   ${confirm ? `<label class="field"><span>Repita a senha</span><input name="p2" type="password" autocomplete="new-password" required></label>` : ''}`;
 
-const cloudAvailable = () => cloud.cloudConfigured() && !isNative();
+const cloudAvailable = () => cloud.googleAvailable();
 
 /* ---------- Apresentação (primeira abertura) ---------- */
 const SLIDES = [
@@ -132,7 +132,7 @@ export function welcome() {
         ${cloudAvailable() ? `<button type="button" class="btn primary wide" data-google>${googleIcon()}Continuar com Google</button>` : ''}
         <button type="button" class="btn ${cloudAvailable() ? 'ghost' : 'primary'} wide" data-local>Usar só neste aparelho</button>
       </div>
-      ${isNative() && cloud.cloudConfigured() ? `<p class="gate-note">No app Android, o login com Google chega numa próxima versão. Por enquanto, os dados ficam guardados neste aparelho.</p>` : ''}
+      ${isNative() && cloud.cloudConfigured() && !cloud.googleAvailable() ? `<p class="gate-note">Este APK foi gerado sem a configuração do Firebase, então o login com Google não está disponível nele. Os dados ficam neste aparelho.</p>` : ''}
       <p class="gate-err"${cloud.getConfigError() ? '' : ' hidden'}>${esc(cloud.getConfigError())}</p>
       <button type="button" class="gate-link" data-demo>${icon('flask')}Explorar com dados de exemplo</button>`);
     h.querySelector('[data-local]').onclick = () => createLocal().then(resolve);
@@ -148,7 +148,7 @@ export function welcome() {
         resolve(await afterGoogle(user));
       } catch (e) {
         busy(false);
-        err(e.code === 'auth/popup-closed-by-user' ? '' : 'Não foi possível entrar. Verifique a conexão e tente de novo.');
+        err(e.code === 'auth/popup-closed-by-user' ? '' : e.code?.startsWith('auth/native') || e.code === 'auth/no-token' ? e.message : 'Não foi possível entrar. Verifique a conexão e tente de novo.');
       }
     });
   });
