@@ -1,12 +1,13 @@
 // Pop-up de subida de nível: limpo, um cartão que entra com mola, alguns confetes e um botão.
 import { esc } from '../lib/util.js';
 import { levelTitle } from '../core/model.js';
+import { MILESTONES } from '../core/game.js';
 import { play } from '../core/sound.js';
 import { haptic } from './haptics.js';
 
 const CONF = ['var(--g1)', 'var(--g2)', 'var(--accent)', 'var(--warn)'];
 
-export function levelUp(level) {
+export function levelUp(level, res = {}) {
   const prevTitle = levelTitle(level - 1);
   const title = levelTitle(level);
   const wrap = document.createElement('div');
@@ -21,6 +22,7 @@ export function levelUp(level) {
     <div class="lvl-badge">${level}</div>
     <h2 id="lvl-t">Você chegou ao nível ${level}</h2>
     <p>${title !== prevTitle ? `Novo título: <b>${esc(title)}</b>` : `Continue assim, ${esc(title)}.`}</p>
+    ${gifts(level, res)}
     <button type="button" class="btn primary wide" data-ok>Continuar</button>
   </div>`;
   document.body.appendChild(wrap);
@@ -38,4 +40,13 @@ export function levelUp(level) {
   const ok = wrap.querySelector('[data-ok]');
   ok.onclick = close;
   setTimeout(() => ok.focus(), 60);
+}
+
+// Presentes e desbloqueios do nível, numa lista curta.
+function gifts(level, res) {
+  const rows = [];
+  if (res.cards) rows.push(`+${res.cards} ${res.cards === 1 ? 'Carta da Sorte' : 'Cartas da Sorte'}`);
+  if (res.vouchers) rows.push(`+${res.vouchers} vouchers`);
+  for (const m of MILESTONES) if (m.level === level && !/Carta|vouchers/.test(m.text)) rows.push(m.text);
+  return rows.length ? `<ul class="reward-gifts">${rows.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>` : '';
 }

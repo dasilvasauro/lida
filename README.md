@@ -3,7 +3,7 @@
 Tarefas e hábitos num só lugar, com uma pequena recompensa a cada passo concluído.
 Funciona no navegador (celular e computador) e como app Android, offline, com os dados cifrados no aparelho.
 
-> **Lida 3 — alfa 1 (Fase 1).** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
+> **Lida 3 — alfa 2.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
 > A versão anterior (React) continua no ar na branch `main` até a nova alcançar o que ela fazia.
 
 ---
@@ -39,16 +39,53 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 
 | Fase | Conteúdo | Situação |
 |---|---|---|
-| 1 | Base nova, login, senha, importação, Hoje / Entrada / Em breve, edição de tarefas (data, horário, prioridade, projeto, subtarefas, repetição), XP e ouro por tarefa, títulos por nível, pop-up de nível, aparência, sons, lembretes, APK | **Esta versão** |
-| 2 | Tarefas completas: etiquetas, descrição com formatação e links, adição rápida em linguagem natural ("amanhã 9h p1 #casa"), projetos, busca, desafios e sprints, virada do dia com punições | Próxima |
-| 3 | Hábitos (positivos, negativos e "desapego"), rotinas, **controle de água** | |
-| 4 | Loja reescrita (descrições claras, mais densa), power-ups com animações simples, pomodoro comum | |
-| 5 | Resumo diário e mensal redesenhados, perfil com gráficos e foto do Google | |
-| 6 | **Espaço compartilhado** para duas pessoas (convite por QR Code, cifrado como o Pago/Zelo) | |
-| 7 | Login Google dentro do APK e widget de tela inicial | |
+| 1 | Base nova, login, senha, importação, aparência, sons, lembretes, APK | Pronta |
+| 2–4 | **Tarefas**: tipos (com tempo e modo foco, sprint, desafio do dia, bônus, rotina), limites de P0/P1, power-ups, virada do dia com punições e pontuação. **Hábitos**: metas por dia, dias da semana, sequência, semana em pontos, congelamento e folga, **água**, rotinas, desapego. **Loja** com inventário, Dado Mágico, Carta da Sorte, impulsos e temas. **Pomodoro** comum, **Esvaziar a mente**. Animações de entrada, troca de seção e listas | **Esta versão** |
+| 5 | Etiquetas, descrição com formatação e links, adição rápida em linguagem natural ("amanhã 9h p1 #casa"), projetos, busca | Próxima |
+| 6 | Resumo diário e mensal redesenhados, perfil com gráficos e foto do Google, humor, visão e reflexões | |
+| 7 | **Espaço compartilhado** para duas pessoas (convite por QR Code, cifrado como o Pago/Zelo) | |
+| 8 | Login Google dentro do APK e widget de tela inicial | |
 
-Os dados de hábitos, rotinas, humor, visão e reflexões **já são importados** na Fase 1 e ficam guardados;
-as telas deles chegam nas fases seguintes.
+## Como o jogo funciona
+
+**Tarefas**
+
+| Tipo | Como funciona |
+|---|---|
+| Tarefa | Recompensa por prioridade: P0 150 XP / 50 de ouro … P4 25 XP / 10 de ouro. |
+| Com tempo | Tem duração (5 a 120 min). O ▶ abre o modo foco com cronômetro, que continua certo com a tela desligada. |
+| Sprint | Objetivo maior com etapas e data de fim. Um ativo por vez, mostrado no topo de Hoje com o progresso das etapas e dos dias. |
+| Desafio do dia | Vale só para hoje. Um por dia. |
+| Bônus | Usa uma Tarefa Bônus da Loja. Rende o normal e não pune se ficar para trás. |
+| Rotina | Criada sozinha nos dias escolhidos (aba Hábitos). De 50 a 200 de XP e ouro, conforme o número de itens. Não pune. |
+
+- **Limites:** até o nível 30, uma P0 aberta para hoje; até o 40, duas P1. Os itens P0 Extra e P1 Extra liberam mais uma.
+- **Virada do dia:** ao abrir o app (ou à meia-noite com ele aberto), cada dia que passou é fechado: tarefas vencidas
+  falham e tiram XP e ouro (nunca baixam de nível; dá para desligar em Ajustes), rotinas não feitas são arquivadas,
+  o dia ganha uma pontuação e as rotinas de hoje aparecem. Uma tarefa que venceu ainda pode ser concluída, sem recompensa,
+  ou reagendada para hoje.
+- **Estilo de jogo (Ajustes):** Multitarefa (+20% em tudo), Minimalista (+50% em P0/P1), Pontual (+30% com data),
+  Ambicioso (+80% em sprints e desafios). Trocar depois custa um item da Loja.
+- **Marcos de nível:** Carta da Sorte a cada 5 níveis (e a cada nível depois do 25), +15 vouchers no 15, temas no 10, 20 e 35,
+  P0 sem limite no 30, P1 sem limite no 40, Darcula e +40 vouchers no 50. Títulos: Aprendiz, Iniciante, Praticante,
+  Constante, Disciplinado, Persistente, Veterano, Especialista, Mestre, Grão-Mestre e Lenda.
+
+**Hábitos**
+
+- Toque no círculo para marcar (soma 1 até a meta do dia; na meta, volta a zero). Bater a meta rende progresso de voucher:
+  a cada 3, um voucher.
+- A sequência conta só os dias escolhidos para o hábito. Congelamento protege um dia; Folga dos hábitos protege o dia inteiro.
+- **Água:** meta diária ajustável (padrão 2 L) e tamanho do copo. Bater a meta rende 20 XP e 10 de ouro.
+- **Desapego:** um check-in por dia sem recair. As recompensas crescem ao longo de um ciclo de 7 dias (o 7º traz uma
+  Carta da Sorte). Recaída: volta ao dia 1 e perde metade do XP do nível atual e do ouro. Um espaço grátis; mais na Loja.
+
+**Pomodoro:** 25/5 minutos por padrão (ajustável). Cada hora de foco acumulada rende um voucher. No celular, um lembrete
+avisa o fim do ciclo mesmo com o app fechado.
+
+**Esvaziar a mente:** escreva tudo de uma vez (uma coisa por linha) e depois distribua em Fazer agora, Agendar,
+Delegar ou largar e Incubadora. Qualquer item vira tarefa com um toque.
+
+Atalhos no computador: **Q**/**N** nova tarefa, **P** Pomodoro, **B** Esvaziar a mente, **1–5** seções.
 
 ## Usar na web
 
@@ -60,8 +97,6 @@ Abra o endereço do Lida. Na primeira vez:
 
 Para instalar como app: no Chrome do Android, menu ⋮ > *Adicionar à tela inicial*; no computador,
 o ícone de instalar na barra de endereço.
-
-Atalhos no computador: **Q** ou **N** cria uma tarefa.
 
 ## Usar no Android (APK)
 

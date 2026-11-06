@@ -185,3 +185,19 @@ export async function testNotification() {
     await LN()?.schedule({ notifications: [{ id: n.id, title: n.title, body: n.body, channelId: CHANNEL, schedule: { at: new Date(at), allowWhileIdle: true } }] });
   } else setTimeout(() => showWeb(n), 5000);
 }
+
+// Aviso avulso de um cronômetro (Pomodoro, modo foco). at = null cancela.
+// Na web, só aparece se o Lida estiver em segundo plano (com ele à vista, o próprio app toca o sino).
+export async function timerAlert(key, at, title = 'Lida', body = '') {
+  const id = notifyId(key);
+  if (isNative()) {
+    const ln = LN();
+    if (!ln) return;
+    await ln.cancel({ notifications: [{ id }] }).catch(() => {});
+    if (at && notifyPrefs().on) await ln.schedule({ notifications: [{ id, title, body, channelId: CHANNEL, schedule: { at: new Date(at), allowWhileIdle: true }, extra: { route: '' } }] }).catch(() => {});
+    return;
+  }
+  clearTimeout(webTimers.get(id));
+  webTimers.delete(id);
+  if (at && notifyPrefs().on) webTimers.set(id, setTimeout(() => document.hidden && showWeb({ id, title, body, route: '' }), Math.max(0, at - Date.now())));
+}

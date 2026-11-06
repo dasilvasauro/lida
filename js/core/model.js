@@ -15,6 +15,8 @@
 import { sum, ymOf } from '../lib/util.js';
 
 export const PERSONAL_TYPES = ['task', 'project', 'tag', 'routine', 'habit', 'hlog', 'quit', 'water', 'ev', 'wallet', 'score', 'month', 'hist', 'mood', 'vision', 'refl', 'brain', 'prefs', 'dayp'];
+
+export const HABIT_DAYS_ALL = [0, 1, 2, 3, 4, 5, 6];
 export const SHARED_TYPES = ['task', 'project', 'tag', 'member'];
 
 // Campos com aviso quando a alteração de uma pessoa é sobreposta pela de outra (espaço compartilhado).
@@ -34,12 +36,12 @@ export const PRIORITIES = [
 export const PRIORITY_RANK = { P0: 0, P1: 1, P2: 2, P3: 3, P4: 4 };
 
 export const TASK_KINDS = {
-  normal: { label: 'Tarefa' },
-  challenge: { label: 'Desafio do dia' },
-  sprint: { label: 'Sprint' },
-  timed: { label: 'Tarefa com tempo' },
-  bonus: { label: 'Tarefa bônus' },
-  routine: { label: 'Rotina' },
+  normal: { label: 'Tarefa', icon: 'circle', hint: '' },
+  timed: { label: 'Com tempo', icon: 'timer', hint: 'Tem duração definida. Toque em ▶ para entrar no modo foco com cronômetro.' },
+  sprint: { label: 'Sprint', icon: 'flag', hint: 'Um objetivo maior, com etapas e data de fim. Só um sprint ativo por vez.' },
+  challenge: { label: 'Desafio do dia', icon: 'bolt', hint: 'Vale só para hoje e expira à meia-noite. Um por dia.' },
+  bonus: { label: 'Bônus', icon: 'gift', hint: 'Rende a recompensa normal e não pune se ficar para trás. Usa uma Tarefa Bônus do inventário.' },
+  routine: { label: 'Rotina', icon: 'repeat', hint: '' },
 };
 
 export const taskOpen = (t) => !t.done && !t.failed && !t.archived;
@@ -84,6 +86,7 @@ export function buildPersonal(list) {
   S.byId = new Map();
   for (const t of PERSONAL_TYPES) for (const x of S[t]) S.byId.set(x.id, x);
   S.hlogByHabit = byKey(S.hlog, 'habitId');
+  S.hlogMap = new Map(S.hlog.map((l) => [`${l.habitId}|${l.date}`, l]));
   S.waterByDate = byKey(S.water, 'date');
   S.evByDate = byKey(S.ev, 'date');
   S.scoreByDate = new Map(S.score.map((x) => [x.date, x]));
@@ -95,6 +98,9 @@ export function buildPersonal(list) {
   S.project.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.name || '').localeCompare(b.name || '', 'pt-BR'));
   S.tag.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));
   S.habit.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a._ca || 0) - (b._ca || 0));
+  S.routine.sort((a, b) => (a._ca || 0) - (b._ca || 0));
+  S.quit.sort((a, b) => (a._ca || 0) - (b._ca || 0));
+  S.brain.sort((a, b) => (a._ca || 0) - (b._ca || 0));
   return S;
 }
 
@@ -130,14 +136,7 @@ export function levelTitle(level) {
 }
 export const nextTitle = (level) => LEVEL_TITLES.find(([min]) => min > level) || null;
 
-/* ---------- Recompensa de uma tarefa ---------- */
-// Mesmos valores-base do Lida anterior. Bônus de perfil e power-ups entram na fase de gamificação.
-const BASE = { P0: [150, 50], P1: [100, 40], P2: [75, 30], P3: [50, 20], P4: [25, 10] };
-export function rewardFor(task) {
-  const [xp, gold] = BASE[task.priority] || BASE.P4;
-  const mult = task.powerups?.dice ? 2 : 1;
-  return { xp: xp * mult, gold: gold * mult };
-}
+/* ---------- Eventos de uma tarefa ---------- */
 export const doneEventId = (taskId) => `ev_done_${taskId}`;
 
 /* ---------- Repetição ---------- */

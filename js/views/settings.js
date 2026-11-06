@@ -9,6 +9,8 @@ import { cloudConfigured } from '../core/cloud.js';
 import { esc, fmtInt } from '../lib/util.js';
 import { icon, toast, confirmDialog, promptDialog } from '../ui/ui.js';
 import { avatar } from './common.js';
+import { MODUS, useItemEvent } from '../core/game.js';
+import { WD_LETTER, WD_SHORT } from '../lib/util.js';
 
 const toggle = (name, on, label) => `<span class="toggle"><input type="checkbox" data-${name}${on ? ' checked' : ''} aria-label="${esc(label)}"><i></i></span>`;
 
@@ -63,6 +65,14 @@ export const settingsView = {
           <div class="seg small" role="radiogroup" aria-label="Tamanho do texto">${Object.entries(SIZES).map(([k, v]) => `<button type="button" role="radio" aria-checked="${ap.size === k}" class="${ap.size === k ? 'on' : ''}" data-size="${k}">${v.name}</button>`).join('')}</div></div>
       </section>
 
+      <section class="set-group"><h2>Jogo</h2><div class="set-list">
+        <div class="set-row col"><span class="grow">Estilo de jogo (Modus Operandi)<small>${S.prefs.modus ? (S.money.items.changeModus > 0 ? 'Você tem um "Novo estilo de jogo": pode trocar uma vez.' : 'Para trocar, compre "Novo estilo de jogo" na Loja.') : 'Escolha uma vez. Trocar depois custa um item da Loja.'}</small></span>
+          <div class="modus">${Object.entries(MODUS).map(([k, m]) => `<button type="button" class="modus-opt${S.prefs.modus === k ? ' on' : ''}" data-modus="${k}" aria-pressed="${S.prefs.modus === k}">${icon(m.icon)}<b>${m.name}</b><small>${m.desc}</small></button>`).join('')}</div></div>
+        <label class="set-row">${icon('flag')}<span class="grow">Punições<small>Tarefa que vence tira XP e ouro (sem nunca baixar de nível)</small></span>${toggle('punish', S.prefs.punishments !== false, 'Punições')}</label>
+        <div class="set-row col"><span class="grow">Dias de folga<small>Fazer algo num dia de folga rende +10 na pontuação do dia</small></span>
+          <div class="wdays small">${[1, 2, 3, 4, 5, 6, 0].map((d) => `<label><input type="checkbox" data-dayoff value="${d}"${(S.prefs.daysOff || []).includes(d) ? ' checked' : ''}><span title="${WD_SHORT[d]}">${WD_LETTER[d]}</span></label>`).join('')}</div></div>
+      </div></section>
+
       <section class="set-group"><h2>Sons e vibração</h2><div class="set-list">
         <label class="set-row">${icon(sp.on ? 'volume' : 'mute')}<span class="grow">Sons<small>Ao concluir tarefas, ganhar XP e subir de nível</small></span>${toggle('sound', sp.on, 'Sons')}</label>
         <div class="set-row"${sp.on ? '' : ' hidden'}><span class="grow">Volume<input type="range" min="0.1" max="1" step="0.05" value="${sp.volume}" data-volume aria-label="Volume dos sons"></span><button type="button" class="btn small" data-hear>Ouvir</button></div>
@@ -97,7 +107,7 @@ function bind(el, S) {
   el.querySelectorAll('[data-theme]').forEach((b) =>
     b.addEventListener('click', () => {
       const id = b.dataset.theme;
-      if (!themeOwned(id, S)) return toast(THEMES[id]?.unlock?.level ? `Este tema é liberado no nível ${THEMES[id].unlock.level}.` : 'Este tema estará na Loja.');
+      if (!themeOwned(id, S)) return toast(THEMES[id]?.unlock?.level ? `Este tema é liberado no nível ${THEMES[id].unlock.level}.` : 'Este tema está à venda na Loja.', THEMES[id]?.unlock?.level ? {} : { action: 'Ver na Loja', onAction: () => app.nav('loja') });
       applyAppearance({ ...ap(), theme: id });
       haptic('tick');
       rerender();
@@ -158,6 +168,28 @@ function bind(el, S) {
     await notify.testNotification();
     toast('Lembrete de teste agendado para daqui a 5 segundos.');
   };
+
+  const savePrefs = async (fields) => {
+    const prev = personal.get('prefs');
+    await personal.save('prefs', { ...(prev ? stripView(prev) : {}), ...fields }, 'prefs');
+  };
+  el.querySelectorAll('[data-modus]').forEach((b) =>
+    b.addEventListener('click', async () => {
+      const k = b.dataset.modus;
+      const cur = P().prefs.modus;
+      if (cur === k) return;
+      if (cur) {
+        if (!(P().money.items.changeModus > 0)) return toast('Para trocar de estilo, compre "Novo estilo de jogo" na Loja.', { action: 'Loja', onAction: () => app.nav('loja') });
+        if (!(await confirmDialog(`Trocar para ${MODUS[k].name}? Isso usa o seu "Novo estilo de jogo".`, { ok: 'Trocar', title: 'Estilo de jogo' }))) return;
+        await personal.saveMany([useItemEvent('changeModus', k)]);
+      }
+      await savePrefs({ modus: k });
+      haptic('done');
+      toast(`Estilo: ${MODUS[k].name}. ${MODUS[k].desc}`, { ms: 4500 });
+    }),
+  );
+  el.querySelector('[data-punish]').onchange = (e) => savePrefs({ punishments: e.target.checked });
+  el.querySelectorAll('[data-dayoff]').forEach((c) => (c.onchange = () => savePrefs({ daysOff: [...el.querySelectorAll('[data-dayoff]:checked')].map((x) => Number(x.value)) })));
 
   el.querySelector('[data-name]').onclick = async () => {
     const v = await promptDialog('Como podemos chamar você?', { label: 'Nome', value: displayName() });
