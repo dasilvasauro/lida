@@ -17,6 +17,9 @@ const tasks = await import('../js/core/tasks.js');
 const legacy = await import('../js/core/legacy.js');
 const { today } = await import('../js/lib/clock.js');
 const { addDays } = await import('../js/lib/util.js');
+const game = await import('../js/core/game.js');
+const habits = await import('../js/core/habits.js');
+const { shiftDays, resetClock, initClock } = await import('../js/lib/clock.js');
 
 initHLC('test01');
 const { key } = await createKey('senha-de-teste');
@@ -47,7 +50,7 @@ test('concluir dá recompensa; reabrir devolve', async () => {
   const id = await tasks.addTask({ title: 'Escrever relatório', priority: 'P1', due: today() });
   const r = await tasks.toggleTask(id);
   assert.equal(r.done, true);
-  assert.deepEqual(r.reward, { xp: 100, gold: 40 });
+  assert.deepEqual([r.reward.xp, r.reward.gold], [100, 40]);
   assert.equal(P().money.xp, 100);
   assert.ok(tasks.buckets(P()).doneToday.some((t) => t.id === id));
   await tasks.toggleTask(id);
@@ -156,4 +159,143 @@ test('abre o cofre v2 da nuvem com a Chave Mestra', async () => {
   assert.equal(L.economy.xp, 150);
   assert.equal(L.economy.gold, 15);
   assert.equal(L.notes, undefined);
+});
+
+/* ---------- Regras de jogo ---------- */
+const give = (data) => personal.saveMany([{ type: 'ev', id: `ev_t_${Math.random()}`, data }]);
+
+test('loja: compra só com saldo; Sorte instantânea vira Carta da Sorte', async () => {
+  const g0 = P().money.gold;
+  assert.equal((await game.buy('xpBoost')).ok, g0 >= 300);
+  await give({ gold: 1000, vouchers: 10 });
+  assert.equal((await game.buy('respite')).ok, true);
+  assert.equal(P().money.items.respite >= 1, true);
+  const cards = P().money.items.luckyCard || 0;
+  await game.buy('instantLuck');
+  assert.equal(P().money.items.luckyCard, cards + 1);
+  assert.equal(P().money.items.instantLuck || 0, 0);
+});
+
+test('Respiro empurra o horário em 3 horas e gasta o item', async () => {
+  const id = await tasks.addTask({ title: 'Reunião', due: today(), time: '14:15' });
+  const n = P().money.items.respite;
+  assert.equal(await game.applyTaskItem('respite', P().byId.get(id)), true);
+  assert.equal(P().byId.get(id).time, '17:15');
+  assert.equal(P().money.items.respite, n - 1);
+});
+
+test('limite de P0 até o nível 30, furado por P0 Extra', async () => {
+  const before = P().task.filter((t) => t.priority === 'P0' && !t.done && !t.failed && (!t.due || t.due === today())).length;
+  if (!before) await tasks.addTask({ title: 'Crítica', priority: 'P0', due: today() });
+  const c = tasks.checkTask({ title: 'Outra', priority: 'P0', due: today() });
+  assert.equal(c.ok, false);
+  await give({ gold: 100 });
+  await game.buy('extraP0');
+  const c2 = tasks.checkTask({ title: 'Outra', priority: 'P0', due: today() });
+  assert.deepEqual([c2.ok, c2.consume], [true, ['extraP0']]);
+  // P0 para outro dia não conta no limite de hoje.
+  assert.equal(tasks.checkTask({ title: 'Futura', priority: 'P0', due: addDays(today(), 3) }).ok, true);
+});
+
+test('desafio: um por dia; sprint: um ativo e com etapas', async () => {
+  await tasks.addTask({ title: 'Desafio', kind: 'challenge' });
+  assert.equal(tasks.checkTask({ title: 'Outro', kind: 'challenge' }).ok, false);
+  assert.equal(tasks.checkTask({ title: 'S', kind: 'sprint', due: addDays(today(), 7) }).ok, false);
+  const ok = tasks.checkTask({ title: 'S', kind: 'sprint', due: addDays(today(), 7), subtasks: [{ id: 'a', title: 'a' }] });
+  assert.equal(ok.ok, true);
+  await tasks.addTask({ title: 'Sprint', kind: 'sprint', due: addDays(today(), 7), subtasks: [{ id: 'a', title: 'a' }] });
+  assert.equal(tasks.checkTask({ title: 'S2', kind: 'sprint', due: addDays(today(), 9), subtasks: [{ id: 'a', title: 'a' }] }).ok, false);
+});
+
+test('marcos de nível dão Cartas da Sorte e vouchers uma única vez', async () => {
+  const m = P().money;
+  const cards = m.items.luckyCard || 0;
+  // Leva até o nível 15 (xp 19600).
+  const r = await game.commit([{ type: 'ev', id: 'ev_t_lvl', data: { xp: Math.max(0, 19600 - m.xp) } }]);
+  assert.equal(r.levelUp, 15);
+  const gained = [...Array(15 - m.level).keys()].map((i) => game.levelGift(m.level + 1 + i));
+  assert.equal(P().money.items.luckyCard, cards + gained.reduce((a, g) => a + g.cards, 0));
+  assert.ok(personal.get('ev_lvl_15'));
+});
+
+test('virada do dia: vencida falha com punição, bônus não pune, rotina é criada', async () => {
+  initClock(true);
+  const d0 = today();
+  const late = await tasks.addTask({ title: 'Vence hoje', priority: 'P2', due: d0 });
+  await give({ items: { bonusTask: 1 } });
+  const bonus = await tasks.addTask({ title: 'Bônus', kind: 'bonus', due: d0 }, ['bonusTask']);
+  await personal.save('routine', { title: 'Manhã', items: ['Água', 'Alongar'], weekdays: [0, 1, 2, 3, 4, 5, 6] }, 'r1');
+  await personal.save('prefs', { ...(personal.get('prefs') ? game.strip(personal.get('prefs')) : {}), lastDay: d0 }, 'prefs');
+  shiftDays(1);
+  const xp0 = P().money.xp;
+  const sum = await tasks.processDays();
+  assert.equal(sum.days, 1);
+  assert.equal(P().byId.get(late).failed, true);
+  assert.equal(P().byId.get(bonus).failed, true);
+  assert.ok(personal.get(`ev_fail_${late}`));
+  assert.equal(personal.get(`ev_fail_${bonus}`), null);
+  assert.ok(P().money.xp <= xp0);
+  assert.ok(P().byId.get(`rt_r1_${today()}`), 'rotina de hoje criada');
+  assert.ok(personal.get(`sc_${d0}`));
+  // Rodar de novo no mesmo dia não faz nada.
+  const again = await tasks.processDays();
+  assert.equal(again.days, 0);
+  resetClock();
+  initClock(false);
+});
+
+test('hábitos: meta do dia rende progresso de voucher; desmarcar desfaz; sequência', async () => {
+  const hid = await habits.saveHabit(null, { title: 'Ler', goal: 2 });
+  const h = () => P().byId.get(hid);
+  const vp = P().money.voucherProgress + P().money.vouchers * 3;
+  await habits.tap(h());
+  let r = await habits.tap(h());
+  assert.equal(r.completed, true);
+  assert.equal(P().money.voucherProgress + P().money.vouchers * 3, vp + 1);
+  assert.equal(habits.streak(P(), h()), 1);
+  r = await habits.tap(h()); // na meta, volta a zero
+  assert.equal(r.undone, true);
+  assert.equal(P().money.voucherProgress + P().money.vouchers * 3, vp);
+  // Ontem feito + hoje feito = 2.
+  await habits.setCount(h(), 2, addDays(today(), -1));
+  await habits.setCount(h(), 2);
+  assert.equal(habits.streak(P(), h()), 2);
+  assert.equal(habits.week(P(), h()).at(-1).st, 'done');
+});
+
+test('água: meta rende XP uma vez; desfazer abaixo da meta devolve', async () => {
+  const xp = P().money.xp;
+  await habits.addWater(1500);
+  const r = await habits.addWater(500);
+  assert.equal(r.hit, true);
+  assert.equal(P().money.xp, xp + 20);
+  await habits.undoWater();
+  assert.equal(P().money.xp, xp);
+});
+
+test('desapego: check-in diário com ciclo de 7; recaída zera o ciclo', async () => {
+  const qid = await habits.addQuit('Refrigerante');
+  const r = await habits.checkinQuit(P().byId.get(qid));
+  assert.deepEqual([r.n, r.gold, r.xp], [1, 60, 100]);
+  assert.equal(await habits.checkinQuit(P().byId.get(qid)), null, 'um check-in por dia');
+  const loss = await habits.relapseQuit(P().byId.get(qid));
+  assert.ok(loss.gold <= 0);
+  assert.equal(P().byId.get(qid).rewardCycle, 0);
+});
+
+test('concluir uma tarefa vencida não devolve a punição', async () => {
+  initClock(true);
+  const d0 = today();
+  const id = await tasks.addTask({ title: 'Atrasada', priority: 'P3', due: d0 });
+  await personal.save('prefs', { ...game.strip(personal.get('prefs')), lastDay: d0 }, 'prefs');
+  shiftDays(1);
+  await tasks.processDays();
+  assert.ok(personal.get(`ev_fail_${id}`));
+  const r = await tasks.toggleTask(id);
+  assert.equal(r.reward.xp, 0);
+  await tasks.processDays();
+  assert.ok(personal.get(`ev_fail_${id}`), 'punição continua');
+  assert.equal(P().byId.get(id).failed, true);
+  resetClock();
+  initClock(false);
 });

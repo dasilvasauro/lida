@@ -1,6 +1,6 @@
 {
   "name": "lida",
-  "version": "3.0.0-alfa.1",
+  "version": "3.0.0-alfa.2",
   "private": true,
   "type": "module",
   "description": "Tarefas e hábitos com recompensas. Web (PWA) e Android (Capacitor), sem etapa de build.",

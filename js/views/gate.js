@@ -9,6 +9,11 @@ import { isNative } from '../native.js';
 
 let host;
 function screen(html) {
+  const boot = document.getElementById('boot');
+  if (boot) {
+    boot.classList.add('out');
+    setTimeout(() => boot.remove(), 450);
+  }
   host = document.getElementById('gate');
   host.hidden = false;
   host.innerHTML = `<div class="gate-card"><img class="gate-logo" src="icons/pwa-192x192.png" alt="" width="60" height="60"><h1>Lida</h1>${html}</div>`;
