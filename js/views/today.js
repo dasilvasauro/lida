@@ -4,6 +4,10 @@ import { buckets, updateTask } from '../core/tasks.js';
 import { today, now } from '../lib/clock.js';
 import { esc, fmtInt, fmtDayLong, relDay, addDays, plural, daysBetween, cap, WD, weekday } from '../lib/util.js';
 import { icon, ring, empty, toast, bar, sheet, confirmDialog, colorPicker, readForm, COLORS } from '../ui/ui.js';
+import { checkinState, claimCheckin, CHECKIN } from '../core/game.js';
+import { celebrate } from './celebrate.js';
+import { play } from '../core/sound.js';
+import { haptic } from '../ui/haptics.js';
 import { taskList, bindTasks, quickAdd, bindQuick, sprintCard, bindSprint } from './tasks.js';
 import { moodPicker, bindMood } from './me.js';
 
@@ -27,6 +31,7 @@ export const todayView = {
       <div class="hello"><div class="grow"><h2>${esc(greeting())}</h2><p class="hint">${
         total ? `${fmtInt(B.doneToday.length)} de ${plural(total, 'tarefa concluída', 'tarefas concluídas')} hoje` : 'Nenhuma tarefa marcada para hoje'
       }</p></div>${total ? ring(B.doneToday.length / total, { size: 48, stroke: 5, label: `${B.doneToday.length} de ${total} concluídas` }) : ''}</div>
+      ${checkinCard(S, day)}
       ${moodPicker(S, day)}
       <div class="tools">
         <button type="button" class="tool" data-tool="focus">${icon('timer')}<span>Pomodoro</span></button>
@@ -58,6 +63,7 @@ export const todayView = {
     bindQuick(el);
     bindSprint(el);
     bindMood(el);
+    bindCheckin(el);
     el.querySelectorAll('[data-tool]').forEach((b) => (b.onclick = () => app.actions.tool(b.dataset.tool)));
     el.querySelector('[data-resched]')?.addEventListener('click', async () => {
       const ids = B.overdue.map((t) => t.id);
@@ -192,5 +198,42 @@ export function editProject(p) {
         app.nav('projetos');
       });
     },
+  });
+}
+
+/* ---------- Prêmio do dia ---------- */
+const prizeText = (p) => [p.gold ? `${p.gold} de ouro` : '', p.xp ? `${p.xp} XP` : '', p.vouchers ? `${p.vouchers} ${p.vouchers === 1 ? 'voucher' : 'vouchers'}` : ''].filter(Boolean).join(' + ');
+function checkinCard(S, day) {
+  const st = checkinState(S, day);
+  const slots = CHECKIN.map((p, i) => {
+    const k = i + 1;
+    const cls = k < st.n || (st.claimed && k === st.n) ? 'got' : k === st.n ? 'now' : '';
+    const ic = p.vouchers ? 'card' : p.xp ? 'sparkles' : 'coin';
+    return `<li class="${cls}${k === 7 ? ' big' : ''}"><span class="ci-ic">${icon(cls === 'got' ? 'check' : ic)}</span><b>${p.gold}</b><small>Dia ${k}</small></li>`;
+  }).join('');
+  if (st.claimed)
+    return `<section class="ci done" aria-label="Prêmio do dia"><span class="ci-mini">${icon('gift')}</span><span class="grow">Prêmio do dia resgatado. Amanhã: <b>${esc(prizeText(st.next))}</b></span><ol class="ci-dots" aria-hidden="true">${CHECKIN.map((_, i) => `<i class="${i < st.n ? 'on' : ''}"></i>`).join('')}</ol></section>`;
+  return `<section class="ci card" aria-label="Prêmio do dia">
+    <div class="ci-head"><div class="grow"><b>Prêmio do dia</b><small>${st.reset ? 'A sequência recomeçou: hoje é o dia 1.' : `Dia ${st.n} de 7. Volte todo dia: o prêmio cresce e o maior vem no 7º.`}</small></div></div>
+    <ol class="ci-days">${slots}</ol>
+    <button type="button" class="btn primary wide ci-claim" data-claim>${icon('gift')}Resgatar ${esc(prizeText(st.prize))}</button>
+  </section>`;
+}
+function bindCheckin(el) {
+  el.querySelector('[data-claim]')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    const card = btn.closest('.ci');
+    card.classList.add('claiming');
+    haptic('done');
+    play(checkinState().n === 7 ? 'levelup' : 'purchase');
+    app.hold = true;
+    const r = await claimCheckin();
+    setTimeout(() => {
+      app.hold = false;
+      app.refresh();
+    }, 700);
+    if (!r) return;
+    setTimeout(() => celebrate(r.n === 7 ? 'Semana completa! Prêmio máximo' : `Prêmio do dia ${r.n}`, { xp: r.prize.xp || 0, gold: r.prize.gold }, r), 250);
   });
 }

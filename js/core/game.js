@@ -243,3 +243,32 @@ export const levelProgress = (m = money()) => {
   return { base, next, into: m.xp - base, need: next - base, frac: (m.xp - base) / (next - base) };
 };
 export { levelOf };
+
+/* ---------- Prêmio do dia (check-in diário) ---------- */
+// Ciclo de 7 dias: o prêmio cresce a cada dia seguido e o maior vem no 7º. Pular um dia
+// volta ao dia 1. Um evento por dia (ev_ci_<dia>), então dois aparelhos não resgatam em dobro.
+export const CHECKIN = [{ gold: 20 }, { gold: 30 }, { gold: 40, xp: 30 }, { gold: 50 }, { gold: 60, vouchers: 1 }, { gold: 80, xp: 50 }, { gold: 150, xp: 100, vouchers: 2 }];
+
+export function checkinState(S = P(), day = today()) {
+  const claims = S.ev.filter((e) => e.kind === 'checkin' && e.date).sort((a, b) => a.date.localeCompare(b.date));
+  const mine = claims.find((e) => e.date === day);
+  const prev = claims.filter((e) => e.date < day).pop();
+  const y = addDay(day, -1);
+  const cont = prev && prev.date === y;
+  const n = mine ? mine.n : cont ? (prev.n % 7) + 1 : 1;
+  return { claimed: !!mine, n, prize: CHECKIN[n - 1], next: CHECKIN[n % 7], reset: !mine && !!prev && !cont && prev.n > 1 };
+}
+
+export async function claimCheckin(day = today()) {
+  const st = checkinState(P(), day);
+  if (st.claimed) return null;
+  const p = st.prize;
+  const res = await commit([ev({ kind: 'checkin', n: st.n, gold: p.gold, xp: p.xp, vouchers: p.vouchers, date: day }, `ev_ci_${day}`)]);
+  return { ...st, ...res };
+}
+
+function addDay(iso, n) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(y, m - 1, d + n, 12);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}

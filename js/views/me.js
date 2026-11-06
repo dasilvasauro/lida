@@ -18,6 +18,18 @@ export const MOODS = [
   { id: 'annoyed', emoji: '😕', name: 'Chateado' },
   { id: 'disappointed', emoji: '😞', name: 'Desanimado' },
 ];
+
+// Rostos desenhados (em vez dos emojis do sistema, que mudam de aparelho para aparelho).
+// Olhos e boca mudam de forma; a cor só reforça (de verde a vermelho, passando pelo cinza).
+const FACE = {
+  radiant: '<path d="M8 10.2c.6-1 1.8-1 2.4 0M13.6 10.2c.6-1 1.8-1 2.4 0"/><path d="M7.6 13.4h8.8a4.4 4.4 0 0 1-8.8 0z" class="fill"/>',
+  happy: '<path d="M9 9.6v.8M15 9.6v.8" stroke-width="2.4"/><path d="M8.4 13.8a4.2 4.2 0 0 0 7.2 0"/>',
+  normal: '<path d="M9 9.6v.8M15 9.6v.8" stroke-width="2.4"/><path d="M8.8 15h6.4"/>',
+  annoyed: '<path d="M8 9.2l2.2.8M16 9.2l-2.2.8"/><path d="M9.2 16.2c1.6-1.4 4-1.4 5.6 0"/>',
+  disappointed: '<path d="M8.2 10.4c.7.6 1.6.6 2.3 0M13.5 10.4c.7.6 1.6.6 2.3 0"/><path d="M8.6 16.8a4.2 4.2 0 0 1 6.8 0"/>',
+};
+export const face = (id, size = 28) =>
+  `<svg class="face face-${id}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.2" class="face-bg"/>${FACE[id] || ''}</svg>`;
 const MOOD = Object.fromEntries(MOODS.map((m) => [m.id, m]));
 
 export function grade(score) {
@@ -182,10 +194,10 @@ function moods(S, d) {
       <ol class="mood-strip" aria-label="Humor dos últimos 30 dias">${days
         .map((x) => {
           const mm = MOOD[S.moodByDate.get(x)];
-          return `<li class="mo-${mm?.id || 'none'}" tabindex="-1" data-tip="${esc(mm ? `${mm.emoji} ${mm.name}` : 'Sem registro')}|${Number(x.slice(8))} ${MSHORT[Number(x.slice(5, 7)) - 1]}">${mm ? mm.emoji : ''}</li>`;
+          return `<li class="mo-${mm?.id || 'none'}" tabindex="-1" data-tip="${esc(mm ? mm.name : 'Sem registro')}|${Number(x.slice(8))} ${MSHORT[Number(x.slice(5, 7)) - 1]}">${mm ? face(mm.id, 16) : ''}</li>`;
         })
         .join('')}</ol>
-      <ul class="mood-count">${MOODS.map((mm) => `<li><span>${mm.emoji}</span><b>${count[mm.id]}</b><small>${mm.name}</small></li>`).join('')}</ul>
+      <ul class="mood-count">${MOODS.map((mm) => `<li><span class="mo-${mm.id}">${face(mm.id, 22)}</span><b>${count[mm.id]}</b><small>${mm.name}</small></li>`).join('')}</ul>
     </div></section>`;
 }
 
@@ -353,8 +365,9 @@ function bind(el) {
 /* ---------- Humor do dia (usado em Hoje) ---------- */
 export function moodPicker(S, d) {
   const cur = S.moodByDate.get(d);
-  return `<section class="mood-pick${cur ? ' set' : ''}" aria-label="Humor de hoje"><span class="mood-q">${cur ? 'Hoje você está' : 'Como você está hoje?'}</span>
-    <div class="moods" role="radiogroup">${MOODS.map((m) => `<button type="button" role="radio" aria-checked="${cur === m.id}" class="mood${cur === m.id ? ' on' : ''}" data-mood="${m.id}" title="${m.name}" aria-label="${m.name}"><span>${m.emoji}</span><small>${m.name}</small></button>`).join('')}</div></section>`;
+  const m = MOOD[cur];
+  return `<section class="mood-pick${cur ? ' set' : ''}" aria-label="Humor de hoje"><span class="mood-q">${m ? `Hoje você está: <b>${m.name.toLowerCase()}</b>` : 'Como você está hoje?'}</span>
+    <div class="moods" role="radiogroup" aria-label="Humor">${MOODS.map((x) => `<button type="button" role="radio" aria-checked="${cur === x.id}" class="mood mo-${x.id}${cur === x.id ? ' on' : ''}" data-mood="${x.id}" title="${x.name}" aria-label="${x.name}">${face(x.id, 30)}</button>`).join('')}</div></section>`;
 }
 export function bindMood(el) {
   el.querySelectorAll('[data-mood]').forEach(

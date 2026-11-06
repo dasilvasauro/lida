@@ -404,6 +404,7 @@ function start() {
   dismissBoot();
   call('SplashScreen', 'hide');
   nativeBack();
+  keyboard();
   deepLinks();
   updateWidget();
   runDay();
@@ -456,6 +457,31 @@ async function onNotifyAction(action, extra = {}) {
     await addWater(ml);
     toast(`+${ml} ml registrados.`);
   }
+}
+
+// Teclado: com ele aberto, a barra de navegação e o botão + saem do caminho e o campo em foco
+// vai para o meio da área visível. No APK, o plugin Keyboard avisa e redimensiona a tela
+// (resizeOnFullScreen); na web, a área visível (visualViewport) diz se o teclado está aberto.
+const isText = (el) => !!el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !['checkbox', 'radio', 'range', 'button', 'submit', 'hidden'].includes(el.type)) || el.isContentEditable);
+function keyboard() {
+  const set = (open) => document.body.classList.toggle('kb-open', open);
+  const K = plugin('Keyboard');
+  if (K) {
+    K.addListener('keyboardWillShow', () => set(true));
+    K.addListener('keyboardWillHide', () => set(false));
+  } else if (window.visualViewport) {
+    let full = window.innerHeight;
+    const check = () => {
+      if (!isText(document.activeElement)) full = Math.max(full, window.innerHeight, window.visualViewport.height);
+      set(isText(document.activeElement) && full - window.visualViewport.height > 150);
+    };
+    window.visualViewport.addEventListener('resize', check);
+    document.addEventListener('focusout', () => setTimeout(check, 100));
+  }
+  document.addEventListener('focusin', (e) => {
+    if (!isText(e.target) || matchMedia('(min-width: 960px)').matches) return;
+    setTimeout(() => e.target.isConnected && e.target.scrollIntoView({ block: 'center', behavior: 'smooth' }), 350);
+  });
 }
 
 // Tela de abertura (logo) some com um fade assim que o app está pronto.

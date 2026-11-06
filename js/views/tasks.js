@@ -3,7 +3,7 @@ import { P, app, prefs, personal } from '../state.js';
 import { PRIORITIES, TASK_KINDS, recurrenceLabel } from '../core/model.js';
 import { toggleTask, toggleSub, addTask, saveTask, removeTask, strip, checkTask, sprintInfo } from '../core/tasks.js';
 import { ITEMS, applyTaskItem } from '../core/game.js';
-import { esc, uid, relDay, fmtTime, plural, addDays } from '../lib/util.js';
+import { esc, uid, relDay, fmtTime, plural, addDays, weekday, WD_SHORT, WD_LETTER } from '../lib/util.js';
 import { today } from '../lib/clock.js';
 import { icon, sheet, toast, confirmDialog, promptDialog, opt, readForm, bar, COLORS } from '../ui/ui.js';
 import { parseQuick } from '../core/parse.js';
@@ -245,12 +245,15 @@ const REPEAT = [
   ['daily', 'Todo dia'],
   ['weekdays', 'Dias úteis (seg a sex)'],
   ['weekly', 'Toda semana, no mesmo dia'],
+  ['custom', 'Escolher os dias'],
   ['monthly', 'Todo mês, no mesmo dia'],
   ['yearly', 'Todo ano, na mesma data'],
 ];
 function repeatValue(rec) {
   if (!rec) return '';
-  if (rec.type === 'weekly' && (rec.weekdays || []).slice().sort().join() === '1,2,3,4,5') return 'weekdays';
+  const wd = (rec.weekdays || []).slice().sort();
+  if (rec.type === 'weekly' && wd.join() === '1,2,3,4,5') return 'weekdays';
+  if (rec.type === 'weekly' && wd.length > 1) return 'custom';
   return rec.type;
 }
 function repeatFrom(v, due, prev) {
@@ -306,6 +309,8 @@ export function editTask(id, defaults = {}) {
         <label class="field"><span>Prioridade</span><select name="priority">${PRIORITIES.map((p) => opt(p.id, `${p.short} · ${p.id === 'P4' ? 'Nenhuma' : p.name}`, (t.priority || 'P4') === p.id)).join('')}</select></label>
         <label class="field only-repeat"><span>Repetir</span><select name="repeat">${REPEAT.map(([v, l]) => opt(v, l, repeatValue(t.recurrence) === v)).join('')}</select></label>
       </div>
+      <div class="field only-repeat" data-wdays${repeatValue(t.recurrence) === 'custom' ? '' : ' hidden'}><span>Repetir nestes dias</span>
+        <div class="wdays" role="group" aria-label="Dias da semana">${[1, 2, 3, 4, 5, 6, 0].map((d) => `<label><input type="checkbox" name="rdays" value="${d}"${(t.recurrence?.weekdays || []).includes(d) ? ' checked' : ''}><span title="${WD_SHORT[d]}">${WD_LETTER[d]}</span></label>`).join('')}</div></div>
       <div class="field"><span>Etiquetas</span><div class="chips tag-pick" data-tags>${tagChips(S, t.tags || [])}</div></div>
       ${S.project.length ? `<label class="field"><span>Projeto</span><select name="projectId">${opt('', 'Nenhum', !t.projectId)}${S.project.map((p) => opt(p.id, p.name, p.id === t.projectId)).join('')}</select></label>` : ''}
       <div class="field"><span data-sublabel>${kind === 'sprint' ? 'Etapas do sprint' : 'Subtarefas'}</span>
@@ -387,6 +392,15 @@ export function editTask(id, defaults = {}) {
         haptic('tick');
       };
       el.querySelectorAll('[data-k]').forEach((b) => (b.onclick = () => setKind(b.dataset.k)));
+      const wdBox = el.querySelector('[data-wdays]');
+      f.repeat.addEventListener('change', () => {
+        wdBox.hidden = f.repeat.value !== 'custom';
+        if (f.repeat.value === 'custom' && !f.querySelector('input[name=rdays]:checked')) {
+          const d = f.due.value ? weekday(f.due.value) : weekday(today());
+          const box = f.querySelector(`input[name=rdays][value="${d}"]`);
+          if (box) box.checked = true;
+        }
+      });
       const dur = f.duration;
       dur.oninput = () => (el.querySelector('[data-dur]').textContent = `${dur.value} min`);
       const redraw = () => {
@@ -449,7 +463,15 @@ export function editTask(id, defaults = {}) {
         if (!v.title.trim()) return;
         if (newSub.value.trim()) addSub();
         const isChallenge = kind === 'challenge';
-        const due = isChallenge ? today() : v.due || undefined;
+        const rdays = [...f.querySelectorAll('input[name=rdays]:checked')].map((x) => Number(x.value)).sort();
+        if (v.repeat === 'custom' && (kind === 'normal' || kind === 'timed') && !rdays.length) return toast('Escolha os dias da semana.');
+        let due = isChallenge ? today() : v.due || undefined;
+        // Repetição em dias escolhidos: a primeira data cai no próximo desses dias.
+        if (v.repeat === 'custom' && rdays.length && (kind === 'normal' || kind === 'timed')) {
+          let d = due || today();
+          for (let i = 0; i < 7 && !rdays.includes(weekday(d)); i++) d = addDays(d, 1);
+          due = d;
+        }
         const data = {
           ...(id ? strip(t) : defaults),
           kind,
@@ -462,7 +484,7 @@ export function editTask(id, defaults = {}) {
           duration: kind === 'timed' ? Number(v.duration) || 30 : undefined,
           priority: v.priority || 'P4',
           projectId: v.projectId || undefined,
-          recurrence: kind === 'normal' || kind === 'timed' ? repeatFrom(v.repeat, due, t.recurrence) : undefined,
+          recurrence: kind === 'normal' || kind === 'timed' ? (v.repeat === 'custom' ? { type: 'weekly', weekdays: rdays } : repeatFrom(v.repeat, due, t.recurrence)) : undefined,
           subtasks: subs.length ? subs : undefined,
         };
         if (data.recurrence && !data.due) data.due = today();

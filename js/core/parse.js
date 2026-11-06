@@ -33,9 +33,13 @@ export function parseQuick(input, { today, projects = [], tags = [] }) {
   // Repetição (antes das datas, porque "toda segunda" também tem um dia da semana).
   take(/\s(todos os dias|todo dia|diariamente)(?=\s)/, () => (out.recurrence = { type: 'daily' }));
   take(/\s(dias uteis|todo dia util)(?=\s)/, () => (out.recurrence = { type: 'weekly', weekdays: [1, 2, 3, 4, 5] }));
-  take(new RegExp(`\\s(?:toda|todo) ${WD_RE}(?=\\s)`), (m) => {
-    out.recurrence = { type: 'weekly', weekdays: [WD[m[1]]] };
-    out.due = nextWeekday(today, WD[m[1]], true);
+  // "toda segunda", "toda segunda, quarta e sexta", "todas as terças e quintas"
+  const ONE = `${WD_RE}s?`;
+  take(new RegExp(`\\s(?:toda|todo|todas as|todos os) (${ONE}(?:(?:, ?| e )${ONE})*)(?=\\s)`), (m) => {
+    const days = [...new Set([...m[1].matchAll(new RegExp(WD_RE, 'g'))].map((x) => WD[x[1]]))].sort();
+    if (!days.length) return false;
+    out.recurrence = { type: 'weekly', weekdays: days };
+    out.due = days.map((d) => nextWeekday(today, d, true)).sort()[0];
   });
   take(/\s(toda semana|semanalmente)(?=\s)/, () => (out.recurrence = { type: 'weekly', weekdays: [weekday(out.due || today)] }));
   take(/\s(todo mes|mensalmente)(?=\s)/, () => (out.recurrence = { type: 'monthly', dayOfMonth: Number((out.due || today).slice(8)) }));

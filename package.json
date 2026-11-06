@@ -1,6 +1,6 @@
 {
   "name": "lida",
-  "version": "3.0.0-alfa.4",
+  "version": "3.0.0-alfa.5",
   "private": true,
   "type": "module",
   "description": "Tarefas e hábitos com recompensas. Web (PWA) e Android (Capacitor), sem etapa de build.",
@@ -17,6 +17,7 @@
     "@capacitor/cli": "8.6.0",
     "@capacitor/core": "8.6.0",
     "@capacitor/haptics": "8.0.2",
+    "@capacitor/keyboard": "8.0.6",
     "@capacitor/local-notifications": "8.3.1",
     "@capacitor/splash-screen": "8.0.2",
     "@capacitor/status-bar": "8.0.4",

@@ -179,6 +179,7 @@ export function recurrenceLabel(rec) {
     const d = [...(rec.weekdays || [])].sort((a, b) => a - b);
     if (d.length === 5 && d.join() === '1,2,3,4,5') return 'Dias úteis';
     if (d.length === 7) return 'Todo dia';
+    if (n === 1 && d.length > 1) return `Toda ${d.map((x) => WDS[x]).join(', ').replace(/, ([^,]*)$/, ' e $1')}`;
     return `${n > 1 ? `A cada ${n} semanas` : 'Toda semana'}${d.length ? ` (${d.map((x) => WDS[x]).join(', ')})` : ''}`;
   }
   if (rec.type === 'monthly') return `${n > 1 ? `A cada ${n} meses` : 'Todo mês'}${rec.dayOfMonth ? `, dia ${rec.dayOfMonth}` : ''}`;

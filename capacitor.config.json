@@ -22,6 +22,9 @@
       "providers": [
         "google.com"
       ]
+    },
+    "Keyboard": {
+      "resizeOnFullScreen": true
     }
   }
 }

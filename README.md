@@ -3,7 +3,7 @@
 Tarefas e hábitos num só lugar, com uma pequena recompensa a cada passo concluído.
 Funciona no navegador (celular e computador) e como app Android, offline, com os dados cifrados no aparelho.
 
-> **Lida 3 — alfa 4.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
+> **Lida 3 — alfa 5.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
 > A versão anterior (React) continua no ar na branch `main` até a nova alcançar o que ela fazia.
 
 ---
@@ -69,6 +69,12 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
   P0 sem limite no 30, P1 sem limite no 40, Darcula e +40 vouchers no 50. Títulos: Aprendiz, Iniciante, Praticante,
   Constante, Disciplinado, Persistente, Veterano, Especialista, Mestre, Grão-Mestre e Lenda.
 
+**Prêmio do dia:** abra o Lida todo dia e resgate o prêmio em Hoje. Ele cresce ao longo de 7 dias seguidos
+(20, 30, 40 + 30 XP, 50, 60 + 1 voucher, 80 + 50 XP e, no 7º, 150 de ouro + 100 XP + 2 vouchers). Pular um dia
+volta ao dia 1.
+
+**Repetição em dias escolhidos:** em Repetir, escolha "Escolher os dias" e marque, por exemplo, segunda, quarta e sexta.
+
 **Hábitos**
 
 - Toque no círculo para marcar (soma 1 até a meta do dia; na meta, volta a zero). Bater a meta rende progresso de voucher:
@@ -93,7 +99,7 @@ Delegar ou largar e Incubadora. Qualquer item vira tarefa com um toque.
 | `p0` … `p4` | prioridade |
 | `#Casa` | projeto (o início do nome basta) |
 | `@contas` | etiqueta (é criada se não existir) |
-| `todo dia`, `dias úteis`, `toda segunda`, `toda semana`, `todo mês`, `todo ano` | repetição |
+| `todo dia`, `dias úteis`, `toda segunda`, `toda segunda, quarta e sexta`, `todas as terças e quintas`, `toda semana`, `todo mês`, `todo ano` | repetição |
 
 Exemplo: `Pagar luz amanhã 9h p1 #Casa @contas`. Enquanto você digita, aparece o que foi entendido.
 
