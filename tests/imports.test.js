@@ -37,7 +37,7 @@ test('todo nome importado existe no módulo de origem', () => {
 test('o service worker guarda todos os arquivos do app', () => {
   const sw = readFileSync(join(ROOT, 'sw.js'), 'utf8');
   const shell = new Set([...sw.matchAll(/^\s*'([^']+)',$/gm)].map((m) => m[1]));
-  const need = [...walk(join(ROOT, 'js')), ...walk(join(ROOT, 'css')), ...walk(join(ROOT, 'fonts')), ...walk(join(ROOT, 'icons'))].map((f) => relative(ROOT, f));
+  const need = ['js', 'css', 'fonts', 'icons', 'sounds'].flatMap((d) => walk(join(ROOT, d))).map((f) => relative(ROOT, f));
   const missing = need.filter((f) => !shell.has(f));
   const extra = [...shell].filter((f) => f !== './' && !need.includes(f) && !['index.html', 'manifest.webmanifest'].includes(f));
   assert.deepEqual({ missing, extra }, { missing: [], extra: [] });

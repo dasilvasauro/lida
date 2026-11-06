@@ -1,6 +1,6 @@
 // Tela de Hábitos: o dia em um olhar, água, hábitos com sequência, rotinas e desapego.
 // Tom: leve e incentivador. Nada de vermelho por dia perdido; o foco é no que já foi feito.
-import { P, personal } from '../state.js';
+import { P, personal, app } from '../state.js';
 import { HABIT_DAYS_ALL } from '../core/model.js';
 import * as H from '../core/habits.js';
 import { esc, fmtInt, plural, WD_LETTER, WD_SHORT } from '../lib/util.js';
@@ -200,12 +200,45 @@ function bind(el) {
   });
 }
 
+// Marcar um hábito atualiza só o cartão (o anel enche com animação). A tela é redesenhada
+// depois de uma pausa sem toques, para marcar várias vezes seguidas sem nada piscar.
+let holdT = 0;
+function holdFor(ms) {
+  app.hold = true;
+  clearTimeout(holdT);
+  holdT = setTimeout(() => {
+    app.hold = false;
+    app.refresh();
+  }, ms);
+}
+
+function patchCard(card, h) {
+  const S = P();
+  const i = Number(getComputedStyle(card).getPropertyValue('--i')) || 0;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = habitCard(S, h, today(), i);
+  const next = tmp.firstElementChild;
+  const arc = card.querySelector('.hab-arc');
+  arc.setAttribute('stroke-dashoffset', next.querySelector('.hab-arc').getAttribute('stroke-dashoffset'));
+  const wasDone = card.classList.contains('done');
+  card.classList.toggle('done', next.classList.contains('done'));
+  const face = card.querySelector('.hab-face');
+  face.innerHTML = next.querySelector('.hab-face').innerHTML;
+  face.classList.toggle('pop', !wasDone && next.classList.contains('done'));
+  card.querySelector('.hab-body small').innerHTML = next.querySelector('.hab-body small').innerHTML;
+  card.querySelector('.hab-week').innerHTML = next.querySelector('.hab-week').innerHTML;
+  card.querySelector('.hab-side').innerHTML = next.querySelector('.hab-side').innerHTML;
+  card.querySelector('[data-more]').onclick = (e) => habitMenu(e.currentTarget, P().byId.get(h.id));
+}
+
 async function onTap(card, h) {
   const btn = card.querySelector('[data-tap]');
   btn.classList.remove('bump');
   void btn.offsetWidth;
   btn.classList.add('bump');
+  holdFor(1200);
   const r = await H.tap(h);
+  patchCard(card, P().byId.get(h.id));
   if (r.completed) {
     play('complete');
     haptic('done');
@@ -223,7 +256,16 @@ async function onTap(card, h) {
 }
 
 async function onWater(ml) {
+  holdFor(1200);
   const r = await H.addWater(ml);
+  const card = document.querySelector('.water');
+  if (card) {
+    const f = Math.min(1, r.total / r.goal);
+    card.querySelector('.drop-fill').style.transform = `translateY(${(1 - f) * 76}px)`;
+    card.classList.toggle('full', f >= 1);
+    const b = card.querySelector('.water-n b');
+    if (b) b.textContent = r.total >= 1000 ? `${(r.total / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L` : `${r.total} ml`;
+  }
   play('water');
   haptic('tick');
   if (r.hit) {

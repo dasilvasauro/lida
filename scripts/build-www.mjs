@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'www');
-const ITEMS = ['index.html', 'manifest.webmanifest', 'css', 'js', 'fonts', 'icons'];
+const ITEMS = ['index.html', 'manifest.webmanifest', 'css', 'js', 'fonts', 'icons', 'sounds'];
 
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT);

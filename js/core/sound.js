@@ -138,11 +138,26 @@ const SOUNDS = {
   },
 };
 
-export const SOUND_NAMES = Object.keys(SOUNDS);
+export const SOUND_NAMES = [...Object.keys(SOUNDS), 'bike'];
+
+// Campainha de bicicleta das notificações (o mesmo arquivo usado pelo Android).
+let bell = null;
+function bike() {
+  try {
+    bell ||= new Audio('sounds/sino_bicicleta.wav');
+    bell.volume = Math.min(1, soundPrefs().volume);
+    bell.currentTime = 0;
+    bell.play().catch(() => {});
+  } catch {
+    /* sem áudio */
+  }
+}
 
 export function play(name, opts) {
   const p = soundPrefs();
-  if (!p.on || !SOUNDS[name]) return;
+  if (!p.on) return;
+  if (name === 'bike') return bike();
+  if (!SOUNDS[name]) return;
   if (!audio()) return;
   try {
     SOUNDS[name](opts);
