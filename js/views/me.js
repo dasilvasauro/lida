@@ -1,5 +1,5 @@
 // Aba "Eu": perfil, nível e marcos, estatísticas com gráficos, constância dos hábitos,
-// pontuação do mês, humor, visão e reflexões. Ajustes fica num link pequeno daqui.
+// IPL (índice de produtividade), humor, visão e reflexões. Ajustes fica num link pequeno daqui.
 import { P, app, personal, displayName } from '../state.js';
 import { levelTitle, nextTitle } from '../core/model.js';
 import { MILESTONES } from '../core/game.js';
@@ -8,6 +8,8 @@ import { today } from '../lib/clock.js';
 import { esc, fmtInt, plural, addDays, sum, weekday, MSHORT, WD_SHORT, ymOf, fmtMonth, daysBetween, uid } from '../lib/util.js';
 import { icon, sheet, toast, confirmDialog, empty, COLORS, colorPicker, readForm } from '../ui/ui.js';
 import { columns, line, heat } from '../ui/chart.js';
+import { IPL_PARTS, dayIPL, grade, gradeLine, monthIPL } from '../core/ipl.js';
+import { showDaySummary, showMonthSummary, partsBars } from './summary.js';
 import { haptic } from '../ui/haptics.js';
 import { avatar, levelCard } from './common.js';
 
@@ -32,41 +34,7 @@ export const face = (id, size = 28) =>
   `<svg class="face face-${id}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.2" class="face-bg"/>${FACE[id] || ''}</svg>`;
 const MOOD = Object.fromEntries(MOODS.map((m) => [m.id, m]));
 
-export function grade(score) {
-  const t = [
-    [97, 'A+'],
-    [93, 'A'],
-    [90, 'A-'],
-    [87, 'B+'],
-    [83, 'B'],
-    [80, 'B-'],
-    [77, 'C+'],
-    [73, 'C'],
-    [70, 'C-'],
-    [66, 'D+'],
-    [60, 'D'],
-    [57, 'D-'],
-    [53, 'E+'],
-    [50, 'E'],
-    [45, 'E-'],
-  ];
-  for (const [min, g] of t) if (score >= min) return g;
-  return 'F';
-}
-const gradeLine = (g) =>
-  g.startsWith('A')
-    ? g === 'A+'
-      ? 'Excepcional. Nesse ritmo, nada te segura.'
-      : 'Excelente. Você está no controle do seu tempo.'
-    : g.startsWith('B')
-      ? g === 'B-'
-        ? 'Razoável. Escolha uma coisa para melhorar esta semana.'
-        : 'Bom trabalho. Uma base sólida para crescer.'
-      : g.startsWith('C')
-        ? 'Algumas pontas soltas. Que tal uma lista menor, só com o essencial?'
-        : g.startsWith('D')
-          ? 'Mês difícil. Comece pequeno: uma tarefa e um hábito por dia.'
-          : 'Todo recomeço conta. Amanhã é uma página em branco.';
+export { grade } from '../core/ipl.js';
 
 const GOAL_STATES = [
   ['Inativo', 'Nenhuma ação ainda.'],
@@ -94,7 +62,7 @@ export const meView = {
       ${milestones(m.level)}
       ${stats(S, d)}
       ${habitHeat(S, d)}
-      ${monthScore(S, d)}
+      ${iplSection(S, d)}
       ${moods(S, d)}
       ${vision(S, d)}
       ${reflections(S)}
@@ -166,19 +134,34 @@ function habitHeat(S, d) {
     <div class="card heat-card">${heat(cells, { ariaLabel: 'Hábitos cumpridos por dia nas últimas semanas' })}</div></section>`;
 }
 
-/* ---------- Pontuação do mês ---------- */
-function monthScore(S, d) {
+/* ---------- IPL ---------- */
+function iplSection(S, d) {
   const ym = ymOf(d);
-  const pts = S.score.filter((s) => s.date?.startsWith(ym)).sort((a, b) => a.date.localeCompare(b.date));
-  const past = S.month.filter((x) => x.month < ym).sort((a, b) => b.month.localeCompare(a.month)).slice(0, 3);
-  if (!pts.length && !past.length) return '';
-  const avg = pts.length ? Math.round(sum(pts, (p) => p.score) / pts.length) : null;
-  const g = avg != null ? grade(avg) : null;
-  return `<section class="block"><div class="block-head"><h2>Pontuação de ${esc(fmtMonth(ym).split(' de ')[0].toLowerCase())}</h2><span class="hint">média dos dias fechados</span></div>
+  const mo = monthIPL(S, ym);
+  const last30 = S.score.filter((s) => s.date >= addDays(d, -30) && s.date < d && s.score != null).sort((a, b) => a.date.localeCompare(b.date));
+  const past = S.month.filter((x) => x.month < ym && (x.score != null || x.grade)).sort((a, b) => b.month.localeCompare(a.month)).slice(0, 4);
+  const now = dayIPL(S, d, { live: true });
+  const g = mo ? mo.grade : null;
+  const lbl = (x) => `${Number(x.slice(8))}/${x.slice(5, 7)}`;
+  const y = addDays(d, -1);
+  const hasY = S.scoreByDate.has(y);
+  return `<section class="block" id="ipl"><div class="block-head"><h2>IPL <small class="h-sub">Índice de Produtividade do Lida</small></h2>${hasY ? '<button type="button" class="link" data-sum-day>Resumo de ontem</button>' : ''}</div>
     <div class="card score-card">
-      ${g ? `<div class="grade"><b>${g}</b><span>${avg} pontos</span></div><p class="grade-line">${esc(gradeLine(g))}</p>` : '<p class="hint">A pontuação aparece depois do primeiro dia fechado do mês.</p>'}
-      ${pts.length > 1 ? line(pts.map((p) => ({ value: p.score, label: `${Number(p.date.slice(8))}/${p.date.slice(5, 7)}`, tip: `${p.score} pontos|${Number(p.date.slice(8))}/${p.date.slice(5, 7)} · ${plural(p.tasksDone || 0, 'tarefa', 'tarefas')}` })), { ariaLabel: 'Pontuação diária do mês' }) : ''}
-      ${past.length ? `<div class="past">${past.map((x) => `<span><small>${esc(fmtMonth(x.month).split(' de ')[0].slice(0, 3))}</small><b>${esc(x.grade || grade(x.score || 0))}</b></span>`).join('')}</div>` : ''}
+      <div class="ipl-top">
+        ${g ? `<div class="grade"><b>${g}</b><span>${mo.score} de média em ${esc(fmtMonth(ym).split(' de ')[0])}</span></div>` : `<div class="grade"><b>–</b><span>A média do mês aparece depois do primeiro dia fechado.</span></div>`}
+        ${now.score != null ? `<button type="button" class="ipl-now" data-sum-today><small>Hoje, até agora</small><b>${now.score}</b></button>` : ''}
+      </div>
+      ${g ? `<p class="grade-line">${esc(gradeLine(g))}</p>` : ''}
+      ${last30.length > 1 ? `<figure class="chart-card flat"><figcaption><b>Flutuação</b><span>últimos 30 dias</span></figcaption>${line(last30.map((p) => ({ value: p.score, label: lbl(p.date), tip: `IPL ${p.score} · ${grade(p.score)}|${lbl(p.date)} · ${plural(p.tasksDone || 0, 'tarefa', 'tarefas')}` })), { ariaLabel: 'IPL diário nos últimos 30 dias' })}</figure>` : ''}
+      ${now.score != null ? `<div class="ipl-today"><small>Partes de hoje</small>${partsBars(now.parts, { compact: true })}</div>` : ''}
+      ${past.length ? `<div class="past">${past.map((x) => `<button type="button" data-sum-month="${x.month}"><small>${esc(fmtMonth(x.month).split(' de ')[0].slice(0, 3))}</small><b>${esc(x.grade || grade(x.score || 0))}</b></button>`).join('')}</div>` : ''}
+      <details class="ipl-how">
+        <summary>${icon('bulb', 'sm')} Como o IPL é calculado</summary>
+        <p>O IPL vai de 0 a 100 e avalia o dia por partes, não pela quantidade de tarefas. <b>Só entram as partes que fazem sentido para o seu uso</b>: sem projetos, a parte de projetos não conta; sem Pomodoro, o foco não conta. As partes que valem no dia são somadas pelos pesos e a conta é reescalada para 0–100.</p>
+        <ul>${IPL_PARTS.map((p) => `<li><b>${esc(p.name)}</b> <span class="w">peso ${p.w}</span><br>${esc(p.how)}</li>`).join('')}</ul>
+        <p>O dia fecha à meia-noite (ou quando você abre o Lida no dia seguinte). Dias de folga sem nenhuma atividade ficam sem nota e não puxam a média para baixo. A nota do mês é a média dos dias com nota.</p>
+        <p class="hint">Exemplo: num dia com 4 tarefas planejadas (3 feitas), hábitos em 80% e sem projetos, o IPL usa só Execução, Hábitos, Constância e Planejamento.</p>
+      </details>
     </div></section>`;
 }
 
@@ -356,6 +339,9 @@ function bind(el) {
         meView.render(el);
       }),
   );
+  el.querySelector('[data-sum-day]')?.addEventListener('click', () => showDaySummary(addDays(today(), -1)));
+  el.querySelector('[data-sum-today]')?.addEventListener('click', () => showDaySummary(today()));
+  el.querySelectorAll('[data-sum-month]').forEach((b) => (b.onclick = () => showMonthSummary(b.dataset.sumMonth)));
   el.querySelectorAll('[data-vision]').forEach((b) => (b.onclick = () => editVision(false)));
   el.querySelector('[data-review]')?.addEventListener('click', () => editVision(true));
   el.querySelector('[data-refl-new]').onclick = () => editRefl(null);

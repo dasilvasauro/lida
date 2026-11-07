@@ -3,7 +3,7 @@
 Tarefas e hábitos num só lugar, com uma pequena recompensa a cada passo concluído.
 Funciona no navegador (celular e computador) e como app Android, offline, com os dados cifrados no aparelho.
 
-> **Lida 3 — alfa 5.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
+> **Lida 3 — alfa 6.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
 > A versão anterior (React) continua no ar na branch `main` até a nova alcançar o que ela fazia.
 
 ---
@@ -41,9 +41,10 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 |---|---|---|
 | 1 | Base nova, login, senha, importação, aparência, sons, lembretes, APK | Pronta |
 | 2–4 | Tipos de tarefa, virada do dia, hábitos, água, rotinas, desapego, Loja, Pomodoro, Esvaziar a mente, animações | Pronta |
-| 5 | **Etiquetas**, **descrição com formatação** (negrito, links, listas de verificação), **adição rápida em linguagem natural**, **projetos**, **busca**. Aba **Eu** (perfil, nível, marcos, gráficos, constância, pontuação do mês, humor, visão, reflexões), **humor do dia** em Hoje, **apresentação** na primeira abertura, **notificações** completas com som de campainha de bicicleta e botões, **widget** Hoje no Android | Pronta |
+| 5 | **Etiquetas**, **descrição com formatação** (negrito, links, listas de verificação), **adição rápida em linguagem natural**, **projetos**, **busca**. Aba **Eu** (perfil, nível, marcos, gráficos, constância, IPL, humor, visão, reflexões), **humor do dia** em Hoje, **apresentação** na primeira abertura, **notificações** completas com som de campainha de bicicleta e botões, **widget** Hoje no Android | Pronta |
 | 6 | **Espaço compartilhado** para duas pessoas (convite por QR Code, cifrado como o Pago/Zelo) | Próxima |
-| 7 | **Login com Google no APK** (seletor de contas do Android) | **Esta versão** (precisa do passo 4 de "Sua parte") |
+| 7 | **Login com Google no APK** (seletor de contas do Android) | Pronta (precisa do passo 4 de "Sua parte") |
+| alfa 6 | **IPL** revisado com gráfico e explicação, **resumo do dia** e **do mês**, subtarefas visíveis e recolhíveis, editar segurando, seletor de horário próprio, água com copo e garrafa, qualquer emoji nos hábitos, avisos dispensáveis, mais lembretes (antecedência, atrasadas, hábitos, caixa de entrada, aviso com o app aberto), **cronômetro na notificação** (Live Update no Android 16) | **Esta versão** |
 
 ## Como o jogo funciona
 
@@ -61,13 +62,29 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 - **Limites:** até o nível 30, uma P0 aberta para hoje; até o 40, duas P1. Os itens P0 Extra e P1 Extra liberam mais uma.
 - **Virada do dia:** ao abrir o app (ou à meia-noite com ele aberto), cada dia que passou é fechado: tarefas vencidas
   falham e tiram XP e ouro (nunca baixam de nível; dá para desligar em Ajustes), rotinas não feitas são arquivadas,
-  o dia ganha uma pontuação e as rotinas de hoje aparecem. Uma tarefa que venceu ainda pode ser concluída, sem recompensa,
+  o dia ganha uma nota no IPL e as rotinas de hoje aparecem. Na primeira abertura do dia aparece o **resumo de ontem**
+  (e, na virada do mês, o **resumo do mês**). Uma tarefa que venceu ainda pode ser concluída, sem recompensa,
   ou reagendada para hoje.
 - **Estilo de jogo (Ajustes):** Multitarefa (+20% em tudo), Minimalista (+50% em P0/P1), Pontual (+30% com data),
   Ambicioso (+80% em sprints e desafios). Trocar depois custa um item da Loja.
 - **Marcos de nível:** Carta da Sorte a cada 5 níveis (e a cada nível depois do 25), +15 vouchers no 15, temas no 10, 20 e 35,
   P0 sem limite no 30, P1 sem limite no 40, Darcula e +40 vouchers no 50. Títulos: Aprendiz, Iniciante, Praticante,
   Constante, Disciplinado, Persistente, Veterano, Especialista, Mestre, Grão-Mestre e Lenda.
+
+**IPL — Índice de Produtividade do Lida (aba Eu):** nota de 0 a 100 por dia, com média do mês (A+ a F) e gráfico
+de 30 dias. Não conta só tarefas: avalia o dia por partes, e **só entram as partes que fazem sentido para o seu uso**.
+
+| Parte | Peso | O que mede |
+|---|---|---|
+| Execução | 30 | Tarefas com prazo no dia concluídas a tempo, pesadas pela prioridade (P0 5×, P4 1×). Adiantar ou recuperar soma um pouco. |
+| Hábitos e rotinas | 25 | Fração da meta de cada hábito programado (meia meta conta meio), passos das rotinas e meta de água (se você registra água). |
+| Constância | 15 | Dias com alguma atividade nos últimos 7 (folgas não são cobradas). |
+| Projetos e sprints | 15 | Sprint no ritmo do calendário (etapas × tempo) e projetos com prazo por perto que andaram na semana. |
+| Planejamento | 10 | Poucas tarefas adiadas e carga do dia perto da sua média. |
+| Foco | 5 | Minutos de Pomodoro (50 min = máximo). Só conta se você usou o Pomodoro no último mês. |
+
+Sem projetos, a parte de projetos não entra; sem Pomodoro, o foco não entra; as partes que valem são reescaladas
+para 0–100. Dias de folga sem nenhuma atividade ficam sem nota. A conta está em `js/core/ipl.js`.
 
 **Prêmio do dia:** abra o Lida todo dia e resgate o prêmio em Hoje. Ele cresce ao longo de 7 dias seguidos
 (20, 30, 40 + 30 XP, 50, 60 + 1 voucher, 80 + 50 XP e, no 7º, 150 de ouro + 100 XP + 2 vouchers). Pular um dia
@@ -136,12 +153,20 @@ assinatura diferente e o Android só instala depois de desinstalar a versão ant
 
 ## Lembretes
 
-- **Tarefas com horário**: na hora marcada, com o projeto, a prioridade e as subtarefas no texto expandido.
-  Botões **Concluir** (rende a recompensa normal) e **Lembrar em 1 h**.
-- **Resumo da manhã** (padrão 8h): quantas tarefas há no dia e quais são.
-- **Fechamento do dia** (padrão 21h): o que foi feito e o que ficou pendente.
+Tudo em **Ajustes > Lembretes**, cada tipo com seu interruptor e horário:
+
+- **Tarefas com horário**: com o projeto, a prioridade e as subtarefas no texto expandido. Botões **Concluir**
+  (rende a recompensa normal) e **Lembrar em 1 h**. **Antecedência** padrão (na hora, 5, 10, 15, 30 min, 1 h, 2 h,
+  1 dia) e, no editor da tarefa, a antecedência só daquela tarefa.
+- **Tarefas atrasadas**: se passar do horário e a tarefa continuar aberta, um segundo aviso 15 min a 2 h depois.
+- **Hábitos pendentes** (padrão 19h): lista o que falta marcar no dia.
+- **Caixa de entrada** (opcional, padrão 10h): quando há tarefas sem data nem projeto.
+- **Resumo da manhã** (padrão 8h) e **fechamento do dia** (padrão 21h).
 - **Água** (opcional): a cada 2 h, das 9h às 21h, até bater a meta. Botão **Bebi um copo**.
-- **Pomodoro e modo foco**: aviso no fim de cada ciclo.
+- **Com o app aberto**: o lembrete aparece também no topo da tela, com os mesmos botões.
+- **Pomodoro e modo foco**: aviso no fim de cada ciclo e, no APK, **cronômetro na notificação** enquanto roda
+  (contagem feita pelo próprio Android, certa com o app minimizado). No **Android 16** ela pede para virar
+  **Live Update**: chip com o tempo na barra de status e destaque na tela de bloqueio.
 - Som: **campainha de bicicleta** (gerada para o Lida, arquivo em `sounds/`). No Android, é o som do canal
   "Lembretes": dá para trocar em *Configurações > Apps > Lida > Notificações*.
 - No APK: agendados no sistema, funcionam com o app fechado, sem internet e depois de reiniciar.
@@ -276,4 +301,9 @@ Ao publicar uma versão nova: aumente `VERSION` em `sw.js` e `app.version` em `j
   sai sem login com Google.
 - **Widget**: só exibe e abre o app (como combinado). Marcar tarefas direto no widget exigiria mais código nativo.
 - **Notificações na web**: só com o Lida aberto (limitação dos navegadores, não do app).
+- **Fonte do sistema no Android**: o app usa a fonte de interface registrada no sistema (Roboto, Google Sans no
+  Pixel, MiSans na Xiaomi etc.). Fontes trocadas pelo usuário, como o "Estilo da fonte" da Samsung, não chegam a
+  apps feitos com WebView (o Chrome também não as usa).
+- **Live Update**: só no Android 16 e quando o sistema aceita promover a notificação; nas versões anteriores é uma
+  notificação fixa comum com o cronômetro.
 - **Bubblewrap/TWA**: descartado. Um TWA é o site dentro do Chrome e não agenda notificações locais offline.

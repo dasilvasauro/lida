@@ -131,6 +131,7 @@ export function cheer(n) {
 /* ---------- Água ---------- */
 export const waterGoal = (S = P()) => S.prefs.waterGoal || 2000;
 export const waterGlass = (S = P()) => S.prefs.waterGlass || 250;
+export const waterBottle = (S = P()) => S.prefs.waterBottle || 500;
 export const waterToday = (S = P(), day = today()) => sum(S.waterByDate.get(day) || [], (w) => w.ml || 0);
 
 export async function addWater(ml, day = today()) {

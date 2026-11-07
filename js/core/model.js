@@ -2,7 +2,7 @@
 //
 // Tudo é registro (ver store.js). Os tipos ficam em dois espaços:
 //   pessoal       tarefas, projetos, etiquetas, rotinas, hábitos e seus registros diários, desapego,
-//                 água, eventos de XP/ouro, pontuação diária, humor, visão, reflexões, preferências
+//                 água, eventos de XP/ouro, IPL diário, humor, visão, reflexões, preferências
 //   compartilhado tarefas, projetos e etiquetas que duas pessoas fazem juntas, e quem participa
 //
 // Princípio: o que pode ser alterado em dois aparelhos ao mesmo tempo vira registros separados,

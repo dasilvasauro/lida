@@ -363,3 +363,55 @@ test('prêmio do dia: cresce em 7 dias seguidos, volta ao 1 se pular', async () 
   resetClock();
   initClock(false);
 });
+
+test('IPL: partes que não se aplicam ficam de fora; prioridade pesa; folga sem nada não tem nota', async () => {
+  const { buildPersonal } = await import('../js/core/model.js');
+  const { dayIPL, grade } = await import('../js/core/ipl.js');
+  const day = '2026-11-04'; // quarta
+  const at = (d, h = 12) => new Date(`${d}T${String(h).padStart(2, '0')}:00:00`).getTime();
+  const mk = (recs) => buildPersonal((t) => recs[t] || []);
+  const task = (id, priority, extra = {}) => ({ id, title: id, kind: 'task', priority, due: day, createdDay: '2026-11-01', ...extra });
+
+  // Só tarefas: P0 feita e P4 não feita vale mais que o contrário.
+  const a = dayIPL(mk({ task: [task('a', 'P0', { done: true, doneAt: at(day) }), task('b', 'P4')] }), day);
+  const b = dayIPL(mk({ task: [task('a', 'P0'), task('b', 'P4', { done: true, doneAt: at(day) })] }), day);
+  assert.ok(a.parts.exec > b.parts.exec);
+  assert.ok(a.score > b.score);
+  // Sem hábitos, projetos ou Pomodoro: essas partes não entram.
+  assert.equal(a.parts.habits, null);
+  assert.equal(a.parts.proj, null);
+  assert.equal(a.parts.focus, null);
+
+  // Tudo feito, hábitos em dia: nota alta.
+  const habit = { id: 'h1', title: 'Ler', goal: 2, createdDay: '2026-10-01' };
+  const logs = ['2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01', '2026-11-02', '2026-11-03', day].map((d) => ({ id: `hl_h1_${d}`, habitId: 'h1', date: d, count: 2 }));
+  const full = dayIPL(mk({ task: [task('a', 'P1', { done: true, doneAt: at(day) })], habit: [habit], hlog: logs }), day);
+  assert.ok(full.score >= 95, `nota ${full.score}`);
+  assert.equal(grade(full.score)[0], 'A');
+
+  // Meia meta do hábito conta meio.
+  const half = dayIPL(mk({ habit: [habit], hlog: [{ id: 'x', habitId: 'h1', date: day, count: 1 }] }), day);
+  assert.equal(half.parts.habits, 0.5);
+
+  // Sprint atrasado em relação ao calendário puxa a parte de projetos para baixo.
+  const sprint = { id: 's', title: 'S', kind: 'sprint', start: '2026-11-01', due: '2026-11-07', subtasks: [{ id: 1, done: false }, { id: 2, done: false }, { id: 3, done: false }, { id: 4, done: true }] };
+  const sp = dayIPL(mk({ task: [sprint, task('a', 'P2', { done: true, doneAt: at(day) })] }), day);
+  assert.ok(sp.parts.proj < 0.6, `projetos ${sp.parts.proj}`);
+
+  // Folga sem nada feito: sem nota.
+  const off = dayIPL(mk({ prefs: [{ id: 'prefs', daysOff: [3] }], task: [task('z', 'P2', { due: '2026-11-10' })] }), day);
+  assert.equal(off.score, null);
+
+  // Ao vivo (hoje): tarefa ainda aberta não vira perdida nos fatos.
+  const live = dayIPL(mk({ task: [task('a', 'P2')] }), day, { live: true });
+  assert.equal(live.facts.missed, 0);
+});
+
+test('virada do mês fecha o mês com IPL médio', async () => {
+  const S = P();
+  const ym = '2020-01';
+  const rec = tasks.monthRecord(S, ym, new Map([['2020-01-10', { date: '2020-01-10', score: 80, habitsDone: 2, habitsTotal: 3 }], ['2020-01-11', { date: '2020-01-11', score: 60 }]]));
+  assert.equal(rec.score, 70);
+  assert.equal(rec.days, 2);
+  assert.equal(rec.best.score, 80);
+});

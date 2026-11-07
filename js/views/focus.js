@@ -5,7 +5,7 @@
 import { personal, P, app } from '../state.js';
 import { commit } from '../core/game.js';
 import { toggleTask } from '../core/tasks.js';
-import { timerAlert } from '../core/notify.js';
+import { timerAlert, liveTimer } from '../core/notify.js';
 import { today, nowMs } from '../lib/clock.js';
 import { esc, sum, plural } from '../lib/util.js';
 import { icon, sheet, toast } from '../ui/ui.js';
@@ -51,6 +51,7 @@ function setPomo(next) {
   pomo = { ...pomo, ...next };
   save(PK, pomo);
   emit();
+  syncLive();
 }
 
 export function pomoStart() {
@@ -125,6 +126,8 @@ export function initTimers() {
   ensureTicker();
   if (pomo.running && nowMs() >= pomo.endsAt) pomoFinish();
   paintChip();
+  syncLive();
+  app.actions.syncLive = syncLive;
   if (task.taskId) setTimeout(() => openTaskFocus(), 300);
 }
 
@@ -218,6 +221,25 @@ function setTask(next) {
   task = next ? { ...task, ...next } : { taskId: null };
   save(TK, task.taskId ? task : null);
   paintChip();
+  syncLive();
+}
+
+// Notificação fixa com a contagem (APK): o modo foco tem prioridade sobre o Pomodoro.
+function syncLive() {
+  const mm = (sec) => fmt(Math.max(0, Math.round(sec)));
+  if (task.taskId) {
+    const t = P().byId.get(task.taskId);
+    if (!t) return liveTimer(null);
+    return liveTimer(
+      task.running
+        ? { title: t.title, body: 'Modo foco · tempo restante', endsAt: task.endsAt, chip: 'Foco' }
+        : { title: t.title, body: `Modo foco pausado · ${mm(task.left)} restantes`, paused: true, chip: 'Pausa' },
+    );
+  }
+  const label = pomo.mode === 'focus' ? 'Foco' : 'Pausa';
+  if (pomo.running) return liveTimer({ title: `Pomodoro · ${label}`, body: pomo.mode === 'focus' ? `Ciclo de ${pomo.focusMin} min` : `Pausa de ${pomo.breakMin} min`, endsAt: pomo.endsAt, chip: label, timeoutMs: Math.max(1000, pomo.endsAt - nowMs()) });
+  if (pomo.left !== dur()) return liveTimer({ title: `Pomodoro · ${label} parado`, body: `${mm(pomo.left)} restantes`, paused: true, chip: 'Pausa' });
+  return liveTimer(null);
 }
 
 export function focusTask(id) {

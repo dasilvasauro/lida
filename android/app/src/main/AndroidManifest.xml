@@ -59,4 +59,6 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 16+: o cronômetro do Pomodoro pode aparecer como Live Update (chip na barra de status). -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
 </manifest>

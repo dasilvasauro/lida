@@ -1,7 +1,7 @@
 // Dados de exemplo do modo demo: algumas semanas de uso, para ver o app "vivo" sem cadastrar nada.
 import { personal } from '../state.js';
 import { today, nowMs } from '../lib/clock.js';
-import { addDays, weekday } from '../lib/util.js';
+import { addDays, weekday, addMonths } from '../lib/util.js';
 
 export async function seedDemo() {
   const d = today();
@@ -75,17 +75,27 @@ export async function seedDemo() {
     if (i < 9 || i % 4 === 1) items.push({ type: 'hlog', id: `hl_demo_meditar_${day}`, data: { habitId: 'demo_meditar', date: day, count: 1 } });
     if ([1, 3, 5].includes(weekday(day)) && i % 5 !== 0) items.push({ type: 'hlog', id: `hl_demo_treino_${day}`, data: { habitId: 'demo_treino', date: day, count: 1 } });
   }
-  // Humor, pontuação, XP e tarefas concluídas nos dias anteriores (alimentam a aba Eu).
+  // Humor, IPL, XP e tarefas concluídas nos dias anteriores (alimentam a aba Eu).
   const MO = ['happy', 'radiant', 'normal', 'happy', 'annoyed', 'happy', 'normal', 'radiant', 'happy', 'disappointed'];
   for (let i = 1; i <= 24; i++) {
     const day = addDays(d, -i);
     if (i % 7 !== 3) items.push({ type: 'mood', id: `md_${day}`, data: { date: day, mood: MO[i % MO.length] } });
     const n = 1 + ((i * 7) % 5);
-    items.push({ type: 'score', id: `sc_${day}`, data: { date: day, score: 58 + ((i * 13) % 37), tasksDone: n, habitsDone: 2, penalties: i % 4 === 0 ? 1 : 0 } });
+    const sc = 58 + ((i * 13) % 37);
+    const parts = { exec: Math.min(1, sc / 90), habits: i % 5 ? 0.9 : 0.5, steady: 1, proj: i % 2 ? 0.7 : 0.4, plan: 0.8, focus: i % 3 === 0 ? 0.5 : null };
+    items.push({ type: 'score', id: `sc_${day}`, data: { date: day, score: sc, parts, v: 2, tasksDone: n, habitsDone: 2, habitsTotal: i % 5 ? 2 : 3, penalties: i % 4 === 0 ? 1 : 0 } });
     items.push({ type: 'ev', id: `ev_demo_xp_${day}`, data: { kind: 'done', date: day, xp: 40 + ((i * 53) % 180), gold: 15 + ((i * 17) % 60) } });
     for (let k = 0; k < n; k++) items.push({ type: 'task', data: { title: `Tarefa antiga ${i}.${k + 1}`, priority: 'P3', due: day, done: true, doneAt: new Date(`${day}T${String(9 + k).padStart(2, '0')}:00`).getTime(), createdDay: day } });
     if (i % 3 === 0) items.push({ type: 'ev', id: `ev_focus_demo_${i}`, data: { kind: 'focus', date: day, focusSec: 1500 } });
   }
+  // Meses fechados (resumo do mês na aba Eu).
+  [
+    [1, 76, 'C+', 48, 0.81],
+    [2, 84, 'B', 55, 0.88],
+  ].forEach(([back, score, grade, tasksDone, hp]) => {
+    const ym = addMonths(d.slice(0, 7), -back);
+    items.push({ type: 'month', id: `mo_${ym}`, data: { month: ym, score, grade, days: 26, tasksDone, failed: 4, habitsDone: Math.round(78 * hp), habitsTotal: 78, xp: 3900, xpLost: -220, gold: 1450, goldLost: -90, focusSec: 21600, best: { date: `${ym}-14`, score: 97 } } });
+  });
   items.push({ type: 'vision', id: 'vision', data: { goals: [{ id: 'g1', title: 'Correr 10 km', state: 3 }, { id: 'g2', title: 'Ler 12 livros no ano', state: 4 }, { id: 'g3', title: 'Aprender violão', state: 1 }], develop: ['Paciência', 'Constância'], abandon: ['Procrastinar'], checkpoints: [addDays(d, 6), addDays(d, 16)] } });
   items.push({ type: 'refl', id: 'demo_refl', data: { title: 'O que aprendi este mês', color: '#C08CF5', cards: ['Feito é melhor que perfeito.', 'Descansar também é produtivo.', 'Uma tarefa por vez.'] } });
   items.push({ type: 'hlog', id: `hl_demo_ler_${d}`, data: { habitId: 'demo_ler', date: d, count: 4 } });

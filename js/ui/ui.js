@@ -214,6 +214,7 @@ export function promptDialog(title, { label = '', value = '', ok = 'Salvar', typ
 }
 
 /* ---------- Avisos ---------- */
+// Aviso curto no rodapé. Some sozinho, com um toque no X, ou arrastando para o lado.
 export function toast(msg, { action, onAction, ms = 3200 } = {}) {
   let host = document.getElementById('toasts');
   if (!host) {
@@ -221,21 +222,129 @@ export function toast(msg, { action, onAction, ms = 3200 } = {}) {
     host.id = 'toasts';
     document.body.appendChild(host);
   }
+  // No máximo três ao mesmo tempo: o mais antigo sai.
+  while (host.children.length >= 3) host.firstElementChild.remove();
   const t = document.createElement('div');
   t.className = 'toast';
-  t.innerHTML = `<span>${esc(msg)}</span>${action ? `<button type="button">${esc(action)}</button>` : ''}`;
+  t.setAttribute('role', 'status');
+  t.innerHTML = `<span class="toast-msg">${esc(msg)}</span>${action ? `<button type="button" class="toast-act">${esc(action)}</button>` : ''}<button type="button" class="toast-x" aria-label="Dispensar">${icon('x', 'sm')}</button>`;
   host.appendChild(t);
   requestAnimationFrame(() => t.classList.add('in'));
-  const kill = () => {
+  let dead = false;
+  const kill = (dir = 0) => {
+    if (dead) return;
+    dead = true;
+    t.style.transition = 'opacity 0.2s, transform 0.2s var(--ease)';
+    t.style.transform = dir ? `translateX(${dir * 110}%)` : '';
     t.classList.remove('in');
-    setTimeout(() => t.remove(), 200);
+    setTimeout(() => t.remove(), 220);
   };
+  t.querySelector('.toast-x').onclick = () => kill();
   if (action)
-    t.querySelector('button').onclick = () => {
+    t.querySelector('.toast-act').onclick = () => {
       onAction?.();
       kill();
     };
-  setTimeout(kill, action ? ms * 2 : ms);
+  // Arrastar para o lado dispensa.
+  let x0 = null;
+  t.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button')) return;
+    x0 = e.clientX;
+    t.setPointerCapture(e.pointerId);
+    t.style.transition = 'none';
+  });
+  t.addEventListener('pointermove', (e) => {
+    if (x0 == null) return;
+    const dx = e.clientX - x0;
+    t.style.transform = `translateX(${dx}px)`;
+    t.style.opacity = String(Math.max(0.2, 1 - Math.abs(dx) / 220));
+  });
+  const end = (e) => {
+    if (x0 == null) return;
+    const dx = e.clientX - x0;
+    x0 = null;
+    if (Math.abs(dx) > 70) return kill(Math.sign(dx));
+    t.style.transition = 'transform 0.2s var(--ease), opacity 0.2s';
+    t.style.transform = '';
+    t.style.opacity = '';
+  };
+  t.addEventListener('pointerup', end);
+  t.addEventListener('pointercancel', end);
+  let timer = setTimeout(() => kill(), action ? ms * 2 : ms);
+  t.addEventListener('pointerenter', () => clearTimeout(timer));
+  t.addEventListener('pointerleave', () => !dead && (timer = setTimeout(() => kill(), 1600)));
+}
+
+/* ---------- Aviso no topo (lembrete com o app aberto) ---------- */
+// actions: [{ label, primary?, onClick }]. Some sozinho, com o X, arrastando para cima ou para o lado.
+export function banner({ title, body = '', icon: ic = 'bell', actions = [], ms = 9000, onOpen } = {}) {
+  let host = document.getElementById('banners');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'banners';
+    document.body.appendChild(host);
+  }
+  while (host.children.length >= 2) host.firstElementChild.remove();
+  const b = document.createElement('div');
+  b.className = 'banner';
+  b.setAttribute('role', 'alert');
+  b.innerHTML = `<span class="banner-ic">${icon(ic)}</span><div class="banner-txt"><b>${esc(title)}</b>${body ? `<span>${esc(body)}</span>` : ''}
+    ${actions.length ? `<div class="banner-acts">${actions.map((a, i) => `<button type="button" class="btn small${a.primary ? ' primary' : ' ghost'}" data-i="${i}">${esc(a.label)}</button>`).join('')}</div>` : ''}</div>
+    <button type="button" class="toast-x" aria-label="Dispensar">${icon('x', 'sm')}</button>`;
+  host.appendChild(b);
+  requestAnimationFrame(() => b.classList.add('in'));
+  let dead = false;
+  const kill = (dx = 0, dy = -1) => {
+    if (dead) return;
+    dead = true;
+    b.style.transition = 'opacity 0.2s, transform 0.22s var(--ease)';
+    b.style.transform = dx ? `translateX(${dx * 110}%)` : `translateY(${dy * 120}%)`;
+    b.style.opacity = '0';
+    setTimeout(() => b.remove(), 240);
+  };
+  b.querySelector('.toast-x').onclick = () => kill();
+  b.querySelectorAll('[data-i]').forEach(
+    (x) =>
+      (x.onclick = (e) => {
+        e.stopPropagation();
+        actions[Number(x.dataset.i)].onClick?.();
+        kill();
+      }),
+  );
+  b.querySelector('.banner-txt').addEventListener('click', (e) => {
+    if (e.target.closest('button') || !onOpen) return;
+    onOpen();
+    kill();
+  });
+  let p0 = null;
+  b.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('button')) return;
+    p0 = { x: e.clientX, y: e.clientY };
+    b.setPointerCapture(e.pointerId);
+    b.style.transition = 'none';
+  });
+  b.addEventListener('pointermove', (e) => {
+    if (!p0) return;
+    const dx = e.clientX - p0.x;
+    const dy = Math.min(0, e.clientY - p0.y);
+    b.style.transform = Math.abs(dx) > Math.abs(dy) ? `translateX(${dx}px)` : `translateY(${dy}px)`;
+  });
+  const end = (e) => {
+    if (!p0) return;
+    const dx = e.clientX - p0.x;
+    const dy = e.clientY - p0.y;
+    p0 = null;
+    if (Math.abs(dx) > 70) return kill(Math.sign(dx));
+    if (dy < -40) return kill(0, -1);
+    b.style.transition = 'transform 0.2s var(--ease)';
+    b.style.transform = '';
+  };
+  b.addEventListener('pointerup', end);
+  b.addEventListener('pointercancel', end);
+  let timer = setTimeout(() => kill(), ms);
+  b.addEventListener('pointerenter', () => clearTimeout(timer));
+  b.addEventListener('pointerleave', () => !dead && (timer = setTimeout(() => kill(), 2500)));
+  return kill;
 }
 
 export function readForm(form) {

@@ -12,6 +12,7 @@ import { play } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
 import { celebrate } from './celebrate.js';
 import { focusTask } from './focus.js';
+import { REMIND_BEFORE, notifyPrefs } from '../core/notify.js';
 
 /* ---------- Linha ---------- */
 export function taskRow(t, { showDue = false, S = P(), i = 0 } = {}) {
@@ -35,25 +36,116 @@ export function taskRow(t, { showDue = false, S = P(), i = 0 } = {}) {
   const proj = t.projectId && S.byId.get(t.projectId);
   if (proj) meta.push(`<span class="tag"><i class="dot" style="--c:${esc(proj.color || 'var(--dim)')}"></i>${esc(proj.name)}</span>`);
   const label = t.done ? 'Reabrir tarefa' : 'Concluir tarefa';
-  const routine = kind === 'routine' && subs.length && !t.done;
   const doneN = subs.filter((s) => s.done).length;
-  return `<li class="task kind-${kind}${t.done ? ' done' : ''}${t.failed ? ' failed' : ''}" data-id="${esc(t.id)}" style="--i:${i}">
+  const hasSubs = subs.length > 0 && !t.done;
+  const folded = hasSubs && isFolded(t.id);
+  return `<li class="task kind-${kind}${t.done ? ' done' : ''}${t.failed ? ' failed' : ''}${hasSubs ? ' has-subs' : ''}${folded ? ' folded' : ''}" data-id="${esc(t.id)}" style="--i:${i}">
     <button type="button" class="task-check" data-p="${esc(kind === 'routine' ? 'R' : t.priority || 'P4')}" data-check aria-label="${label}: ${esc(t.title)}">${icon('check')}</button>
     <div class="task-body">
-      <div class="task-open" data-open role="button" tabindex="0">
+      <div class="task-open" data-open role="button" tabindex="0" aria-label="${esc(t.title)}. Segure para editar.">
         <span class="task-title">${kind === 'routine' ? `<span class="routine-tag">${icon('repeat')}</span>` : ''}${esc(t.title)}</span>
         ${meta.length ? `<div class="task-meta">${meta.join('')}</div>` : ''}
       </div>
       ${
-        routine
-          ? `<div class="routine-items">${bar(doneN / subs.length, { cls: 'thin', label: 'Itens da rotina' })}
+        hasSubs
+          ? `<div class="sub-items"${folded ? ' hidden' : ''}>${kind === 'routine' ? bar(doneN / subs.length, { cls: 'thin', label: 'Itens da rotina' }) : ''}
           <ul>${subs.map((s) => `<li><label class="check mini${s.done ? ' on' : ''}"><input type="checkbox" data-sub="${esc(s.id)}"${s.done ? ' checked' : ''}><span>${esc(s.title)}</span></label></li>`).join('')}</ul></div>`
           : ''
       }
     </div>
+    ${hasSubs ? `<button type="button" class="icon-btn fold-btn" data-fold aria-expanded="${!folded}" aria-label="${folded ? 'Mostrar' : 'Esconder'} subtarefas">${icon('down', 'sm')}</button>` : ''}
     ${kind === 'timed' && !t.done ? `<button type="button" class="icon-btn play-btn" data-focus aria-label="Iniciar foco: ${esc(t.title)}">${icon('play')}</button>` : ''}
   </li>`;
 }
+
+/* ---------- Recolher subtarefas (lembrado neste aparelho) ---------- */
+const FK = 'lida.folded';
+const foldedSet = () => {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(FK) || '[]'));
+  } catch {
+    return new Set();
+  }
+};
+export const isFolded = (id) => foldedSet().has(id);
+export function setFolded(id, on) {
+  const f = foldedSet();
+  if (on) f.add(id);
+  else f.delete(id);
+  try {
+    localStorage.setItem(FK, JSON.stringify([...f].slice(-300)));
+  } catch {
+    /* sem armazenamento */
+  }
+}
+function toggleFold(li) {
+  const id = li.dataset.id;
+  const on = !li.classList.contains('folded');
+  setFolded(id, on);
+  li.classList.toggle('folded', on);
+  const box = li.querySelector('.sub-items');
+  const btn = li.querySelector('[data-fold]');
+  if (btn) {
+    btn.setAttribute('aria-expanded', String(!on));
+    btn.setAttribute('aria-label', `${on ? 'Mostrar' : 'Esconder'} subtarefas`);
+  }
+  if (!box) return;
+  if (on) {
+    box.style.height = `${box.scrollHeight}px`;
+    requestAnimationFrame(() => (box.style.height = '0px'));
+    setTimeout(() => {
+      box.hidden = true;
+      box.style.height = '';
+    }, 220);
+  } else {
+    box.hidden = false;
+    const h = box.scrollHeight;
+    box.style.height = '0px';
+    requestAnimationFrame(() => (box.style.height = `${h}px`));
+    setTimeout(() => (box.style.height = ''), 240);
+  }
+  haptic('tick');
+}
+
+// Segurar (toque longo) chama a função; o clique que viria depois é ignorado.
+export function onLongPress(el, fn, ms = 450) {
+  let t = 0;
+  let x = 0;
+  let y = 0;
+  let fired = false;
+  const cancel = () => clearTimeout(t);
+  el.addEventListener('pointerdown', (e) => {
+    if (e.button > 0) return;
+    fired = false;
+    x = e.clientX;
+    y = e.clientY;
+    cancel();
+    t = setTimeout(() => {
+      fired = true;
+      haptic('start');
+      el.classList.add('pressed');
+      setTimeout(() => el.classList.remove('pressed'), 250);
+      fn();
+    }, ms);
+  });
+  el.addEventListener('pointermove', (e) => Math.hypot(e.clientX - x, e.clientY - y) > 8 && cancel());
+  el.addEventListener('pointerup', cancel);
+  el.addEventListener('pointercancel', cancel);
+  el.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    if (!fired) fn();
+    fired = true;
+  });
+  el.addEventListener('click', (e) => {
+    if (fired) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      fired = false;
+    }
+  }, true);
+}
+
+const touch = () => matchMedia('(hover: none)').matches;
 
 export const taskList = (list, opts = {}) => `<ul class="tasks">${list.map((t, i) => taskRow(t, { ...opts, i })).join('')}</ul>`;
 
@@ -63,7 +155,11 @@ export function bindTasks(root) {
     const id = li.dataset.id;
     li.querySelector('[data-check]').onclick = (e) => onCheck(e.currentTarget, li, id);
     const body = li.querySelector('[data-open]');
-    body.onclick = () => editTask(id);
+    // Toque: com subtarefas, mostra/esconde; sem, abre a edição. Segurar sempre abre a edição.
+    // No computador, clicar abre a edição (e a setinha recolhe).
+    body.onclick = () => (touch() && li.classList.contains('has-subs') ? toggleFold(li) : editTask(id));
+    onLongPress(li.querySelector('.task-body'), () => editTask(id));
+    li.querySelector('[data-fold]')?.addEventListener('click', () => toggleFold(li));
     body.onkeydown = (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
@@ -122,11 +218,12 @@ export async function onCheck(btn, li, id) {
 export function sprintCard(t) {
   const s = sprintInfo(t);
   const subs = t.subtasks || [];
-  return `<section class="sprint card" data-sprint="${esc(t.id)}">
+  return `<section class="sprint card${isFolded(t.id) ? ' folded' : ''}" data-sprint="${esc(t.id)}">
     <div class="sprint-head">
       <span class="sprint-ic">${icon('flag')}</span>
       <div class="grow"><small>Sprint · ${s.left ? `${plural(s.left, 'dia restante', 'dias restantes')}` : 'termina hoje'}</small><b data-open-sprint role="button" tabindex="0">${esc(t.title)}</b></div>
       <span class="sprint-pct">${Math.round(s.steps * 100)}%</span>
+      <button type="button" class="icon-btn fold-btn" data-sfold aria-expanded="${!isFolded(t.id)}" aria-label="${isFolded(t.id) ? 'Mostrar' : 'Esconder'} etapas">${icon('down', 'sm')}</button>
     </div>
     ${bar(s.steps, { label: 'Etapas concluídas' })}
     <div class="sprint-time"><span>Dia ${s.elapsed} de ${s.total}</span>${bar(s.time, { cls: 'thin time', label: 'Tempo do sprint' })}</div>
@@ -140,6 +237,14 @@ export function bindSprint(root) {
   const id = el.dataset.sprint;
   el.querySelectorAll('[data-sub]').forEach((c) => (c.onchange = () => onSub(c, id)));
   el.querySelector('[data-open-sprint]').onclick = () => editTask(id);
+  onLongPress(el.querySelector('.sprint-head'), () => editTask(id));
+  el.querySelector('[data-sfold]').onclick = () => {
+    const on = !el.classList.contains('folded');
+    setFolded(id, on);
+    el.classList.toggle('folded', on);
+    el.querySelector('[data-sfold]').setAttribute('aria-expanded', String(!on));
+    haptic('tick');
+  };
   el.querySelector('[data-finish]')?.addEventListener('click', async () => {
     play('complete');
     haptic('done');
@@ -304,6 +409,7 @@ export function editTask(id, defaults = {}) {
         <label class="field"><span data-duelabel>${kind === 'sprint' ? 'Fim' : 'Data'}</span><input type="date" name="due" value="${esc(t.due || (kind === 'sprint' ? addDays(today(), 7) : ''))}"></label>
         <label class="field not-sprint"><span>Horário</span><input type="time" name="time" value="${esc(t.time || '')}"></label>
       </div>
+      <label class="field not-sprint" data-remind${t.time ? '' : ' hidden'}><span>Lembrar</span><select name="remindBefore">${opt('', `Padrão (${(REMIND_BEFORE.find(([m]) => m === Number(notifyPrefs().before || 0)) || REMIND_BEFORE[0])[1].toLowerCase()})`, t.remindBefore == null)}${REMIND_BEFORE.map(([m, l]) => opt(String(m), l, t.remindBefore === m)).join('')}</select></label>
       <label class="field only-timed"><span>Duração: <b data-dur>${t.duration || 30} min</b></span><input type="range" name="duration" min="5" max="120" step="5" value="${t.duration || 30}"></label>
       <div class="grid2">
         <label class="field"><span>Prioridade</span><select name="priority">${PRIORITIES.map((p) => opt(p.id, `${p.short} · ${p.id === 'P4' ? 'Nenhuma' : p.name}`, (t.priority || 'P4') === p.id)).join('')}</select></label>
@@ -349,6 +455,8 @@ export function editTask(id, defaults = {}) {
       paintRich();
       f.notes.addEventListener('input', paintRich);
       bindToolbar(el, f.notes, paintRich);
+      // "Lembrar" só aparece quando há horário.
+      f.time.addEventListener('change', () => (el.querySelector('[data-remind]').hidden = !f.time.value));
       // Etiquetas: tocar alterna; "+ Nova" cria.
       const tagsBox = el.querySelector('[data-tags]');
       const bindTags = () => {
@@ -480,6 +588,7 @@ export function editTask(id, defaults = {}) {
           tags: selTags.length ? selTags : undefined,
           due,
           time: due && v.time && kind !== 'sprint' ? v.time : undefined,
+          remindBefore: due && v.time && kind !== 'sprint' && v.remindBefore !== '' && v.remindBefore != null ? Number(v.remindBefore) : undefined,
           start: kind === 'sprint' ? v.start || today() : undefined,
           duration: kind === 'timed' ? Number(v.duration) || 30 : undefined,
           priority: v.priority || 'P4',
