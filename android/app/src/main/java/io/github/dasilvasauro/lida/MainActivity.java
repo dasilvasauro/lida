@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         // Plugins próprios do Lida precisam ser registrados antes de a ponte iniciar.
         registerPlugin(LidaWidgetPlugin.class);
+        registerPlugin(LidaTimerPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

@@ -13,6 +13,8 @@ import { MODUS, useItemEvent } from '../core/game.js';
 import { WD_LETTER, WD_SHORT } from '../lib/util.js';
 
 const toggle = (name, on, label) => `<span class="toggle"><input type="checkbox" data-${name}${on ? ' checked' : ''} aria-label="${esc(label)}"><i></i></span>`;
+// Para linhas que não são <label> (têm outro controle dentro): o próprio botão vira o rótulo.
+const toggleL = (name, on, label) => `<label class="toggle"><input type="checkbox" data-${name}${on ? ' checked' : ''} aria-label="${esc(label)}"><i></i></label>`;
 
 function themeOwned(id, S) {
   if (isFreeTheme(id)) return true;
@@ -69,7 +71,7 @@ export const settingsView = {
         <div class="set-row col"><span class="grow">Estilo de jogo (Modus Operandi)<small>${S.prefs.modus ? (S.money.items.changeModus > 0 ? 'Você tem um "Novo estilo de jogo": pode trocar uma vez.' : 'Para trocar, compre "Novo estilo de jogo" na Loja.') : 'Escolha uma vez. Trocar depois custa um item da Loja.'}</small></span>
           <div class="modus">${Object.entries(MODUS).map(([k, m]) => `<button type="button" class="modus-opt${S.prefs.modus === k ? ' on' : ''}" data-modus="${k}" aria-pressed="${S.prefs.modus === k}">${icon(m.icon)}<b>${m.name}</b><small>${m.desc}</small></button>`).join('')}</div></div>
         <label class="set-row">${icon('flag')}<span class="grow">Punições<small>Tarefa que vence tira XP e ouro (sem nunca baixar de nível)</small></span>${toggle('punish', S.prefs.punishments !== false, 'Punições')}</label>
-        <div class="set-row col"><span class="grow">Dias de folga<small>Fazer algo num dia de folga rende +10 na pontuação do dia</small></span>
+        <div class="set-row col"><span class="grow">Dias de folga<small>Dias de folga não são cobrados no IPL; o que você fizer neles conta a favor</small></span>
           <div class="wdays small">${[1, 2, 3, 4, 5, 6, 0].map((d) => `<label><input type="checkbox" data-dayoff value="${d}"${(S.prefs.daysOff || []).includes(d) ? ' checked' : ''}><span title="${WD_SHORT[d]}">${WD_LETTER[d]}</span></label>`).join('')}</div></div>
       </div></section>
 
@@ -82,10 +84,16 @@ export const settingsView = {
       <section class="set-group"><h2>Lembretes</h2><div class="set-list" data-notify>
         <label class="set-row">${icon('bell')}<span class="grow">Lembretes<small>${isNative() ? 'Agendados no próprio celular: funcionam sem internet e com o app fechado' : 'No navegador, chegam enquanto o Lida estiver aberto (mesmo em outra aba)'}</small></span>${toggle('notify', np.on, 'Lembretes')}</label>
         <div data-notify-more${np.on ? '' : ' hidden'}>
-          <label class="set-row"><span class="grow">Tarefas com horário<small>Na hora marcada, com botões Concluir e Lembrar em 1 h</small></span>${toggle('ntasks', np.tasks, 'Lembretes de tarefas')}</label>
-          <label class="set-row"><span class="grow">Resumo da manhã<small>O que tem para hoje, logo cedo</small></span><input type="time" value="${esc(np.morningAt)}" data-morningat aria-label="Horário do resumo da manhã"${np.morning ? '' : ' disabled'}>${toggle('nmorning', np.morning, 'Resumo da manhã')}</label>
-          <label class="set-row"><span class="grow">Fechamento do dia<small>Um aviso para revisar o dia e planejar o seguinte</small></span><input type="time" value="${esc(np.dailyAt)}" data-dailyat aria-label="Horário do fechamento do dia"${np.daily ? '' : ' disabled'}>${toggle('ndaily', np.daily, 'Fechamento do dia')}</label>
+          <label class="set-row"><span class="grow">Tarefas com horário<small>Com botões Concluir e Lembrar em 1 h</small></span>${toggle('ntasks', np.tasks, 'Lembretes de tarefas')}</label>
+          <div class="set-row sub"${np.tasks ? '' : ' hidden'}><span class="grow">Antecedência<small>Padrão; cada tarefa pode ter a sua</small></span><select data-nbefore aria-label="Antecedência dos lembretes">${notify.REMIND_BEFORE.map(([v, l]) => `<option value="${v}"${Number(np.before || 0) === v ? ' selected' : ''}>${l}</option>`).join('')}</select></div>
+          <div class="set-row sub"${np.tasks ? '' : ' hidden'}><span class="grow">Tarefas atrasadas<small>Avisa de novo se continuar aberta</small></span><select data-nlateafter aria-label="Quanto tempo depois avisar do atraso"${np.late ? '' : ' disabled'}>${[15, 30, 60, 120].map((v) => `<option value="${v}"${Number(np.lateAfter || 30) === v ? ' selected' : ''}>${v < 60 ? `${v} min` : `${v / 60} h`} depois</option>`).join('')}</select>${toggleL('nlate', np.late, 'Avisar de tarefas atrasadas')}</div>
+          <div class="set-row"><span class="grow">Hábitos pendentes<small>Lista o que falta marcar no dia, para não perder a sequência</small></span><input type="time" value="${esc(np.habitsAt)}" data-habitsat aria-label="Horário do lembrete de hábitos"${np.habits ? '' : ' disabled'}>${toggleL('nhabits', np.habits, 'Lembrete de hábitos')}</div>
+          <div class="set-row"><span class="grow">Caixa de entrada<small>Quando houver tarefas sem data nem projeto esperando</small></span><input type="time" value="${esc(np.inboxAt)}" data-inboxat aria-label="Horário do lembrete da caixa de entrada"${np.inbox ? '' : ' disabled'}>${toggleL('ninbox', np.inbox, 'Lembrete da caixa de entrada')}</div>
+          <div class="set-row"><span class="grow">Resumo da manhã<small>O que tem para hoje, logo cedo</small></span><input type="time" value="${esc(np.morningAt)}" data-morningat aria-label="Horário do resumo da manhã"${np.morning ? '' : ' disabled'}>${toggleL('nmorning', np.morning, 'Resumo da manhã')}</div>
+          <div class="set-row"><span class="grow">Fechamento do dia<small>Um aviso para revisar o dia e planejar o seguinte</small></span><input type="time" value="${esc(np.dailyAt)}" data-dailyat aria-label="Horário do fechamento do dia"${np.daily ? '' : ' disabled'}>${toggleL('ndaily', np.daily, 'Fechamento do dia')}</div>
           <label class="set-row"><span class="grow">Lembrar de beber água<small>A cada ${np.waterEvery} h, das ${esc(np.waterFrom)} às ${esc(np.waterTo)}, até bater a meta. Com botão "Bebi um copo"</small></span>${toggle('nwater', np.water, 'Lembretes de água')}</label>
+          <label class="set-row"><span class="grow">Avisar com o app aberto<small>Mostra o lembrete no topo da tela, com os mesmos botões, se você estiver usando o Lida na hora</small></span>${toggle('ninapp', np.inApp !== false, 'Avisos com o app aberto')}</label>
+          ${isNative() ? `<label class="set-row"><span class="grow">Cronômetro na notificação<small>Pomodoro e modo foco com a contagem na notificação enquanto rodam${'' /* Live Update */}. No Android 16, aparece também como chip na barra de status</small></span>${toggle('nlive', np.live !== false, 'Cronômetro na notificação')}</label>` : ''}
           <div class="set-row"><span class="grow">Som<small>Campainha de bicicleta${isNative() ? '' : ' (na web, toca com o Lida aberto)'}</small></span><button type="button" class="btn small" data-bell>${icon('volume')}Ouvir</button></div>
           <div class="set-row" data-perm hidden></div>
           <button type="button" class="set-row" data-test>${icon('bell')}<span class="grow">Enviar um lembrete de teste<small>Chega em 5 segundos</small></span></button>
@@ -166,6 +174,18 @@ function bind(el, S) {
     else if (t.matches('[data-nmorning]')) notify.setNotifyPrefs({ morning: t.checked });
     else if (t.matches('[data-morningat]')) notify.setNotifyPrefs({ morningAt: t.value || '08:00' });
     else if (t.matches('[data-nwater]')) notify.setNotifyPrefs({ water: t.checked });
+    else if (t.matches('[data-nbefore]')) notify.setNotifyPrefs({ before: Number(t.value) || 0 });
+    else if (t.matches('[data-nlate]')) notify.setNotifyPrefs({ late: t.checked });
+    else if (t.matches('[data-nlateafter]')) notify.setNotifyPrefs({ lateAfter: Number(t.value) || 30 });
+    else if (t.matches('[data-nhabits]')) notify.setNotifyPrefs({ habits: t.checked });
+    else if (t.matches('[data-habitsat]')) notify.setNotifyPrefs({ habitsAt: t.value || '19:00' });
+    else if (t.matches('[data-ninbox]')) notify.setNotifyPrefs({ inbox: t.checked });
+    else if (t.matches('[data-inboxat]')) notify.setNotifyPrefs({ inboxAt: t.value || '10:00' });
+    else if (t.matches('[data-ninapp]')) notify.setNotifyPrefs({ inApp: t.checked });
+    else if (t.matches('[data-nlive]')) {
+      notify.setNotifyPrefs({ live: t.checked });
+      app.actions.syncLive?.();
+    }
     else return;
     app.actions.reschedule();
     rerender();

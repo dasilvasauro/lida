@@ -1,5 +1,5 @@
 // Seletores personalizados.
-// O <select> e o <input type=date|month> originais continuam no formulário (ocultos): o código das
+// O <select> e o <input type=date|month|time> originais continuam no formulário (ocultos): o código das
 // telas lê e escuta os mesmos elementos de sempre. Aqui só se troca a interface.
 // No celular as listas e o calendário abrem como painel inferior; no computador, ancorados ao campo.
 import { esc, fmtMonth, fmtDateHuman, addDays, addMonths, clampDay, pad, MSHORT } from '../lib/util.js';
@@ -12,7 +12,7 @@ let current = null;
 export const closePopover = () => current?.(false);
 
 /* ---------- Painel flutuante ---------- */
-export function popover(anchor, build, { title = '', minWidth = 220, cls = '', onClose } = {}) {
+export function popover(anchor, build, { title = '', minWidth = 220, cls = '', onClose, maxH = 420 } = {}) {
   closePopover();
   const mobile = isMobile();
   const wrap = document.createElement('div');
@@ -63,12 +63,16 @@ export function popover(anchor, build, { title = '', minWidth = 220, cls = '', o
     const below = window.innerHeight - r.bottom - 12;
     const above = r.top - 12;
     const h = pop.scrollHeight;
-    if (h > below && above > below) {
-      pop.style.maxHeight = Math.min(above, 420) + 'px';
-      pop.style.top = Math.max(8, r.top - Math.min(h, above, 420) - 6) + 'px';
+    if (h > below && h > above && h <= window.innerHeight - 16) {
+      // Não cabe nem em cima nem embaixo: fica dentro da tela, por cima do campo.
+      pop.style.maxHeight = window.innerHeight - 16 + 'px';
+      pop.style.top = Math.max(8, Math.min(r.top, window.innerHeight - h - 8)) + 'px';
+    } else if (h > below && above > below) {
+      pop.style.maxHeight = Math.min(above, maxH) + 'px';
+      pop.style.top = Math.max(8, r.top - Math.min(h, above, maxH) - 6) + 'px';
       pop.classList.add('up');
     } else {
-      pop.style.maxHeight = Math.max(180, Math.min(below, 420)) + 'px';
+      pop.style.maxHeight = Math.max(180, Math.min(below, maxH)) + 'px';
       pop.style.top = r.bottom + 6 + 'px';
     }
   }
@@ -313,13 +317,118 @@ function openCalendar(inp, btn, kind, optional) {
   );
 }
 
+/* ---------- Horário (substitui <input type=time>) ---------- */
+// Sem o relógio nativo do Android: grade de horas e de minutos, atalhos e campo para digitar.
+const HOURS = Array.from({ length: 24 }, (_, i) => pad(i));
+const MINS = Array.from({ length: 12 }, (_, i) => pad(i * 5));
+const TIME_RX = /^([01]?\d|2[0-3])[:h.]?([0-5]\d)?$/;
+
+export function parseTime(s) {
+  const m = String(s || '').trim().replace(/\s/g, '').match(TIME_RX);
+  return m ? `${pad(Number(m[1]))}:${m[2] || '00'}` : '';
+}
+
+export function enhanceTime(inp) {
+  if (inp._pick || inp.hasAttribute('data-native')) return;
+  inp._pick = true;
+  const optional = !inp.required && !inp.closest('.set-row');
+  const btn = makeTrigger(inp, `pick-time${inp.closest('.set-row') ? ' compact' : ''}`);
+  inp.type = 'hidden';
+  btn.setAttribute('aria-haspopup', 'dialog');
+  const refresh = () => {
+    const v = inp.value;
+    btn.innerHTML = `${icon('timer')}<span class="pick-val${v ? '' : ' ph'}">${v || 'Sem horário'}</span>`;
+    btn.disabled = inp.disabled;
+  };
+  refresh();
+  inp.addEventListener('change', refresh);
+  new MutationObserver(refresh).observe(inp, { attributes: true, attributeFilter: ['disabled', 'value'] });
+  btn.addEventListener('click', (e) => {
+    e.preventDefault(); // dentro de <label>, não repassa o clique
+    openTime(inp, btn, optional);
+  });
+}
+
+function openTime(inp, btn, optional) {
+  if (inp.disabled) return;
+  let [h, m] = (inp.value || '').split(':');
+  popover(
+    btn,
+    (body, close) => {
+      const pick = (v) => {
+        inp.value = v;
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+        inp.dispatchEvent(new Event('change', { bubbles: true }));
+        close();
+      };
+      const presets = [
+        ['Manhã', '09:00'],
+        ['Almoço', '12:00'],
+        ['Tarde', '15:00'],
+        ['Noite', '19:00'],
+      ];
+      const draw = () => {
+        body.innerHTML = `<div class="tp">
+          <div class="tp-head">
+            <input class="tp-type" inputmode="numeric" maxlength="5" placeholder="--:--" value="${h ? `${h}:${m || '00'}` : ''}" aria-label="Digitar horário">
+            <div class="tp-presets">${presets.map(([l, v]) => `<button type="button" class="chip${inp.value === v ? ' on' : ''}" data-v="${v}">${l}<small>${v}</small></button>`).join('')}</div>
+          </div>
+          <div class="tp-label">Hora</div>
+          <div class="tp-hours">${HOURS.map((x) => `<button type="button" class="tp-cell${x === h ? ' sel' : ''}" data-h="${x}">${x}</button>`).join('')}</div>
+          <div class="tp-label">Minutos</div>
+          <div class="tp-mins">${MINS.map((x) => `<button type="button" class="tp-cell${x === m ? ' sel' : ''}" data-m="${x}"${h ? '' : ' disabled'}>:${x}</button>`).join('')}</div>
+          <div class="cal-foot">${optional ? '<button type="button" class="btn small ghost" data-clear>Limpar</button>' : '<span></span>'}<button type="button" class="btn small" data-ok${h ? '' : ' disabled'}>Pronto</button></div>
+        </div>`;
+      };
+      draw();
+      body.addEventListener('click', (e) => {
+        const t = e.target.closest('button');
+        if (!t) return;
+        if (t.dataset.v) return pick(t.dataset.v);
+        if (t.dataset.h) {
+          h = t.dataset.h;
+          m = m || '00';
+          draw();
+          body.querySelector(`[data-m="${m}"]`)?.focus({ preventScroll: true });
+        } else if (t.dataset.m) pick(`${h}:${t.dataset.m}`);
+        else if (t.hasAttribute('data-ok')) pick(`${h}:${m || '00'}`);
+        else if (t.hasAttribute('data-clear')) pick('');
+      });
+      body.addEventListener('keydown', (e) => {
+        if (!e.target.classList.contains('tp-type') || e.key !== 'Enter') return;
+        e.preventDefault();
+        const v = parseTime(e.target.value);
+        if (v) pick(v);
+        else e.target.classList.add('bad');
+      });
+      body.addEventListener('input', (e) => {
+        if (!e.target.classList.contains('tp-type')) return;
+        e.target.classList.remove('bad');
+        const v = parseTime(e.target.value);
+        if (v && e.target.value.length >= 4) {
+          [h, m] = v.split(':');
+          body.querySelectorAll('.tp-hours .sel, .tp-mins .sel').forEach((b) => b.classList.remove('sel'));
+          body.querySelector(`[data-h="${h}"]`)?.classList.add('sel');
+          body.querySelector(`[data-m="${m}"]`)?.classList.add('sel');
+          body.querySelectorAll('[data-m], [data-ok]').forEach((b) => (b.disabled = false));
+        }
+      });
+      if (!isMobile()) setTimeout(() => body.querySelector('.tp-type')?.focus({ preventScroll: true }), 0);
+      else setTimeout(() => body.querySelector('.tp-hours .sel')?.scrollIntoView({ block: 'nearest' }), 0);
+    },
+    { title: 'Escolher horário', minWidth: 300, cls: 'pop-time', maxH: 600 },
+  );
+}
+
 /* ---------- Aplicação automática ---------- */
 function enhanceIn(root) {
   if (!root.querySelectorAll) return;
   if (root.matches?.('select')) enhanceSelect(root);
   if (root.matches?.('input[type=date], input[type=month]')) enhanceDate(root);
+  if (root.matches?.('input[type=time]')) enhanceTime(root);
   root.querySelectorAll('select').forEach(enhanceSelect);
   root.querySelectorAll('input[type=date], input[type=month]').forEach(enhanceDate);
+  root.querySelectorAll('input[type=time]').forEach(enhanceTime);
 }
 
 export function initPickers() {

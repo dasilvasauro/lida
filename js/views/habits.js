@@ -75,10 +75,13 @@ export const habitsView = {
 };
 
 /* ---------- Água ---------- */
+const GLASS = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h12l-1.6 15.2a1.5 1.5 0 0 1-1.5 1.3H9.1a1.5 1.5 0 0 1-1.5-1.3z"/><path d="M6.8 10.5c2.5-1 5.5 1 10.4 0" /></svg>';
+const BOTTLE = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2.5h4v2.5l1.5 2.2a3 3 0 0 1 .5 1.7V19a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V8.9a3 3 0 0 1 .5-1.7L10 5z"/><path d="M8 12.5h8"/></svg>';
 function waterCard(total, goal, S) {
   const f = Math.min(1, total / goal);
   const left = Math.max(0, goal - total);
   const glass = H.waterGlass(S);
+  const bottle = H.waterBottle(S);
   const L = (ml) => (ml >= 1000 ? `${(ml / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L` : `${ml} ml`);
   return `<section class="water card${f >= 1 ? ' full' : ''}" style="--i:1;--f:${f}">
     <div class="drop" aria-hidden="true"><svg viewBox="0 0 64 80"><defs><clipPath id="dropclip"><path d="M32 4C32 4 8 32 8 50a24 24 0 0 0 48 0C56 32 32 4 32 4z"/></clipPath></defs>
@@ -89,8 +92,8 @@ function waterCard(total, goal, S) {
       <div class="water-n"><b>${L(total)}</b><span>de ${L(goal)}</span></div>
       <small>${f >= 1 ? 'Meta de hoje batida. Ótimo!' : `Faltam ${L(left)} · ao bater a meta, +20 XP`}</small>
       <div class="water-btns">
-        <button type="button" class="btn small" data-water="${glass}">${icon('plus')}${glass} ml</button>
-        <button type="button" class="btn small" data-water="${glass * 2}">${icon('plus')}${glass * 2} ml</button>
+        <button type="button" class="btn small water-btn" data-water="${glass}" aria-label="Copo, ${glass} ml">${GLASS}<span>Copo<small>${L(glass)}</small></span></button>
+        <button type="button" class="btn small water-btn" data-water="${bottle}" aria-label="Garrafa, ${bottle} ml">${BOTTLE}<span>Garrafa<small>${L(bottle)}</small></span></button>
         ${total ? `<button type="button" class="icon-btn" data-water-undo aria-label="Desfazer o último">${icon('back')}</button>` : ''}
 
       </div>
@@ -280,7 +283,10 @@ function waterSettings() {
     title: 'Água',
     body: `<form class="form" data-f>
       <label class="field"><span>Meta diária (ml)</span><input type="number" name="goal" min="500" max="6000" step="100" value="${H.waterGoal(S)}" inputmode="numeric"></label>
-      <label class="field"><span>Tamanho do copo (ml)</span><input type="number" name="glass" min="50" max="1000" step="50" value="${H.waterGlass(S)}" inputmode="numeric"></label>
+      <div class="grid2">
+        <label class="field"><span>Copo (ml)</span><input type="number" name="glass" min="50" max="1000" step="10" value="${H.waterGlass(S)}" inputmode="numeric"></label>
+        <label class="field"><span>Garrafa (ml)</span><input type="number" name="bottle" min="100" max="3000" step="50" value="${H.waterBottle(S)}" inputmode="numeric"></label>
+      </div>
       <p class="form-meta">Uma referência comum é 35 ml por quilo de peso por dia. Ajuste ao que fizer sentido para você.</p>
       <div class="sheet-actions"><span></span><button class="btn primary">Salvar</button></div></form>`,
     onMount(el, close) {
@@ -289,7 +295,7 @@ function waterSettings() {
         const v = readForm(e.target);
         const prev = personal.get('prefs');
         const base = prev ? Object.fromEntries(Object.entries(prev).filter(([k]) => k !== 'id' && !k.startsWith('_'))) : {};
-        await personal.save('prefs', { ...base, waterGoal: Math.max(500, v.goal || 2000), waterGlass: Math.max(50, v.glass || 250) }, 'prefs');
+        await personal.save('prefs', { ...base, waterGoal: Math.max(500, v.goal || 2000), waterGlass: Math.max(50, v.glass || 250), waterBottle: Math.max(100, v.bottle || 500) }, 'prefs');
         close();
       };
     },
@@ -350,7 +356,9 @@ export function editHabit(h, preset = {}) {
         <label class="field"><span>Unidade (opcional)</span><input name="unit" value="${esc(v.unit || '')}" placeholder="vezes, páginas, copos"></label>
       </div>
       <div class="field"><span>Dias</span>${wdPicker('days', v.days)}</div>
-      <div class="field"><span>Ícone</span><div class="emojis">${['', ...EMOJI].map((e) => `<label><input type="radio" name="icon" value="${e}"${(v.icon || '') === e ? ' checked' : ''}><span>${e || 'Aa'}</span></label>`).join('')}</div></div>
+      <div class="field"><span>Ícone</span>
+        <div class="icon-in"><input name="icon" value="${esc(v.icon || '')}" maxlength="16" autocomplete="off" inputmode="text" placeholder="☺" aria-label="Ícone: qualquer emoji ou caractere"><small>Toque e escolha qualquer emoji do teclado, ou uma letra. Ou use uma sugestão:</small></div>
+        <div class="emojis">${['', ...EMOJI].map((e) => `<button type="button" class="emoji-opt${(v.icon || '') === e ? ' on' : ''}" data-emoji="${e}" aria-label="${e || 'Sem ícone'}">${e || 'Aa'}</button>`).join('')}</div></div>
       <div class="field"><span>Cor</span>${colorPicker('color', v.color || COLORS[0])}</div>
       <label class="field"><span>Por que este hábito? (opcional)</span><textarea name="notes" rows="2" placeholder="Um lembrete para os dias difíceis">${esc(v.notes || '')}</textarea></label>
       <p class="form-meta">Bater a meta do dia rende progresso de voucher: a cada 3, um voucher.</p>
@@ -358,6 +366,23 @@ export function editHabit(h, preset = {}) {
     </form>`,
     onMount(el, close) {
       const f = el.querySelector('[data-f]');
+      // Ícone: fica só o primeiro "caractere visível" (um emoji pode ter vários códigos).
+      const first = (str) => {
+        const t = String(str || '').trim();
+        if (!t) return '';
+        try {
+          return [...new Intl.Segmenter('pt-BR', { granularity: 'grapheme' }).segment(t)][0].segment;
+        } catch {
+          return [...t][0];
+        }
+      };
+      const paintEmoji = () => el.querySelectorAll('[data-emoji]').forEach((b) => b.classList.toggle('on', b.dataset.emoji === f.icon.value));
+      f.icon.addEventListener('input', () => {
+        const g = first(f.icon.value.slice(-8));
+        f.icon.value = /[\p{L}\p{N}]/u.test(g) ? g.toUpperCase() : g;
+        paintEmoji();
+      });
+      el.querySelectorAll('[data-emoji]').forEach((b) => (b.onclick = () => ((f.icon.value = b.dataset.emoji), paintEmoji(), haptic('tick'))));
       f.onsubmit = async (e) => {
         e.preventDefault();
         const r = readForm(f);

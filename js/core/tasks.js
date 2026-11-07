@@ -4,7 +4,8 @@ import { personal, P } from '../state.js';
 import { PRIORITY_RANK, taskOpen, doneEventId, nextOccurrence, HABIT_DAYS_ALL } from './model.js';
 import { rewardFor, penaltyFor, priorityGate, commit, useItemEvent, ITEMS } from './game.js';
 import { today, nowMs } from '../lib/clock.js';
-import { addDays, daysBetween, weekday, uid } from '../lib/util.js';
+import { addDays, daysBetween, weekday, uid, ymOf, addMonths } from '../lib/util.js';
+import { dayIPL, grade } from './ipl.js';
 
 export const byPriority = (a, b) =>
   (PRIORITY_RANK[a.priority] ?? 4) - (PRIORITY_RANK[b.priority] ?? 4) || (a.time || '99').localeCompare(b.time || '99') || (a.order ?? a._ca ?? 0) - (b.order ?? b._ca ?? 0);
@@ -73,7 +74,7 @@ export async function addTask(fields, consume = []) {
   return id;
 }
 
-// Salva a edição contando adiamentos e rebaixamentos (entram na pontuação do dia).
+// Salva a edição contando adiamentos e rebaixamentos (entram no planejamento do IPL).
 export async function saveTask(id, data, consume = []) {
   const prev = personal.get(id);
   if (!prev) return;
@@ -178,12 +179,10 @@ export function routineBatch(S, day) {
 }
 
 /* ---------- Virada do dia ---------- */
-const SCORE_VALUE = { P0: 5, P1: 4, P2: 3, P3: 2, P4: 1 };
-const FAIL_SCORE = { P0: 8, P1: 6, P2: 4, P3: 2, P4: 1 };
 const MAX_DAYS = 30;
 
 // Fecha os dias entre o último processado e hoje: tarefas vencidas falham (com punição, se ligada),
-// rotinas não feitas são arquivadas, cada dia ganha uma pontuação e as rotinas de hoje são criadas.
+// rotinas não feitas são arquivadas, cada dia ganha uma nota no IPL e as rotinas de hoje são criadas.
 // É idempotente: ids derivados (ev_fail_<tarefa>, sc_<dia>, rt_<rotina>_<dia>) evitam duplicar
 // quando dois aparelhos processam o mesmo dia.
 export async function processDays() {
@@ -191,7 +190,8 @@ export async function processDays() {
   const d = today();
   const last = S.prefs.lastDay;
   const batch = [];
-  const summary = { days: 0, failed: [], penalty: { xp: 0, gold: 0 }, archived: 0 };
+  const summary = { days: 0, closed: [], months: [], failed: [], penalty: { xp: 0, gold: 0 }, archived: 0 };
+  const fresh = new Map(); // notas fechadas agora (ainda não estão na fotografia)
 
   // Conserto: tarefa concluída em outro aparelho e marcada como falha aqui antes da sincronização.
   // Só quando foi concluída até o dia do prazo (concluir depois de vencer não devolve a punição).
@@ -208,9 +208,7 @@ export async function processDays() {
     let day = last < addDays(d, -MAX_DAYS) ? addDays(d, -MAX_DAYS) : last;
     const running = { xp: S.money.xp, gold: S.money.gold, level: S.money.level };
     const punish = S.prefs.punishments !== false;
-    const daysOff = S.prefs.daysOff || [];
     while (day < d) {
-      let score = 50;
       let tasksDone = 0;
       let penalties = 0;
       for (const t of S.task) {
@@ -223,7 +221,6 @@ export async function processDays() {
         batch.push({ type: 'task', id: t.id, data: { ...strip(t), failed: true } });
         summary.failed.push(t);
         penalties++;
-        score -= FAIL_SCORE[t.priority] || 1;
         if (punish && t.kind !== 'bonus' && !personal.get(`ev_fail_${t.id}`)) {
           const p = penaltyFor(t, { money: running });
           if (p.xp || p.gold) {
@@ -238,23 +235,28 @@ export async function processDays() {
       for (const t of S.task) {
         if (!t.done || doneDay(t) !== day) continue;
         tasksDone++;
-        let pts = SCORE_VALUE[t.priority] || 1;
-        const took = t.createdDay ? daysBetween(t.createdDay, day) : 0;
-        if (t.priority === 'P0' && took > 2) pts = Math.max(1, pts - 2);
-        if (t.priority === 'P4' && took === 0) pts += 1;
-        if (t.postponed) {
-          pts -= t.postponed * 2;
-          penalties++;
-        }
-        score += pts;
+        if (t.postponed) penalties++;
       }
       const hab = habitsOnDay(S, day);
-      score += hab.done * 3 - hab.missed * 2;
       penalties += hab.missed;
-      if (daysOff.includes(weekday(day)) && (tasksDone || hab.done)) score += 10;
-      batch.push({ type: 'score', id: `sc_${day}`, data: { date: day, score: Math.max(0, Math.min(100, score)), tasksDone, habitsDone: hab.done, penalties } });
+      // IPL do dia (ver core/ipl.js): partes ponderadas, só as que se aplicam ao seu uso.
+      const ipl = dayIPL(S, day);
+      const rec = { date: day, score: ipl.score, parts: ipl.parts, v: 2, tasksDone, habitsDone: hab.done, habitsTotal: hab.done + hab.missed, penalties, off: ipl.off || undefined };
+      if (!personal.get(`sc_${day}`)) {
+        batch.push({ type: 'score', id: `sc_${day}`, data: rec });
+        fresh.set(day, rec);
+      }
+      summary.closed.push(day);
       summary.days++;
       day = addDays(day, 1);
+    }
+    // Virada do mês: fecha os meses que terminaram (média do IPL e os números do mês).
+    for (let ym = ymOf(last); ym < ymOf(d); ym = addMonths(ym, 1)) {
+      if (personal.get(`mo_${ym}`)) continue;
+      const rec = monthRecord(S, ym, fresh);
+      if (!rec) continue;
+      batch.push({ type: 'month', id: `mo_${ym}`, data: rec });
+      summary.months.push(ym);
     }
   }
 
@@ -262,6 +264,42 @@ export async function processDays() {
   if (last !== d) batch.push({ type: 'prefs', id: 'prefs', data: { ...strip(personal.get('prefs') || {}), lastDay: d } });
   if (batch.length) await personal.saveMany(batch);
   return summary;
+}
+
+// Fechamento de um mês: IPL médio, melhor dia e os totais.
+export function monthRecord(S, ym, fresh = new Map()) {
+  const byDay = new Map(S.score.filter((x) => x.date && ymOf(x.date) === ym).map((x) => [x.date, x]));
+  for (const [k, v] of fresh) if (ymOf(k) === ym) byDay.set(k, v);
+  const scored = [...byDay.values()].filter((x) => x.score != null);
+  const evs = S.ev.filter((e) => e.date && ymOf(e.date) === ym && e.kind !== 'import');
+  const tasksDone = S.task.filter((t) => t.done && t.doneAt && ymOf(doneDay(t)) === ym).length;
+  if (!scored.length && !tasksDone && !evs.length) return null;
+  const score = scored.length ? Math.round(scored.reduce((a, x) => a + x.score, 0) / scored.length) : null;
+  const best = scored.reduce((a, x) => (!a || x.score > a.score ? x : a), null);
+  let hd = 0;
+  let ht = 0;
+  for (const x of byDay.values()) {
+    hd += x.habitsDone || 0;
+    ht += x.habitsTotal ?? x.habitsDone ?? 0;
+  }
+  const pos = (k) => evs.reduce((a, e) => a + Math.max(0, e[k] || 0), 0);
+  const neg = (k) => evs.reduce((a, e) => a + Math.min(0, e[k] || 0), 0);
+  return {
+    month: ym,
+    score,
+    grade: score == null ? null : grade(score),
+    days: scored.length,
+    tasksDone,
+    failed: S.task.filter((t) => t.failed && t.due && ymOf(t.due) === ym).length,
+    habitsDone: hd,
+    habitsTotal: ht,
+    xp: pos('xp'),
+    xpLost: neg('xp'),
+    gold: pos('gold'),
+    goldLost: neg('gold'),
+    focusSec: evs.filter((e) => e.kind === 'focus').reduce((a, e) => a + (e.focusSec || 0), 0),
+    best: best ? { date: best.date, score: best.score } : null,
+  };
 }
 
 // Hábitos feitos e perdidos num dia (perdido = era dia do hábito, não bateu a meta e não estava protegido).

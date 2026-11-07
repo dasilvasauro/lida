@@ -15,7 +15,7 @@ import { seedDemo } from './core/demo.js';
 import { initSound } from './core/sound.js';
 import { app, personal, P } from './state.js';
 import { applyAppearance, storedAppearance, FONTS, THEMES } from './ui/theme.js';
-import { icon, initTips, toast, sheet } from './ui/ui.js';
+import { icon, initTips, toast, sheet, banner } from './ui/ui.js';
 import { initPickers } from './ui/pickers.js';
 import { isNative, plugin, call } from './native.js';
 import * as gate from './views/gate.js';
@@ -24,6 +24,7 @@ import { habitsView } from './views/habits.js';
 import { shopView } from './views/shop.js';
 import { settingsView } from './views/settings.js';
 import { meView } from './views/me.js';
+import { maybeShowSummaries } from './views/summary.js';
 import { initChartTips } from './ui/chart.js';
 import { editTask } from './views/tasks.js';
 import { avatar } from './views/common.js';
@@ -89,6 +90,7 @@ async function boot() {
   app.demo = ls.get('lida.demo') === '1';
   initClock(app.demo);
   document.documentElement.classList.toggle('is-demo', app.demo);
+  document.documentElement.classList.toggle('is-native', isNative());
   if (!app.demo) await cloud.loadConfig();
   const idb = await openDB(DB_NAME());
   app.idb = idb;
@@ -178,7 +180,8 @@ function firstSync() {
 async function runDay() {
   await firstSync();
   const r = await processDays().catch((e) => (console.warn('Virada do dia', e), null));
-  if (!r || !r.failed.length) return;
+  if (!r) return;
+  if (maybeShowSummaries(r) || !r.failed.length) return;
   const n = r.failed.length;
   const lost = r.penalty.xp || r.penalty.gold ? ` (${fmtInt(r.penalty.xp)} XP, ${fmtInt(r.penalty.gold)} de ouro)` : '';
   setTimeout(() => toast(`${n === 1 ? 'Uma tarefa venceu' : `${n} tarefas venceram`} desde a última visita${lost}.`, { ms: 6000 }), 900);
@@ -397,7 +400,7 @@ function start() {
   personal.subscribe(rerender);
   personal.subscribe(reschedule);
   personal.subscribe(updateWidget);
-  notify.initNotify((r) => (location.hash = r), onNotifyAction);
+  notify.initNotify((r) => (location.hash = r), onNotifyAction, onInApp);
   reschedule();
   route();
   initTimers();
@@ -453,10 +456,28 @@ async function onNotifyAction(action, extra = {}) {
     await notify.scheduleOne({ key: `snooze:${t.id}`, at: Date.now() + 3600000, title: t.title, body: 'Lembrete adiado em 1 hora', summary: 'Tarefas', actions: 'TASK', route: `tarefa-${t.id}`, extra: { taskId: t.id } });
     toast('Vou lembrar de novo em 1 hora.');
   } else if (action === 'water') {
-    const ml = waterGlass();
+    const ml = waterGlass(); // botão da notificação: um copo
     await addWater(ml);
     toast(`+${ml} ml registrados.`);
   }
+}
+
+// Lembrete que chegou com o Lida aberto: aviso no topo com os mesmos botões da notificação.
+function onInApp(w) {
+  const go = w.route ? () => (location.hash = w.route) : undefined;
+  const ic = w.actions === 'WATER' ? 'water' : w.route === 'habitos' ? 'habit' : w.actions === 'TASK' ? 'check' : 'bell';
+  const actions =
+    w.actions === 'TASK'
+      ? [
+          { label: 'Concluir', primary: true, onClick: () => onNotifyAction('done', w.extra) },
+          { label: 'Daqui a 1 h', onClick: () => onNotifyAction('snooze', w.extra) },
+        ]
+      : w.actions === 'WATER'
+        ? [{ label: 'Bebi um copo', primary: true, onClick: () => onNotifyAction('water', w.extra) }]
+        : go
+          ? [{ label: 'Abrir', onClick: go }]
+          : [];
+  banner({ title: w.title, body: w.body, icon: ic, actions, onOpen: go });
 }
 
 // Teclado: com ele aberto, a barra de navegação e o botão + saem do caminho e o campo em foco
@@ -478,9 +499,16 @@ function keyboard() {
     window.visualViewport.addEventListener('resize', check);
     document.addEventListener('focusout', () => setTimeout(check, 100));
   }
+  // Só rola se o campo ficou escondido atrás do teclado (rolar sem precisar faz a tela "piscar").
   document.addEventListener('focusin', (e) => {
     if (!isText(e.target) || matchMedia('(min-width: 960px)').matches) return;
-    setTimeout(() => e.target.isConnected && e.target.scrollIntoView({ block: 'center', behavior: 'smooth' }), 350);
+    setTimeout(() => {
+      const el = e.target;
+      if (!el.isConnected || document.activeElement !== el) return;
+      const r = el.getBoundingClientRect();
+      const h = window.visualViewport?.height || window.innerHeight;
+      if (r.top < 70 || r.bottom > h - 12) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 400);
   });
 }
 

@@ -125,7 +125,11 @@ export const isFreeTheme = (id) => id === 'sistema' || id === 'grafite' || id ==
 
 // Fontes embutidas no app (funcionam offline). "Sistema" usa a fonte do próprio aparelho.
 export const FONTS = {
-  sistema: { name: 'Fonte do sistema', stack: "system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif", note: 'A mesma do seu celular ou computador' },
+  // No Android, a WebView chama de system-ui a fonte padrão do sistema (em geral Roboto). Os nomes
+  // antes dela pegam a fonte de interface de cada fabricante quando ela está registrada no sistema
+  // (Pixel: Google Sans; Xiaomi: MiSans; Honor/Huawei: HarmonyOS Sans; OPPO/OnePlus: OPlusSans).
+  // Fontes trocadas pelo usuário (ex.: "Estilo da fonte" da Samsung) não chegam à WebView.
+  sistema: { name: 'Fonte do sistema', stack: "'Google Sans Text', 'google-sans-text', 'Google Sans', 'SamsungOneUI', 'SamsungOne', 'MiSans', 'HarmonyOS Sans', 'OPlusSans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif", note: 'A fonte de interface do seu aparelho' },
   manrope: { name: 'Manrope', stack: "'Manrope', system-ui, sans-serif", note: 'Padrão do Lida' },
   inter: { name: 'Inter', stack: "'Inter', system-ui, sans-serif", note: 'Neutra, ótima em telas pequenas' },
   nunito: { name: 'Nunito', stack: "'Nunito', system-ui, sans-serif", note: 'Arredondada e amigável' },

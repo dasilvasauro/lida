@@ -9,7 +9,7 @@
 //
 // Uso: reconcile(lista) com tudo o que DEVERIA estar agendado. O módulo compara com o que já está
 // e só agenda/cancela a diferença. Cada lembrete tem uma chave estável (ex.: "task:<id>").
-import { isNative, plugin } from '../native.js';
+import { isNative, plugin, hasPlugin } from '../native.js';
 import { hash32 } from '../lib/util.js';
 import { nowMs } from '../lib/clock.js';
 import { play } from './sound.js';
@@ -35,7 +35,43 @@ const ACTIONS = [
 const LN = () => plugin('LocalNotifications');
 export const notifyId = (key) => (hash32(key) & 0x7fffffff) || 1;
 
-const DEFAULTS = { on: false, tasks: true, daily: true, dailyAt: '21:00', morning: true, morningAt: '08:00', water: false, waterFrom: '09:00', waterTo: '21:00', waterEvery: 2 };
+// before: minutos de antecedência padrão dos lembretes de tarefa (cada tarefa pode ter o seu).
+// late: avisa de novo se a tarefa passou do horário e ainda está aberta. habits: hábitos pendentes
+// no fim da tarde. inbox: lembrete de organizar a caixa de entrada. inApp: aviso dentro do app
+// quando ele está aberto. live: cronômetro do Pomodoro na notificação.
+const DEFAULTS = {
+  on: false,
+  tasks: true,
+  before: 0,
+  late: true,
+  lateAfter: 30,
+  daily: true,
+  dailyAt: '21:00',
+  morning: true,
+  morningAt: '08:00',
+  habits: true,
+  habitsAt: '19:00',
+  inbox: false,
+  inboxAt: '10:00',
+  water: false,
+  waterFrom: '09:00',
+  waterTo: '21:00',
+  waterEvery: 2,
+  inApp: true,
+  live: true,
+};
+// Opções de antecedência (minutos) para os lembretes de tarefa.
+export const REMIND_BEFORE = [
+  [0, 'Na hora'],
+  [5, '5 min antes'],
+  [10, '10 min antes'],
+  [15, '15 min antes'],
+  [30, '30 min antes'],
+  [60, '1 h antes'],
+  [120, '2 h antes'],
+  [1440, '1 dia antes'],
+];
+
 export function notifyPrefs() {
   try {
     return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) || '{}') };
@@ -105,14 +141,23 @@ let routeHandler = () => {};
 
 // onRoute(rota) abre uma tela; onAction(acao, extra) executa um botão da notificação.
 let actionHandler = () => {};
-export async function initNotify(onRoute, onAction) {
+// onInApp(item): lembrete que chegou com o Lida aberto e à vista (aviso dentro do app).
+let inAppHandler = () => {};
+export async function initNotify(onRoute, onAction, onInApp) {
   routeHandler = onRoute || routeHandler;
   actionHandler = onAction || actionHandler;
+  inAppHandler = onInApp || inAppHandler;
   if (isNative()) {
     const ln = LN();
     for (const id of OLD_CHANNELS) await ln?.deleteChannel?.({ id }).catch(() => {});
     await ln?.createChannel?.({ id: CHANNEL, name: 'Lembretes', description: 'Prazos de tarefas, resumo do dia, água e Pomodoro', importance: 4, visibility: 1, vibration: true, lights: true, lightColor: COLOR, sound: SOUND }).catch(() => {});
     await ln?.registerActionTypes?.({ types: ACTIONS }).catch(() => {});
+    // Com o app em primeiro plano o Android mostra a notificação e avisa aqui: o Lida mostra
+    // também um aviso no topo, com os mesmos botões (sem tocar o som de novo).
+    ln?.addListener?.('localNotificationReceived', (n) => {
+      if (notifyPrefs().inApp === false || document.hidden) return;
+      inAppHandler({ title: n.title, body: n.body, actions: n.actionTypeId, route: n.extra?.route || '', extra: n.extra || {}, native: true });
+    });
     ln?.addListener?.('localNotificationActionPerformed', (a) => {
       const extra = a?.notification?.extra || {};
       if (a.actionId && a.actionId !== 'tap') return actionHandler(a.actionId, extra);
@@ -196,6 +241,11 @@ export async function reconcile(items) {
 
 async function showWeb(w) {
   webTimers.delete(w.id);
+  // Lida à vista: aviso dentro do app, com som; a notificação do sistema fica para o segundo plano.
+  if (!document.hidden && notifyPrefs().inApp !== false) {
+    play('bike');
+    return inAppHandler(w);
+  }
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   play('bike');
   try {
@@ -236,4 +286,20 @@ export async function timerAlert(key, at, title = 'Lida', body = '') {
   clearTimeout(webTimers.get(id));
   webTimers.delete(id);
   if (at && notifyPrefs().on) webTimers.set(id, setTimeout(() => document.hidden && showWeb({ id, title, body, route: '' }), Math.max(0, at - Date.now())));
+}
+
+/* ---------- Cronômetro na notificação (APK) ---------- */
+// Notificação fixa com contagem regressiva do próprio Android enquanto um Pomodoro ou o modo foco
+// estiver rodando (Live Update no Android 16+). state = null esconde.
+// state: { title, body, endsAt?, paused?, chip?, timeoutMs? }
+let liveSig = '';
+export async function liveTimer(state) {
+  if (!hasPlugin('LidaTimer')) return;
+  const p = plugin('LidaTimer');
+  const want = state && notifyPrefs().live !== false ? state : null;
+  const sig = want ? JSON.stringify({ ...want, timeoutMs: undefined }) : '';
+  if (sig === liveSig) return;
+  liveSig = sig;
+  if (!want) return p.hide().catch(() => {});
+  return p.show(want).catch(() => {});
 }

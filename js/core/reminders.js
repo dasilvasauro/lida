@@ -1,5 +1,6 @@
-// O que deveria estar agendado agora: lembretes de tarefas, resumo da manhã, fechamento do dia
-// e água. notify.reconcile() compara com o que já está agendado e só envia a diferença.
+// O que deveria estar agendado agora: lembretes de tarefas (com antecedência e aviso de atraso),
+// hábitos pendentes, caixa de entrada, resumo da manhã, fechamento do dia e água.
+// notify.reconcile() compara com o que já está agendado e só envia a diferença.
 import { taskOpen, PRIORITIES } from './model.js';
 import { buckets, byPriority } from './tasks.js';
 import { waterToday, waterGoal, isScheduled, isDone } from './habits.js';
@@ -19,16 +20,20 @@ export function reminders(S, prefs) {
   const d0 = today();
   const projects = new Map(S.project.map((p) => [p.id, p.name]));
 
+  const before = (t) => Math.max(0, t.remindBefore ?? prefs.before ?? 0);
+  const ahead = (m) => (m >= 1440 ? `Em ${plural(Math.round(m / 1440), 'dia', 'dias')}` : m >= 60 ? `Em ${m % 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m / 60} h`}` : `Em ${m} min`);
+
   if (prefs.tasks) {
     for (const t of S.task) {
       if (!taskOpen(t) || !t.due || !t.time) continue;
       const where = projects.get(t.projectId);
-      const body = `${relDay(t.due)} às ${fmtTime(t.time)}${where ? ` · ${where}` : ''}`;
+      const b = before(t);
+      const body = `${b ? `${ahead(b)} · ` : ''}${relDay(t.due)} às ${fmtTime(t.time)}${where ? ` · ${where}` : ''}`;
       const subs = t.subtasks || [];
       const extra = [t.priority && t.priority !== 'P4' ? `Prioridade ${PNAME[t.priority].toLowerCase()}` : '', subs.length ? `${subs.filter((x) => x.done).length} de ${subs.length} subtarefas feitas` : '', t.notes ? t.notes.replace(/\s+/g, ' ').slice(0, 160) : ''].filter(Boolean);
       out.push({
         key: `task:${t.id}`,
-        at: at(t.due, t.time) - (t.remindBefore || 0) * 60000,
+        at: at(t.due, t.time) - b * 60000,
         title: t.title,
         body,
         long: [body, ...extra].join('\n'),
@@ -38,6 +43,56 @@ export function reminders(S, prefs) {
         route: `tarefa-${t.id}`,
         extra: { taskId: t.id },
       });
+      // Passou do horário e continua aberta: um segundo aviso (uma vez).
+      if (prefs.late && t.kind !== 'routine') {
+        out.push({
+          key: `late:${t.id}`,
+          at: at(t.due, t.time) + Math.max(5, prefs.lateAfter || 30) * 60000,
+          title: `Atrasada: ${t.title}`,
+          body: `Era para ${fmtTime(t.time)}. Concluir agora ou adiar?`,
+          summary: 'Tarefas atrasadas',
+          group: 'tarefas',
+          actions: 'TASK',
+          route: `tarefa-${t.id}`,
+          extra: { taskId: t.id },
+        });
+      }
+    }
+  }
+
+  if (prefs.habits && prefs.habitsAt) {
+    for (let i = 0; i < 3; i++) {
+      const day = addDays(d0, i);
+      const list = S.habit.filter((h) => !h.archived && isScheduled(h, day) && (i > 0 || !isDone(S, h, day)));
+      if (!list.length) continue;
+      const names = list.slice(0, 4).map((h) => `${h.icon ? `${h.icon} ` : ''}${h.title}`);
+      out.push({
+        key: `habits:${day}`,
+        at: at(day, prefs.habitsAt),
+        title: i === 0 ? `${plural(list.length, 'hábito pendente', 'hábitos pendentes')} hoje` : 'Seus hábitos de hoje',
+        body: i === 0 ? `Ainda dá tempo: ${names.join(', ')}${list.length > 4 ? '…' : ''}` : 'Confira se marcou todos e mantenha a sequência.',
+        long: i === 0 ? ['Ainda dá tempo de manter a sequência:', ...names.map((n) => `• ${n}`), list.length > 4 ? `e mais ${list.length - 4}` : ''].filter(Boolean).join('\n') : undefined,
+        summary: 'Hábitos',
+        route: 'habitos',
+      });
+    }
+  }
+
+  if (prefs.inbox && prefs.inboxAt) {
+    const inbox = buckets(S, d0).inbox;
+    if (inbox.length) {
+      for (let i = 0; i < 7; i++) {
+        const day = addDays(d0, i);
+        out.push({
+          key: `inbox:${day}`,
+          at: at(day, prefs.inboxAt),
+          title: 'Caixa de entrada',
+          body: `${plural(inbox.length, 'tarefa espera', 'tarefas esperam')} uma data ou um projeto.`,
+          long: [`${plural(inbox.length, 'tarefa espera', 'tarefas esperam')} uma data ou um projeto:`, ...inbox.slice(0, 5).map((t) => `• ${t.title}`)].join('\n'),
+          summary: 'Organizar',
+          route: 'entrada',
+        });
+      }
     }
   }
 
