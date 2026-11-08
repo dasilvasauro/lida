@@ -237,11 +237,12 @@ IPL, `--json` em tudo e completar comandos no **bash, zsh e fish** (instalados p
 
 Clique com o botão direito no painel ou na área de trabalho > **Adicionar widgets** > procure "Lida".
 
-- **Lida · Foco**: no painel, as tarefas de hoje abertas (○) e atrasadas (⚠); com uma tarefa em foco, um ponto
-  vermelho piscando, o nome (rolando se for comprido) e o cronômetro (Pomodoro, modo foco ou tempo desde o início).
-  Pisca verde quando uma tarefa é concluída (no app, no celular ou na CLI). Aberto: cartão "Em foco" (Concluir,
-  Pomodoro, Parar), Pomodoro com iniciar/pausar/reiniciar/pular, adição rápida em linguagem natural, tarefas de hoje
-  (concluir e focar) e hábitos do dia.
+- **Lida · Foco** (feito para a barra/painel, na linha do gtasks++): compacto, mostra numa linha só a tarefa em
+  foco (ponto vermelho piscando, nome rolando e cronômetro do Pomodoro ou do foco), o contador de tarefas de hoje
+  (○ abertas, ⚠ atrasadas, ✔ quando acabou), os hábitos do dia (◎ feitos/total) e quanto falta de água (gota que
+  enche). Pisca verde quando uma tarefa é concluída em qualquer lugar. **Clique** para as ações rápidas: adicionar em
+  linguagem natural, concluir/Pomodoro/parar o foco, abas Hoje · Atrasadas · Entrada (concluir ou focar cada tarefa),
+  hábitos (toque soma um) e água (Copo, Garrafa).
 - **Lida · Anéis**: os três anéis do dia (tarefas, hábitos e água), com legenda, IPL e botões Copo/Garrafa.
 
 Os dois leem o estado que o app grava em `~/.cache/lida/state.json` e agem pela CLI. Nas configurações do widget dá

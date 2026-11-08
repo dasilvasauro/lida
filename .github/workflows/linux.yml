@@ -26,6 +26,11 @@ jobs:
           bash -n desktop/install.sh
           PYTHONPATH=desktop python -m lida_desktop.cli --help > /dev/null
           PYTHONPATH=desktop python -m lida_desktop.cli completions bash > /dev/null
+      - name: Conferir os widgets do Plasma (QML)
+        run: |
+          pip install PySide6
+          sudo apt-get update -qq && sudo apt-get install -y -qq libegl1 libxkbcommon0 libfontconfig1 > /dev/null
+          QT_QPA_PLATFORM=offscreen python desktop/tests/check_plasmoids.py
       - name: Montar o pacote
         run: |
           mkdir -p dist/lida

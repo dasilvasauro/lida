@@ -129,6 +129,7 @@ function stateNow() {
     today: [...B.overdue, ...B.today].slice(0, 30).map((t) => taskOut(S, t)),
     doneToday: B.doneToday.length,
     inbox: B.inbox.length,
+    inboxList: B.inbox.slice(0, 15).map((t) => taskOut(S, t)),
     habits: S.habit.filter((h) => !h.archived && H.isScheduled(h, d)).map((h) => habitOut(S, h, d)),
     water: { ml: g.water.ml, goal: g.water.goal, glass: H.waterGlass(S), bottle: H.waterBottle(S) },
     ipl: ipl.score,

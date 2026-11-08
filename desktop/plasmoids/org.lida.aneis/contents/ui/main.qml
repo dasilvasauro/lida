@@ -65,7 +65,7 @@ PlasmoidItem {
         property real t: root.fTasks
         property real h: root.fHabits
         property real w: root.fWater
-        property real thick: Math.max(2, Math.min(width, height) * 0.1)
+        property real thick: Math.max(2, Math.min(width, height) * 0.085)
         property color track: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.12)
         onTChanged: requestPaint()
         onHChanged: requestPaint()
@@ -121,45 +121,69 @@ PlasmoidItem {
     }
 
     fullRepresentation: ColumnLayout {
-        Layout.preferredWidth: Kirigami.Units.gridUnit * 18
-        Layout.preferredHeight: Kirigami.Units.gridUnit * 14
-        Layout.minimumWidth: Kirigami.Units.gridUnit * 12
-        Layout.minimumHeight: Kirigami.Units.gridUnit * 10
+        Layout.preferredWidth: Kirigami.Units.gridUnit * 17
+        Layout.preferredHeight: Kirigami.Units.gridUnit * 10
+        Layout.minimumWidth: Kirigami.Units.gridUnit * 14
+        Layout.minimumHeight: Kirigami.Units.gridUnit * 9
         spacing: Kirigami.Units.largeSpacing
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: true
             spacing: Kirigami.Units.largeSpacing
             Rings {
-                Layout.fillHeight: true
-                Layout.preferredWidth: height
-                Layout.minimumWidth: Kirigami.Units.gridUnit * 6
+                Layout.preferredWidth: Kirigami.Units.gridUnit * 6.5
+                Layout.preferredHeight: Kirigami.Units.gridUnit * 6.5
             }
-            ColumnLayout {
+            GridLayout {
                 Layout.fillWidth: true
-                spacing: Kirigami.Units.smallSpacing
+                columns: 3
+                columnSpacing: Kirigami.Units.smallSpacing
+                rowSpacing: Kirigami.Units.smallSpacing
                 Repeater {
                     model: [
-                        { c: root.cTasks, l: "Tarefas", v: (root.g.tasks.done || 0) + " de " + (root.g.tasks.total || 0) },
-                        { c: root.cHabits, l: "Hábitos", v: (root.g.habits.done || 0) + " de " + (root.g.habits.total || 0) },
-                        { c: root.cWater, l: "Água", v: root.ml(root.g.water.ml || 0) + " de " + root.ml(root.g.water.goal || 2000) }
+                        { c: root.cTasks, l: "Tarefas", v: (root.g.tasks.done || 0) + "/" + (root.g.tasks.total || 0) },
+                        { c: root.cHabits, l: "Hábitos", v: (root.g.habits.done || 0) + "/" + (root.g.habits.total || 0) },
+                        { c: root.cWater, l: "Água", v: root.ml(root.g.water.ml || 0) }
                     ]
-                    delegate: RowLayout {
+                    delegate: Item {
                         required property var modelData
-                        spacing: Kirigami.Units.smallSpacing
-                        Rectangle { width: 10; height: 10; radius: 5; color: modelData.c }
-                        PlasmaComponents.Label { text: modelData.l; Layout.fillWidth: true; opacity: 0.75 }
-                        PlasmaComponents.Label { text: modelData.v; font.bold: true }
+                        required property int index
+                        Layout.row: index
+                        Layout.column: 0
+                        implicitWidth: 10; implicitHeight: 10
+                        Rectangle { anchors.centerIn: parent; width: 10; height: 10; radius: 5; color: parent.modelData.c }
+                    }
+                }
+                Repeater {
+                    model: ["Tarefas", "Hábitos", "Água"]
+                    delegate: PlasmaComponents.Label {
+                        required property var modelData
+                        required property int index
+                        Layout.row: index; Layout.column: 1; Layout.fillWidth: true
+                        text: modelData; opacity: 0.75
+                    }
+                }
+                Repeater {
+                    model: [
+                        (root.g.tasks.done || 0) + "/" + (root.g.tasks.total || 0),
+                        (root.g.habits.done || 0) + "/" + (root.g.habits.total || 0),
+                        root.ml(root.g.water.ml || 0) + " de " + root.ml(root.g.water.goal || 2000)
+                    ]
+                    delegate: PlasmaComponents.Label {
+                        required property var modelData
+                        required property int index
+                        Layout.row: index; Layout.column: 2; Layout.alignment: Qt.AlignRight
+                        text: modelData; font.bold: true
                     }
                 }
                 PlasmaComponents.Label {
+                    Layout.row: 3; Layout.column: 0; Layout.columnSpan: 3
                     visible: root.st.ipl !== null && root.st.ipl !== undefined
                     text: "IPL de hoje: " + root.st.ipl
                     opacity: 0.7
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                 }
-                PlasmaComponents.Label { visible: !root.running; text: "O Lida está fechado."; opacity: 0.7 }
+                PlasmaComponents.Label { Layout.row: 4; Layout.column: 0; Layout.columnSpan: 3; visible: !root.running; text: "O Lida está fechado."; opacity: 0.7 }
             }
         }
         RowLayout {
