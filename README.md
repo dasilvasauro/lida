@@ -188,7 +188,9 @@ Depois, na pasta do repositório:
 ./desktop/install.sh --uninstall   # remove (seus dados ficam; --purge apaga também)
 ```
 
-Para **atualizar**: `git pull` e `./desktop/install.sh` de novo (feche o Lida antes: `lida fechar`).
+Para **atualizar**: `lida fechar`, `git pull` e `./desktop/install.sh` de novo. O script troca os arquivos, os
+widgets e os ícones (e apaga o cache de ícones do KDE, que é refeito sozinho). Se o painel ou o lançador ainda
+mostrarem o ícone antigo, saia e entre na sessão (ou rode `plasmashell --replace &`).
 O GitHub Actions também gera um pacote `lida-linux.tar.gz` (aba Actions > Linux), que tem o mesmo `install.sh`.
 
 ### Entrar com a conta Google (uma vez)
@@ -237,11 +239,12 @@ IPL, `--json` em tudo e completar comandos no **bash, zsh e fish** (instalados p
 
 Clique com o botão direito no painel ou na área de trabalho > **Adicionar widgets** > procure "Lida".
 
-- **Lida · Foco**: no painel, as tarefas de hoje abertas (○) e atrasadas (⚠); com uma tarefa em foco, um ponto
-  vermelho piscando, o nome (rolando se for comprido) e o cronômetro (Pomodoro, modo foco ou tempo desde o início).
-  Pisca verde quando uma tarefa é concluída (no app, no celular ou na CLI). Aberto: cartão "Em foco" (Concluir,
-  Pomodoro, Parar), Pomodoro com iniciar/pausar/reiniciar/pular, adição rápida em linguagem natural, tarefas de hoje
-  (concluir e focar) e hábitos do dia.
+- **Lida · Foco** (feito para a barra/painel, na linha do gtasks++): compacto, mostra numa linha só a tarefa em
+  foco (ponto vermelho piscando, nome rolando e cronômetro do Pomodoro ou do foco), o contador de tarefas de hoje
+  (○ abertas, ⚠ atrasadas, ✔ quando acabou), os hábitos do dia (◎ feitos/total) e quanto falta de água (gota que
+  enche). Pisca verde quando uma tarefa é concluída em qualquer lugar. **Clique** para as ações rápidas: adicionar em
+  linguagem natural, concluir/Pomodoro/parar o foco, abas Hoje · Atrasadas · Entrada (concluir ou focar cada tarefa),
+  hábitos (toque soma um) e água (Copo, Garrafa).
 - **Lida · Anéis**: os três anéis do dia (tarefas, hábitos e água), com legenda, IPL e botões Copo/Garrafa.
 
 Os dois leem o estado que o app grava em `~/.cache/lida/state.json` e agem pela CLI. Nas configurações do widget dá
@@ -395,6 +398,10 @@ Abra **Actions > Android > Run workflow** (branch `v3`). Em uns 5 minutos o APK 
 Para testar a versão web da `v3` sem tirar o Lida atual do ar, rode localmente (abaixo).
 
 ## Desenvolvimento
+
+Ícones: as fontes ficam em `art/icons/` (SVG) e `python3 scripts/make-icons.py` gera todos os tamanhos (web, PWA,
+bandeja do Linux, ícone adaptativo/temático e splash do Android). Precisa de playwright e Pillow; os PNGs gerados
+ficam no repositório.
 
 ```bash
 npm install          # só para os testes e o Capacitor; o app em si não tem dependências

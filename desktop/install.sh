@@ -54,7 +54,7 @@ if [ "$UNINSTALL" = 1 ]; then
   command -v lida >/dev/null && lida fechar >/dev/null 2>&1 || true
   rm -f "$BIN/lida" "$BIN/lida-desktop"
   rm -f "$DATA/applications/$APP_ID.desktop" "$CONF/autostart/$APP_ID.desktop"
-  rm -f "$DATA"/icons/hicolor/*/apps/"$APP_ID".png
+  rm -f "$DATA"/icons/hicolor/*/apps/"$APP_ID".png "$DATA"/icons/hicolor/*/apps/"$APP_ID".svg "$DATA"/icons/hicolor/*/status/"$APP_ID"-tray.*
   rm -f "$DATA/bash-completion/completions/lida" "$DATA/zsh/site-functions/_lida" "$CONF/fish/completions/lida.fish"
   for w in org.lida.foco org.lida.aneis; do
     if command -v kpackagetool6 >/dev/null; then kpackagetool6 -t Plasma/Applet -r "$w" >/dev/null 2>&1 || true; fi
@@ -145,6 +145,15 @@ for s in (16, 22, 24, 32, 48, 64, 128, 256):
     os.makedirs(d, exist_ok=True)
     img.scaled(s, s, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation).save(os.path.join(d, app_id + ".png"))
 PYEOF
+# Ícone vetorial (o KDE prefere) e o da bandeja: contorno que o Plasma pinta na cor do painel.
+mkdir -p "$DATA/icons/hicolor/scalable/apps" "$DATA/icons/hicolor/scalable/status" "$DATA/icons/hicolor/22x22/status" "$DATA/icons/hicolor/44x44/status"
+cp "$REPO/icons/icon.svg" "$DATA/icons/hicolor/scalable/apps/$APP_ID.svg"
+cp "$REPO/icons/tray.svg" "$DATA/icons/hicolor/scalable/status/$APP_ID-tray.svg"
+cp "$REPO/icons/tray-22.png" "$DATA/icons/hicolor/22x22/status/$APP_ID-tray.png"
+cp "$REPO/icons/tray-44.png" "$DATA/icons/hicolor/44x44/status/$APP_ID-tray.png"
+# Ícones trocados: avisa o sistema e apaga o cache de ícones do KDE (é refeito sozinho).
+touch "$DATA/icons/hicolor"
+rm -f "${XDG_CACHE_HOME:-$HOME/.cache}/icon-cache.kcache"
 mkdir -p "$DATA/applications"
 cat > "$DATA/applications/$APP_ID.desktop" <<EOF
 [Desktop Entry]
