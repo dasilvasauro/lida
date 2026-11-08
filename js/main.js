@@ -25,10 +25,12 @@ import { shopView } from './views/shop.js';
 import { settingsView } from './views/settings.js';
 import { meView } from './views/me.js';
 import { maybeShowSummaries } from './views/summary.js';
+import { boardView, isBoard, BOARD_MQ } from './views/board.js';
+import { glance } from './core/glance.js';
 import { initChartTips } from './ui/chart.js';
 import { editTask } from './views/tasks.js';
 import { avatar } from './views/common.js';
-import { openPomodoro, initTimers, paintChip } from './views/focus.js';
+import { openPomodoro, initTimers, paintChip, pickFocus } from './views/focus.js';
 import { openBrain } from './views/brain.js';
 import { openSearch } from './views/search.js';
 import { fmtInt, fmtTime } from './lib/util.js';
@@ -77,6 +79,7 @@ matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', () => {
 });
 
 async function boot() {
+  document.documentElement.classList.toggle('is-native', isNative()); // antes da aparência (tamanho padrão)
   appearance();
   initTips();
   initSound();
@@ -96,6 +99,7 @@ async function boot() {
   app.idb = idb;
   let device = await idb.get('meta', 'device');
   if (!device) await idb.put('meta', (device = uid(6)), 'device');
+  app.device = device;
   initHLC(device);
 
   if (app.demo) return bootDemo(idb);
@@ -207,7 +211,9 @@ function shell() {
       <a class="brand" href="#hoje"><img src="icons/pwa-192x192.png" alt="" width="28" height="28"><span>Lida</span></a>
       ${NAV.map(([id, label, ic]) => `<a href="#${id}" data-nav="${id}">${icon(ic)}<span>${label}</span><span class="count" data-count="${id}"></span></a>`).join('')}
       <span class="nav-pill" aria-hidden="true"></span>
+      <div class="rail-tools rail-projects" data-railproj hidden></div>
       <div class="rail-tools"><span>Ferramentas</span>
+        <button type="button" data-rail-tool="pick-focus">${icon('target')}<span>Focar numa tarefa</span></button>
         <button type="button" data-rail-tool="focus">${icon('timer')}<span>Pomodoro</span></button>
         <button type="button" data-rail-tool="brain">${icon('brain')}<span>Esvaziar a mente</span></button>
       </div>
@@ -270,14 +276,16 @@ function route() {
   const prev = current;
   const changed = next !== prev;
   current = next;
-  const navKey = current === 'ajustes' ? 'eu' : current;
+  const board = isBoard() && (current === 'hoje' || current === 'planejar');
+  document.body.classList.toggle('is-board', board);
+  const navKey = current === 'ajustes' ? 'eu' : board ? 'hoje' : current;
   document.querySelectorAll('[data-nav]').forEach((a) => {
     a.classList.toggle('on', a.dataset.nav === navKey);
     if (a.dataset.nav === navKey) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
   movePill();
-  const v = VIEWS[current];
+  const v = viewOf();
   $('[data-title]').textContent = v.title;
   // No topo: a foto leva à aba Eu; em Eu, uma engrenagem leva aos Ajustes; em Ajustes, voltar.
   const me = $('[data-me]');
@@ -307,10 +315,13 @@ function movePill() {
 window.addEventListener('resize', () => movePill());
 
 // animate: false | 'up' (entrada) | 'left' | 'right' (direção da troca de seção).
+// Em telas largas, Hoje e Planejar viram uma tela só (o Painel).
+const viewOf = () => (document.body.classList.contains('is-board') && (current === 'hoje' || current === 'planejar') ? boardView : VIEWS[current]);
+
 function render(animate = false) {
   const el = document.getElementById('view');
   const y = window.scrollY;
-  const v = VIEWS[current];
+  const v = viewOf();
   $('[data-sub]').textContent = v.sub?.() || '';
   const draw = () => {
     v.render(el);
@@ -349,6 +360,32 @@ function counts() {
   };
   set('hoje', B.today.length + B.overdue.length);
   set('planejar', B.inbox.length);
+  railProjects();
+}
+
+// Na barra lateral (computador): projetos com tarefas abertas, para ir direto a cada um.
+function railProjects() {
+  const box = document.querySelector('[data-railproj]');
+  if (!box) return;
+  const S = P();
+  const rows = S.project
+    .filter((p) => !p.archived)
+    .map((p) => ({ p, n: S.task.filter((t) => t.projectId === p.id && !t.done && !t.failed && !t.archived).length }))
+    .slice(0, 8);
+  box.hidden = !rows.length;
+  const on = current === 'planejar' && planView.tab === 'projeto' ? planView.pid : null;
+  box.innerHTML = `<span>Projetos</span>${rows.map(({ p, n }) => `<a href="#projeto-${encodeURIComponent(p.id)}" class="${on === p.id ? 'on' : ''}"><i style="background:${esc(p.color || 'var(--accent)')}"></i><span>${esc(p.name)}</span><small>${n || ''}</small></a>`).join('')}`;
+}
+
+// Ao cruzar a largura do Painel, a navegação e a tela mudam.
+matchMedia(BOARD_MQ).addEventListener?.('change', () => {
+  updateNavMode();
+  if (current) route();
+});
+function updateNavMode() {
+  const lbl = document.querySelector('.nav [data-nav="hoje"] > span:not(.count)');
+  if (lbl) lbl.textContent = isBoard() ? 'Painel' : 'Hoje';
+  document.documentElement.classList.toggle('board-wide', isBoard());
 }
 
 const rerender = (() => {
@@ -374,7 +411,9 @@ const updateWidget = debounce(() => {
   const L = (ml) => (ml >= 1000 ? `${(ml / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L` : `${ml} ml`);
   const footer = [hs.length ? `Hábitos ${hd}/${hs.length}` : '', `Água ${L(waterToday(S, d))} de ${L(waterGoal(S))}`].filter(Boolean).join('  ·  ');
   const tasks = [...B.overdue, ...B.today].slice(0, 4).map((t) => ({ t: t.title, time: t.time ? fmtTime(t.time) : '' }));
-  call('LidaWidget', 'update', { data: JSON.stringify({ date: d, title: 'Hoje', done: B.doneToday.length, total: B.today.length + B.doneToday.length, tasks, footer }) });
+  const g = glance(S, d);
+  const rings = { tasksDone: g.tasks.done, tasksTotal: g.tasks.total, habitsDone: g.habits.done, habitsTotal: g.habits.total, waterMl: g.water.ml, waterGoal: g.water.goal };
+  call('LidaWidget', 'update', { data: JSON.stringify({ date: d, title: 'Hoje', done: B.doneToday.length, total: B.today.length + B.doneToday.length, tasks, footer, rings }) });
 }, 1500);
 
 // Links lida://secao (vindos do widget) abrem a seção certa.
@@ -391,6 +430,7 @@ function deepLinks() {
 
 function start() {
   shell();
+  updateNavMode();
   initPickers();
   initChartTips();
   app.nav = (r) => (location.hash = r);
@@ -563,6 +603,7 @@ function demobar() {
 Object.assign(app.actions, {
   tool(t) {
     if (t === 'focus') openPomodoro();
+    if (t === 'pick-focus') pickFocus();
     if (t === 'brain') openBrain();
   },
   setTheme(id) {
@@ -602,6 +643,7 @@ Object.assign(app.actions, {
       await app.sync.start();
       toast('Conta conectada. Seus dados estão sendo enviados, já cifrados.');
       shell();
+      updateNavMode();
       route();
     } catch (e) {
       toast('Não foi possível conectar: ' + (e.message || e.code));

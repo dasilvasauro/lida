@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget "Anéis": tarefas, hábitos e água do dia. Os anéis são desenhados como imagem (RemoteViews). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/r_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="12dp">
+
+    <ImageView
+        android:id="@+id/r_rings"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:adjustViewBounds="true"
+        android:contentDescription="@string/widget_rings_name"
+        android:scaleType="fitCenter" />
+
+    <LinearLayout
+        android:id="@+id/r_labels"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:orientation="vertical">
+
+        <TextView android:id="@+id/r_tasks" style="@style/RingLabel" />
+        <TextView android:id="@+id/r_habits" style="@style/RingLabel" />
+        <TextView android:id="@+id/r_water" style="@style/RingLabel" />
+    </LinearLayout>
+</LinearLayout>

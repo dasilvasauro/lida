@@ -54,7 +54,7 @@ export function week(S, h, day = today()) {
     const d = addDays(day, -i);
     const l = logOf(S, h, d);
     let st;
-    if (!isScheduled(h, d)) st = 'off';
+    if (!isScheduled(h, d)) st = (l?.count || 0) >= (h.goal || 1) ? 'done' : 'off'; // feito na folga conta como extra
     else if (l?.mod) st = 'free';
     else if ((l?.count || 0) >= (h.goal || 1)) st = 'done';
     else if (l?.count) st = 'part';
@@ -133,6 +133,24 @@ export const waterGoal = (S = P()) => S.prefs.waterGoal || 2000;
 export const waterGlass = (S = P()) => S.prefs.waterGlass || 250;
 export const waterBottle = (S = P()) => S.prefs.waterBottle || 500;
 export const waterToday = (S = P(), day = today()) => sum(S.waterByDate.get(day) || [], (w) => w.ml || 0);
+
+// Constância da água: dias seguidos batendo a meta (contando hoje se já bateu) e os últimos 7 dias.
+const waterHit = (S, day) => waterToday(S, day) >= waterGoal(S);
+export function waterStreak(S = P(), day = today()) {
+  let n = 0;
+  let d = waterHit(S, day) ? day : addDays(day, -1);
+  for (let i = 0; i < 800 && waterHit(S, d); i++, d = addDays(d, -1)) n++;
+  return n;
+}
+export function waterWeek(S = P(), day = today()) {
+  const out = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = addDays(day, -i);
+    const ml = waterToday(S, d);
+    out.push({ date: d, ml, st: ml >= waterGoal(S) ? 'done' : ml > 0 ? 'part' : d === day ? 'todo' : 'miss' });
+  }
+  return out;
+}
 
 export async function addWater(ml, day = today()) {
   const S = P();

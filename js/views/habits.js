@@ -83,11 +83,14 @@ function waterCard(total, goal, S) {
   const glass = H.waterGlass(S);
   const bottle = H.waterBottle(S);
   const L = (ml) => (ml >= 1000 ? `${(ml / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L` : `${ml} ml`);
+  const streak = H.waterStreak(S);
+  const wk = H.waterWeek(S);
+  const hits = wk.filter((w) => w.st === 'done').length;
   return `<section class="water card${f >= 1 ? ' full' : ''}" style="--i:1;--f:${f}">
     <div class="drop" aria-hidden="true"><svg viewBox="0 0 64 80"><defs><clipPath id="dropclip"><path d="M32 4C32 4 8 32 8 50a24 24 0 0 0 48 0C56 32 32 4 32 4z"/></clipPath></defs>
       <path class="drop-bg" d="M32 4C32 4 8 32 8 50a24 24 0 0 0 48 0C56 32 32 4 32 4z"/>
       <g clip-path="url(#dropclip)"><g class="drop-fill" style="transform:translateY(${(1 - f) * 76}px)"><path class="wave" d="M-64 6 Q-48 0 -32 6 T0 6 T32 6 T64 6 T96 6 V90 H-64Z"/></g></g></svg></div>
-    <button type="button" class="icon-btn water-set" data-water-set aria-label="Ajustar meta de água">${icon('settings')}</button>
+    <div class="water-top">${streak ? `<span class="streak${streak >= 3 ? ' hot' : ''}" title="Dias seguidos batendo a meta">${icon('flame')}${streak}</span>` : ''}<button type="button" class="icon-btn" data-water-set aria-label="Ajustar meta de água">${icon('settings')}</button></div>
     <div class="grow">
       <div class="water-n"><b>${L(total)}</b><span>de ${L(goal)}</span></div>
       <small>${f >= 1 ? 'Meta de hoje batida. Ótimo!' : `Faltam ${L(left)} · ao bater a meta, +20 XP`}</small>
@@ -95,8 +98,8 @@ function waterCard(total, goal, S) {
         <button type="button" class="btn small water-btn" data-water="${glass}" aria-label="Copo, ${glass} ml">${GLASS}<span>Copo<small>${L(glass)}</small></span></button>
         <button type="button" class="btn small water-btn" data-water="${bottle}" aria-label="Garrafa, ${bottle} ml">${BOTTLE}<span>Garrafa<small>${L(bottle)}</small></span></button>
         ${total ? `<button type="button" class="icon-btn" data-water-undo aria-label="Desfazer o último">${icon('back')}</button>` : ''}
-
       </div>
+      <div class="water-week"><ol class="hab-week" aria-label="Meta de água nos últimos 7 dias">${wk.map((w) => `<li class="${w.st}" title="${esc(w.date)} · ${L(w.ml)}"><i></i><span>${WD_LETTER[new Date(`${w.date}T12:00`).getDay()]}</span></li>`).join('')}</ol><small>${hits} de 7 dias na meta</small></div>
     </div>
   </section>`;
 }
@@ -119,7 +122,9 @@ function habitCard(S, h, d, i) {
       ? 'Protegido hoje com Congelamento'
       : 'Folga hoje'
     : !scheduled
-      ? 'Hoje é dia de descanso'
+      ? done
+        ? 'Feito na folga · extra'
+        : 'Folga hoje · se quiser, conta como extra'
       : goal > 1
         ? `${count} de ${goal}${h.unit ? ` ${esc(h.unit)}` : ''}`
         : done
@@ -128,7 +133,7 @@ function habitCard(S, h, d, i) {
             ? 'Mantenha a sequência'
             : 'Comece hoje';
   return `<article class="habit${done ? ' done' : ''}${scheduled ? '' : ' rest'}" data-h="${esc(h.id)}" style="--c:${esc(color)};--i:${i}">
-    <button type="button" class="hab-tap" data-tap aria-label="${esc(h.title)}: ${done ? 'feito, toque para desfazer' : goal > 1 ? `marcar ${count + 1} de ${goal}` : 'marcar como feito'}"${scheduled || done ? '' : ' disabled'}>
+    <button type="button" class="hab-tap" data-tap aria-label="${esc(h.title)}: ${done ? 'feito, toque para desfazer' : goal > 1 ? `marcar ${count + 1} de ${goal}` : 'marcar como feito'}">
       <svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="${R}" class="hab-track"/><circle cx="28" cy="28" r="${R}" class="hab-arc" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - frac)}" transform="rotate(-90 28 28)"/></svg>
       <span class="hab-face">${done ? icon('check') : h.icon ? `<span class="emoji">${esc(h.icon)}</span>` : goal > 1 ? `<b>${count}</b>` : `<b>${esc((h.title || '?').trim()[0].toUpperCase())}</b>`}</span>
     </button>
@@ -240,8 +245,10 @@ async function onTap(card, h) {
   void btn.offsetWidth;
   btn.classList.add('bump');
   holdFor(1200);
+  const off = !H.isScheduled(h, today()) && !(H.logOf(P(), h, today())?.count > 0);
   const r = await H.tap(h);
   patchCard(card, P().byId.get(h.id));
+  if (off && !r.undone) toast('Hoje é folga deste hábito: conta como extra, sem cobrar nada se faltar.', { ms: 2600 });
   if (r.completed) {
     play('complete');
     haptic('done');

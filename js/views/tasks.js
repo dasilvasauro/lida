@@ -11,7 +11,8 @@ import { renderRich, richToolbar, bindToolbar, toggleCheckLine } from '../ui/ric
 import { play } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
 import { celebrate } from './celebrate.js';
-import { focusTask } from './focus.js';
+import { focusTask, focusOn } from './focus.js';
+import { focusOf } from '../core/focus.js';
 import { REMIND_BEFORE, notifyPrefs } from '../core/notify.js';
 
 /* ---------- Linha ---------- */
@@ -19,6 +20,7 @@ export function taskRow(t, { showDue = false, S = P(), i = 0 } = {}) {
   const day = today();
   const meta = [];
   const kind = t.kind || 'normal';
+  if (!t.done && focusOf(S)?.taskId === t.id) meta.push(`<span class="badge focus">${icon('target')}Em foco</span>`);
   if (kind === 'challenge') meta.push(`<span class="badge warm">${icon('bolt')}Desafio do dia</span>`);
   if (kind === 'bonus') meta.push(`<span class="badge pos">${icon('gift')}Bônus</span>`);
   if (t.powerups?.dice) meta.push(`<span class="badge acc">${icon('dice')}×2</span>`);
@@ -432,6 +434,7 @@ export function editTask(id, defaults = {}) {
       <p class="form-meta" data-repeatnote>${t.recurrence ? esc(recurrenceLabel(t.recurrence)) + '. Ao concluir, a próxima ocorrência é criada sozinha.' : ''}</p>
       <div class="sheet-actions">
         ${id ? `<button type="button" class="btn ghost danger-text" data-del>${icon('trash')}Excluir</button>` : '<span></span>'}
+        ${id && !t.done && !t.failed && kind !== 'sprint' && kind !== 'routine' ? `<button type="button" class="btn ghost" data-focuson>${icon('target')}${focusOf()?.taskId === id ? 'Em foco' : 'Focar'}</button>` : ''}
         <button class="btn primary">${id ? 'Salvar' : 'Adicionar tarefa'}</button>
       </div>
     </form>`,
@@ -455,6 +458,10 @@ export function editTask(id, defaults = {}) {
       paintRich();
       f.notes.addEventListener('input', paintRich);
       bindToolbar(el, f.notes, paintRich);
+      el.querySelector('[data-focuson]')?.addEventListener('click', async () => {
+        close();
+        await focusOn(focusOf()?.taskId === id ? null : id);
+      });
       // "Lembrar" só aparece quando há horário.
       f.time.addEventListener('change', () => (el.querySelector('[data-remind]').hidden = !f.time.value));
       // Etiquetas: tocar alterna; "+ Nova" cria.

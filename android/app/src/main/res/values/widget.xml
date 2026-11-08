@@ -7,6 +7,16 @@
     <color name="widget_muted">#5D6573</color>
     <color name="widget_track">#E3E6EC</color>
     <color name="widget_accent">#4F5BD5</color>
+    <string name="widget_rings_name">Lida · Anéis</string>
+    <string name="widget_rings_desc">Anéis do dia: tarefas, hábitos e água</string>
+    <style name="RingLabel">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">3dp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:textColor">@color/widget_text</item>
+        <item name="android:textSize">13sp</item>
+    </style>
     <style name="WidgetTask">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>

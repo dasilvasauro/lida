@@ -415,3 +415,25 @@ test('virada do mês fecha o mês com IPL médio', async () => {
   assert.equal(rec.days, 2);
   assert.equal(rec.best.score, 80);
 });
+
+test('foco global: tarefa em foco, Pomodoro no registro sincronizado e resumo', async () => {
+  const F = await import('../js/core/focus.js');
+  const { glance } = await import('../js/core/glance.js');
+  const id = await tasks.addTask({ title: 'Escrever o relatório', priority: 'P2', due: today() });
+  await F.setFocus(id);
+  let S = P();
+  assert.equal(F.focusedTask(S)?.id, id);
+  assert.ok(F.focusOf(S).since > 0);
+  const endsAt = Date.now() + 10 * 60000;
+  await F.saveFocus({ pomo: { ...F.POMO_DEF, running: true, endsAt } });
+  S = P();
+  const sum = F.focusSummary(S);
+  assert.equal(sum.task.title, 'Escrever o relatório');
+  assert.ok(sum.pomo.running && sum.pomo.leftSec > 590 && sum.pomo.leftSec <= 600);
+  assert.equal(glance(S).focus.task.id, id);
+  // Concluída, deixa de estar em foco.
+  await tasks.toggleTask(id);
+  assert.equal(F.focusedTask(P()), null);
+  await F.setFocus(null);
+  assert.equal(F.focusOf(P()).taskId, null);
+});

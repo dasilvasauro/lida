@@ -10,6 +10,8 @@ import { play } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
 import { taskList, bindTasks, quickAdd, bindQuick, sprintCard, bindSprint } from './tasks.js';
 import { moodPicker, bindMood } from './me.js';
+import { focusCard, bindFocusCard } from './focus.js';
+import { focusedTask } from '../core/focus.js';
 
 function greeting() {
   const h = now().getHours();
@@ -31,9 +33,11 @@ export const todayView = {
       <div class="hello"><div class="grow"><h2>${esc(greeting())}</h2><p class="hint">${
         total ? `${fmtInt(B.doneToday.length)} de ${plural(total, 'tarefa concluída', 'tarefas concluídas')} hoje` : 'Nenhuma tarefa marcada para hoje'
       }</p></div>${total ? ring(B.doneToday.length / total, { size: 48, stroke: 5, label: `${B.doneToday.length} de ${total} concluídas` }) : ''}</div>
+      ${focusCard(S)}
       ${checkinCard(S, day)}
       ${moodPicker(S, day)}
       <div class="tools">
+        ${focusedTask(S) ? '' : `<button type="button" class="tool" data-tool="pick-focus">${icon('target')}<span>Focar</span></button>`}
         <button type="button" class="tool" data-tool="focus">${icon('timer')}<span>Pomodoro</span></button>
         <button type="button" class="tool" data-tool="brain">${icon('brain')}<span>Esvaziar a mente</span>${S.brain.length ? `<small>${S.brain.length}</small>` : ''}</button>
       </div>
@@ -64,6 +68,7 @@ export const todayView = {
     bindSprint(el);
     bindMood(el);
     bindCheckin(el);
+    bindFocusCard(el);
     el.querySelectorAll('[data-tool]').forEach((b) => (b.onclick = () => app.actions.tool(b.dataset.tool)));
     el.querySelector('[data-resched]')?.addEventListener('click', async () => {
       const ids = B.overdue.map((t) => t.id);

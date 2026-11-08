@@ -1,11 +1,13 @@
-// Pomodoro comum e modo foco das tarefas com tempo.
+// Pomodoro comum, modo foco das tarefas com tempo e a tarefa em foco.
 //
-// Os dois cronômetros guardam a HORA DE TÉRMINO (não contam tiques): continuam certos com a tela
+// Os cronômetros guardam a HORA DE TÉRMINO (não contam tiques): continuam certos com a tela
 // desligada, o app em segundo plano ou fechado. No APK, um lembrete local avisa quando acaba.
+// O estado fica no registro sincronizado "focus" (core/focus.js): é o mesmo em todos os aparelhos.
 import { personal, P, app } from '../state.js';
 import { commit } from '../core/game.js';
 import { toggleTask } from '../core/tasks.js';
 import { timerAlert, liveTimer } from '../core/notify.js';
+import { POMO_DEF, saveFocus, focusOf, focusedTask, setFocus } from '../core/focus.js';
 import { today, nowMs } from '../lib/clock.js';
 import { esc, sum, plural } from '../lib/util.js';
 import { icon, sheet, toast } from '../ui/ui.js';
@@ -39,9 +41,8 @@ const save = (k, v) => {
 /* =====================================================================
    Pomodoro
    ===================================================================== */
-const PK = 'lida.pomo';
-const PDEF = { mode: 'focus', running: false, endsAt: 0, left: 25 * 60, focusMin: 25, breakMin: 5 };
-let pomo = load(PK, PDEF);
+const PK = 'lida.pomo'; // só para trazer o estado das versões antigas (antes do foco sincronizado)
+let pomo = { ...POMO_DEF };
 const listeners = new Set();
 const emit = () => listeners.forEach((f) => f());
 const dur = (mode = pomo.mode) => (mode === 'focus' ? pomo.focusMin : pomo.breakMin) * 60;
@@ -49,9 +50,9 @@ const leftNow = () => (pomo.running ? Math.max(0, (pomo.endsAt - nowMs()) / 1000
 
 function setPomo(next) {
   pomo = { ...pomo, ...next };
-  save(PK, pomo);
   emit();
   syncLive();
+  saveFocus({ pomo }).catch(() => {});
 }
 
 export function pomoStart() {
@@ -122,13 +123,61 @@ export function paintChip() {
   } else chip.hidden = true;
 }
 
+// Estado vindo do registro sincronizado (outro aparelho, a CLI ou o widget mudaram o foco).
+let lastAt = 0;
+function adopt(force = false) {
+  const f = focusOf();
+  if (!f || (!force && f.at === lastAt)) return;
+  lastAt = f.at;
+  if (!force && f.by === app.device) return;
+  const prevPomo = pomo;
+  pomo = { ...POMO_DEF, ...(f.pomo || {}) };
+  task = f.task?.taskId ? { ...f.task } : { taskId: null };
+  // Avisos locais de fim acompanham o estado novo.
+  if (pomo.running && pomo.endsAt !== prevPomo.endsAt) timerAlert('pomodoro', pomo.endsAt, pomo.mode === 'focus' ? 'Fim do foco' : 'Fim da pausa', pomo.mode === 'focus' ? 'Hora de uma pausa curta.' : 'Pronto para mais um ciclo?');
+  else if (!pomo.running) timerAlert('pomodoro', null);
+  if (task.running && task.left > 0) timerAlert('focus', task.endsAt, 'Tempo esgotado', P().byId.get(task.taskId)?.title || 'Modo foco');
+  else timerAlert('focus', null);
+  if (!task.taskId && overlay) overlay.querySelector('[data-min]')?.click();
+  emit();
+  paintChip();
+  syncLive();
+}
+
 export function initTimers() {
   ensureTicker();
+  // Primeira vez com o foco sincronizado: traz o Pomodoro e o modo foco guardados neste aparelho.
+  if (!focusOf()) {
+    const old = load(PK, POMO_DEF);
+    const oldTask = load(TK, { taskId: null });
+    pomo = { ...POMO_DEF, ...old };
+    task = oldTask.taskId ? oldTask : { taskId: null };
+    if (old.running || old.left !== POMO_DEF.left || task.taskId) saveFocus({ pomo, task: task.taskId ? task : null, ...(task.taskId ? { taskId: task.taskId, since: nowMs() } : {}) }).catch(() => {});
+    save(PK, null);
+    save(TK, null);
+  } else adopt(true);
+  personal.subscribe(() => {
+    adopt();
+    // Tarefa em foco concluída (aqui ou em outro aparelho): o foco termina sozinho.
+    const f = focusOf();
+    if (f?.taskId && !focusedTask() && !task.taskId) setFocus(null).catch(() => {});
+    syncLive();
+  });
   if (pomo.running && nowMs() >= pomo.endsAt) pomoFinish();
   paintChip();
   syncLive();
   app.actions.syncLive = syncLive;
-  if (task.taskId) setTimeout(() => openTaskFocus(), 300);
+}
+
+// Pôr uma tarefa em foco (sem cronômetro) ou tirar.
+export async function focusOn(id) {
+  await setFocus(id);
+  if (id) {
+    play('powerup');
+    haptic('start');
+  }
+  syncLive();
+  app.refresh();
 }
 
 export function openPomodoro() {
@@ -213,15 +262,18 @@ export function openPomodoro() {
 /* =====================================================================
    Modo foco de uma tarefa com tempo
    ===================================================================== */
-const TK = 'lida.focus';
-let task = load(TK, { taskId: null });
+const TK = 'lida.focus'; // idem: estado antigo, migrado para o registro sincronizado
+let task = { taskId: null };
 const taskLeft = () => (task.running ? (task.endsAt - nowMs()) / 1000 : task.left);
 
 function setTask(next) {
   task = next ? { ...task, ...next } : { taskId: null };
-  save(TK, task.taskId ? task : null);
   paintChip();
   syncLive();
+  // Modo foco com tempo também põe a tarefa em foco.
+  const patch = { task: task.taskId ? task : null };
+  if (task.taskId && focusOf()?.taskId !== task.taskId) Object.assign(patch, { taskId: task.taskId, since: nowMs() });
+  saveFocus(patch).catch(() => {});
 }
 
 // Notificação fixa com a contagem (APK): o modo foco tem prioridade sobre o Pomodoro.
@@ -232,13 +284,17 @@ function syncLive() {
     if (!t) return liveTimer(null);
     return liveTimer(
       task.running
-        ? { title: t.title, body: 'Modo foco · tempo restante', endsAt: task.endsAt, chip: 'Foco' }
-        : { title: t.title, body: `Modo foco pausado · ${mm(task.left)} restantes`, paused: true, chip: 'Pausa' },
+        ? { title: t.title, body: 'Modo foco · tempo restante', endsAt: task.endsAt, chip: 'Foco', focus: true }
+        : { title: t.title, body: `Modo foco pausado · ${mm(task.left)} restantes`, paused: true, leftMs: Math.max(0, Math.round(task.left * 1000)), chip: 'Pausa', focus: true },
     );
   }
   const label = pomo.mode === 'focus' ? 'Foco' : 'Pausa';
-  if (pomo.running) return liveTimer({ title: `Pomodoro · ${label}`, body: pomo.mode === 'focus' ? `Ciclo de ${pomo.focusMin} min` : `Pausa de ${pomo.breakMin} min`, endsAt: pomo.endsAt, chip: label, timeoutMs: Math.max(1000, pomo.endsAt - nowMs()) });
-  if (pomo.left !== dur()) return liveTimer({ title: `Pomodoro · ${label} parado`, body: `${mm(pomo.left)} restantes`, paused: true, chip: 'Pausa' });
+  const ft = focusedTask();
+  const since = focusOf()?.since;
+  if (pomo.running) return liveTimer({ title: ft ? ft.title : `Pomodoro · ${label}`, body: ft ? `Pomodoro · ${label} · ciclo de ${pomo.mode === 'focus' ? pomo.focusMin : pomo.breakMin} min` : pomo.mode === 'focus' ? `Ciclo de ${pomo.focusMin} min` : `Pausa de ${pomo.breakMin} min`, endsAt: pomo.endsAt, chip: label, focus: !!ft, ...(ft ? {} : { timeoutMs: Math.max(1000, pomo.endsAt - nowMs()) }) });
+  if (pomo.left !== dur()) return liveTimer({ title: ft ? ft.title : `Pomodoro · ${label} parado`, body: ft ? `Pomodoro parado · ${mm(pomo.left)} restantes` : `${mm(pomo.left)} restantes`, paused: true, leftMs: pomo.left * 1000, chip: 'Pausa', focus: !!ft });
+  // Só a tarefa em foco: contagem para cima desde que o foco começou.
+  if (ft) return liveTimer({ title: ft.title, body: 'Em foco', startedAt: since || nowMs(), chip: 'Foco', focus: true });
   return liveTimer(null);
 }
 
@@ -340,4 +396,102 @@ export function openTaskFocus() {
     if (res?.done) celebrate('Concluída', res.reward, res, { undo: () => toggleTask(id) });
     app.refresh();
   };
+}
+
+/* =====================================================================
+   Cartão "Em foco" (Hoje) e escolha da tarefa
+   ===================================================================== */
+const ago = (ms) => {
+  const m = Math.max(0, Math.floor((nowMs() - ms) / 60000));
+  return m < 1 ? 'agora há pouco' : m < 60 ? `há ${m} min` : `há ${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`;
+};
+
+export function focusCard(S = P()) {
+  const t = focusedTask(S);
+  if (!t) return '';
+  const f = focusOf(S);
+  const timed = task.taskId === t.id;
+  const pomoOn = pomo.running || pomo.left !== dur();
+  return `<section class="focus-card" data-focuscard data-id="${esc(t.id)}">
+    <div class="fc-top"><span class="fc-rec"><i></i>Em foco</span><span class="fc-time" data-fc-time>${f?.since ? ago(f.since) : ''}</span></div>
+    <h3>${esc(t.title)}</h3>
+    <p class="fc-meta" data-fc-meta>${timed ? 'Modo foco com tempo' : pomoOn ? `Pomodoro · ${fmt(leftNow())}` : 'Sincronizado com seus outros aparelhos'}</p>
+    <div class="fc-acts">
+      <button type="button" class="btn small primary" data-fc-done>${icon('check')}Concluir</button>
+      ${timed ? `<button type="button" class="btn small" data-fc-open>${icon('timer')}Abrir cronômetro</button>` : `<button type="button" class="btn small" data-fc-pomo>${icon(pomo.running ? 'pause' : 'play')}${pomo.running ? 'Pausar' : pomoOn ? 'Continuar' : 'Pomodoro'}</button>`}
+      <button type="button" class="btn small ghost" data-fc-stop>Parar foco</button>
+    </div>
+  </section>`;
+}
+
+export function bindFocusCard(el) {
+  const card = el.querySelector('[data-focuscard]');
+  if (!card) return;
+  const id = card.dataset.id;
+  card.querySelector('[data-fc-done]').onclick = async () => {
+    if (task.taskId === id) {
+      timerAlert('focus', null);
+      setTask(null);
+    }
+    await setFocus(null);
+    play('complete');
+    haptic('done');
+    const res = await toggleTask(id);
+    if (res?.done) celebrate('Concluída', res.reward, res, { undo: () => toggleTask(id) });
+  };
+  card.querySelector('[data-fc-pomo]')?.addEventListener('click', () => {
+    if (pomo.running) pomoPause();
+    else pomoStart();
+    app.refresh();
+  });
+  card.querySelector('[data-fc-open]')?.addEventListener('click', () => openTaskFocus());
+  card.querySelector('[data-fc-stop]').onclick = async () => {
+    if (task.taskId === id) {
+      timerAlert('focus', null);
+      setTask(null);
+    }
+    await focusOn(null);
+    toast('Foco encerrado.');
+  };
+  // Atualiza o tempo sem redesenhar a tela.
+  const paint = () => {
+    if (!card.isConnected) return listeners.delete(paint);
+    const f = focusOf();
+    const tm = card.querySelector('[data-fc-time]');
+    if (tm && f?.since) tm.textContent = ago(f.since);
+    const meta = card.querySelector('[data-fc-meta]');
+    if (meta && task.taskId !== id && (pomo.running || pomo.left !== dur())) meta.textContent = `Pomodoro · ${pomo.mode === 'focus' ? 'foco' : 'pausa'} · ${fmt(leftNow())}`;
+  };
+  listeners.add(paint);
+  ensureTicker();
+}
+
+// Escolher a tarefa em foco (hoje, atrasadas e entrada).
+export function pickFocus() {
+  const S = P();
+  const d = today();
+  const open = S.task.filter((t) => !t.done && !t.failed && !t.archived && t.kind !== 'routine' && t.kind !== 'sprint');
+  const groups = [
+    ['Hoje', open.filter((t) => t.due === d)],
+    ['Atrasadas', open.filter((t) => t.due && t.due < d)],
+    ['Entrada', open.filter((t) => !t.due)],
+    ['Próximos dias', open.filter((t) => t.due && t.due > d).slice(0, 8)],
+  ].filter(([, l]) => l.length);
+  sheet({
+    title: 'Focar em uma tarefa',
+    body: groups.length
+      ? `<p class="hint">A tarefa em foco aparece em todos os seus aparelhos, na notificação e no widget.</p>${groups
+          .map(([g, l]) => `<div class="pick-group"><div class="pick-glabel">${g}</div>${l.map((t) => `<button type="button" class="pick-opt" data-fid="${esc(t.id)}"><span>${esc(t.title)}</span><small class="prio-${esc((t.priority || 'P4').toLowerCase())}">${esc(t.priority || '')}</small></button>`).join('')}</div>`)
+          .join('')}`
+      : '<p class="hint">Nenhuma tarefa aberta. Crie uma primeiro.</p>',
+    onMount(el, close) {
+      el.querySelectorAll('[data-fid]').forEach(
+        (b) =>
+          (b.onclick = async () => {
+            close();
+            await focusOn(b.dataset.fid);
+          }),
+      );
+    },
+  });
 }

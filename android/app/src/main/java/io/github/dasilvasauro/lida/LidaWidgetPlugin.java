@@ -25,6 +25,7 @@ public class LidaWidgetPlugin extends Plugin {
         SharedPreferences sp = ctx.getSharedPreferences(TodayWidget.PREFS, Context.MODE_PRIVATE);
         sp.edit().putString("data", data).apply();
         TodayWidget.refreshAll(ctx);
+        RingsWidget.refreshAll(ctx);
         call.resolve();
     }
 }

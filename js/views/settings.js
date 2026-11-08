@@ -9,7 +9,7 @@ import { googleAvailable } from '../core/cloud.js';
 import { esc, fmtInt } from '../lib/util.js';
 import { icon, toast, confirmDialog, promptDialog } from '../ui/ui.js';
 import { avatar } from './common.js';
-import { MODUS, useItemEvent } from '../core/game.js';
+import { MODUS, useItemEvent, THEME_PRICES } from '../core/game.js';
 import { WD_LETTER, WD_SHORT } from '../lib/util.js';
 
 const toggle = (name, on, label) => `<span class="toggle"><input type="checkbox" data-${name}${on ? ' checked' : ''} aria-label="${esc(label)}"><i></i></span>`;
@@ -25,7 +25,7 @@ function themeOwned(id, S) {
 function lockLabel(id) {
   const u = THEMES[id]?.unlock || {};
   if (u.level) return `${icon('lock')}Nível ${u.level}`;
-  if (u.price) return `${icon('coin')}${fmtInt(u.price)} na Loja`;
+  if (u.shop) return `${icon('coin')}${fmtInt(THEME_PRICES[id] || 0)} na Loja`; // mesmo preço da Loja (core/game.js)
   return '';
 }
 
@@ -93,12 +93,20 @@ export const settingsView = {
           <div class="set-row"><span class="grow">Fechamento do dia<small>Um aviso para revisar o dia e planejar o seguinte</small></span><input type="time" value="${esc(np.dailyAt)}" data-dailyat aria-label="Horário do fechamento do dia"${np.daily ? '' : ' disabled'}>${toggleL('ndaily', np.daily, 'Fechamento do dia')}</div>
           <label class="set-row"><span class="grow">Lembrar de beber água<small>A cada ${np.waterEvery} h, das ${esc(np.waterFrom)} às ${esc(np.waterTo)}, até bater a meta. Com botão "Bebi um copo"</small></span>${toggle('nwater', np.water, 'Lembretes de água')}</label>
           <label class="set-row"><span class="grow">Avisar com o app aberto<small>Mostra o lembrete no topo da tela, com os mesmos botões, se você estiver usando o Lida na hora</small></span>${toggle('ninapp', np.inApp !== false, 'Avisos com o app aberto')}</label>
-          ${isNative() ? `<label class="set-row"><span class="grow">Cronômetro na notificação<small>Pomodoro e modo foco com a contagem na notificação enquanto rodam${'' /* Live Update */}. No Android 16, aparece também como chip na barra de status</small></span>${toggle('nlive', np.live !== false, 'Cronômetro na notificação')}</label>` : ''}
           <div class="set-row"><span class="grow">Som<small>Campainha de bicicleta${isNative() ? '' : ' (na web, toca com o Lida aberto)'}</small></span><button type="button" class="btn small" data-bell>${icon('volume')}Ouvir</button></div>
           <div class="set-row" data-perm hidden></div>
           <button type="button" class="set-row" data-test>${icon('bell')}<span class="grow">Enviar um lembrete de teste<small>Chega em 5 segundos</small></span></button>
         </div>
       </div></section>
+
+      ${
+        isNative()
+          ? `<section class="set-group"><h2>Foco</h2><div class="set-list" data-focusset>
+        <label class="set-row">${icon('target')}<span class="grow">Notificação do foco<small>Tarefa em foco, Pomodoro e modo foco ficam numa notificação fixa com a contagem. No Android 16, também como chip na barra de status</small></span>${toggle('nlive', np.live !== false, 'Notificação do foco')}</label>
+        <label class="set-row">${icon('timer')}<span class="grow">Relógio flutuante<small data-ovnote>Ao minimizar o Lida com um cronômetro rodando, um relógio fica por cima dos outros apps. Arraste para mover; toque para voltar</small></span>${toggle('noverlay', false, 'Relógio flutuante')}</label>
+      </div></section>`
+          : ''
+      }
 
       <section class="set-group"><h2>Sobre</h2><div class="set-list">
         <div class="set-row"><span class="grow">Lida<small>Versão ${esc(app.version)}${isNative() ? ' · Android' : ''}</small></span><span class="val">${fmtInt(personal.stats().live)} registros</span></div>
@@ -182,15 +190,35 @@ function bind(el, S) {
     else if (t.matches('[data-ninbox]')) notify.setNotifyPrefs({ inbox: t.checked });
     else if (t.matches('[data-inboxat]')) notify.setNotifyPrefs({ inboxAt: t.value || '10:00' });
     else if (t.matches('[data-ninapp]')) notify.setNotifyPrefs({ inApp: t.checked });
-    else if (t.matches('[data-nlive]')) {
-      notify.setNotifyPrefs({ live: t.checked });
-      app.actions.syncLive?.();
-    }
+
     else return;
     app.actions.reschedule();
     rerender();
   });
   el.querySelector('[data-bell]')?.addEventListener('click', () => play('bike'));
+  // Foco (APK): notificação fixa e relógio flutuante.
+  const fs = el.querySelector('[data-focusset]');
+  if (fs) {
+    const ov = fs.querySelector('[data-noverlay]');
+    const paintOv = (r) => {
+      ov.checked = !!r?.on && !!r?.granted;
+      fs.querySelector('[data-ovnote]').textContent = r?.on && !r?.granted ? 'Falta liberar "Sobrepor a outros apps" para o Lida nas configurações do Android. Depois volte aqui.' : 'Ao minimizar o Lida com um cronômetro rodando, um relógio fica por cima dos outros apps. Arraste para mover; toque para voltar';
+    };
+    notify.overlayStatus().then(paintOv);
+    fs.addEventListener('change', async (e) => {
+      const t = e.target;
+      if (t.matches('[data-nlive]')) {
+        notify.setNotifyPrefs({ live: t.checked });
+        app.actions.syncLive?.();
+      } else if (t.matches('[data-noverlay]')) {
+        const r = await notify.setOverlay(t.checked);
+        if (t.checked && r && !r.granted) toast('Libere "Sobrepor a outros apps" para o Lida e volte ao app.', { ms: 5000 });
+        paintOv(r);
+      }
+    });
+    // Ao voltar das configurações do Android, confere a permissão de novo.
+    document.addEventListener('visibilitychange', () => !document.hidden && fs.isConnected && notify.overlayStatus().then(paintOv));
+  }
   el.querySelector('[data-test]').onclick = async () => {
     await notify.testNotification();
     toast('Lembrete de teste agendado para daqui a 5 segundos.');

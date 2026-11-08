@@ -286,26 +286,61 @@ function reflections(S) {
 const NAMED = { blue: '#59C3F0', emerald: '#5FE3B5', amber: '#F2C14E', rose: '#F2716B', purple: '#C08CF5', cyan: '#59C3F0', indigo: '#7C8CFF', zinc: '#8FA3B8' };
 const colorOf = (c) => NAMED[c] || c || COLORS[0];
 
+// Reflexão em tela cheia: um cartão por vez (arraste, setas ou teclado), com a cor da reflexão.
 function viewRefl(id) {
   const r = P().byId.get(id);
   if (!r) return;
-  sheet({
-    title: r.title,
-    wide: true,
-    body: `<div class="refl-view" style="--c:${esc(colorOf(r.color))}"><ol class="refl-cards">${(r.cards || []).map((c, i) => `<li><small>${i + 1} de ${(r.cards || []).length}</small><p>${esc(c)}</p></li>`).join('')}</ol>
-      <div class="sheet-actions"><button type="button" class="btn ghost danger-text" data-del>${icon('trash')}Excluir</button><button type="button" class="btn" data-edit>${icon('edit')}Editar</button></div></div>`,
-    onMount(el, close) {
-      el.querySelector('[data-edit]').onclick = () => {
-        close();
-        setTimeout(() => editRefl(r), 240);
-      };
-      el.querySelector('[data-del]').onclick = async () => {
-        if (!(await confirmDialog(`Excluir "${r.title}"?`, { ok: 'Excluir', danger: true, title: 'Excluir reflexão' }))) return;
-        close();
-        await personal.remove(r.id);
-      };
-    },
-  });
+  const cards = r.cards || [];
+  const ov = document.createElement('div');
+  ov.className = 'refl-full';
+  ov.setAttribute('role', 'dialog');
+  ov.setAttribute('aria-modal', 'true');
+  ov.setAttribute('aria-label', r.title);
+  ov.style.setProperty('--c', colorOf(r.color));
+  ov.innerHTML = `<header class="rf-head"><h2>${esc(r.title)}</h2><button type="button" class="icon-btn" data-x aria-label="Fechar">${icon('x')}</button></header>
+    <ol class="rf-track">${cards.map((c, i) => `<li><div class="rf-card"><small>${i + 1} de ${cards.length}</small><p>${esc(c)}</p></div></li>`).join('')}</ol>
+    <footer class="rf-foot">
+      <button type="button" class="icon-btn" data-prev aria-label="Anterior">${icon('left')}</button>
+      <div class="rf-dots" aria-hidden="true">${cards.map((_, i) => `<i${i ? '' : ' class="on"'}></i>`).join('')}</div>
+      <button type="button" class="icon-btn" data-next aria-label="Próximo">${icon('right')}</button>
+    </footer>
+    <div class="rf-actions"><button type="button" class="btn ghost danger-text" data-del>${icon('trash')}Excluir</button><button type="button" class="btn" data-edit>${icon('edit')}Editar</button></div>`;
+  document.body.appendChild(ov);
+  document.body.classList.add('has-sheet');
+  requestAnimationFrame(() => ov.classList.add('open'));
+  const track = ov.querySelector('.rf-track');
+  const dots = [...ov.querySelectorAll('.rf-dots i')];
+  const at = () => Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
+  const go = (i) => track.scrollTo({ left: Math.max(0, Math.min(cards.length - 1, i)) * track.clientWidth, behavior: 'smooth' });
+  track.addEventListener('scroll', () => dots.forEach((d, i) => d.classList.toggle('on', i === at())), { passive: true });
+  const close = () => {
+    document.removeEventListener('keydown', onKey, true);
+    ov.classList.remove('open');
+    setTimeout(() => {
+      ov.remove();
+      if (!document.querySelector('.sheet-wrap')) document.body.classList.remove('has-sheet');
+    }, 220);
+  };
+  const onKey = (e) => {
+    if (document.querySelector('.sheet-wrap')) return;
+    if (e.key === 'Escape') (e.preventDefault(), e.stopPropagation(), close());
+    else if (e.key === 'ArrowRight') go(at() + 1);
+    else if (e.key === 'ArrowLeft') go(at() - 1);
+  };
+  document.addEventListener('keydown', onKey, true);
+  ov.querySelector('[data-x]').onclick = close;
+  ov.querySelector('[data-prev]').onclick = () => go(at() - 1);
+  ov.querySelector('[data-next]').onclick = () => go(at() + 1);
+  ov.querySelector('[data-edit]').onclick = () => {
+    close();
+    setTimeout(() => editRefl(r), 240);
+  };
+  ov.querySelector('[data-del]').onclick = async () => {
+    if (!(await confirmDialog(`Excluir "${r.title}"?`, { ok: 'Excluir', danger: true, title: 'Excluir reflexão' }))) return;
+    close();
+    await personal.remove(r.id);
+  };
+  setTimeout(() => ov.querySelector('[data-x]').focus({ preventScroll: true }), 50);
 }
 
 function editRefl(r = null) {

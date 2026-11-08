@@ -14,7 +14,7 @@
 //                     (ex.: ev_fail_<tarefa>) não contam em dobro se dois aparelhos os gerarem.
 import { sum, ymOf } from '../lib/util.js';
 
-export const PERSONAL_TYPES = ['task', 'project', 'tag', 'routine', 'habit', 'hlog', 'quit', 'water', 'ev', 'wallet', 'score', 'month', 'hist', 'mood', 'vision', 'refl', 'brain', 'prefs', 'dayp'];
+export const PERSONAL_TYPES = ['task', 'project', 'tag', 'routine', 'habit', 'hlog', 'quit', 'water', 'ev', 'wallet', 'score', 'month', 'hist', 'mood', 'vision', 'refl', 'brain', 'prefs', 'dayp', 'focus'];
 
 export const HABIT_DAYS_ALL = [0, 1, 2, 3, 4, 5, 6];
 export const SHARED_TYPES = ['task', 'project', 'tag', 'member'];
@@ -94,6 +94,7 @@ export function buildPersonal(list) {
   S.prefs = S.prefs[0] || {};
   S.walletMeta = S.wallet[0] || {};
   S.vision = S.vision[0] || null;
+  S.focus = S.focus.find((x) => x.id === 'focus') || null; // foco global (ver core/focus.js)
   S.money = wallet(S.ev);
   S.project.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.name || '').localeCompare(b.name || '', 'pt-BR'));
   S.tag.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));

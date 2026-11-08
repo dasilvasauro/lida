@@ -6,10 +6,11 @@ export const personal = createStore({ name: 'pessoal' });
 export const shared = createStore({ name: 'compartilhado', watch: SHARED_WATCH });
 
 export const app = {
-  version: '3.0.0-alfa.6',
+  version: '3.0.0-alfa.7',
   demo: false, // modo demo: banco separado, sem nuvem, relógio ajustável
   mode: 'local', // 'local' | 'cloud'
   me: 'local',
+  device: '', // identificador deste aparelho (foco global: quem mudou por último)
   user: null, // conta Google (nome, e-mail, foto)
   idb: null,
   sid: null, // espaço pessoal
