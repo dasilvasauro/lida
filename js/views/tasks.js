@@ -3,11 +3,11 @@ import { P, app, prefs, personal } from '../state.js';
 import { PRIORITIES, TASK_KINDS, recurrenceLabel } from '../core/model.js';
 import { toggleTask, toggleSub, addTask, saveTask, removeTask, strip, checkTask, sprintInfo } from '../core/tasks.js';
 import { ITEMS, applyTaskItem } from '../core/game.js';
-import { esc, uid, relDay, fmtTime, plural, addDays, weekday, WD_SHORT, WD_LETTER } from '../lib/util.js';
+import { esc, uid, relDay, fmtTime, plural, addDays, weekday, WD_SHORT, WD_LETTER, fmtDateHuman, isoOfMs } from '../lib/util.js';
 import { today } from '../lib/clock.js';
 import { icon, sheet, toast, confirmDialog, promptDialog, opt, readForm, bar, COLORS } from '../ui/ui.js';
 import { parseQuick } from '../core/parse.js';
-import { renderRich, richToolbar, bindToolbar, toggleCheckLine } from '../ui/rich.js';
+import { renderRich, richToolbar, bindToolbar, toggleCheckLine, plainPreview } from '../ui/rich.js';
 import { play } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
 import { celebrate } from './celebrate.js';
@@ -30,7 +30,6 @@ export function taskRow(t, { showDue = false, S = P(), i = 0 } = {}) {
   if (t.recurrence) meta.push(`<span title="${esc(recurrenceLabel(t.recurrence))}">${icon('repeat')}</span>`);
   const subs = t.subtasks || [];
   if (subs.length && kind !== 'routine') meta.push(`<span>${icon('list')}${subs.filter((s) => s.done).length}/${subs.length}</span>`);
-  if (t.notes) meta.push(`<span aria-label="Tem descrição">${icon('edit')}</span>`);
   for (const tid of t.tags || []) {
     const tg = S.byId.get(tid);
     if (tg) meta.push(`<span class="tagchip" style="--c:${esc(tg.color || 'var(--dim)')}">@${esc(tg.name)}</span>`);
@@ -46,6 +45,7 @@ export function taskRow(t, { showDue = false, S = P(), i = 0 } = {}) {
     <div class="task-body">
       <div class="task-open" data-open role="button" tabindex="0" aria-label="${esc(t.title)}. Segure para editar.">
         <span class="task-title">${kind === 'routine' ? `<span class="routine-tag">${icon('repeat')}</span>` : ''}${esc(t.title)}</span>
+        ${t.notes && !t.done ? `<p class="task-desc">${esc(plainPreview(t.notes))}</p>` : ''}
         ${meta.length ? `<div class="task-meta">${meta.join('')}</div>` : ''}
       </div>
       ${
@@ -147,7 +147,6 @@ export function onLongPress(el, fn, ms = 450) {
   }, true);
 }
 
-const touch = () => matchMedia('(hover: none)').matches;
 
 export const taskList = (list, opts = {}) => `<ul class="tasks">${list.map((t, i) => taskRow(t, { ...opts, i })).join('')}</ul>`;
 
@@ -157,15 +156,14 @@ export function bindTasks(root) {
     const id = li.dataset.id;
     li.querySelector('[data-check]').onclick = (e) => onCheck(e.currentTarget, li, id);
     const body = li.querySelector('[data-open]');
-    // Toque: com subtarefas, mostra/esconde; sem, abre a edição. Segurar sempre abre a edição.
-    // No computador, clicar abre a edição (e a setinha recolhe).
-    body.onclick = () => (touch() && li.classList.contains('has-subs') ? toggleFold(li) : editTask(id));
+    // Tocar/clicar abre os detalhes; segurar vai direto para a edição; a setinha recolhe as subtarefas.
+    body.onclick = () => openTask(id);
     onLongPress(li.querySelector('.task-body'), () => editTask(id));
     li.querySelector('[data-fold]')?.addEventListener('click', () => toggleFold(li));
     body.onkeydown = (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        editTask(id);
+        openTask(id);
       }
     };
     li.querySelectorAll('[data-sub]').forEach((c) => (c.onchange = () => onSub(c, id)));
@@ -238,7 +236,7 @@ export function bindSprint(root) {
   if (!el) return;
   const id = el.dataset.sprint;
   el.querySelectorAll('[data-sub]').forEach((c) => (c.onchange = () => onSub(c, id)));
-  el.querySelector('[data-open-sprint]').onclick = () => editTask(id);
+  el.querySelector('[data-open-sprint]').onclick = () => openTask(id);
   onLongPress(el.querySelector('.sprint-head'), () => editTask(id));
   el.querySelector('[data-sfold]').onclick = () => {
     const on = !el.classList.contains('folded');
@@ -351,6 +349,120 @@ export function bindQuick(root) {
     // A lista é redesenhada: devolve o foco ao mesmo campo para anotar várias em sequência.
     setTimeout(() => document.querySelector(`[data-quick="${key}"] input[name=title]`)?.focus(), 80);
   };
+}
+
+/* ---------- Detalhes (ao tocar numa tarefa) ---------- */
+// Um cartão com tudo da tarefa: prazo, prioridade, projeto, etiquetas, descrição formatada (com as caixas
+// de seleção funcionando) e subtarefas marcáveis. Editar fica a um toque; segurar a tarefa vai direto.
+export function openTask(id) {
+  const t0 = P().byId.get(id);
+  if (!t0) return;
+  if (t0.kind === 'routine') return editTask(id);
+  let close = null;
+  const draw = (el) => {
+    const S = P();
+    const t = S.byId.get(id);
+    if (!t) return close?.();
+    const kind = t.kind || 'normal';
+    const pr = PRIORITIES.find((p) => p.id === (t.priority || 'P4'));
+    const subs = t.subtasks || [];
+    const doneN = subs.filter((s) => s.done).length;
+    const proj = t.projectId && S.byId.get(t.projectId);
+    const tags = (t.tags || []).map((x) => S.byId.get(x)).filter(Boolean);
+    const inFocus = focusOf(S)?.taskId === id && !t.done;
+    const late = t.due && t.due < today() && !t.done;
+    const rows = [];
+    if (t.due) rows.push([icon('plan'), kind === 'sprint' ? 'Fim' : 'Data', `<span class="${late ? 'neg' : ''}">${esc(fmtDateHuman(t.due))}${late ? ' · atrasada' : ''}</span>`]);
+    if (t.time) rows.push([icon('timer'), 'Horário', esc(fmtTime(t.time)) + (t.remindBefore ? ` <small>(lembrete ${t.remindBefore >= 60 ? `${t.remindBefore / 60} h` : `${t.remindBefore} min`} antes)</small>` : '')]);
+    if (kind === 'timed' && t.duration) rows.push([icon('timer'), 'Duração', `${t.duration} min`]);
+    if (t.recurrence) rows.push([icon('repeat'), 'Repete', esc(recurrenceLabel(t.recurrence))]);
+    if (proj) rows.push([icon('folder'), 'Projeto', `<a href="#projeto-${esc(proj.id)}" data-goproj class="tag"><i class="dot" style="--c:${esc(proj.color || 'var(--accent)')}"></i>${esc(proj.name)}</a>`]);
+    if (tags.length) rows.push([icon('tag'), 'Etiquetas', tags.map((g) => `<span class="tagchip" style="--c:${esc(g.color || 'var(--dim)')}">@${esc(g.name)}</span>`).join(' ')]);
+    if (t.done && t.doneAt) rows.push([icon('check'), 'Concluída', esc(fmtDateHuman(isoOfMs(t.doneAt)))]);
+    let sprint = '';
+    if (kind === 'sprint' && t.due) {
+      const si = sprintInfo(t);
+      sprint = `<div class="td-sprint"><div><small>Etapas</small>${bar(si.steps, { label: 'Etapas' })}<b>${si.done}/${si.count}</b></div><div><small>Dias</small>${bar(si.time, { cls: 'time', label: 'Tempo' })}<b>${si.elapsed}/${si.total}</b></div></div>`;
+    }
+    el.querySelector('[data-td]').innerHTML = `
+      <div class="td-head">
+        <button type="button" class="task-check${t.done ? ' on' : ''}" data-p="${esc(t.priority || 'P4')}" data-tdcheck aria-label="${t.done ? 'Reabrir' : 'Concluir'}">${icon('check')}</button>
+        <div class="grow">
+          <h3 class="td-title${t.done ? ' done' : ''}">${esc(t.title)}</h3>
+          <div class="td-badges">
+            ${pr && pr.id !== 'P4' ? `<span class="badge prio" style="--tone:var(--${pr.tone})">${pr.short} · ${pr.name}</span>` : ''}
+            ${kind !== 'normal' ? `<span class="badge acc">${icon(TASK_KINDS[kind].icon)}${TASK_KINDS[kind].label}</span>` : ''}
+            ${inFocus ? `<span class="badge focus">${icon('target')}Em foco</span>` : ''}
+            ${t.failed && !t.done ? '<span class="badge warm">Venceu</span>' : ''}
+          </div>
+        </div>
+      </div>
+      ${rows.length ? `<dl class="td-rows">${rows.map(([ic, k, v]) => `<div><dt>${ic}<span>${k}</span></dt><dd>${v}</dd></div>`).join('')}</dl>` : ''}
+      ${sprint}
+      ${t.notes ? `<div class="td-sec"><h4>Descrição</h4><div class="rich td-notes" data-tdnotes>${renderRich(t.notes)}</div></div>` : ''}
+      ${
+        subs.length
+          ? `<div class="td-sec"><h4>${kind === 'sprint' ? 'Etapas' : 'Subtarefas'} <span class="count">${doneN}/${subs.length}</span></h4>${bar(doneN / subs.length, { cls: 'thin', label: 'Progresso' })}
+        <ul class="td-subs">${subs.map((x) => `<li><label class="check${x.done ? ' on' : ''}"><input type="checkbox" data-tdsub="${esc(x.id)}"${x.done ? ' checked' : ''}><span>${esc(x.title)}</span></label></li>`).join('')}</ul></div>`
+          : ''
+      }
+      <div class="td-actions">
+        <button type="button" class="btn ${t.done ? 'ghost' : 'primary'}" data-tddone>${icon(t.done ? 'refresh' : 'check')}${t.done ? 'Reabrir' : 'Concluir'}</button>
+        ${!t.done && !t.failed && kind !== 'sprint' ? `<button type="button" class="btn ghost" data-tdfocus>${icon('target')}${inFocus ? 'Parar foco' : 'Focar'}</button>` : ''}
+        ${kind === 'timed' && !t.done ? `<button type="button" class="btn ghost" data-tdplay>${icon('play')}Modo foco</button>` : ''}
+        <button type="button" class="btn ghost" data-tdedit>${icon('edit')}Editar</button>
+      </div>`;
+    const done = async () => {
+      const was = !!P().byId.get(id)?.done;
+      play(was ? 'uncheck' : 'complete');
+      haptic(was ? 'tap' : 'done');
+      const res = await toggleTask(id);
+      if (res?.done) celebrate('Concluída', res.reward, res, { undo: () => toggleTask(id) });
+      draw(el);
+    };
+    el.querySelector('[data-tdcheck]').onclick = done;
+    el.querySelector('[data-tddone]').onclick = done;
+    el.querySelector('[data-tdedit]').onclick = () => {
+      close();
+      setTimeout(() => editTask(id), 230);
+    };
+    el.querySelector('[data-tdfocus]')?.addEventListener('click', async () => {
+      await focusOn(inFocus ? null : id);
+      draw(el);
+    });
+    el.querySelector('[data-tdplay]')?.addEventListener('click', () => {
+      close();
+      setTimeout(() => focusTask(id), 230);
+    });
+    el.querySelector('[data-goproj]')?.addEventListener('click', () => close());
+    el.querySelectorAll('[data-tdsub]').forEach(
+      (c) =>
+        (c.onchange = async () => {
+          const r = await toggleSub(id, c.dataset.tdsub);
+          if (r?.done) {
+            play('progress', { fraction: r.fraction });
+            haptic('tick');
+          } else play('uncheck');
+          draw(el);
+        }),
+    );
+    el.querySelectorAll('[data-tdnotes] [data-line]').forEach(
+      (b) =>
+        (b.onclick = async () => {
+          const cur = P().byId.get(id);
+          await personal.patch(id, { notes: toggleCheckLine(cur.notes || '', Number(b.dataset.line)) });
+          play('tick');
+          draw(el);
+        }),
+    );
+  };
+  close = sheet({
+    title: 'Tarefa',
+    body: '<div class="task-detail" data-td></div>',
+    onMount(el) {
+      draw(el);
+    },
+  });
 }
 
 /* ---------- Painel de edição ---------- */

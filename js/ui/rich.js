@@ -53,6 +53,25 @@ export function renderRich(text) {
   return out.join('').replace(/<\/ul class="checks">/g, '</ul>');
 }
 
+// Prévia em texto simples para a lista (sem marcação): links viram o texto, listas ganham • e ☐/☑.
+export function plainPreview(text) {
+  return String(text || '')
+    .replace(/\r/g, '')
+    .split('\n')
+    .map((l) =>
+      l
+        .replace(/^\s*[-*] \[( )\] /, '☐ ')
+        .replace(/^\s*[-*] \[(x|X)\] /, '☑ ')
+        .replace(/^\s*[-*•] /, '• ')
+        .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '$1')
+        .replace(/(\*\*|~~|`)/g, '')
+        .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1$2')
+        .trim(),
+    )
+    .filter(Boolean)
+    .join('\n');
+}
+
 // Marca/desmarca a linha "- [ ]" de número `i` e devolve o texto novo.
 export function toggleCheckLine(text, i) {
   const lines = String(text || '').split('\n');
