@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Ícone do Lida, na família do Pago e do Zelo: fundo grafite com cantos arredondados, halo suave nas
+       cores do Lida e o alfa em prata. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1B2029"/>
+      <stop offset="1" stop-color="#0C0F14"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0.5" cy="0.42" r="0.55">
+      <stop offset="0" stop-color="#7C8CFF" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#7C8CFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="halo2" cx="0.78" cy="0.86" r="0.5">
+      <stop offset="0" stop-color="#5FE3B5" stop-opacity=".10"/>
+      <stop offset="1" stop-color="#5FE3B5" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="silver" x1="0" y1="140" x2="0" y2="372" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.55" stop-color="#DDE2EA"/>
+      <stop offset="1" stop-color="#A9B1BF"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect width="512" height="512" fill="url(#halo)"/>
+  <rect width="512" height="512" fill="url(#halo2)"/>
+  <path d="M256 138 L344 370 L168 370 Z" fill="none" stroke="#C9D2FF" stroke-width="40" stroke-linejoin="round" filter="url(#glow)" opacity=".38"/>
+  <path d="M256 138 L344 370 L168 370 Z" fill="none" stroke="url(#silver)" stroke-width="30" stroke-linejoin="round"/>
+</svg>

@@ -375,8 +375,19 @@ class Window(QMainWindow):
         self._tick()
 
     # ---------- Bandeja ----------
+    def _tray_icon(self):
+        """Contorno do alfa: pelo nome do tema (o Plasma pinta na cor do painel); senão, PNG branco."""
+        icon = QIcon.fromTheme(APP_ID + "-tray")
+        if icon.isNull():
+            icon = QIcon()
+            for s in (22, 44, 64):
+                f = paths.WEB_DIR / "icons" / f"tray-{s}.png"
+                if f.exists():
+                    icon.addFile(str(f))
+        return icon if not icon.isNull() else self.windowIcon()
+
     def _build_tray(self):
-        self.tray = QSystemTrayIcon(self.windowIcon(), self)
+        self.tray = QSystemTrayIcon(self._tray_icon(), self)
         self.tray.setToolTip("Lida")
         menu = QMenu()
         menu.addAction("Mostrar o Lida", self.show_window)

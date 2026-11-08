@@ -188,7 +188,9 @@ Depois, na pasta do repositório:
 ./desktop/install.sh --uninstall   # remove (seus dados ficam; --purge apaga também)
 ```
 
-Para **atualizar**: `git pull` e `./desktop/install.sh` de novo (feche o Lida antes: `lida fechar`).
+Para **atualizar**: `lida fechar`, `git pull` e `./desktop/install.sh` de novo. O script troca os arquivos, os
+widgets e os ícones (e apaga o cache de ícones do KDE, que é refeito sozinho). Se o painel ou o lançador ainda
+mostrarem o ícone antigo, saia e entre na sessão (ou rode `plasmashell --replace &`).
 O GitHub Actions também gera um pacote `lida-linux.tar.gz` (aba Actions > Linux), que tem o mesmo `install.sh`.
 
 ### Entrar com a conta Google (uma vez)
@@ -396,6 +398,10 @@ Abra **Actions > Android > Run workflow** (branch `v3`). Em uns 5 minutos o APK 
 Para testar a versão web da `v3` sem tirar o Lida atual do ar, rode localmente (abaixo).
 
 ## Desenvolvimento
+
+Ícones: as fontes ficam em `art/icons/` (SVG) e `python3 scripts/make-icons.py` gera todos os tamanhos (web, PWA,
+bandeja do Linux, ícone adaptativo/temático e splash do Android). Precisa de playwright e Pillow; os PNGs gerados
+ficam no repositório.
 
 ```bash
 npm install          # só para os testes e o Capacitor; o app em si não tem dependências
