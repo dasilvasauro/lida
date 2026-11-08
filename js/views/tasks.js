@@ -282,10 +282,11 @@ function previewChips(r, defaults) {
   return chips.map((c) => `<span class="qa-chip">${c}</span>`).join('');
 }
 
-export async function createFromText(text, defaults = {}) {
+// Linguagem natural → tarefa. Devolve { id } ou { error, shop }. Usado pela adição rápida e pela CLI.
+export async function addFromText(text, defaults = {}) {
   const S = P();
   const r = parseQuick(text, { today: today(), projects: S.project, tags: S.tag });
-  if (!r.title) return null;
+  if (!r.title) return { error: 'Escreva o título da tarefa.' };
   const batch = [];
   const newIds = [];
   for (const name of r.newTags) {
@@ -302,13 +303,19 @@ export async function createFromText(text, defaults = {}) {
   const tags = [...new Set([...(defaults.tags || []), ...r.tags, ...newIds])];
   if (tags.length) data.tags = tags;
   const c = checkTask({ kind: 'normal', priority: 'P4', ...data });
-  if (!c.ok) {
+  if (!c.ok) return { error: c.msg, shop: !!c.shop };
+  if (batch.length) await personal.saveMany(batch);
+  return { id: await addTask(data, c.consume) };
+}
+
+export async function createFromText(text, defaults = {}) {
+  const r = await addFromText(text, defaults);
+  if (r.error) {
     play('error');
-    toast(c.msg, c.shop ? { action: 'Ir à Loja', onAction: () => app.nav('loja'), ms: 5000 } : { ms: 5000 });
+    toast(r.error, r.shop ? { action: 'Ir à Loja', onAction: () => app.nav('loja'), ms: 5000 } : { ms: 5000 });
     return null;
   }
-  if (batch.length) await personal.saveMany(batch);
-  return addTask(data, c.consume);
+  return r.id;
 }
 
 export function bindQuick(root) {

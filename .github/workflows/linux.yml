@@ -1,0 +1,42 @@
+# Lida para Linux: confere o código Python/QML e monta um pacote (lida-linux.tar.gz) com o app web,
+# o app Qt, a CLI, os widgets do Plasma e o install.sh. Em tags v*, anexa o pacote à Release.
+name: Linux
+
+on:
+  push:
+    paths: ['desktop/**', 'js/**', 'css/**', 'index.html', '.github/workflows/linux.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  pacote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Conferir o Python
+        run: |
+          pip install pyflakes
+          python -m pyflakes desktop/lida_desktop
+          python -m compileall -q desktop/lida_desktop
+          bash -n desktop/install.sh
+          PYTHONPATH=desktop python -m lida_desktop.cli --help > /dev/null
+          PYTHONPATH=desktop python -m lida_desktop.cli completions bash > /dev/null
+      - name: Montar o pacote
+        run: |
+          mkdir -p dist/lida
+          cp -r index.html manifest.webmanifest css js fonts icons sounds desktop dist/lida/
+          tar -C dist -czf lida-linux.tar.gz lida
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lida-linux
+          path: lida-linux.tar.gz
+      - name: Release (tags v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: lida-linux.tar.gz

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0 http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+  <kcfgfile name=""/>
+  <group name="General">
+    <!-- Comando da CLI do Lida (nome no PATH ou caminho completo). -->
+    <entry name="binaryPath" type="String"><default>lida</default></entry>
+    <!-- Com que frequência (ms) ler o estado salvo pelo app. É só ler um arquivo: barato. -->
+    <entry name="pollInterval" type="Int"><default>1500</default></entry>
+    <!-- Largura máxima (px) do nome da tarefa em foco no painel; nomes maiores rolam. -->
+    <entry name="focusNameWidth" type="Int"><default>150</default></entry>
+    <!-- Mostrar o tempo (Pomodoro / foco) no painel. -->
+    <entry name="showTimer" type="Bool"><default>true</default></entry>
+  </group>
+</kcfg>
