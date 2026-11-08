@@ -3,7 +3,7 @@
 Tarefas e hábitos num só lugar, com uma pequena recompensa a cada passo concluído.
 Funciona no navegador (celular e computador) e como app Android, offline, com os dados cifrados no aparelho.
 
-> **Lida 3 — alfa 7.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
+> **Lida 3 — alfa 8.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
 > A versão anterior (React) continua no ar na branch `main` até a nova alcançar o que ela fazia.
 
 ---
@@ -14,12 +14,14 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 2. [O que já funciona e o que vem depois](#o-que-já-funciona-e-o-que-vem-depois)
 3. [Usar na web](#usar-na-web)
 4. [Usar no Android (APK)](#usar-no-android-apk)
-5. [Lembretes](#lembretes)
-6. [Trazer os dados do Lida anterior](#trazer-os-dados-do-lida-anterior)
-7. [Privacidade e sincronização](#privacidade-e-sincronização)
-8. [Sua parte: publicar](#sua-parte-publicar)
-9. [Desenvolvimento](#desenvolvimento)
-10. [Limites honestos](#limites-honestos)
+5. [Lida para Linux](#lida-para-linux) (app, CLI `lida` e widgets do Plasma)
+6. [Lembretes](#lembretes)
+7. [Foco](#foco)
+8. [Trazer os dados do Lida anterior](#trazer-os-dados-do-lida-anterior)
+9. [Privacidade e sincronização](#privacidade-e-sincronização)
+10. [Sua parte: publicar](#sua-parte-publicar)
+11. [Desenvolvimento](#desenvolvimento)
+12. [Limites honestos](#limites-honestos)
 
 ---
 
@@ -45,8 +47,8 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | 6 | **Espaço compartilhado** para duas pessoas (convite por QR Code, cifrado como o Pago/Zelo) | Próxima |
 | 7 | **Login com Google no APK** (seletor de contas do Android) | Pronta (precisa do passo 4 de "Sua parte") |
 | alfa 6 | **IPL** revisado com gráfico e explicação, **resumo do dia** e **do mês**, subtarefas visíveis e recolhíveis, editar segurando, seletor de horário próprio, água com copo e garrafa, qualquer emoji nos hábitos, avisos dispensáveis, mais lembretes (antecedência, atrasadas, hábitos, caixa de entrada, aviso com o app aberto), **cronômetro na notificação** (Live Update no Android 16) | Pronta |
-| alfa 7 | **Foco global** (tarefa em foco e cronômetros sincronizados entre aparelhos), **Painel** em telas largas (Hoje + Planejar + resumo), notificação do foco colorida, **relógio flutuante** e widget **Anéis** no Android, tamanho real da interface, constância da água, hábitos em dia de folga, reflexões em tela cheia | **Esta versão** |
-| alfa 8 | **Lida para Linux** (Qt/PySide6): menu global do KDE, bandeja, CLI `lida`, widgets do Plasma (foco/Pomodoro e Anéis), script de instalação | Próxima |
+| alfa 7 | **Foco global** (tarefa em foco e cronômetros sincronizados entre aparelhos), **Painel** em telas largas (Hoje + Planejar + resumo), notificação do foco colorida, **relógio flutuante** e widget **Anéis** no Android, tamanho real da interface, constância da água, hábitos em dia de folga, reflexões em tela cheia | Pronta |
+| alfa 8 | **Lida para Linux** (Qt/PySide6): menu global do KDE, bandeja, CLI `lida`, widgets do Plasma (foco/Pomodoro e Anéis), script de instalação | **Esta versão** |
 
 ## Como o jogo funciona
 
@@ -152,6 +154,113 @@ o ícone de instalar na barra de endereço.
 Atualizar: instale o APK novo por cima. Os dados ficam.
 Se o APK for de **depuração** (sem a chave de assinatura configurada, veja abaixo), cada build sai com uma
 assinatura diferente e o Android só instala depois de desinstalar a versão anterior.
+
+## Lida para Linux
+
+App nativo em **Qt/PySide6** com o mesmo Lida da web por dentro (QtWebEngine, o Chromium do Qt), mais:
+
+- **Menu global do KDE**: o menu da janela vai para o widget "Menu global" do painel (X11 e Wayland). Lá estão
+  Nova tarefa (Ctrl+N), Buscar (Ctrl+K), as seções (Ctrl+1 a 5), tema, fonte e tamanho, Focar numa tarefa
+  (Ctrl+Shift+F), Concluir a tarefa em foco (Ctrl+Shift+D), Pomodoro (Ctrl+P, reiniciar, pular), sons, punições,
+  cada tipo de lembrete, "Fechar para a bandeja" e "Abrir com o sistema". Sem o menu global, o menu fica na janela.
+- **Bandeja**: fechar a janela deixa o Lida na bandeja (os lembretes continuam). O ícone mostra o foco e o tempo do
+  Pomodoro; o menu dele tem Nova tarefa, Focar, Pomodoro e Parar foco. O título da janela mostra o tempo.
+- **Notificações do sistema** para os lembretes; **dados no computador** (`~/.local/share/lida`), com a mesma
+  criptografia e sincronização da web e do celular.
+- **Painel**: em janela larga, Hoje + Planejar + resumo numa tela só.
+
+### Instalar
+
+Precisa do **PySide6 com o QtWebEngine**. Pelo gerenciador da distro (recomendado):
+
+```sh
+sudo pacman -S pyside6                                   # Arch / Manjaro / EndeavourOS
+sudo dnf install python3-pyside6                         # Fedora
+sudo apt install python3-pyside6.qtwebenginewidgets      # Kubuntu / KDE neon / Debian
+```
+
+Depois, na pasta do repositório:
+
+```sh
+./desktop/install.sh               # instala ou atualiza (sem root, tudo em ~/.local)
+./desktop/install.sh --autostart   # idem, e abre na bandeja ao entrar na sessão
+./desktop/install.sh --venv        # se a distro não tiver o PySide6: instala num ambiente próprio (~600 MB)
+./desktop/install.sh --uninstall   # remove (seus dados ficam; --purge apaga também)
+```
+
+Para **atualizar**: `git pull` e `./desktop/install.sh` de novo (feche o Lida antes: `lida fechar`).
+O GitHub Actions também gera um pacote `lida-linux.tar.gz` (aba Actions > Linux), que tem o mesmo `install.sh`.
+
+### Entrar com a conta Google (uma vez)
+
+O Google não deixa entrar dentro de navegadores embutidos, então o app abre o **navegador do sistema** para o
+login e traz a credencial de volta. Para isso ele precisa de um cliente OAuth "App para computador" do projeto do
+Firebase (`lida-81429`), como no gtasks++:
+
+1. Abra <https://console.cloud.google.com/apis/credentials?project=lida-81429>.
+2. **Criar credenciais > ID do cliente OAuth > Tipo de aplicativo: App para computador**. Nome: `Lida Linux`. Criar.
+3. **Baixar JSON** e salvar como `~/.config/lida/google-oauth.json`.
+4. No Lida, **Entrar com Google**: o navegador abre, você escolhe a conta e volta ao app. Depois, a senha do Lida.
+
+Se o login voltar com erro de "audience"/"invalid IdP response": no Firebase, **Authentication > Método de login >
+Google > Lista de permissões de IDs de cliente de projetos externos**, adicione o ID do cliente criado no passo 2.
+Sem conta Google, o modo local (só neste computador) funciona normalmente.
+
+### `lida` no terminal
+
+O app fica na bandeja e a CLI conversa com ele (se estiver fechado, a CLI abre na bandeja e espera). Tudo passa
+pelas regras do Lida: recompensas, punições, foco global e sincronização com o celular.
+
+```sh
+lida                                   # resumo do dia (anéis, foco, tarefas) + modo interativo
+lida ls [hoje|atrasadas|entrada|proximos|feitas|tudo] [-p Projeto] [--ids]
+lida add "pagar a luz amanhã 10h p1 #casa @Trabalho"   # linguagem natural, igual à adição rápida
+lida add "revisar contrato" -d sexta -P 1 -p Trabalho
+lida done 2                            # número da última lista, título ou pedaço único dele
+lida done "luz" "e-mails"              # várias de uma vez
+lida undone "luz" · lida rm 3 · lida edit 4 -d amanhã -H 15:30 -P 2 · lida sub 1 3
+lida foco "relatório"                  # põe em foco (celular, bandeja e widget mostram) e abre a tela de foco
+lida foco                              # tela de foco ao vivo: espaço Pomodoro, c concluir, s parar, ↑↓ e enter subtarefas
+lida foco parar | concluir | status
+lida pomo start|pause|toggle|reset|skip|status [--foco 50 --pausa 10]
+lida habitos · lida habito ler [-u] · lida agua [copo|garrafa|300] [-u]
+lida ipl · lida mente "ligar pro banco" · lida projetos · lida buscar luz
+lida abrir [hoje|habitos|eu|ajustes] · lida status · lida fechar
+lida --json …                          # qualquer comando, em JSON (scripts)
+```
+
+O que a CLI tem a mais que o gtasks++: linguagem natural ao adicionar (datas, horário, prioridade, projeto,
+etiquetas, repetição), foco **global** (a mesma tarefa em foco no celular e no widget), Pomodoro, hábitos, água,
+IPL, `--json` em tudo e completar comandos no **bash, zsh e fish** (instalados pelo `install.sh`).
+
+### Widgets do Plasma
+
+Clique com o botão direito no painel ou na área de trabalho > **Adicionar widgets** > procure "Lida".
+
+- **Lida · Foco**: no painel, as tarefas de hoje abertas (○) e atrasadas (⚠); com uma tarefa em foco, um ponto
+  vermelho piscando, o nome (rolando se for comprido) e o cronômetro (Pomodoro, modo foco ou tempo desde o início).
+  Pisca verde quando uma tarefa é concluída (no app, no celular ou na CLI). Aberto: cartão "Em foco" (Concluir,
+  Pomodoro, Parar), Pomodoro com iniciar/pausar/reiniciar/pular, adição rápida em linguagem natural, tarefas de hoje
+  (concluir e focar) e hábitos do dia.
+- **Lida · Anéis**: os três anéis do dia (tarefas, hábitos e água), com legenda, IPL e botões Copo/Garrafa.
+
+Os dois leem o estado que o app grava em `~/.cache/lida/state.json` e agem pela CLI. Nas configurações do widget dá
+para mudar o comando (`lida`), a frequência de leitura e, no Foco, a largura do nome no painel.
+
+### Onde ficam as coisas
+
+| Caminho | O quê |
+|---|---|
+| `~/.local/share/lida/app` | os arquivos do Lida (mesma versão da web) |
+| `~/.local/share/lida/webengine` | dados do navegador embutido (seus dados cifrados, sessão) |
+| `~/.local/share/lida/desktop` | o app Qt e a CLI |
+| `~/.config/lida/google-oauth.json` | cliente OAuth para o login com Google |
+| `~/.cache/lida/state.json` | estado do dia para os widgets |
+| `$XDG_RUNTIME_DIR/lida-desktop.sock` | por onde a CLI fala com o app |
+
+O app serve os arquivos em `http://localhost:47390` (só para o próprio computador). A porta é fixa porque os dados
+do navegador embutido ficam guardados por endereço; para mudar, use a variável `LIDA_PORT` (os dados não vêm junto).
+Modo demo: `lida-desktop --demo`. Ferramentas de desenvolvedor: `lida-desktop --debug` (F12).
 
 ## Lembretes
 
@@ -321,6 +430,10 @@ Ao publicar uma versão nova: aumente `VERSION` em `sw.js` e `app.version` em `j
 - **Notificações na web**: só com o Lida aberto (limitação dos navegadores, não do app).
 - **Fonte do sistema**: saiu. No Android, a fonte escolhida pelo usuário (ex.: "Estilo da fonte" da Samsung) não
   chega a apps feitos com WebView, então a opção não entregava o que prometia.
+- **Lida para Linux**: testei o app e a CLI de ponta a ponta (sem tela, com o mesmo Qt 6), mas o menu global, a
+  bandeja e os widgets do Plasma só dá para ver num Plasma de verdade. Os widgets passam na análise do `qmllint`.
+- **Foco no celular vindo do computador**: chega quando o Lida está aberto no celular (ou ao abrir). O Android não
+  acorda o app só para isso.
 - **Animação na notificação do foco**: o Android não anima notificações; o destaque é a cor (até o Android 15) ou o
   chip de Live Update (Android 16).
 - **Live Update**: só no Android 16 e quando o sistema aceita promover a notificação; nas versões anteriores é uma

@@ -11,3 +11,5 @@ android/capacitor-cordova-android-plugins/
 *.keystore
 *.jks
 .DS_Store
+__pycache__/
+*.pyc

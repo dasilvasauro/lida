@@ -66,6 +66,16 @@ export function pomoPause() {
   timerAlert('pomodoro', null);
   haptic('stop');
 }
+export const pomoState = () => ({ ...pomo, leftSec: Math.round(leftNow()) });
+export const pomoSkip = () => pomoReset(pomo.mode === 'focus' ? 'break' : 'focus');
+// Ajusta as durações (minutos). Com o Pomodoro parado, recomeça o ciclo com o tempo novo.
+export function pomoSet({ focusMin, breakMin } = {}) {
+  const next = {};
+  if (focusMin) next.focusMin = Math.max(5, Math.min(90, Math.round(Number(focusMin))));
+  if (breakMin) next.breakMin = Math.max(1, Math.min(30, Math.round(Number(breakMin))));
+  setPomo(next);
+  if (!pomo.running) pomoReset();
+}
 export function pomoReset(mode = pomo.mode) {
   setPomo({ mode, running: false, left: dur(mode) });
   timerAlert('pomodoro', null);

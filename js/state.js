@@ -6,7 +6,7 @@ export const personal = createStore({ name: 'pessoal' });
 export const shared = createStore({ name: 'compartilhado', watch: SHARED_WATCH });
 
 export const app = {
-  version: '3.0.0-alfa.7',
+  version: '3.0.0-alfa.8',
   demo: false, // modo demo: banco separado, sem nuvem, relógio ajustável
   mode: 'local', // 'local' | 'cloud'
   me: 'local',

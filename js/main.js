@@ -13,7 +13,7 @@ import { reminders } from './core/reminders.js';
 import { addWater, waterGlass, waterToday, waterGoal, isScheduled, isDone } from './core/habits.js';
 import { seedDemo } from './core/demo.js';
 import { initSound } from './core/sound.js';
-import { app, personal, P } from './state.js';
+import { app, personal, P, setPref } from './state.js';
 import { applyAppearance, storedAppearance, FONTS, THEMES } from './ui/theme.js';
 import { icon, initTips, toast, sheet, banner } from './ui/ui.js';
 import { initPickers } from './ui/pickers.js';
@@ -27,6 +27,7 @@ import { meView } from './views/me.js';
 import { maybeShowSummaries } from './views/summary.js';
 import { boardView, isBoard, BOARD_MQ } from './views/board.js';
 import { glance } from './core/glance.js';
+import { initDesktop, isDesktop } from './desktop.js';
 import { initChartTips } from './ui/chart.js';
 import { editTask } from './views/tasks.js';
 import { avatar } from './views/common.js';
@@ -450,6 +451,7 @@ function start() {
   keyboard();
   deepLinks();
   updateWidget();
+  initDesktop();
   runDay();
 
   // Virada do dia com o app aberto: fecha o dia anterior, redesenha e reagenda.
@@ -610,6 +612,16 @@ Object.assign(app.actions, {
     appearance({ ...storedAppearance(), theme: id });
     render(false);
   },
+  setAppearance(patch) {
+    appearance({ ...storedAppearance(), ...patch });
+    render(false);
+  },
+  newTask: () => newTask(),
+  search: () => openSearch(),
+  setShowDone(on) {
+    setPref('showDone', on);
+    render(false);
+  },
   async connectGoogle() {
     try {
       const user = await cloud.signIn();
@@ -712,7 +724,8 @@ Object.assign(app.actions, {
 
 /* ---------- Service worker (só na web) ---------- */
 function registerSW() {
-  if (isNative() || !('serviceWorker' in navigator) || location.protocol === 'file:') return;
+  // No app Linux os arquivos vêm do próprio app (sem cache de service worker).
+  if (isNative() || isDesktop() || !('serviceWorker' in navigator) || location.protocol === 'file:') return;
   navigator.serviceWorker
     .register('sw.js')
     .then((reg) => {

@@ -14,6 +14,7 @@
 // contas nativo do Android (plugin @capacitor-firebase/authentication, só a parte do Google) e a
 // credencial devolvida entra no mesmo SDK web do Firebase, que cuida do resto (Firestore, sessão).
 import { isNative, plugin, hasPlugin } from '../native.js';
+import { isDesktop, googleIdToken } from '../desktop.js';
 
 const SDK = 'https://www.gstatic.com/firebasejs/10.14.1';
 
@@ -56,10 +57,11 @@ const code = () => [...crypto.getRandomValues(new Uint8Array(9))].map((x) => 'ab
 export const nativeGoogle = () => hasPlugin('FirebaseAuthentication');
 // Dá para entrar com Google neste aparelho?
 export const googleAvailable = () => cloudConfigured() && (!isNative() || nativeGoogle());
+// No app Linux, o login abre o navegador do sistema (ver desktop/lida_desktop/oauth.py).
 
 export async function currentUser() {
   const { auth, A } = await loadFirebase();
-  if (!isNative()) {
+  if (!isNative() && !isDesktop()) {
     try {
       await A.getRedirectResult(auth);
     } catch {
@@ -84,6 +86,17 @@ export async function signIn() {
     }
     const idToken = r?.credential?.idToken;
     if (!idToken) throw Object.assign(new Error('O Google não devolveu a credencial.'), { code: 'auth/no-token' });
+    return (await A.signInWithCredential(auth, A.GoogleAuthProvider.credential(idToken))).user;
+  }
+  if (isDesktop()) {
+    let idToken;
+    try {
+      idToken = await googleIdToken();
+    } catch (e) {
+      const msg = String(e?.message || e);
+      if (/cancel/i.test(msg)) throw Object.assign(new Error(''), { code: 'auth/popup-closed-by-user' });
+      throw Object.assign(new Error(msg), { code: 'auth/desktop-failed' });
+    }
     return (await A.signInWithCredential(auth, A.GoogleAuthProvider.credential(idToken))).user;
   }
   const provider = new A.GoogleAuthProvider();

@@ -1,0 +1,15 @@
+{
+    "KPlugin": {
+        "Id": "org.lida.foco",
+        "Name": "Lida · Foco",
+        "Description": "Tarefa em foco, Pomodoro, tarefas de hoje e adição rápida do Lida",
+        "Icon": "io.github.dasilvasauro.lida",
+        "Category": "Utilities",
+        "License": "MIT",
+        "Version": "1.0.0",
+        "Website": "https://dasilvasauro.github.io/lida/",
+        "Authors": [{ "Name": "Lida" }]
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "KPackageStructure": "Plasma/Applet"
+}

@@ -36,7 +36,8 @@ export const setHaptics = (on) => {
 };
 
 const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-export const hapticsSupported = () => typeof navigator.vibrate === 'function' || isIOS();
+// No app Linux (computador) não há vibração.
+export const hapticsSupported = () => !window.__LIDA_DESKTOP__ && (typeof navigator.vibrate === 'function' || isIOS());
 
 let label = null;
 function iosTick() {
@@ -63,7 +64,7 @@ function iosTick() {
 const NATIVE = { tick: ['selectionChanged'], tap: ['impact', { style: 'LIGHT' }], add: ['impact', { style: 'MEDIUM' }], done: ['notification', { type: 'SUCCESS' }], start: ['impact', { style: 'MEDIUM' }], stop: ['impact', { style: 'LIGHT' }], cancel: ['notification', { type: 'WARNING' }], warn: ['notification', { type: 'WARNING' }], bad: ['notification', { type: 'ERROR' }] };
 
 export function haptic(kind = 'tap') {
-  if (!hapticsOn()) return;
+  if (!hapticsOn() || window.__LIDA_DESKTOP__) return;
   if (isNative()) {
     const [m, args] = NATIVE[kind] || NATIVE.tap;
     call('Haptics', m, args);
