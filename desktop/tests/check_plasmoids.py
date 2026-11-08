@@ -41,6 +41,8 @@ FIXTURE = {
 def check(widget):
     src = PLASMOIDS / widget / "contents" / "ui"
     tmp = Path(tempfile.mkdtemp())
+    for f in src.glob("*.js"):
+        (tmp / f.name).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
     for f in src.glob("*.qml"):
         # "Plasmoid.icon: …" é propriedade anexada do Plasma; o módulo de mentira não tem.
         (tmp / f.name).write_text(re.sub(r"^\s*Plasmoid\.icon:.*$", "", f.read_text(encoding="utf-8"), flags=re.M), encoding="utf-8")
@@ -56,12 +58,19 @@ def check(widget):
     return view, msgs, tmp
 
 
+def shoot(results, out_dir):
+    for w, (view, _, _) in results.items():
+        view.grabWindow().save(str(Path(out_dir) / f"{w}.png"))
+
+
 def main():
     app = QGuiApplication(sys.argv)
     results = {w: check(w) for w in ("org.lida.foco", "org.lida.aneis")}
     failed = []
 
     def done():
+        if os.environ.get("LIDA_SHOTS"):
+            shoot(results, os.environ["LIDA_SHOTS"])
         for w, (view, msgs, tmp) in results.items():
             msgs = [m.replace(str(tmp), w) for m in msgs]
             print(("FALHOU " if msgs else "ok     ") + w)

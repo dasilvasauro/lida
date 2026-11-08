@@ -29,7 +29,7 @@ import { boardView, isBoard, BOARD_MQ } from './views/board.js';
 import { glance } from './core/glance.js';
 import { initDesktop, isDesktop } from './desktop.js';
 import { initChartTips } from './ui/chart.js';
-import { editTask } from './views/tasks.js';
+import { editTask, openTask } from './views/tasks.js';
 import { avatar } from './views/common.js';
 import { openPomodoro, initTimers, paintChip, pickFocus } from './views/focus.js';
 import { openBrain } from './views/brain.js';
@@ -261,7 +261,7 @@ function route() {
   const m = h.match(/^tarefa-(.+)$/);
   if (m) {
     history.replaceState(null, '', '#hoje');
-    setTimeout(() => editTask(decodeURIComponent(m[1])), 50);
+    setTimeout(() => openTask(decodeURIComponent(m[1])), 50);
     h = 'hoje';
   }
   let changedTab = false;

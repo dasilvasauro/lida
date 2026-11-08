@@ -3,3 +3,4 @@ singleton Theme 1.0 Theme.qml
 singleton Units 1.0 Units.qml
 Heading 1.0 Heading.qml
 FormLayout 1.0 FormLayout.qml
+Icon 1.0 Icon.qml
