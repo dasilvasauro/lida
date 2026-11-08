@@ -293,6 +293,7 @@ export async function timerAlert(key, at, title = 'Lida', body = '') {
 // estiver rodando (Live Update no Android 16+). state = null esconde.
 // state: { title, body, endsAt?, paused?, chip?, timeoutMs? }
 let liveSig = '';
+let askedLive = false;
 export async function liveTimer(state) {
   if (!hasPlugin('LidaTimer')) return;
   const p = plugin('LidaTimer');
@@ -301,5 +302,24 @@ export async function liveTimer(state) {
   if (sig === liveSig) return;
   liveSig = sig;
   if (!want) return p.hide().catch(() => {});
+  // Android 13+: sem a permissão de notificações a notificação do foco não aparece. Pede uma vez.
+  if (!askedLive && (await permission()) === 'prompt') {
+    askedLive = true;
+    await requestPermission();
+  }
   return p.show(want).catch(() => {});
+}
+
+// Relógio flutuante (APK): aparece por cima dos outros apps quando o Lida é minimizado com um
+// cronômetro rodando. Precisa da permissão "Sobrepor a outros apps", dada nas configurações.
+export async function overlayStatus() {
+  if (!hasPlugin('LidaTimer')) return null;
+  return plugin('LidaTimer').overlayStatus().catch(() => null);
+}
+export async function setOverlay(on) {
+  if (!hasPlugin('LidaTimer')) return null;
+  const p = plugin('LidaTimer');
+  const r = await p.setOverlay({ on }).catch(() => null);
+  if (on && r && !r.granted) await p.requestOverlay().catch(() => {});
+  return r;
 }

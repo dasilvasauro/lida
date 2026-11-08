@@ -3,7 +3,7 @@
 Tarefas e hábitos num só lugar, com uma pequena recompensa a cada passo concluído.
 Funciona no navegador (celular e computador) e como app Android, offline, com os dados cifrados no aparelho.
 
-> **Lida 3 — alfa 6.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
+> **Lida 3 — alfa 7.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
 > A versão anterior (React) continua no ar na branch `main` até a nova alcançar o que ela fazia.
 
 ---
@@ -44,7 +44,9 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | 5 | **Etiquetas**, **descrição com formatação** (negrito, links, listas de verificação), **adição rápida em linguagem natural**, **projetos**, **busca**. Aba **Eu** (perfil, nível, marcos, gráficos, constância, IPL, humor, visão, reflexões), **humor do dia** em Hoje, **apresentação** na primeira abertura, **notificações** completas com som de campainha de bicicleta e botões, **widget** Hoje no Android | Pronta |
 | 6 | **Espaço compartilhado** para duas pessoas (convite por QR Code, cifrado como o Pago/Zelo) | Próxima |
 | 7 | **Login com Google no APK** (seletor de contas do Android) | Pronta (precisa do passo 4 de "Sua parte") |
-| alfa 6 | **IPL** revisado com gráfico e explicação, **resumo do dia** e **do mês**, subtarefas visíveis e recolhíveis, editar segurando, seletor de horário próprio, água com copo e garrafa, qualquer emoji nos hábitos, avisos dispensáveis, mais lembretes (antecedência, atrasadas, hábitos, caixa de entrada, aviso com o app aberto), **cronômetro na notificação** (Live Update no Android 16) | **Esta versão** |
+| alfa 6 | **IPL** revisado com gráfico e explicação, **resumo do dia** e **do mês**, subtarefas visíveis e recolhíveis, editar segurando, seletor de horário próprio, água com copo e garrafa, qualquer emoji nos hábitos, avisos dispensáveis, mais lembretes (antecedência, atrasadas, hábitos, caixa de entrada, aviso com o app aberto), **cronômetro na notificação** (Live Update no Android 16) | Pronta |
+| alfa 7 | **Foco global** (tarefa em foco e cronômetros sincronizados entre aparelhos), **Painel** em telas largas (Hoje + Planejar + resumo), notificação do foco colorida, **relógio flutuante** e widget **Anéis** no Android, tamanho real da interface, constância da água, hábitos em dia de folga, reflexões em tela cheia | **Esta versão** |
+| alfa 8 | **Lida para Linux** (Qt/PySide6): menu global do KDE, bandeja, CLI `lida`, widgets do Plasma (foco/Pomodoro e Anéis), script de instalação | Próxima |
 
 ## Como o jogo funciona
 
@@ -173,7 +175,23 @@ Tudo em **Ajustes > Lembretes**, cada tipo com seu interruptor e horário:
 - Na web: o navegador não agenda notificações sem um servidor. Chegam enquanto o Lida estiver aberto
   (mesmo em outra aba ou minimizado), com o mesmo som.
 
-## Widget (Android)
+## Foco
+
+- **Tarefa em foco**: em Hoje, **Focar** (ou, no editor da tarefa, **Focar**). Aparece um cartão "Em foco" no topo,
+  com Concluir, Pomodoro e Parar foco, e a tarefa ganha a marca "Em foco" na lista.
+- **Global e entre aparelhos**: a tarefa em foco, o Pomodoro e o modo foco das tarefas com tempo ficam num registro
+  sincronizado (cifrado como o resto). Começou no computador, aparece no celular, e vice-versa. Os cronômetros
+  guardam a hora de término, então cada aparelho conta sozinho. O celular recebe a mudança quando o Lida está
+  aberto (ou ao abrir).
+- **Android**: notificação fixa com a contagem feita pelo sistema (para cima no foco, regressiva no Pomodoro),
+  vermelha até o Android 15 e Live Update no 16. **Relógio flutuante** (Ajustes > Foco): ao minimizar o Lida com um
+  cronômetro rodando, um relógio fica por cima dos outros apps; arraste para mover, toque para voltar. Precisa da
+  permissão **"Sobrepor a outros apps"**, que o próprio Ajustes abre.
+
+## Widgets (Android)
+
+**Lida · Anéis**: três anéis do dia — tarefas (fora), hábitos (meio) e água (dentro) — com os números ao lado.
+
 
 Segure o dedo na tela inicial > **Widgets** > **Lida · Hoje**. Mostra o progresso do dia, as próximas tarefas
 e uma linha com hábitos e água. Tocar abre o Lida em Hoje; tocar na linha de baixo abre Hábitos.
@@ -301,9 +319,10 @@ Ao publicar uma versão nova: aumente `VERSION` em `sw.js` e `app.version` em `j
   sai sem login com Google.
 - **Widget**: só exibe e abre o app (como combinado). Marcar tarefas direto no widget exigiria mais código nativo.
 - **Notificações na web**: só com o Lida aberto (limitação dos navegadores, não do app).
-- **Fonte do sistema no Android**: o app usa a fonte de interface registrada no sistema (Roboto, Google Sans no
-  Pixel, MiSans na Xiaomi etc.). Fontes trocadas pelo usuário, como o "Estilo da fonte" da Samsung, não chegam a
-  apps feitos com WebView (o Chrome também não as usa).
+- **Fonte do sistema**: saiu. No Android, a fonte escolhida pelo usuário (ex.: "Estilo da fonte" da Samsung) não
+  chega a apps feitos com WebView, então a opção não entregava o que prometia.
+- **Animação na notificação do foco**: o Android não anima notificações; o destaque é a cor (até o Android 15) ou o
+  chip de Live Update (Android 16).
 - **Live Update**: só no Android 16 e quando o sistema aceita promover a notificação; nas versões anteriores é uma
   notificação fixa comum com o cronômetro.
 - **Bubblewrap/TWA**: descartado. Um TWA é o site dentro do Chrome e não agenda notificações locais offline.

@@ -69,7 +69,7 @@ const T = {
     p0: '#ff5555', p1: '#ffb86c', p2: '#8be9fd', p3: '#b6b9cf', p4: '#6272a4',
   },
   aqua: {
-    name: 'Aqua', scheme: 'light', unlock: { price: 600 },
+    name: 'Aqua', scheme: 'light', unlock: { shop: true },
     bg: '#f5f5f7', surface: '#ffffff', surface2: '#ececf0', surface3: '#e0e0e6', line: '#dcdce2',
     text: '#1d1d1f', muted: '#5f5f66', dim: '#9a9aa2',
     accent: '#0071e3', onAccent: '#ffffff', g1: '#0071e3', g2: '#30c48d',
@@ -77,7 +77,7 @@ const T = {
     p0: '#d70015', p1: '#c93400', p2: '#0071e3', p3: '#6e6e73', p4: '#aeaeb2',
   },
   matrix: {
-    name: 'Matrix', scheme: 'dark', unlock: { price: 800 },
+    name: 'Matrix', scheme: 'dark', unlock: { shop: true },
     bg: '#020403', surface: '#06100a', surface2: '#0b1a10', surface3: '#112617', line: '#12301b',
     text: '#c8ffd8', muted: '#7ccf95', dim: '#3f7a52',
     accent: '#00ff41', onAccent: '#020403', g1: '#00b32d', g2: '#9dff6b',
@@ -85,7 +85,7 @@ const T = {
     p0: '#ff4d4d', p1: '#ffb84d', p2: '#4dffa6', p3: '#7ccf95', p4: '#3f7a52',
   },
   rosa: {
-    name: 'Rosa', scheme: 'light', unlock: { price: 600 },
+    name: 'Rosa', scheme: 'light', unlock: { shop: true },
     bg: '#fdf2f8', surface: '#fffafd', surface2: '#fbe4f0', surface3: '#f6d0e3', line: '#f3d3e4',
     text: '#3b0a24', muted: '#7d3a5d', dim: '#b07895',
     accent: '#db2777', onAccent: '#ffffff', g1: '#ec4899', g2: '#8b5cf6',
@@ -93,7 +93,7 @@ const T = {
     p0: '#be123c', p1: '#c2410c', p2: '#7c3aed', p3: '#8a5a72', p4: '#c19ab0',
   },
   tomate: {
-    name: 'Tomate', scheme: 'light', unlock: { price: 700 },
+    name: 'Tomate', scheme: 'light', unlock: { shop: true },
     bg: '#fafafa', surface: '#ffffff', surface2: '#f3f3f3', surface3: '#e8e8e8', line: '#e6e6e6',
     text: '#202020', muted: '#555555', dim: '#999999',
     accent: '#c9372c', onAccent: '#ffffff', g1: '#dc4c3e', g2: '#f59e0b',
@@ -101,7 +101,7 @@ const T = {
     p0: '#d1453b', p1: '#c06a00', p2: '#246fe0', p3: '#666666', p4: '#b0b0b0',
   },
   cinza: {
-    name: 'Cinza', scheme: 'light', unlock: { price: 400 },
+    name: 'Cinza', scheme: 'light', unlock: { shop: true },
     bg: '#f4f4f5', surface: '#ffffff', surface2: '#ebebed', surface3: '#dedee2', line: '#dcdce0',
     text: '#18181b', muted: '#52525b', dim: '#a1a1aa',
     accent: '#3f3f46', onAccent: '#ffffff', g1: '#52525b', g2: '#0d9488',
@@ -109,7 +109,7 @@ const T = {
     p0: '#be123c', p1: '#c2410c', p2: '#1d4ed8', p3: '#71717a', p4: '#a1a1aa',
   },
   laranja: {
-    name: 'Laranja', scheme: 'light', unlock: { price: 600 },
+    name: 'Laranja', scheme: 'light', unlock: { shop: true },
     bg: '#fff7ed', surface: '#fffcf8', surface2: '#ffedd5', surface3: '#fed7aa', line: '#fbdcbc',
     text: '#2a160a', muted: '#6e4424', dim: '#b0805a',
     accent: '#c2410c', onAccent: '#ffffff', g1: '#f97316', g2: '#eab308',
@@ -123,13 +123,9 @@ export const THEME_ORDER = ['sistema', 'grafite', 'claro', 'amoled', 'suave', 'm
 export const themeName = (id) => (id === 'sistema' ? 'Automático' : T[id]?.name || id);
 export const isFreeTheme = (id) => id === 'sistema' || id === 'grafite' || id === 'claro';
 
-// Fontes embutidas no app (funcionam offline). "Sistema" usa a fonte do próprio aparelho.
+// Fontes embutidas no app (funcionam offline). A "fonte do sistema" saiu: no Android a WebView
+// não enxerga a fonte escolhida pelo usuário, então a opção não entregava o que prometia.
 export const FONTS = {
-  // No Android, a WebView chama de system-ui a fonte padrão do sistema (em geral Roboto). Os nomes
-  // antes dela pegam a fonte de interface de cada fabricante quando ela está registrada no sistema
-  // (Pixel: Google Sans; Xiaomi: MiSans; Honor/Huawei: HarmonyOS Sans; OPPO/OnePlus: OPlusSans).
-  // Fontes trocadas pelo usuário (ex.: "Estilo da fonte" da Samsung) não chegam à WebView.
-  sistema: { name: 'Fonte do sistema', stack: "'Google Sans Text', 'google-sans-text', 'Google Sans', 'SamsungOneUI', 'SamsungOne', 'MiSans', 'HarmonyOS Sans', 'OPlusSans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif", note: 'A fonte de interface do seu aparelho' },
   manrope: { name: 'Manrope', stack: "'Manrope', system-ui, sans-serif", note: 'Padrão do Lida' },
   inter: { name: 'Inter', stack: "'Inter', system-ui, sans-serif", note: 'Neutra, ótima em telas pequenas' },
   nunito: { name: 'Nunito', stack: "'Nunito', system-ui, sans-serif", note: 'Arredondada e amigável' },
@@ -137,9 +133,13 @@ export const FONTS = {
   atkinson: { name: 'Atkinson Hyperlegible', stack: "'Atkinson Hyperlegible', system-ui, sans-serif", note: 'Máxima legibilidade' },
   lora: { name: 'Lora', stack: "'Lora', Georgia, serif", note: 'Com serifa, tom editorial' },
 };
-export const FONT_ORDER = ['manrope', 'sistema', 'inter', 'nunito', 'lexend', 'atkinson', 'lora'];
+export const FONT_ORDER = ['manrope', 'inter', 'nunito', 'lexend', 'atkinson', 'lora'];
 
-export const SIZES = { p: { name: 'Pequeno', px: 14 }, m: { name: 'Médio', px: 15 }, g: { name: 'Grande', px: 16.5 } };
+// Tamanho da interface: tudo no CSS é medido em rem a partir deste valor (texto, espaços, botões),
+// então a escolha muda o tamanho do app inteiro, não só da letra.
+export const SIZES = { c: { name: 'Compacto', px: 13 }, p: { name: 'Pequeno', px: 14 }, m: { name: 'Médio', px: 15 }, g: { name: 'Grande', px: 16.5 } };
+// No celular o padrão é um pouco menor (as telas são estreitas e o Android já aumenta a densidade).
+const defaultSize = () => (document.documentElement.classList.contains('is-native') || matchMedia('(pointer: coarse) and (max-width: 699px)').matches ? 'p' : 'm');
 
 const VAR = { bg: '--bg', surface: '--surface', surface2: '--surface-2', surface3: '--surface-3', line: '--line', text: '--text', muted: '--muted', dim: '--dim', accent: '--accent', onAccent: '--on-accent', g1: '--g1', g2: '--g2', pos: '--pos', neg: '--neg', warn: '--warn', p0: '--p0', p1: '--p1', p2: '--p2', p3: '--p3', p4: '--p4' };
 
@@ -173,8 +173,9 @@ export function applyAppearance({ theme = 'sistema', font = 'manrope', size = 'm
   const root = document.documentElement;
   const vars = {};
   for (const [k, v] of Object.entries(VAR)) vars[v] = t[k];
-  vars['--font'] = (FONTS[font] || FONTS.manrope).stack;
-  vars['--fs'] = `${(SIZES[size] || SIZES.m).px}px`;
+  if (!FONTS[font]) font = 'manrope'; // inclui quem tinha escolhido a antiga "fonte do sistema"
+  vars['--font'] = FONTS[font].stack;
+  vars['--fs'] = `${(SIZES[size] || SIZES[defaultSize()]).px}px`;
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
   root.style.colorScheme = t.scheme;
   root.dataset.scheme = t.scheme;
@@ -187,9 +188,9 @@ export function applyAppearance({ theme = 'sistema', font = 'manrope', size = 'm
 
 export function storedAppearance() {
   try {
-    return { theme: 'sistema', font: 'manrope', size: 'm', ...JSON.parse(ls.get('lida.appearance') || '{}') };
+    return { theme: 'sistema', font: 'manrope', size: defaultSize(), ...JSON.parse(ls.get('lida.appearance') || '{}') };
   } catch {
-    return { theme: 'sistema', font: 'manrope', size: 'm' };
+    return { theme: 'sistema', font: 'manrope', size: defaultSize() };
   }
 }
 
