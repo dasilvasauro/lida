@@ -1,64 +1,448 @@
 # Lida
 
-O Lida é uma aplicação PWA para gestão de tarefas, hábitos e metas de longo prazo. Focado em produtividade intencional, o aplicativo centraliza o planejamento diário e a estruturação de objetivos. Utiliza criptografia de ponta a ponta (E2EE).
+Tarefas e hábitos num só lugar, com uma pequena recompensa a cada passo concluído.
+Funciona no navegador (celular e computador) e como app Android, offline, com os dados cifrados no aparelho.
 
-## Conceito
+> **Lida 3 — alfa 8.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
+> A versão anterior (React) continua no ar na branch `main` até a nova alcançar o que ela fazia.
 
-O objetivo do Lida é ser um hub de gestão pessoal de produtividade, incorporando recursos gameficados à rotina do usuário, como a progressão por níveis e a obtenção de "power-ups" que entrega uma maneira divertida de se lidar com as tarefas do dia a dia.
+---
 
-## Principais Recursos
+## Sumário
 
-* **Módulo Visão:** Estruturação de metas de longo prazo. Permite registrar características a serem desenvolvidas ou abandonadas e classificar grandes objetivos em estados de maturidade (de Inativo a Consistente);
-* **Offline-First e Criptografia (E2EE):** A aplicação funciona integralmente sem conexão com a internet (uma vez que carregada previamente), utilizando armazenamento local (IndexedDB). Na opção de sincronização em nuvem via conta Google, os dados são criptografados localmente (AES-GCM, chave derivada da Chave Mestra com PBKDF2) antes de serem enviados ao Firestore, garantindo *zero-knowledge*. O cofre é dividido em vários documentos e só as partes alteradas trafegam;
-* **Foco e Priorização Estrita:** Sistema de prioridades hierárquicas (P0 a P4) com travas sistêmicas que limitam a criação de tarefas P0 e P1 no mesmo dia;
-* **Tipos diversos de tarefas:** Tarefas de Tempo (com timer integrado), Sprints para projetos de curto prazo;
-* **Gestão de Hábitos e Histórico Analítico:** Rastreamento de execução diária (visualização em grid de contribuições). Possui mecânicas de manutenção de histórico, como a aplicação de pausas programadas ("Congelamentos" ou "Dias de Folga"), para gerenciamento realista da rotina;
-* **Reflexões (Micro-Journaling):** Sistema de anotações em formato de cards, para axiomas e lembretes diários importantes;
-* **Portabilidade de Dados:** Ferramenta nativa para exportação e importação de todo o banco de dados do usuário em formato `.json`, útil para backups manuais ou transições entre dispositivos offline.
+1. [O que mudou no Lida 3](#o-que-mudou-no-lida-3)
+2. [O que já funciona e o que vem depois](#o-que-já-funciona-e-o-que-vem-depois)
+3. [Usar na web](#usar-na-web)
+4. [Usar no Android (APK)](#usar-no-android-apk)
+5. [Lida para Linux](#lida-para-linux) (app, CLI `lida` e widgets do Plasma)
+6. [Lembretes](#lembretes)
+7. [Foco](#foco)
+8. [Trazer os dados do Lida anterior](#trazer-os-dados-do-lida-anterior)
+9. [Privacidade e sincronização](#privacidade-e-sincronização)
+10. [Sua parte: publicar](#sua-parte-publicar)
+11. [Desenvolvimento](#desenvolvimento)
+12. [Limites honestos](#limites-honestos)
 
-## O que foi usado para construí-la?
+---
 
-A aplicação foi construída com foco em performance e fluidez, permitindo instalação nativa em dispositivos móveis e desktops via navegador.
+## O que mudou no Lida 3
 
-* **Frontend:** React + TypeScript (Vite)
-* **Gerenciamento de Estado:** Zustand (persistência em IndexedDB)
-* **Estilização:** Tailwind CSS v4
-* **Animações e UI:** Framer Motion
-* **Backend e Sincronização:** Firebase (Auth e Firestore)
-* **Segurança:** Web Crypto API (PBKDF2 + AES-GCM). Crypto-JS é usado apenas para ler cofres no formato antigo durante a migração.
+- **Foco em tarefas e hábitos.** Notas, Feeds e a tela de Atalhos foram removidos (e não são importados).
+- **Mesma base do Pago e do Zelo.** JavaScript sem etapa de build, cada tarefa é um registro cifrado
+  separado, sincronização campo a campo (duas edições no mesmo minuto não se apagam).
+- **App Android de verdade.** O APK é gerado automaticamente pelo GitHub Actions, sem Android Studio.
+  Lembretes são agendados no próprio celular: chegam sem internet e com o app fechado.
+- **Aparência.** 14 temas com paleta por função (fundo, superfícies, texto, destaque, progresso,
+  prioridades), 7 fontes embutidas (funcionam offline) ou a fonte do sistema, 3 tamanhos de texto.
+- **Sons.** Sintetizados no aparelho (nenhum arquivo para baixar): concluir, XP, subir de nível,
+  progresso. Volume ajustável, podem ser desligados.
 
-## Instalação e Execução Local
+## O que já funciona e o que vem depois
 
-### Pré-requisitos
-* Node.js (versão 18 ou superior)
-* NPM ou Yarn
+| Fase | Conteúdo | Situação |
+|---|---|---|
+| 1 | Base nova, login, senha, importação, aparência, sons, lembretes, APK | Pronta |
+| 2–4 | Tipos de tarefa, virada do dia, hábitos, água, rotinas, desapego, Loja, Pomodoro, Esvaziar a mente, animações | Pronta |
+| 5 | **Etiquetas**, **descrição com formatação** (negrito, links, listas de verificação), **adição rápida em linguagem natural**, **projetos**, **busca**. Aba **Eu** (perfil, nível, marcos, gráficos, constância, IPL, humor, visão, reflexões), **humor do dia** em Hoje, **apresentação** na primeira abertura, **notificações** completas com som de campainha de bicicleta e botões, **widget** Hoje no Android | Pronta |
+| 6 | **Espaço compartilhado** para duas pessoas (convite por QR Code, cifrado como o Pago/Zelo) | Próxima |
+| 7 | **Login com Google no APK** (seletor de contas do Android) | Pronta (precisa do passo 4 de "Sua parte") |
+| alfa 6 | **IPL** revisado com gráfico e explicação, **resumo do dia** e **do mês**, subtarefas visíveis e recolhíveis, editar segurando, seletor de horário próprio, água com copo e garrafa, qualquer emoji nos hábitos, avisos dispensáveis, mais lembretes (antecedência, atrasadas, hábitos, caixa de entrada, aviso com o app aberto), **cronômetro na notificação** (Live Update no Android 16) | Pronta |
+| alfa 7 | **Foco global** (tarefa em foco e cronômetros sincronizados entre aparelhos), **Painel** em telas largas (Hoje + Planejar + resumo), notificação do foco colorida, **relógio flutuante** e widget **Anéis** no Android, tamanho real da interface, constância da água, hábitos em dia de folga, reflexões em tela cheia | Pronta |
+| alfa 8 | **Lida para Linux** (Qt/PySide6): menu global do KDE, bandeja, CLI `lida`, widgets do Plasma (foco/Pomodoro e Anéis), script de instalação | **Esta versão** |
 
-### Passos
+## Como o jogo funciona
 
-1. Clone o repositório:
-```bash
-git clone [https://github.com/SEU_USUARIO/lida.git](https://github.com/SEU_USUARIO/lida.git)
+**Tarefas**
+
+| Tipo | Como funciona |
+|---|---|
+| Tarefa | Recompensa por prioridade: P0 150 XP / 50 de ouro … P4 25 XP / 10 de ouro. |
+| Com tempo | Tem duração (5 a 120 min). O ▶ abre o modo foco com cronômetro, que continua certo com a tela desligada. |
+| Sprint | Objetivo maior com etapas e data de fim. Um ativo por vez, mostrado no topo de Hoje com o progresso das etapas e dos dias. |
+| Desafio do dia | Vale só para hoje. Um por dia. |
+| Bônus | Usa uma Tarefa Bônus da Loja. Rende o normal e não pune se ficar para trás. |
+| Rotina | Criada sozinha nos dias escolhidos (aba Hábitos). De 50 a 200 de XP e ouro, conforme o número de itens. Não pune. |
+
+- **Limites:** até o nível 30, uma P0 aberta para hoje; até o 40, duas P1. Os itens P0 Extra e P1 Extra liberam mais uma.
+- **Virada do dia:** ao abrir o app (ou à meia-noite com ele aberto), cada dia que passou é fechado: tarefas vencidas
+  falham e tiram XP e ouro (nunca baixam de nível; dá para desligar em Ajustes), rotinas não feitas são arquivadas,
+  o dia ganha uma nota no IPL e as rotinas de hoje aparecem. Na primeira abertura do dia aparece o **resumo de ontem**
+  (e, na virada do mês, o **resumo do mês**). Uma tarefa que venceu ainda pode ser concluída, sem recompensa,
+  ou reagendada para hoje.
+- **Estilo de jogo (Ajustes):** Multitarefa (+20% em tudo), Minimalista (+50% em P0/P1), Pontual (+30% com data),
+  Ambicioso (+80% em sprints e desafios). Trocar depois custa um item da Loja.
+- **Marcos de nível:** Carta da Sorte a cada 5 níveis (e a cada nível depois do 25), +15 vouchers no 15, temas no 10, 20 e 35,
+  P0 sem limite no 30, P1 sem limite no 40, Darcula e +40 vouchers no 50. Títulos: Aprendiz, Iniciante, Praticante,
+  Constante, Disciplinado, Persistente, Veterano, Especialista, Mestre, Grão-Mestre e Lenda.
+
+**IPL — Índice de Produtividade do Lida (aba Eu):** nota de 0 a 100 por dia, com média do mês (A+ a F) e gráfico
+de 30 dias. Não conta só tarefas: avalia o dia por partes, e **só entram as partes que fazem sentido para o seu uso**.
+
+| Parte | Peso | O que mede |
+|---|---|---|
+| Execução | 30 | Tarefas com prazo no dia concluídas a tempo, pesadas pela prioridade (P0 5×, P4 1×). Adiantar ou recuperar soma um pouco. |
+| Hábitos e rotinas | 25 | Fração da meta de cada hábito programado (meia meta conta meio), passos das rotinas e meta de água (se você registra água). |
+| Constância | 15 | Dias com alguma atividade nos últimos 7 (folgas não são cobradas). |
+| Projetos e sprints | 15 | Sprint no ritmo do calendário (etapas × tempo) e projetos com prazo por perto que andaram na semana. |
+| Planejamento | 10 | Poucas tarefas adiadas e carga do dia perto da sua média. |
+| Foco | 5 | Minutos de Pomodoro (50 min = máximo). Só conta se você usou o Pomodoro no último mês. |
+
+Sem projetos, a parte de projetos não entra; sem Pomodoro, o foco não entra; as partes que valem são reescaladas
+para 0–100. Dias de folga sem nenhuma atividade ficam sem nota. A conta está em `js/core/ipl.js`.
+
+**Prêmio do dia:** abra o Lida todo dia e resgate o prêmio em Hoje. Ele cresce ao longo de 7 dias seguidos
+(20, 30, 40 + 30 XP, 50, 60 + 1 voucher, 80 + 50 XP e, no 7º, 150 de ouro + 100 XP + 2 vouchers). Pular um dia
+volta ao dia 1.
+
+**Repetição em dias escolhidos:** em Repetir, escolha "Escolher os dias" e marque, por exemplo, segunda, quarta e sexta.
+
+**Hábitos**
+
+- Toque no círculo para marcar (soma 1 até a meta do dia; na meta, volta a zero). Bater a meta rende progresso de voucher:
+  a cada 3, um voucher.
+- A sequência conta só os dias escolhidos para o hábito. Congelamento protege um dia; Folga dos hábitos protege o dia inteiro.
+- **Água:** meta diária ajustável (padrão 2 L) e tamanho do copo. Bater a meta rende 20 XP e 10 de ouro.
+- **Desapego:** um check-in por dia sem recair. As recompensas crescem ao longo de um ciclo de 7 dias (o 7º traz uma
+  Carta da Sorte). Recaída: volta ao dia 1 e perde metade do XP do nível atual e do ouro. Um espaço grátis; mais na Loja.
+
+**Pomodoro:** 25/5 minutos por padrão (ajustável). Cada hora de foco acumulada rende um voucher. No celular, um lembrete
+avisa o fim do ciclo mesmo com o app fechado.
+
+**Esvaziar a mente:** escreva tudo de uma vez (uma coisa por linha) e depois distribua em Fazer agora, Agendar,
+Delegar ou largar e Incubadora. Qualquer item vira tarefa com um toque.
+
+**Adição rápida em linguagem natural** (em qualquer "Adicionar tarefa"):
+
+| Escreva | Vira |
+|---|---|
+| `hoje`, `amanhã`, `depois de amanhã`, `sexta`, `próxima semana`, `em 3 dias`, `dia 15`, `20/01` | data |
+| `9h`, `9h30`, `14:15`, `às 10` | horário |
+| `p0` … `p4` | prioridade |
+| `#Casa` | projeto (o início do nome basta) |
+| `@contas` | etiqueta (é criada se não existir) |
+| `todo dia`, `dias úteis`, `toda segunda`, `toda segunda, quarta e sexta`, `todas as terças e quintas`, `toda semana`, `todo mês`, `todo ano` | repetição |
+
+Exemplo: `Pagar luz amanhã 9h p1 #Casa @contas`. Enquanto você digita, aparece o que foi entendido.
+
+**Descrição:** aceita `**negrito**`, `*itálico*`, `~~riscado~~`, `` `código` ``, `[texto](https://link)`, links soltos,
+listas com `- ` e listas de verificação com `- [ ] ` (clicáveis).
+
+Atalhos no computador: **Q**/**N** nova tarefa, **/** ou **Ctrl+K** buscar, **P** Pomodoro, **B** Esvaziar a mente, **1–5** seções.
+
+## Usar na web
+
+Abra o endereço do Lida. Na primeira vez, uma apresentação curta mostra o que o app faz; depois:
+
+- **Continuar com Google**: sincroniza entre aparelhos. Os dados vão para a nuvem já cifrados com a sua senha.
+- **Usar só neste aparelho**: nada sai do aparelho. Dá para conectar a conta Google depois, em Ajustes.
+- **Explorar com dados de exemplo**: modo demo, separado dos seus dados, com um botão para avançar o relógio.
+
+Para instalar como app: no Chrome do Android, menu ⋮ > *Adicionar à tela inicial*; no computador,
+o ícone de instalar na barra de endereço.
+
+## Usar no Android (APK)
+
+1. No GitHub, abra **Actions > Android**, clique na execução mais recente e baixe o arquivo em **Artifacts**
+   (é um .zip com o APK dentro). Versões com tag (ex.: `v3.0.0`) também aparecem em **Releases**.
+2. No celular, abra o APK e permita a instalação de fontes desconhecidas quando o Android pedir.
+3. Em **Ajustes > Lembretes**, ligue os lembretes e aceite a permissão de notificações.
+4. No Android 12 ou mais novo, se aparecer "Horário aproximado", toque em **Permitir** e libere
+   **Alarmes e lembretes** para o Lida. Sem isso o Android pode atrasar os avisos em alguns minutos.
+5. Recomendado: em *Configurações > Apps > Lida > Bateria*, escolha **Sem restrições**. Alguns fabricantes
+   (Xiaomi, Samsung, Motorola) seguram alarmes de apps "otimizados".
+
+Atualizar: instale o APK novo por cima. Os dados ficam.
+Se o APK for de **depuração** (sem a chave de assinatura configurada, veja abaixo), cada build sai com uma
+assinatura diferente e o Android só instala depois de desinstalar a versão anterior.
+
+## Lida para Linux
+
+App nativo em **Qt/PySide6** com o mesmo Lida da web por dentro (QtWebEngine, o Chromium do Qt), mais:
+
+- **Menu global do KDE**: o menu da janela vai para o widget "Menu global" do painel (X11 e Wayland). Lá estão
+  Nova tarefa (Ctrl+N), Buscar (Ctrl+K), as seções (Ctrl+1 a 5), tema, fonte e tamanho, Focar numa tarefa
+  (Ctrl+Shift+F), Concluir a tarefa em foco (Ctrl+Shift+D), Pomodoro (Ctrl+P, reiniciar, pular), sons, punições,
+  cada tipo de lembrete, "Fechar para a bandeja" e "Abrir com o sistema". Sem o menu global, o menu fica na janela.
+- **Bandeja**: fechar a janela deixa o Lida na bandeja (os lembretes continuam). O ícone mostra o foco e o tempo do
+  Pomodoro; o menu dele tem Nova tarefa, Focar, Pomodoro e Parar foco. O título da janela mostra o tempo.
+- **Notificações do sistema** para os lembretes; **dados no computador** (`~/.local/share/lida`), com a mesma
+  criptografia e sincronização da web e do celular.
+- **Painel**: em janela larga, Hoje + Planejar + resumo numa tela só.
+
+### Instalar
+
+Precisa do **PySide6 com o QtWebEngine**. Pelo gerenciador da distro (recomendado):
+
+```sh
+sudo pacman -S pyside6                                   # Arch / Manjaro / EndeavourOS
+sudo dnf install python3-pyside6                         # Fedora
+sudo apt install python3-pyside6.qtwebenginewidgets      # Kubuntu / KDE neon / Debian
 ```
 
-2. Acesse a pasta do projeto:
-```bash
-cd lida
+Depois, na pasta do repositório:
+
+```sh
+./desktop/install.sh               # instala ou atualiza (sem root, tudo em ~/.local)
+./desktop/install.sh --autostart   # idem, e abre na bandeja ao entrar na sessão
+./desktop/install.sh --venv        # se a distro não tiver o PySide6: instala num ambiente próprio (~600 MB)
+./desktop/install.sh --uninstall   # remove (seus dados ficam; --purge apaga também)
 ```
 
-3. Instale as dependências:
-```bash
-npm install
+Para **atualizar**: `lida fechar`, `git pull` e `./desktop/install.sh` de novo. O script troca os arquivos, os
+widgets e os ícones (e apaga o cache de ícones do KDE, que é refeito sozinho). Se o painel ou o lançador ainda
+mostrarem o ícone antigo, saia e entre na sessão (ou rode `plasmashell --replace &`).
+O GitHub Actions também gera um pacote `lida-linux.tar.gz` (aba Actions > Linux), que tem o mesmo `install.sh`.
+
+### Entrar com a conta Google (uma vez)
+
+O Google não deixa entrar dentro de navegadores embutidos, então o app abre o **navegador do sistema** para o
+login e traz a credencial de volta. Para isso ele precisa de um cliente OAuth "App para computador" do projeto do
+Firebase (`lida-81429`), como no gtasks++:
+
+1. Abra <https://console.cloud.google.com/apis/credentials?project=lida-81429>.
+2. **Criar credenciais > ID do cliente OAuth > Tipo de aplicativo: App para computador**. Nome: `Lida Linux`. Criar.
+3. **Baixar JSON** e salvar como `~/.config/lida/google-oauth.json`.
+4. No Lida, **Entrar com Google**: o navegador abre, você escolhe a conta e volta ao app. Depois, a senha do Lida.
+
+Se o login voltar com erro de "audience"/"invalid IdP response": no Firebase, **Authentication > Método de login >
+Google > Lista de permissões de IDs de cliente de projetos externos**, adicione o ID do cliente criado no passo 2.
+Sem conta Google, o modo local (só neste computador) funciona normalmente.
+
+### `lida` no terminal
+
+O app fica na bandeja e a CLI conversa com ele (se estiver fechado, a CLI abre na bandeja e espera). Tudo passa
+pelas regras do Lida: recompensas, punições, foco global e sincronização com o celular.
+
+```sh
+lida                                   # resumo do dia (anéis, foco, tarefas) + modo interativo
+lida ls [hoje|atrasadas|entrada|proximos|feitas|tudo] [-p Projeto] [--ids]
+lida add "pagar a luz amanhã 10h p1 #casa @Trabalho"   # linguagem natural, igual à adição rápida
+lida add "revisar contrato" -d sexta -P 1 -p Trabalho
+lida done 2                            # número da última lista, título ou pedaço único dele
+lida done "luz" "e-mails"              # várias de uma vez
+lida undone "luz" · lida rm 3 · lida edit 4 -d amanhã -H 15:30 -P 2 · lida sub 1 3
+lida foco "relatório"                  # põe em foco (celular, bandeja e widget mostram) e abre a tela de foco
+lida foco                              # tela de foco ao vivo: espaço Pomodoro, c concluir, s parar, ↑↓ e enter subtarefas
+lida foco parar | concluir | status
+lida pomo start|pause|toggle|reset|skip|status [--foco 50 --pausa 10]
+lida habitos · lida habito ler [-u] · lida agua [copo|garrafa|300] [-u]
+lida ipl · lida mente "ligar pro banco" · lida projetos · lida buscar luz
+lida abrir [hoje|habitos|eu|ajustes] · lida status · lida fechar
+lida --json …                          # qualquer comando, em JSON (scripts)
 ```
 
-4. Inicie o servidor de desenvolvimento:
+O que a CLI tem a mais que o gtasks++: linguagem natural ao adicionar (datas, horário, prioridade, projeto,
+etiquetas, repetição), foco **global** (a mesma tarefa em foco no celular e no widget), Pomodoro, hábitos, água,
+IPL, `--json` em tudo e completar comandos no **bash, zsh e fish** (instalados pelo `install.sh`).
+
+### Widgets do Plasma
+
+Clique com o botão direito no painel ou na área de trabalho > **Adicionar widgets** > procure "Lida".
+
+- **Lida · Foco** (feito para a barra/painel, na linha do gtasks++): compacto, mostra numa linha só a tarefa em
+  foco (ponto vermelho piscando, nome rolando e cronômetro do Pomodoro ou do foco), o contador de tarefas de hoje
+  (○ abertas, ⚠ atrasadas, ✔ quando acabou), os hábitos do dia (◎ feitos/total) e quanto falta de água (gota que
+  enche). Pisca verde quando uma tarefa é concluída em qualquer lugar. **Clique** para as ações rápidas: adicionar em
+  linguagem natural, concluir/Pomodoro/parar o foco, abas Hoje · Atrasadas · Entrada (concluir ou focar cada tarefa),
+  hábitos (toque soma um) e água (Copo, Garrafa).
+- **Lida · Anéis**: os três anéis do dia (tarefas, hábitos e água), com legenda, IPL e botões Copo/Garrafa.
+
+Os dois leem o estado que o app grava em `~/.cache/lida/state.json` e agem pela CLI. Nas configurações do widget dá
+para mudar o comando (`lida`), a frequência de leitura e, no Foco, a largura do nome no painel.
+
+### Onde ficam as coisas
+
+| Caminho | O quê |
+|---|---|
+| `~/.local/share/lida/app` | os arquivos do Lida (mesma versão da web) |
+| `~/.local/share/lida/webengine` | dados do navegador embutido (seus dados cifrados, sessão) |
+| `~/.local/share/lida/desktop` | o app Qt e a CLI |
+| `~/.config/lida/google-oauth.json` | cliente OAuth para o login com Google |
+| `~/.cache/lida/state.json` | estado do dia para os widgets |
+| `$XDG_RUNTIME_DIR/lida-desktop.sock` | por onde a CLI fala com o app |
+
+O app serve os arquivos em `http://localhost:47390` (só para o próprio computador). A porta é fixa porque os dados
+do navegador embutido ficam guardados por endereço; para mudar, use a variável `LIDA_PORT` (os dados não vêm junto).
+Modo demo: `lida-desktop --demo`. Ferramentas de desenvolvedor: `lida-desktop --debug` (F12).
+
+## Lembretes
+
+Tudo em **Ajustes > Lembretes**, cada tipo com seu interruptor e horário:
+
+- **Tarefas com horário**: com o projeto, a prioridade e as subtarefas no texto expandido. Botões **Concluir**
+  (rende a recompensa normal) e **Lembrar em 1 h**. **Antecedência** padrão (na hora, 5, 10, 15, 30 min, 1 h, 2 h,
+  1 dia) e, no editor da tarefa, a antecedência só daquela tarefa.
+- **Tarefas atrasadas**: se passar do horário e a tarefa continuar aberta, um segundo aviso 15 min a 2 h depois.
+- **Hábitos pendentes** (padrão 19h): lista o que falta marcar no dia.
+- **Caixa de entrada** (opcional, padrão 10h): quando há tarefas sem data nem projeto.
+- **Resumo da manhã** (padrão 8h) e **fechamento do dia** (padrão 21h).
+- **Água** (opcional): a cada 2 h, das 9h às 21h, até bater a meta. Botão **Bebi um copo**.
+- **Com o app aberto**: o lembrete aparece também no topo da tela, com os mesmos botões.
+- **Pomodoro e modo foco**: aviso no fim de cada ciclo e, no APK, **cronômetro na notificação** enquanto roda
+  (contagem feita pelo próprio Android, certa com o app minimizado). No **Android 16** ela pede para virar
+  **Live Update**: chip com o tempo na barra de status e destaque na tela de bloqueio.
+- Som: **campainha de bicicleta** (gerada para o Lida, arquivo em `sounds/`). No Android, é o som do canal
+  "Lembretes": dá para trocar em *Configurações > Apps > Lida > Notificações*.
+- No APK: agendados no sistema, funcionam com o app fechado, sem internet e depois de reiniciar.
+- Na web: o navegador não agenda notificações sem um servidor. Chegam enquanto o Lida estiver aberto
+  (mesmo em outra aba ou minimizado), com o mesmo som.
+
+## Foco
+
+- **Tarefa em foco**: em Hoje, **Focar** (ou, no editor da tarefa, **Focar**). Aparece um cartão "Em foco" no topo,
+  com Concluir, Pomodoro e Parar foco, e a tarefa ganha a marca "Em foco" na lista.
+- **Global e entre aparelhos**: a tarefa em foco, o Pomodoro e o modo foco das tarefas com tempo ficam num registro
+  sincronizado (cifrado como o resto). Começou no computador, aparece no celular, e vice-versa. Os cronômetros
+  guardam a hora de término, então cada aparelho conta sozinho. O celular recebe a mudança quando o Lida está
+  aberto (ou ao abrir).
+- **Android**: notificação fixa com a contagem feita pelo sistema (para cima no foco, regressiva no Pomodoro),
+  vermelha até o Android 15 e Live Update no 16. **Relógio flutuante** (Ajustes > Foco): ao minimizar o Lida com um
+  cronômetro rodando, um relógio fica por cima dos outros apps; arraste para mover, toque para voltar. Precisa da
+  permissão **"Sobrepor a outros apps"**, que o próprio Ajustes abre.
+
+## Widgets (Android)
+
+**Lida · Anéis**: três anéis do dia — tarefas (fora), hábitos (meio) e água (dentro) — com os números ao lado.
+
+
+Segure o dedo na tela inicial > **Widgets** > **Lida · Hoje**. Mostra o progresso do dia, as próximas tarefas
+e uma linha com hábitos e água. Tocar abre o Lida em Hoje; tocar na linha de baixo abre Hábitos.
+O widget só exibe: ele é atualizado pelo app sempre que algo muda. Depois da meia-noite, até o app abrir de novo,
+ele pede para abrir o Lida em vez de mostrar o dia anterior.
+
+## Trazer os dados do Lida anterior
+
+Acontece **uma vez**, ao criar a senha do Lida 3:
+
+- Entrando com Google: o Lida encontra o seu cofre antigo na nuvem e pede a **Chave Mestra**.
+- Usando só no aparelho: o Lida procura os dados da versão anterior neste mesmo navegador.
+
+Mostra um resumo (tarefas, hábitos, ouro, XP) antes de importar. Vem: tarefas, projetos (pastas),
+rotinas, hábitos e registros, desapego, humor, saldo de XP/ouro/vouchers/itens, temas comprados,
+pontuações, visão e reflexões. Não vem: notas, feeds e atalhos.
+O cofre antigo não é alterado nem apagado.
+
+## Privacidade e sincronização
+
+- Tudo é cifrado no aparelho (AES-256-GCM). A chave é protegida pela sua senha (PBKDF2, 600 mil iterações)
+  e nunca sai do aparelho em texto puro. **A senha não pode ser recuperada.**
+- Cada tarefa é um registro separado. Alterações em aparelhos diferentes são juntadas campo a campo.
+- Offline: tudo funciona; as alterações sobem quando a internet voltar (bolinha ao lado do título).
+- Em Ajustes: pedir a senha a cada abertura, alterar a senha, sair da conta.
+
+## Sua parte: publicar
+
+### 1. Enviar a branch `v3`
+
 ```bash
-npm run dev
+cd ~/projetos/lida
+git fetch origin
+git checkout v3          # a branch com o Lida 3
+git push -u origin v3
 ```
 
-A aplicação estará disponível em `http://localhost:5173`. Por utilizar a arquitetura Offline-First, é possível iniciar o uso e testes locais imediatamente, sem necessidade de configurar chaves de ambiente ou banco de dados externo num primeiro momento.
+(A `main` continua com o Lida anterior no ar. Quando o Lida 3 estiver completo, é só fazer o merge.)
 
-## Regras do Firestore
-As regras de segurança estão em `firestore.rules`. Elas precisam estar publicadas no projeto Firebase para o cofre v2 funcionar.
+### 2. Publicar as regras do Firestore (antes de usar o Lida 3 com Google)
 
-## Deploy e PWA
-O projeto é compilado utilizando o `vite-plugin-pwa` para geração do Service Worker e manifesto, e pode ser publicado automaticamente através do GitHub Actions (GitHub Pages). Uma vez em produção, a aplicação lida nativamente com o cache de recursos e ações de navegação (como a interceptação do botão "Voltar" do Android).
+Firebase Console > projeto **lida-81429** > Firestore Database > **Regras** > cole o conteúdo de
+`firestore.rules` > **Publicar**.
+As regras novas mantêm as do cofre antigo: o Lida anterior continua funcionando normalmente.
+
+### 3. Chave de assinatura do APK (uma vez)
+
+Sem ela, o Actions gera um APK de depuração (funciona, mas não atualiza por cima). Para ter um APK assinado
+sempre com a mesma chave, no seu terminal:
+
+```bash
+keytool -genkeypair -v -keystore lida.keystore -alias lida -keyalg RSA -keysize 2048 -validity 10000
+# responda as perguntas e anote a senha
+
+gh secret set LIDA_KEYSTORE_BASE64 --repo dasilvasauro/lida < <(base64 -w0 lida.keystore)
+gh secret set LIDA_KEYSTORE_PASSWORD --repo dasilvasauro/lida   # a senha que você criou
+gh secret set LIDA_KEY_ALIAS --repo dasilvasauro/lida           # lida
+gh secret set LIDA_KEY_PASSWORD --repo dasilvasauro/lida        # a mesma senha (padrão do keytool)
+```
+
+**Guarde `lida.keystore` e a senha fora do repositório** (num gerenciador de senhas, por exemplo).
+Se perder a chave, o próximo APK não instala por cima: será preciso desinstalar e importar de novo.
+
+### 4. Login com Google no APK (uma vez)
+
+1. Pegue as impressões digitais da sua chave (a mesma do passo 3):
+   ```bash
+   keytool -list -v -keystore lida.keystore -alias lida
+   ```
+   Copie as linhas **SHA1** e **SHA256**.
+2. No [Firebase Console](https://console.firebase.google.com/), projeto **lida-81429** > ⚙️ **Configurações do projeto** > aba
+   **Geral** > **Seus apps** > **Adicionar app** > ícone do **Android**.
+   - Nome do pacote: `io.github.dasilvasauro.lida`
+   - Apelido: `Lida Android`
+   - Certificado SHA-1: cole o SHA1 do item 1
+   - **Registrar app** > **Baixar google-services.json** > pode pular os passos seguintes do assistente.
+3. Ainda em **Configurações do projeto** > o app Android > **Adicionar impressão digital**: cole também o **SHA256**.
+4. Em **Authentication** > **Método de login**, confira se **Google** está ativado (já deve estar, é o mesmo da web).
+5. Guarde o arquivo como segredo do repositório:
+   ```bash
+   gh secret set GOOGLE_SERVICES_JSON --repo dasilvasauro/lida < google-services.json
+   ```
+6. Gere o APK de novo (push ou **Re-run all jobs**). No log do passo "Firebase (login com Google)" deve aparecer
+   `google-services.json configurado.`
+
+Se o login falhar com "O Google recusou o login", quase sempre é a impressão digital: confira se o SHA-1 cadastrado
+é o da chave que assina o APK (a do passo 3, não uma chave de depuração).
+
+### 5. Testar
+
+Abra **Actions > Android > Run workflow** (branch `v3`). Em uns 5 minutos o APK aparece em Artifacts.
+Para testar a versão web da `v3` sem tirar o Lida atual do ar, rode localmente (abaixo).
+
+## Desenvolvimento
+
+Ícones: as fontes ficam em `art/icons/` (SVG) e `python3 scripts/make-icons.py` gera todos os tamanhos (web, PWA,
+bandeja do Linux, ícone adaptativo/temático e splash do Android). Precisa de playwright e Pillow; os PNGs gerados
+ficam no repositório.
+
+```bash
+npm install          # só para os testes e o Capacitor; o app em si não tem dependências
+npm start            # http://localhost:5173
+npm test             # testes do núcleo + conferência de imports e do service worker
+npm run android:sync # copia o app para android/ (o Actions faz isso sozinho)
+```
+
+Estrutura:
+
+```
+index.html, sw.js, manifest.webmanifest   casca da versão web
+css/app.css                               estilos (cores vêm de js/ui/theme.js)
+js/main.js                                inicialização, rotas, ações globais
+js/state.js                               estado da sessão e repositórios (pessoal, compartilhado)
+js/core/   store, sync, cloud             motor de registros cifrados (o mesmo do Pago/Zelo)
+           model, tasks                   regras: prioridades, XP, níveis, repetição, lembretes
+           legacy                         importação do Lida anterior
+           notify, sound, demo            lembretes, sons, dados de exemplo
+js/ui/     ui, pickers, theme, reward...  componentes
+js/views/  gate, today, tasks, settings   telas
+android/                                  projeto Android (Capacitor); compilado pelo Actions
+```
+
+Ao publicar uma versão nova: aumente `VERSION` em `sw.js` e `app.version` em `js/state.js`.
+
+## Limites honestos
+
+- **Login com Google no APK**: usa o seletor de contas nativo do Android. Só funciona no APK assinado com a
+  sua chave (a impressão digital dela fica cadastrada no Firebase). Sem o segredo `GOOGLE_SERVICES_JSON`, o APK
+  sai sem login com Google.
+- **Widget**: só exibe e abre o app (como combinado). Marcar tarefas direto no widget exigiria mais código nativo.
+- **Notificações na web**: só com o Lida aberto (limitação dos navegadores, não do app).
+- **Fonte do sistema**: saiu. No Android, a fonte escolhida pelo usuário (ex.: "Estilo da fonte" da Samsung) não
+  chega a apps feitos com WebView, então a opção não entregava o que prometia.
+- **Lida para Linux**: testei o app e a CLI de ponta a ponta (sem tela, com o mesmo Qt 6), mas o menu global, a
+  bandeja e os widgets do Plasma só dá para ver num Plasma de verdade. Os widgets passam na análise do `qmllint`.
+- **Foco no celular vindo do computador**: chega quando o Lida está aberto no celular (ou ao abrir). O Android não
+  acorda o app só para isso.
+- **Animação na notificação do foco**: o Android não anima notificações; o destaque é a cor (até o Android 15) ou o
+  chip de Live Update (Android 16).
+- **Live Update**: só no Android 16 e quando o sistema aceita promover a notificação; nas versões anteriores é uma
+  notificação fixa comum com o cronômetro.
+- **Bubblewrap/TWA**: descartado. Um TWA é o site dentro do Chrome e não agenda notificações locais offline.

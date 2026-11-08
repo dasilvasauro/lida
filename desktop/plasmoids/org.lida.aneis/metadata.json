@@ -1,0 +1,15 @@
+{
+    "KPlugin": {
+        "Id": "org.lida.aneis",
+        "Name": "Lida · Anéis",
+        "Description": "Anéis do dia do Lida: tarefas, hábitos e água",
+        "Icon": "io.github.dasilvasauro.lida",
+        "Category": "Utilities",
+        "License": "MIT",
+        "Version": "1.1.0",
+        "Website": "https://dasilvasauro.github.io/lida/",
+        "Authors": [{ "Name": "Lida" }]
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "KPackageStructure": "Plasma/Applet"
+}

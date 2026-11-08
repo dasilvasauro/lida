@@ -1,20 +1,29 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
-    
-    <meta name="theme-color" content="#000000" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-    
-    <title>Lida</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>Lida</title>
+  <meta name="description" content="Tarefas e hábitos num só lugar, com recompensas a cada passo concluído.">
+  <meta name="theme-color" content="#0f1217">
+  <meta name="color-scheme" content="dark light">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Lida">
+  <script>(function(){try{var p=JSON.parse(localStorage.getItem('lida.paint')||'null');if(!p)return;var r=document.documentElement;for(var k in p.vars)r.style.setProperty(k,p.vars[k]);r.style.colorScheme=p.scheme;r.dataset.scheme=p.scheme;var m=document.querySelector('meta[name=theme-color]');if(m)m.content=p.vars['--bg'];}catch(e){}})()</script>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preload" href="fonts/manrope.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div id="boot" aria-hidden="true"><img src="icons/pwa-192x192.png" alt="" width="72" height="72"></div>
+  <div id="gate" hidden></div>
+  <div id="app"></div>
+  <noscript>O Lida precisa de JavaScript.</noscript>
+  <script src="js/vendor/capacitor.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
 </html>

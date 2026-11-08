@@ -1,0 +1,106 @@
+# Gera o APK do Lida a cada push nas branches principais (e manualmente, em Actions > Android > Run workflow).
+# O APK fica em Actions > (execução) > Artifacts. Em tags "v*" (ex.: v3.0.0), vira também um Release.
+# Assinatura: com os segredos LIDA_KEYSTORE_* configurados, sai um APK de release assinado sempre com a
+# mesma chave (atualiza por cima da versão instalada). Sem eles, sai um APK de depuração.
+name: Android
+
+on:
+  push:
+    branches: [main, v3]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      LIDA_VERSION_CODE: ${{ github.run_number }}
+      LIDA_VERSION_NAME: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('3.0.0-dev.{0}', github.run_number) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Dependências
+        run: npm ci
+
+      - name: Testes
+        run: npm test
+
+      # Login com Google no APK: precisa do google-services.json do Firebase (segredo GOOGLE_SERVICES_JSON).
+      # Sem ele, o plugin de login sai do APK (senão o app fecharia ao abrir) e o login fica só na web.
+      - name: Firebase (login com Google)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+            node -e "const j=require('./android/app/google-services.json'); const c=j.client.find(x=>x.client_info.android_client_info.package_name==='io.github.dasilvasauro.lida'); if(!c){console.error('google-services.json sem o app io.github.dasilvasauro.lida'); process.exit(1)} if(!(c.oauth_client||[]).some(o=>o.client_type===3)){console.error('google-services.json sem o cliente web (tipo 3): ative o login com Google no Firebase e baixe o arquivo de novo'); process.exit(1)} if(!(c.oauth_client||[]).some(o=>o.client_type===1)) console.log('::warning::Nenhuma impressão digital SHA-1 cadastrada no app Android do Firebase: o login com Google vai falhar.')"
+            echo "google-services.json configurado."
+          else
+            echo "::warning::Segredo GOOGLE_SERVICES_JSON ausente: o APK sai sem login com Google (veja o README)."
+            npm uninstall --no-save @capacitor-firebase/authentication
+          fi
+
+      - name: Copiar o app para o projeto Android
+        run: npm run android:sync
+
+      - name: Chave de assinatura
+        id: keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.LIDA_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/lida.keystore"
+            echo "LIDA_KEYSTORE_PATH=$RUNNER_TEMP/lida.keystore" >> "$GITHUB_ENV"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Segredos de assinatura ausentes: será gerado um APK de depuração (veja o README, seção APK)."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compilar
+        working-directory: android
+        env:
+          LIDA_KEYSTORE_PASSWORD: ${{ secrets.LIDA_KEYSTORE_PASSWORD }}
+          LIDA_KEY_ALIAS: ${{ secrets.LIDA_KEY_ALIAS }}
+          LIDA_KEY_PASSWORD: ${{ secrets.LIDA_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          if [ "${{ steps.keystore.outputs.signed }}" = "true" ]; then
+            ./gradlew --no-daemon assembleRelease
+            cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/Lida-$LIDA_VERSION_NAME.apk"
+          else
+            ./gradlew --no-daemon assembleDebug
+            cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/Lida-$LIDA_VERSION_NAME-debug.apk"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Lida-${{ env.LIDA_VERSION_NAME }}
+          path: ${{ runner.temp }}/Lida-*.apk
+          if-no-files-found: error
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ runner.temp }}/Lida-*.apk
+          generate_release_notes: true
