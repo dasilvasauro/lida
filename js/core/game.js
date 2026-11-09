@@ -38,12 +38,13 @@ export const ITEMS = {
   changeModus: { name: 'Novo estilo de jogo', icon: 'user', cost: 1000, cur: 'gold', use: 'auto', desc: 'Permite trocar o seu Modus Operandi uma vez, em Ajustes.' },
   extraQuitter: { name: 'Espaço no Desapego', icon: 'shield', cost: 1700, cur: 'gold', use: 'auto', desc: 'Acompanhe mais um mau hábito no Desapego. Todo mundo começa com um espaço.' },
   freeze: { name: 'Congelamento', icon: 'snow', cost: 3, cur: 'vouchers', use: 'habit', desc: 'Protege a sequência de um hábito num dia difícil. Use no cartão do hábito.' },
+  autoFreeze: { name: 'Congelamento Automático', icon: 'snow', cost: 9, cur: 'vouchers', use: 'auto', desc: 'Se você perder um dia, salva sozinho as sequências dos hábitos que ficaram por fazer. Um por dia perdido.' },
   dayOff: { name: 'Folga dos hábitos', icon: 'coffee', cost: 7, cur: 'vouchers', use: 'shop', desc: 'Todos os hábitos de hoje contam como feitos. Nenhuma sequência se perde.' },
   instantLuck: { name: 'Sorte instantânea', icon: 'clover', cost: 5, cur: 'vouchers', use: 'instant', desc: 'Vira uma Carta da Sorte na hora.' },
-  luckyCard: { name: 'Carta da Sorte', icon: 'clover', cost: 0, cur: 'none', use: 'shop', desc: 'Pode render 100 de ouro, 200 de XP ou nada. Ganhe a cada 5 níveis (e a cada nível depois do 25).' },
+  luckyCard: { name: 'Carta da Sorte', icon: 'clover', cost: 0, cur: 'none', use: 'shop', desc: 'Quase sempre premia: ouro, XP, um voucher ou um item. De vez em quando, a sorte grande. Ganhe a cada 5 níveis (e a cada nível depois do 25).' },
 };
 export const SHOP_GOLD = ['magicDice', 'xpBoost', 'goldBoost', 'respite', 'relief', 'bonusTask', 'extraP0', 'extraP1', 'changeModus', 'extraQuitter'];
-export const SHOP_VOUCHERS = ['freeze', 'dayOff', 'instantLuck'];
+export const SHOP_VOUCHERS = ['freeze', 'autoFreeze', 'dayOff', 'instantLuck'];
 
 export const THEME_PRICES = { aqua: 2500, matrix: 2500, rosa: 2500, tomate: 2500, cinza: 2500, laranja: 2500 };
 
@@ -178,6 +179,16 @@ export async function buyTheme(id) {
   return { ok: true };
 }
 
+// Conjuntos de sons (ver core/sound.js): comprados ficam na carteira, valem em todos os aparelhos.
+export const ownsPack = (id, S = P()) => id === 'classic' || (S.walletMeta.sounds || []).includes(id);
+export async function buySoundPack(id, price) {
+  if (!price || money().gold < price || ownsPack(id)) return { ok: false };
+  const w = personal.get('wallet');
+  const sounds = [...new Set([...(w?.sounds || []), id])];
+  await personal.saveMany([ev({ kind: 'buy', ref: `sons:${id}`, gold: -price }), { type: 'wallet', id: 'wallet', data: { ...strip(w), sounds } }]);
+  return { ok: true };
+}
+
 export const useItemEvent = (item, ref, extra = {}) => ev({ kind: 'use', ref: `${item}:${ref || ''}`, items: { [item]: -1 }, ...extra });
 
 export async function activateBoost(kind) {
@@ -190,12 +201,32 @@ export async function activateBoost(kind) {
   return true;
 }
 
-// Abre uma Carta da Sorte. Devolve o prêmio: { gold } | { xp } | {}.
+// Carta da Sorte: quase sempre premia, quase sempre pouco. Pesos somam 100.
+// Prêmio: { gold } | { xp } | { vouchers } | { item } | {} (8% de nada).
+const step = (a, b, s) => a + s * Math.floor(Math.random() * ((b - a) / s + 1));
+export const LUCK_TABLE = [
+  { w: 30, roll: () => ({ gold: step(30, 60, 5) }) },
+  { w: 25, roll: () => ({ xp: step(60, 120, 10) }) },
+  { w: 12, roll: () => ({ gold: 100 }) },
+  { w: 10, roll: () => ({ xp: 200 }) },
+  { w: 7, roll: () => ({ vouchers: 1 }) },
+  { w: 5, roll: () => ({ item: ['respite', 'relief', 'extraP1', 'freeze'][Math.floor(Math.random() * 4)] }) },
+  { w: 3, roll: () => (Math.random() < 0.5 ? { gold: 300, big: true } : { xp: 500, big: true }) },
+  { w: 8, roll: () => ({}) },
+];
+export function rollLuck(r = Math.random()) {
+  let x = r * 100;
+  for (const row of LUCK_TABLE) if ((x -= row.w) < 0) return row.roll();
+  return {};
+}
+
 export async function openLuckyCard() {
   if (!has('luckyCard')) return null;
-  const r = Math.random();
-  const prize = r > 0.8 ? { gold: 100 } : r > 0.4 ? { xp: 200 } : {};
-  const res = await commit([useItemEvent('luckyCard', '', prize)]);
+  const prize = rollLuck();
+  const { item, big, ...gain } = prize;
+  const e = useItemEvent('luckyCard', '', gain);
+  if (item) e.data.items = { luckyCard: -1, [item]: 1 };
+  const res = await commit([e]);
   return { prize, ...res };
 }
 

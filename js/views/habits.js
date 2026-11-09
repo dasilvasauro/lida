@@ -120,7 +120,9 @@ function habitCard(S, h, d, i) {
   const sub = log?.mod
     ? log.mod === 'freeze'
       ? 'Protegido hoje com Congelamento'
-      : 'Folga hoje'
+      : log.mod === 'autoFreeze'
+        ? 'Salvo pelo Congelamento Automático'
+        : 'Folga hoje'
     : !scheduled
       ? done
         ? 'Feito na folga · extra'

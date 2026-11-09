@@ -437,3 +437,55 @@ test('foco global: tarefa em foco, Pomodoro no registro sincronizado e resumo', 
   await F.setFocus(null);
   assert.equal(F.focusOf(P()).taskId, null);
 });
+
+test('Carta da Sorte: quase sempre premia; item vai para o inventário', async () => {
+  let nothing = 0;
+  for (let i = 0; i < 1000; i++) {
+    const p = game.rollLuck(i / 1000);
+    if (!p.gold && !p.xp && !p.vouchers && !p.item) nothing++;
+    if (p.item) assert.ok(game.ITEMS[p.item]);
+  }
+  assert.equal(nothing, 80);
+  assert.ok(game.rollLuck(0).gold >= 30 && game.rollLuck(0).gold <= 60);
+  await give({ items: { luckyCard: 3 } });
+  const before = P().money.items.luckyCard;
+  const r = await game.openLuckyCard();
+  assert.equal(P().money.items.luckyCard, before - 1);
+  if (r.prize.item) assert.ok(P().money.items[r.prize.item] >= 1);
+});
+
+test('Congelamento Automático salva a sequência no dia perdido, um item por dia', async () => {
+  initClock(true);
+  const d0 = today();
+  const hid = await habits.saveHabit(null, { title: 'Meditar', goal: 1 });
+  const fresh = await habits.saveHabit(null, { title: 'Novo sem sequência', goal: 1 });
+  await habits.setCount(P().byId.get(hid), 1, d0);
+  await give({ items: { autoFreeze: 1 } });
+  await personal.save('prefs', { ...game.strip(personal.get('prefs')), lastDay: d0 }, 'prefs');
+  shiftDays(3); // perdeu d0+1 e d0+2
+  const sum = await tasks.processDays();
+  const d1 = addDays(d0, 1);
+  assert.equal(P().money.items.autoFreeze || 0, 0);
+  assert.equal(P().hlogMap.get(`${hid}|${d1}`)?.mod, 'autoFreeze');
+  assert.equal(P().hlogMap.get(`${fresh}|${d1}`), undefined, 'sem sequência, nada a salvar');
+  assert.equal(P().hlogMap.get(`${hid}|${addDays(d0, 2)}`), undefined, 'acabou o item');
+  assert.equal(sum.autoFreeze.length, 1);
+  resetClock();
+  initClock(false);
+});
+
+test('resumo do ano: IPL pela média dos meses', () => {
+  const S = { ...P(), month: [
+    { month: '2019-01', score: 90, grade: 'A', days: 31, tasksDone: 50, best: { date: '2019-01-05', score: 99 } },
+    { month: '2019-02', score: 70, grade: 'C', days: 10, tasksDone: 20 },
+    { month: '2019-03', score: null, days: 0, tasksDone: 3 },
+  ] };
+  const y = tasks.yearRecord(S, 2019);
+  assert.equal(y.score, 80); // (90 + 70) / 2, não ponderado por dias
+  assert.equal(y.tasksDone, 73);
+  assert.equal(y.days, 41);
+  assert.equal(y.bestMonth.month, '2019-01');
+  assert.equal(y.worstMonth.month, '2019-02');
+  assert.equal(y.bestDay.score, 99);
+  assert.equal(y.months.length, 3);
+});

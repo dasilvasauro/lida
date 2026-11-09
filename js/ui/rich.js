@@ -3,6 +3,7 @@
 //   listas com "- " e listas de verificação com "- [ ] " / "- [x] ".
 // O texto é escapado antes de qualquer marcação, então nada do usuário vira HTML.
 import { esc } from '../lib/util.js';
+import { copyText } from './ui.js';
 
 function inline(s) {
   let h = esc(s);
@@ -89,6 +90,7 @@ export function richToolbar() {
     <button type="button" data-fmt="link" aria-label="Link">Link</button>
     <button type="button" data-fmt="list" aria-label="Lista">• Lista</button>
     <button type="button" data-fmt="check" aria-label="Lista de verificação">☐ Itens</button>
+    <button type="button" data-fmt="copy" class="rb-copy" aria-label="Copiar a descrição">Copiar</button>
   </div>`;
 }
 export function bindToolbar(root, ta, onChange) {
@@ -96,6 +98,15 @@ export function bindToolbar(root, ta, onChange) {
     (b) =>
       (b.onclick = () => {
         const f = b.dataset.fmt;
+        if (f === 'copy') {
+          if (!ta.value.trim()) return;
+          copyText(ta.value).then((ok) => {
+            b.textContent = ok ? 'Copiada' : 'Não deu';
+            b.classList.toggle('done', ok);
+            setTimeout(() => { b.textContent = 'Copiar'; b.classList.remove('done'); }, 1600);
+          });
+          return;
+        }
         const { selectionStart: a, selectionEnd: z, value: v } = ta;
         const sel = v.slice(a, z);
         let ins;

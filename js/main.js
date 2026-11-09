@@ -12,6 +12,7 @@ import { processDays, buckets, toggleTask } from './core/tasks.js';
 import { reminders } from './core/reminders.js';
 import { addWater, waterGlass, waterToday, waterGoal, isScheduled, isDone } from './core/habits.js';
 import { seedDemo } from './core/demo.js';
+import { simulateDays, PACES } from './core/simulate.js';
 import { initSound } from './core/sound.js';
 import { app, personal, P, setPref } from './state.js';
 import { applyAppearance, storedAppearance, FONTS, THEMES } from './ui/theme.js';
@@ -70,7 +71,12 @@ const ls = {
 function appearance(a = storedAppearance()) {
   const r = applyAppearance(a);
   if (isNative()) {
-    call('StatusBar', 'setStyle', { style: r.scheme === 'dark' ? 'DARK' : 'LIGHT' });
+    // Ícones da barra de status e da barra de navegação: claros no tema escuro, escuros no claro.
+    // O SystemBars (núcleo do Capacitor 8) reaplica o estilo dele a cada mudança de configuração;
+    // por isso o estilo vai para ele (que guarda) e para o StatusBar (aparelhos mais antigos).
+    const style = r.scheme === 'dark' ? 'DARK' : 'LIGHT';
+    call('SystemBars', 'setStyle', { style });
+    call('StatusBar', 'setStyle', { style });
     call('StatusBar', 'setBackgroundColor', { color: r.bg });
   }
   return r;
@@ -186,6 +192,10 @@ async function runDay() {
   await firstSync();
   const r = await processDays().catch((e) => (console.warn('Virada do dia', e), null));
   if (!r) return;
+  if (r.autoFreeze?.length) {
+    const n = r.autoFreeze.reduce((a, x) => a + x.habits.length, 0);
+    setTimeout(() => toast(`Congelamento Automático: ${n === 1 ? `“${r.autoFreeze[0].habits[0]}” manteve a sequência` : `${n} hábitos mantiveram a sequência`}.`, { ms: 6000 }), 700);
+  }
   if (maybeShowSummaries(r) || !r.failed.length) return;
   const n = r.failed.length;
   const lost = r.penalty.xp || r.penalty.gold ? ` (${fmtInt(r.penalty.xp)} XP, ${fmtInt(r.penalty.gold)} de ouro)` : '';
@@ -452,6 +462,8 @@ function start() {
   deepLinks();
   updateWidget();
   initDesktop();
+  // Ao voltar para o app (ex.: depois de trocar o tema do sistema), reaplica as cores das barras.
+  plugin('App')?.addListener?.('resume', () => appearance());
   runDay();
 
   // Virada do dia com o app aberto: fecha o dia anterior, redesenha e reagenda.
@@ -582,6 +594,7 @@ function demobar() {
     bar.innerHTML = `<span class="tb-label">${icon('flask')}Demo<b>${off ? `relógio ${off > 0 ? '+' : ''}${off} dia${Math.abs(off) > 1 ? 's' : ''}` : 'dados de exemplo'}</b></span>
       <div class="tb-actions">
         <button type="button" data-next>Avançar um dia</button>
+        <button type="button" data-sim>Simular…</button>
         ${off ? '<button type="button" data-now>Voltar para hoje</button>' : ''}
         <button type="button" data-reset>Recomeçar</button>
       </div>`;
@@ -597,8 +610,49 @@ function demobar() {
       render(false);
     });
     bar.querySelector('[data-reset]').onclick = () => app.actions.resetDemo();
+    bar.querySelector('[data-sim]').onclick = () => simSheet(draw);
   };
   draw();
+}
+
+// Simular dias (debug): o relógio avança e cada dia é vivido com tarefas, hábitos, água e humor.
+function simSheet(draw) {
+  let days = 30;
+  let pace = 'bom';
+  sheet({
+    title: 'Simular dias',
+    body: `<p class="sheet-text">O relógio do demo avança dia a dia. Em cada dia são criadas tarefas (a maioria concluída), hábitos são cumpridos, água e humor registrados, e a virada fecha o IPL, o mês e o ano como no uso de verdade.</p>
+      <div class="field"><span>Quantos dias</span><div class="seg small" data-days>${[7, 30, 60].map((n) => `<button type="button" data-v="${n}" class="${n === days ? 'on' : ''}">${n === 30 ? 'Um mês' : n === 60 ? 'Dois meses' : 'Uma semana'}</button>`).join('')}</div></div>
+      <div class="field"><span>Ritmo</span><div class="seg small" data-pace>${Object.entries(PACES).map(([k, v]) => `<button type="button" data-v="${k}" class="${k === pace ? 'on' : ''}">${v.label}</button>`).join('')}</div></div>
+      <p class="hint" data-sim-status></p>
+      <div class="sheet-actions"><button type="button" class="btn ghost" data-close>Cancelar</button><button type="button" class="btn primary" data-run>${icon('play')}Simular</button></div>`,
+    onMount(el, close) {
+      const seg = (sel, set) =>
+        el.querySelectorAll(`${sel} button`).forEach(
+          (b) =>
+            (b.onclick = () => {
+              set(b.dataset.v);
+              el.querySelectorAll(`${sel} button`).forEach((x) => x.classList.toggle('on', x === b));
+            }),
+        );
+      seg('[data-days]', (v) => (days = Number(v)));
+      seg('[data-pace]', (v) => (pace = v));
+      el.querySelector('[data-close]').onclick = close;
+      el.querySelector('[data-run]').onclick = async (e) => {
+        const btn = e.currentTarget;
+        const st = el.querySelector('[data-sim-status]');
+        btn.disabled = true;
+        el.querySelectorAll('.seg button, [data-close]').forEach((b) => (b.disabled = true));
+        const r = await simulateDays(days, { pace, onProgress: (i, n) => (st.textContent = `Dia ${i} de ${n}: ${today().split('-').reverse().join('/')}`) });
+        // Mais um dia, para fechar o último simulado e mostrar os resumos (dia, mês, ano).
+        shiftDays(1);
+        close();
+        draw();
+        toast(`${r.days} dias simulados: ${r.done} de ${r.tasks} tarefas concluídas, ${r.habits} hábitos cumpridos.`, { ms: 6000 });
+        runDay().then(() => render(false));
+      };
+    },
+  });
 }
 
 /* ---------- Ações globais ---------- */

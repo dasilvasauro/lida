@@ -5,7 +5,7 @@ import { toggleTask, toggleSub, addTask, saveTask, removeTask, strip, checkTask,
 import { ITEMS, applyTaskItem } from '../core/game.js';
 import { esc, uid, relDay, fmtTime, plural, addDays, weekday, WD_SHORT, WD_LETTER, fmtDateHuman, isoOfMs } from '../lib/util.js';
 import { today } from '../lib/clock.js';
-import { icon, sheet, toast, confirmDialog, promptDialog, opt, readForm, bar, COLORS } from '../ui/ui.js';
+import { icon, sheet, toast, confirmDialog, promptDialog, opt, readForm, bar, COLORS, copyText } from '../ui/ui.js';
 import { parseQuick } from '../core/parse.js';
 import { renderRich, richToolbar, bindToolbar, toggleCheckLine, plainPreview } from '../ui/rich.js';
 import { play } from '../core/sound.js';
@@ -152,7 +152,7 @@ export const taskList = (list, opts = {}) => `<ul class="tasks">${list.map((t, i
 
 // Liga cliques de concluir/abrir em qualquer lista dentro de `root`.
 export function bindTasks(root) {
-  root.querySelectorAll('.task').forEach((li) => {
+  root.querySelectorAll('.task:not(.kb-card)').forEach((li) => {
     const id = li.dataset.id;
     li.querySelector('[data-check]').onclick = (e) => onCheck(e.currentTarget, li, id);
     const body = li.querySelector('[data-open]');
@@ -256,8 +256,8 @@ export function bindSprint(root) {
 /* ---------- Adicionar rápido ---------- */
 // defaults: campos que a tarefa nova recebe (ex.: { due: hoje } na tela Hoje).
 // O texto é lido em linguagem natural: "Pagar luz amanhã 9h p1 #Casa @contas".
-export function quickAdd(defaults = {}) {
-  return `<form class="quick-add" data-quick="${esc(defaults.due || defaults.projectId || 'sem-data')}">
+export function quickAdd(defaults = {}, key = '') {
+  return `<form class="quick-add" data-quick="${esc(key || defaults.due || defaults.projectId || 'sem-data')}">
     <span class="qa-plus">${icon('plus')}</span>
     <input name="title" placeholder="Adicionar tarefa" autocomplete="off" enterkeyhint="done" aria-label="Nova tarefa" aria-describedby="qa-help">
     <button type="button" class="icon-btn qa-more" data-more aria-label="Mais opções">${icon('more')}</button>
@@ -399,7 +399,7 @@ export function openTask(id) {
       </div>
       ${rows.length ? `<dl class="td-rows">${rows.map(([ic, k, v]) => `<div><dt>${ic}<span>${k}</span></dt><dd>${v}</dd></div>`).join('')}</dl>` : ''}
       ${sprint}
-      ${t.notes ? `<div class="td-sec"><h4>Descrição</h4><div class="rich td-notes" data-tdnotes>${renderRich(t.notes)}</div></div>` : ''}
+      ${t.notes ? `<div class="td-sec"><h4>Descrição<button type="button" class="td-copy" data-tdcopy aria-label="Copiar a descrição">${icon('copy', 'sm')}<span>Copiar</span></button></h4><div class="rich td-notes" data-tdnotes>${renderRich(t.notes)}</div></div>` : ''}
       ${
         subs.length
           ? `<div class="td-sec"><h4>${kind === 'sprint' ? 'Etapas' : 'Subtarefas'} <span class="count">${doneN}/${subs.length}</span></h4>${bar(doneN / subs.length, { cls: 'thin', label: 'Progresso' })}
@@ -435,6 +435,19 @@ export function openTask(id) {
       setTimeout(() => focusTask(id), 230);
     });
     el.querySelector('[data-goproj]')?.addEventListener('click', () => close());
+    el.querySelector('[data-tdcopy]')?.addEventListener('click', async (e) => {
+      const b = e.currentTarget;
+      const ok = await copyText(P().byId.get(id)?.notes || '');
+      haptic('tick');
+      if (!ok) return toast('Não consegui copiar.');
+      b.classList.add('done');
+      b.querySelector('span').textContent = 'Copiada';
+      setTimeout(() => {
+        if (!b.isConnected) return;
+        b.classList.remove('done');
+        b.querySelector('span').textContent = 'Copiar';
+      }, 1600);
+    });
     el.querySelectorAll('[data-tdsub]').forEach(
       (c) =>
         (c.onchange = async () => {

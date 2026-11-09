@@ -12,6 +12,7 @@ import { taskList, bindTasks, quickAdd, bindQuick, sprintCard, bindSprint } from
 import { moodPicker, bindMood } from './me.js';
 import { focusCard, bindFocusCard } from './focus.js';
 import { focusedTask } from '../core/focus.js';
+import { viewBar, bindViewBar, isBoardMode, kanban, bindKanban } from './kanban.js';
 
 function greeting() {
   const h = now().getHours();
@@ -29,6 +30,9 @@ export const todayView = {
     const B = buckets(S, day);
     const total = B.today.length + B.doneToday.length;
     const showDone = prefs().showDone;
+    // No Painel (telas largas) o botão Lista/Quadro vale para o painel inteiro (ver board.js).
+    const inPanel = !!el.closest?.('.board');
+    const kb = !inPanel && isBoardMode('hoje');
     el.innerHTML = `
       <div class="hello"><div class="grow"><h2>${esc(greeting())}</h2><p class="hint">${
         total ? `${fmtInt(B.doneToday.length)} de ${plural(total, 'tarefa concluída', 'tarefas concluídas')} hoje` : 'Nenhuma tarefa marcada para hoje'
@@ -42,8 +46,10 @@ export const todayView = {
         <button type="button" class="tool" data-tool="brain">${icon('brain')}<span>Esvaziar a mente</span>${S.brain.length ? `<small>${S.brain.length}</small>` : ''}</button>
       </div>
       ${B.sprint ? sprintCard(B.sprint) : ''}
+      ${viewBar(inPanel ? 'painel' : 'hoje')}
+      ${kb ? `<section class="block kb-block">${kanban({ screen: 'hoje' }, S)}</section>` : ''}
       ${
-        B.overdue.length
+        B.overdue.length && !kb
           ? `<section class="block"><div class="block-head"><h2>Atrasadas<span class="count">${B.overdue.length}</span></h2><button type="button" class="link" data-resched>Trazer para hoje</button></div>${taskList(B.overdue, { S })}</section>`
           : ''
       }
@@ -53,18 +59,20 @@ export const todayView = {
             <p class="hint">Ainda dá para concluir, mas sem recompensa. Reagendar devolve a tarefa para hoje.</p>${taskList(B.failedToday, { S })}</section>`
           : ''
       }
-      <section class="block"><div class="block-head"><h2>${esc(relDay(day))}<span class="count">${B.today.length || ''}</span></h2></div>
+      ${kb ? '' : `<section class="block"><div class="block-head"><h2>${esc(relDay(day))}<span class="count">${B.today.length || ''}</span></h2></div>
         ${taskList(B.today, { S })}
         ${quickAdd({ due: day })}
         ${!B.today.length && !B.overdue.length ? empty({ ic: 'sparkles', title: B.doneToday.length ? 'Tudo feito por hoje' : 'Dia livre', text: B.doneToday.length ? 'Bom trabalho. Aproveite o resto do dia.' : 'Adicione o que você quer fazer hoje, ou traga algo da Entrada.' }) : ''}
-      </section>
+      </section>`}
       ${
         B.doneToday.length
           ? `<section class="block"><button type="button" class="block-head toggle-done" data-toggledone aria-expanded="${showDone}"><h2>Concluídas<span class="count">${B.doneToday.length}</span></h2>${icon(showDone ? 'up' : 'down', 'sm')}</button>${showDone ? taskList(B.doneToday, { S }) : ''}</section>`
           : ''
       }`;
     bindTasks(el);
-    bindQuick(el);
+    if (!kb) bindQuick(el);
+    bindViewBar(el);
+    bindKanban(el);
     bindSprint(el);
     bindMood(el);
     bindCheckin(el);
@@ -97,14 +105,21 @@ export const planView = {
     const day = today();
     const B = buckets(S, day);
     const tab = planView.tab;
-    const isTab = (k) => tab === k || (k === 'projetos' && tab === 'projeto');
+    const inPanel = !!el.closest?.('.board');
+    const kb = !inPanel && isBoardMode('planejar');
+    const vbar = inPanel ? '' : viewBar('planejar');
+    const isTab = (k) => tab === k || (k === 'projetos' && tab === 'projeto') || (kb && k === 'em-breve' && tab === 'entrada');
+    // No quadro, Próximos dias e Entrada viram uma aba só: as colunas já separam por data.
     const head = `<div class="seg small plan-tabs" role="tablist">
-      <button type="button" role="tab" class="${isTab('em-breve') ? 'on' : ''}" aria-selected="${isTab('em-breve')}" data-tab="em-breve">Próximos dias</button>
-      <button type="button" role="tab" class="${isTab('entrada') ? 'on' : ''}" aria-selected="${isTab('entrada')}" data-tab="entrada">Entrada${B.inbox.length ? ` <span class="count">${B.inbox.length}</span>` : ''}</button>
+      <button type="button" role="tab" class="${isTab('em-breve') ? 'on' : ''}" aria-selected="${isTab('em-breve')}" data-tab="em-breve">${kb ? 'Quadro' : 'Próximos dias'}</button>
+      ${kb ? '' : `<button type="button" role="tab" class="${isTab('entrada') ? 'on' : ''}" aria-selected="${isTab('entrada')}" data-tab="entrada">Entrada${B.inbox.length ? ` <span class="count">${B.inbox.length}</span>` : ''}</button>`}
       <button type="button" role="tab" class="${isTab('projetos') ? 'on' : ''}" aria-selected="${isTab('projetos')}" data-tab="projetos">Projetos</button>
     </div>`;
-    if (tab === 'entrada') {
-      el.innerHTML = `${head}<section class="block">
+    if (kb && (tab === 'em-breve' || tab === 'entrada')) {
+      el.innerHTML = `${head}${vbar}<section class="block kb-block">${kanban({ screen: 'planejar' }, S)}</section>`;
+      bindKanban(el);
+    } else if (tab === 'entrada') {
+      el.innerHTML = `${head}${vbar}<section class="block">
         ${taskList(B.inbox, { S })}
         ${quickAdd({})}
         ${B.inbox.length ? '' : empty({ ic: 'inbox', title: 'Entrada vazia', text: 'Anote aqui tudo o que surgir. Depois é só dar uma data ou uma prioridade.' })}
@@ -130,11 +145,13 @@ export const planView = {
             <i class="dot big"></i><div class="grow"><h2>${esc(p.name)}</h2><small>${plural(open.length, 'tarefa aberta', 'tarefas abertas')}${done.length ? ` · ${done.length} concluídas` : ''}</small></div>
             <button type="button" class="btn small" data-pedit>${icon('edit')}Editar</button></section>
           ${all.length ? bar(all.length ? done.length / all.length : 0, { label: 'Progresso do projeto' }) : ''}
-          ${dated.length ? `<section class="block"><div class="block-head"><h2>Com data</h2></div>${taskList(dated, { S, showDue: true })}</section>` : ''}
-          <section class="block"><div class="block-head"><h2>Sem data</h2></div>${taskList(undated, { S })}${quickAdd({ projectId: p.id })}</section>
+          ${viewBar('projeto')}
+          ${isBoardMode('projeto') ? `<section class="block kb-block">${kanban({ screen: 'projeto', projectId: p.id }, S)}</section>` : `${dated.length ? `<section class="block"><div class="block-head"><h2>Com data</h2></div>${taskList(dated, { S, showDue: true })}</section>` : ''}
+          <section class="block"><div class="block-head"><h2>Sem data</h2></div>${taskList(undated, { S })}${quickAdd({ projectId: p.id })}</section>`}
           ${done.length ? `<section class="block"><div class="block-head"><h2>Concluídas<span class="count">${done.length}</span></h2></div>${taskList(done.slice(-10).reverse(), { S, showDue: true })}</section>` : ''}`;
         bindTasks(el);
-        bindQuick(el);
+        if (!isBoardMode('projeto')) bindQuick(el);
+        bindKanban(el);
         el.querySelector('[data-back]').onclick = () => app.nav('projetos');
         el.querySelector('[data-pedit]').onclick = () => editProject(p);
       }
@@ -149,6 +166,7 @@ export const planView = {
       const days = [...groups.keys()].sort();
       el.innerHTML =
         head +
+        vbar +
         days
           .map(
             (d, i) => `<section class="block day-block" style="--i:${i}"><div class="block-head"><h2>${esc(daysBetween(day, d) < 7 ? relDay(d, day) : cap(WD[weekday(d)]))}<span class="count">${esc(fmtDayLong(d).split(', ')[1] || '')}</span></h2></div>
@@ -158,6 +176,7 @@ export const planView = {
       bindTasks(el);
       el.querySelectorAll('.day-block').forEach(bindQuick);
     }
+    bindViewBar(el);
     el.querySelectorAll('[data-tab]').forEach(
       (b) =>
         (b.onclick = () => {

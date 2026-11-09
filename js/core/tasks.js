@@ -208,6 +208,11 @@ export async function processDays() {
     let day = last < addDays(d, -MAX_DAYS) ? addDays(d, -MAX_DAYS) : last;
     const running = { xp: S.money.xp, gold: S.money.gold, level: S.money.level };
     const punish = S.prefs.punishments !== false;
+    // Congelamento Automático: protege, no fechamento do dia, os hábitos em sequência que ficaram
+    // por fazer. Um item salva todos os hábitos daquele dia. A vista abaixo enxerga as proteções
+    // feitas agora (ainda fora da fotografia), para o IPL e para os dias seguintes.
+    const view = { ...S, hlogMap: new Map(S.hlogMap) };
+    let autoLeft = S.money.items.autoFreeze || 0;
     while (day < d) {
       let tasksDone = 0;
       let penalties = 0;
@@ -237,10 +242,24 @@ export async function processDays() {
         tasksDone++;
         if (t.postponed) penalties++;
       }
-      const hab = habitsOnDay(S, day);
+      if (autoLeft > 0 && !personal.get(`ev_af_${day}`)) {
+        const saved = autoFreezeTargets(view, day);
+        if (saved.length) {
+          autoLeft--;
+          batch.push({ type: 'ev', id: `ev_af_${day}`, data: { kind: 'use', ref: `autoFreeze:${day}`, date: day, items: { autoFreeze: -1 } } });
+          for (const h of saved) {
+            const prev = view.hlogMap.get(`${h.id}|${day}`);
+            const data = { habitId: h.id, date: day, count: prev?.count || 0, mod: 'autoFreeze' };
+            batch.push({ type: 'hlog', id: `hl_${h.id}_${day}`, data });
+            view.hlogMap.set(`${h.id}|${day}`, { id: `hl_${h.id}_${day}`, ...data });
+          }
+          summary.autoFreeze = [...(summary.autoFreeze || []), { day, habits: saved.map((h) => h.name) }];
+        }
+      }
+      const hab = habitsOnDay(view, day);
       penalties += hab.missed;
       // IPL do dia (ver core/ipl.js): partes ponderadas, só as que se aplicam ao seu uso.
-      const ipl = dayIPL(S, day);
+      const ipl = dayIPL(view, day);
       const rec = { date: day, score: ipl.score, parts: ipl.parts, v: 2, tasksDone, habitsDone: hab.done, habitsTotal: hab.done + hab.missed, penalties, off: ipl.off || undefined };
       if (!personal.get(`sc_${day}`)) {
         batch.push({ type: 'score', id: `sc_${day}`, data: rec });
@@ -251,12 +270,22 @@ export async function processDays() {
       day = addDays(day, 1);
     }
     // Virada do mês: fecha os meses que terminaram (média do IPL e os números do mês).
+    const freshMonths = new Map();
     for (let ym = ymOf(last); ym < ymOf(d); ym = addMonths(ym, 1)) {
       if (personal.get(`mo_${ym}`)) continue;
       const rec = monthRecord(S, ym, fresh);
       if (!rec) continue;
       batch.push({ type: 'month', id: `mo_${ym}`, data: rec });
+      freshMonths.set(ym, rec);
       summary.months.push(ym);
+    }
+    // Virada do ano: o resumão, com o IPL do ano pela média dos meses.
+    for (let y = Number(last.slice(0, 4)); y < Number(d.slice(0, 4)); y++) {
+      if (personal.get(`yr_${y}`)) continue;
+      const rec = yearRecord(S, y, freshMonths, fresh);
+      if (!rec) continue;
+      batch.push({ type: 'year', id: `yr_${y}`, data: rec });
+      (summary.years ||= []).push(y);
     }
   }
 
@@ -299,6 +328,67 @@ export function monthRecord(S, ym, fresh = new Map()) {
     goldLost: neg('gold'),
     focusSec: evs.filter((e) => e.kind === 'focus').reduce((a, e) => a + (e.focusSec || 0), 0),
     best: best ? { date: best.date, score: best.score } : null,
+  };
+}
+
+// Hábitos programados para o dia, não cumpridos nem protegidos, que vinham numa sequência
+// (o dia programado anterior foi cumprido ou protegido). São os que o Congelamento Automático salva.
+export function autoFreezeTargets(S, day) {
+  const out = [];
+  const done = (h, d) => {
+    const l = S.hlogMap.get(`${h.id}|${d}`);
+    return (l?.count || 0) >= (h.goal || 1) || !!l?.mod;
+  };
+  for (const h of S.habit) {
+    if (h.archived || (h.createdDay && h.createdDay > day)) continue;
+    const days = h.days || HABIT_DAYS_ALL;
+    if (!days.includes(weekday(day)) || done(h, day)) continue;
+    for (let i = 1; i <= 7; i++) {
+      const p = addDays(day, -i);
+      if (h.createdDay && p < h.createdDay) break;
+      if (!days.includes(weekday(p))) continue;
+      if (done(h, p)) out.push(h);
+      break;
+    }
+  }
+  return out;
+}
+
+// Resumo do ano: soma dos meses e o IPL do ano como a média das notas dos meses (cada mês pesa
+// igual, tenha 10 ou 31 dias avaliados). Meses ainda sem registro são calculados na hora.
+export function yearRecord(S, year, freshMonths = new Map(), fresh = new Map()) {
+  const months = [];
+  for (let m = 1; m <= 12; m++) {
+    const ym = `${year}-${String(m).padStart(2, '0')}`;
+    const rec = freshMonths.get(ym) || S.month.find((x) => x.month === ym && x.days != null) || S.month.find((x) => x.month === ym) || monthRecord(S, ym, fresh);
+    if (rec) months.push({ ...rec, month: ym });
+  }
+  if (!months.length) return null;
+  const scored = months.filter((x) => x.score != null);
+  const score = scored.length ? Math.round(scored.reduce((a, x) => a + x.score, 0) / scored.length) : null;
+  const add = (k) => months.reduce((a, x) => a + (x[k] || 0), 0);
+  const top = (arr, f) => arr.reduce((a, x) => (!a || f(x) > f(a) ? x : a), null);
+  const bestMonth = top(scored, (x) => x.score);
+  const worstMonth = top(scored, (x) => -x.score);
+  const bestDay = top(months.filter((x) => x.best), (x) => x.best.score)?.best || null;
+  return {
+    year,
+    score,
+    grade: score == null ? null : grade(score),
+    months: months.map((x) => ({ month: x.month, score: x.score ?? null, grade: x.grade || (x.score != null ? grade(x.score) : null), tasksDone: x.tasksDone || 0 })),
+    days: add('days'),
+    tasksDone: add('tasksDone'),
+    failed: add('failed'),
+    habitsDone: add('habitsDone'),
+    habitsTotal: add('habitsTotal'),
+    xp: add('xp'),
+    xpLost: add('xpLost'),
+    gold: add('gold'),
+    goldLost: add('goldLost'),
+    focusSec: add('focusSec'),
+    bestMonth: bestMonth ? { month: bestMonth.month, score: bestMonth.score } : null,
+    worstMonth: worstMonth && worstMonth !== bestMonth ? { month: worstMonth.month, score: worstMonth.score } : null,
+    bestDay,
   };
 }
 

@@ -4,6 +4,7 @@ import { levelTitle } from '../core/model.js';
 import { MILESTONES } from '../core/game.js';
 import { play } from '../core/sound.js';
 import { haptic } from './haptics.js';
+import { mascotSvg } from './mascot.js';
 
 const CONF = ['var(--g1)', 'var(--g2)', 'var(--accent)', 'var(--warn)'];
 
@@ -19,9 +20,10 @@ export function levelUp(level, res = {}) {
   }).join('');
   wrap.innerHTML = `<div class="reward" role="dialog" aria-modal="true" aria-labelledby="lvl-t">
     <div class="confetti" aria-hidden="true">${bits}</div>
+    ${title !== prevTitle ? `<div class="lvl-up-mascot">${mascotSvg(title, { size: 112, cls: 'hop' })}</div>` : ''}
     <div class="lvl-badge">${level}</div>
     <h2 id="lvl-t">Você chegou ao nível ${level}</h2>
-    <p>${title !== prevTitle ? `Novo título: <b>${esc(title)}</b>` : `Continue assim, ${esc(title)}.`}</p>
+    <p>${title !== prevTitle ? `Novo título: <b>${esc(title)}</b>. O Lidinho trocou de roupa!` : `Continue assim, ${esc(title)}.`}</p>
     ${gifts(level, res)}
     <button type="button" class="btn primary wide" data-ok>Continuar</button>
   </div>`;
