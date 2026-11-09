@@ -76,8 +76,11 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 - **Marcos de nível:** Carta da Sorte a cada 5 níveis (e a cada nível depois do 25), +15 vouchers no 15, temas no 10, 20 e 35,
   P0 sem limite no 30, P1 sem limite no 40, Darcula e +40 vouchers no 50. Títulos: Aprendiz, Iniciante, Praticante,
   Constante, Disciplinado, Persistente, Veterano, Especialista, Mestre, Grão-Mestre e Lenda. O **Lidinho**, o mascote
-  (um bichinho redondo com o Λ na testa), aparece no cartão de nível e ganha roupa, acessório e pose novos a cada título:
-  broto, mochila, faixa na testa, cachecol, óculos, faixa de honra, boina, capelo, capa, chapéu de mago e coroa.
+  (um bichinho redondo com o Λ na testa), aparece no cartão de nível e muda de roupa, pose e ângulo a cada título:
+  curioso com o broto na cabeça, caminhando de mochila, correndo de faixa na testa, acenando de cachecol, lendo de óculos,
+  mostrando o muque com a faixa de honra, explorador de boina e cajado, pulando com o diploma, herói de capa, mago
+  lançando feitiço e, na Lenda, saltando de coroa no meio do confete. Tocar nele abre a coleção: o título atual e os
+  anteriores com um texto curto, e os próximos só na sombra, sem o nome.
 - **Carta da Sorte:** quase sempre premia, quase sempre pouco: 30 a 60 de ouro (30%), 60 a 120 XP (25%), 100 de ouro (12%),
   200 XP (10%), 1 voucher (7%), um item (5%), a sorte grande de 300 de ouro ou 500 XP (3%) e nada (8%).
 

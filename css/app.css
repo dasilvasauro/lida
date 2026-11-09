@@ -678,9 +678,12 @@ body.has-sheet { overflow: hidden; }
 .lvl { display: flex; align-items: center; gap: .8rem; padding: .9333rem 1.0667rem; border-radius: var(--r-l); background: var(--surface); border: 1px solid var(--line); }
 .lvl-badge { flex: none; display: grid; place-items: center; width: 2.9333rem; height: 2.9333rem; border-radius: .9333rem; background: var(--grad); color: #fff; font-weight: 800; font-size: 1.1333rem; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); }
 .lvl-info { flex: 1; min-width: 0; display: grid; gap: .4rem; }
-.lvl-mascot { flex: none; display: grid; place-items: center; width: 3.6rem; height: 3.6rem; margin: -.4rem -.2667rem -.4rem 0; }
+.lvl-link { flex: 1; min-width: 0; display: flex; align-items: center; gap: .8rem; color: inherit; text-decoration: none; }
+.lvl-mascot { flex: none; display: grid; place-items: center; width: 4rem; height: 4rem; margin: -.5333rem -.4rem -.5333rem 0; padding: 0; border: 0; background: none; border-radius: 1rem; cursor: pointer; }
+.lvl-mascot:focus-visible { outline: 2px solid var(--focus); }
+.lvl-mascot:active .mascot { transform: scale(0.92); }
 .lvl-mascot .mascot { width: 100%; height: 100%; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.12)); transition: transform 0.25s var(--spring); }
-.lvl:hover .lvl-mascot .mascot { transform: rotate(-6deg) translateY(-2px); }
+.lvl-mascot:hover .mascot { transform: rotate(-6deg) translateY(-2px); }
 .mascot { overflow: visible; }
 :root[data-scheme='dark'] .mascot { filter: drop-shadow(0 0 .6px rgba(255, 255, 255, 0.55)) drop-shadow(0 0 .6px rgba(255, 255, 255, 0.4)); }
 :root[data-scheme='dark'] .lvl-mascot .mascot { filter: drop-shadow(0 0 .6px rgba(255, 255, 255, 0.55)) drop-shadow(0 0 .6px rgba(255, 255, 255, 0.4)); }
@@ -845,8 +848,9 @@ button.set-row:hover { background: var(--surface-2); }
    Hoje e tarefas
    ===================================================================== */
 .lvl { color: inherit; transition: border-color 0.2s, transform 0.15s; }
-a.lvl:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
-a.lvl:active { transform: scale(0.99); }
+a.lvl-link:hover { color: inherit; }
+.lvl:has(.lvl-link:hover) { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.lvl:has(.lvl-link:active) { transform: scale(0.99); }
 .wallet { flex-wrap: wrap; align-items: center; }
 .wallet .vouch .ic { color: var(--g2); }
 .vdots { display: inline-flex; gap: .2rem; margin-left: .2667rem; }
@@ -1663,3 +1667,19 @@ body.kb-dragging, body.kb-dragging * { cursor: grabbing !important; }
 .kb-add .quick-add { margin: 0; background: transparent; }
 .kb-add .quick-add input[name=title] { font-size: .8667rem; }
 @media (prefers-reduced-motion: reduce) { .kb-col { animation: none; } }
+
+/* ---------- Coleção do Lidinho ---------- */
+.mascot.locked { filter: brightness(0) !important; opacity: 0.16; }
+:root[data-scheme='dark'] .mascot.locked { filter: brightness(0) invert(1) !important; opacity: 0.14; }
+.mascot-col { display: grid; gap: .5333rem; margin-top: .8rem; }
+.mc-item { display: flex; align-items: center; gap: .9333rem; padding: .6667rem .8rem; border-radius: 1.0667rem; background: var(--surface-2); border: 1.5px solid transparent; }
+.mc-item.now { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface-2)); }
+.mc-art { flex: none; width: 5.6rem; height: 5.6rem; display: grid; place-items: center; border-radius: .9333rem; background: var(--surface); }
+.mc-art .mascot { width: 100%; height: 100%; }
+.mc-txt { min-width: 0; }
+.mc-txt h3 { margin: 0; font-size: 1rem; font-weight: 800; display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+.mc-txt small { color: var(--muted); font-size: .7667rem; font-weight: 600; }
+.mc-txt p { margin: .2667rem 0 0; font-size: .8667rem; line-height: 1.45; color: var(--text); }
+.mc-tag { padding: .1333rem .4667rem; border-radius: 99px; background: var(--accent); color: var(--on-accent); font-size: .7rem; font-weight: 800; }
+.mc-item.locked .mc-txt h3 { color: var(--dim); letter-spacing: 0.2em; }
+.mc-item.locked { background: color-mix(in srgb, var(--surface-2) 60%, transparent); }

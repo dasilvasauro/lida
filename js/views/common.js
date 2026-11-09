@@ -4,8 +4,8 @@ import { esc, fmtInt } from '../lib/util.js';
 import { nowMs } from '../lib/clock.js';
 import { levelTitle } from '../core/model.js';
 import { boosts, levelProgress } from '../core/game.js';
-import { icon, bar } from '../ui/ui.js';
-import { mascotFor } from '../ui/mascot.js';
+import { icon, bar, sheet } from '../ui/ui.js';
+import { mascotFor, mascotCollection } from '../ui/mascot.js';
 
 // Foto da conta Google; sem foto (ou se ela não carregar), a inicial do nome.
 export function avatar(size) {
@@ -22,15 +22,26 @@ export function levelCard(S) {
   const lp = levelProgress(m);
   const b = boosts(S);
   const hrs = (until) => Math.max(1, Math.round((until - nowMs()) / 3600000));
-  return `<a class="lvl" href="#loja" aria-label="Nível ${m.level}, ${fmtInt(m.gold)} de ouro. Abrir a Loja">
+  return `<div class="lvl"><a class="lvl-link" href="#loja" aria-label="Nível ${m.level}, ${fmtInt(m.gold)} de ouro. Abrir a Loja">
     <div class="lvl-badge" aria-hidden="true">${m.level}</div>
     <div class="lvl-info">
       <div class="row"><b class="lvl-title">Nível ${m.level} · ${esc(levelTitle(m.level))}</b><span>${fmtInt(lp.into)} / ${fmtInt(lp.need)} XP</span></div>
       ${bar(lp.frac, { label: 'Progresso até o próximo nível' })}
       <div class="wallet"><span class="gold">${icon('coin')}<b data-count="gold">${fmtInt(m.gold)}</b></span><span class="vouch">${icon('card')}<b>${fmtInt(m.vouchers)}</b><i class="vdots" aria-label="${m.voucherProgress} de 3 para o próximo voucher">${[0, 1, 2].map((k) => `<i class="${k < m.voucherProgress ? 'on' : ''}"></i>`).join('')}</i></span>
         ${b.xp ? `<span class="boost">${icon('up')}XP ${hrs(b.xpUntil)} h</span>` : ''}${b.gold ? `<span class="boost">${icon('coin')}Ouro ${hrs(b.goldUntil)} h</span>` : ''}</div>
-    </div>
-    <span class="lvl-mascot" title="Lidinho, ${esc(levelTitle(m.level))}">${mascotFor(m.level, { size: 60 })}</span>
-  </a>`;
+    </div></a>
+    <button type="button" class="lvl-mascot" data-mascot aria-label="Lidinho, ${esc(levelTitle(m.level))}: ver os títulos">${mascotFor(m.level, { size: 64 })}</button>
+  </div>`;
 }
 
+
+// Coleção do Lidinho: o título atual, os anteriores com os seus textos e a sombra dos próximos.
+export function openMascot(level) {
+  sheet({
+    title: 'Lidinho',
+    body: `<p class="sheet-text">A cada título novo, o Lidinho ganha roupa, acessório e pose novos. Os próximos ficam na sombra até você chegar lá.</p>${mascotCollection(level)}`,
+    onMount(el) {
+      setTimeout(() => el.querySelector('[data-now]')?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 260);
+    },
+  });
+}
