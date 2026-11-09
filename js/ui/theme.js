@@ -132,8 +132,10 @@ export const FONTS = {
   lexend: { name: 'Lexend', stack: "'Lexend', system-ui, sans-serif", note: 'Feita para leitura fluida' },
   atkinson: { name: 'Atkinson Hyperlegible', stack: "'Atkinson Hyperlegible', system-ui, sans-serif", note: 'Máxima legibilidade' },
   lora: { name: 'Lora', stack: "'Lora', Georgia, serif", note: 'Com serifa, tom editorial' },
+  // Retrô de terminal. Tem desenho pequeno: o tamanho base sobe para ficar legível.
+  vt323: { name: 'VT323', stack: "'VT323', ui-monospace, monospace", note: 'Retrô, de terminal antigo', scale: 1.3 },
 };
-export const FONT_ORDER = ['manrope', 'inter', 'nunito', 'lexend', 'atkinson', 'lora'];
+export const FONT_ORDER = ['manrope', 'inter', 'nunito', 'lexend', 'atkinson', 'lora', 'vt323'];
 
 // Tamanho da interface: tudo no CSS é medido em rem a partir deste valor (texto, espaços, botões),
 // então a escolha muda o tamanho do app inteiro, não só da letra.
@@ -175,7 +177,7 @@ export function applyAppearance({ theme = 'sistema', font = 'manrope', size = 'm
   for (const [k, v] of Object.entries(VAR)) vars[v] = t[k];
   if (!FONTS[font]) font = 'manrope'; // inclui quem tinha escolhido a antiga "fonte do sistema"
   vars['--font'] = FONTS[font].stack;
-  vars['--fs'] = `${(SIZES[size] || SIZES[defaultSize()]).px}px`;
+  vars['--fs'] = `${Math.round((SIZES[size] || SIZES[defaultSize()]).px * (FONTS[font].scale || 1) * 10) / 10}px`;
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
   root.style.colorScheme = t.scheme;
   root.dataset.scheme = t.scheme;

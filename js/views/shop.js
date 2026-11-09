@@ -5,11 +5,11 @@ import { THEMES, swatch, themeName } from '../ui/theme.js';
 import { esc, fmtInt } from '../lib/util.js';
 import { nowMs } from '../lib/clock.js';
 import { icon, toast, confirmDialog } from '../ui/ui.js';
-import { play } from '../core/sound.js';
+import { play, preview, PACKS, PACK_ORDER, soundPrefs, setSoundPrefs } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
 import { levelUp } from '../ui/reward.js';
 
-const TONE = { magicDice: 'acc', xpBoost: 'acc', goldBoost: 'warn', respite: 'pos', relief: 'pos', extraP0: 'neg', extraP1: 'warn', bonusTask: 'pos', changeModus: 'acc', extraQuitter: 'neg', freeze: 'acc', dayOff: 'warn', instantLuck: 'pos', luckyCard: 'pos' };
+const TONE = { magicDice: 'acc', xpBoost: 'acc', goldBoost: 'warn', respite: 'pos', relief: 'pos', extraP0: 'neg', extraP1: 'warn', bonusTask: 'pos', changeModus: 'acc', extraQuitter: 'neg', freeze: 'acc', autoFreeze: 'acc', dayOff: 'warn', instantLuck: 'pos', luckyCard: 'pos' };
 
 export const shopView = {
   title: 'Loja',
@@ -36,16 +36,19 @@ export const shopView = {
       }
       <div class="seg small shop-tabs" role="tablist" style="--i:2">
         ${[
-          ['ouro', 'Com ouro'],
-          ['vouchers', 'Com vouchers'],
+          ['ouro', 'Ouro'],
+          ['vouchers', 'Vouchers'],
           ['temas', 'Temas'],
+          ['sons', 'Sons'],
         ]
           .map(([k, l]) => `<button type="button" role="tab" class="${tab === k ? 'on' : ''}" aria-selected="${tab === k}" data-tab="${k}">${l}</button>`)
           .join('')}
       </div>
-      <section class="block shop-list" style="--i:3">${tab === 'temas' ? themes(S) : items(tab === 'ouro' ? G.SHOP_GOLD : G.SHOP_VOUCHERS, m)}</section>
+      <section class="block shop-list" style="--i:3">${tab === 'temas' ? themes(S) : tab === 'sons' ? packs(S) : items(tab === 'ouro' ? G.SHOP_GOLD : G.SHOP_VOUCHERS, m)}</section>
       <p class="hint shop-foot">${
-        tab === 'vouchers'
+        tab === 'sons'
+          ? 'Conjuntos comprados valem em todos os aparelhos. Escolha qual usar aqui ou em Ajustes.'
+          : tab === 'vouchers'
           ? 'Vouchers vêm de hábitos (a cada 3 metas batidas), do Pomodoro (a cada hora de foco) e dos marcos de nível.'
           : 'Ouro vem de tarefas concluídas, rotinas, água e check-ins do Desapego.'
       }</p>`;
@@ -56,7 +59,7 @@ export const shopView = {
 function invTile(k, n) {
   const it = G.ITEMS[k];
   const act = { luckyCard: 'Abrir', magicDice: 'Rolar', xpBoost: 'Ativar', goldBoost: 'Ativar', dayOff: 'Usar' }[k];
-  const where = { respite: 'Use na tarefa', relief: 'Use na tarefa', freeze: 'Use no hábito', extraP0: 'Automático', extraP1: 'Automático', bonusTask: 'Ao criar', changeModus: 'Em Ajustes', extraQuitter: 'Ativo' }[k];
+  const where = { respite: 'Use na tarefa', relief: 'Use na tarefa', freeze: 'Use no hábito', autoFreeze: 'Automático', extraP0: 'Automático', extraP1: 'Automático', bonusTask: 'Ao criar', changeModus: 'Em Ajustes', extraQuitter: 'Ativo' }[k];
   return `<div class="inv-tile tone-${TONE[k] || 'acc'}"><span class="inv-ic">${icon(it.icon)}<b>${n}</b></span><span class="grow"><b>${esc(it.name)}</b><small>${act ? '' : esc(where || '')}</small></span>${act ? `<button type="button" class="btn small primary" data-use="${k}">${act}</button>` : ''}</div>`;
 }
 
@@ -90,7 +93,53 @@ function themes(S) {
     .join('')}</div><p class="hint">Temas comprados ficam em Ajustes. Alguns são liberados por nível.</p>`;
 }
 
+function packs(S) {
+  const cur = soundPrefs().pack || 'classic';
+  return `<ul class="shop-items packs">${PACK_ORDER.map((id, i) => {
+    const p = PACKS[id];
+    const own = G.ownsPack(id, S);
+    const on = own && cur === id;
+    const can = S.money.gold >= p.price;
+    const btn = on
+      ? `<span class="price on">${icon('check')}Em uso</span>`
+      : own
+        ? `<button type="button" class="price" data-pack-use="${id}">Usar</button>`
+        : `<button type="button" class="price${can ? '' : ' short'}" data-pack-buy="${id}" aria-label="Comprar ${esc(p.name)} por ${p.price} de ouro">${icon('coin')}${fmtInt(p.price)}</button>`;
+    return `<li class="shop-item tone-${['acc', 'warn', 'pos', 'acc', 'neg'][i % 5]}" style="--i:${i}">
+      <button type="button" class="shop-ic pack-hear" data-pack-hear="${id}" aria-label="Ouvir ${esc(p.name)}">${icon('volume')}</button>
+      <div class="grow"><b>${esc(p.name)}${!p.price ? '<span class="own">Grátis</span>' : ''}</b><p>${esc(p.desc)}</p></div>
+      ${btn}
+    </li>`;
+  }).join('')}</ul>`;
+}
+
+async function onPackBuy(id, el) {
+  const p = PACKS[id];
+  const S = P();
+  if (S.money.gold < p.price) {
+    play('error');
+    return toast(`Faltam ${fmtInt(p.price - S.money.gold)} de ouro para ${p.name}.`);
+  }
+  if (!(await confirmDialog(`${p.desc}\n\nComprar por ${fmtInt(p.price)} de ouro?`, { ok: 'Comprar', title: p.name }))) return;
+  if (!(await G.buySoundPack(id, p.price)).ok) return toast('Não foi possível comprar.');
+  setSoundPrefs({ pack: id });
+  play('purchase');
+  haptic('done');
+  toast(`${p.name} liberado e em uso.`);
+  shopView.render(el);
+}
+
 function bind(el) {
+  el.querySelectorAll('[data-pack-hear]').forEach((b) => (b.onclick = () => preview(b.dataset.packHear)));
+  el.querySelectorAll('[data-pack-buy]').forEach((b) => (b.onclick = () => onPackBuy(b.dataset.packBuy, el)));
+  el.querySelectorAll('[data-pack-use]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        setSoundPrefs({ pack: b.dataset.packUse });
+        play('complete');
+        shopView.render(el);
+      }),
+  );
   el.querySelectorAll('[data-tab]').forEach(
     (b) =>
       (b.onclick = () => {
@@ -126,11 +175,13 @@ async function onUse(k) {
     const r = await G.openLuckyCard();
     if (!r) return;
     const p = r.prize;
+    const title = p.gold ? `+${fmtInt(p.gold)} de ouro` : p.xp ? `+${fmtInt(p.xp)} de XP` : p.vouchers ? '+1 voucher' : p.item ? G.ITEMS[p.item].name : 'Desta vez, nada';
+    const text = p.big ? 'A sorte grande! Bom proveito.' : p.gold ? 'Um trocado para a Loja.' : p.xp ? 'Sabedoria acumulada.' : p.vouchers ? 'Vale para os itens de voucher.' : p.item ? 'Já está nos seus itens.' : 'Acontece. A próxima pode ser melhor.';
     reveal({
       kind: 'card',
-      title: p.gold ? '+100 de ouro' : p.xp ? '+200 de XP' : 'Desta vez, nada',
-      text: p.gold ? 'A sorte grande. Bom proveito.' : p.xp ? 'Sabedoria acumulada.' : 'Acontece. A próxima pode ser melhor.',
-      good: !!(p.gold || p.xp),
+      title,
+      text,
+      good: !!(p.gold || p.xp || p.vouchers || p.item),
       after: () => r.levelUp && levelUp(r.levelUp, r),
     });
   } else if (k === 'magicDice') {

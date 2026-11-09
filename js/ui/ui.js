@@ -213,6 +213,30 @@ export function promptDialog(title, { label = '', value = '', ok = 'Salvar', typ
   });
 }
 
+/* ---------- Copiar ---------- */
+// Copia um texto para a área de transferência (com alternativa para WebViews sem a API).
+export async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;opacity:0;left:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch {
+      ok = false;
+    }
+    ta.remove();
+    return ok;
+  }
+}
+
 /* ---------- Avisos ---------- */
 // Aviso curto no rodapé. Some sozinho, com um toque no X, ou arrastando para o lado.
 export function toast(msg, { action, onAction, ms = 3200 } = {}) {

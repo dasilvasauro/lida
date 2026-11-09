@@ -1,7 +1,7 @@
 // Ajustes: conta, aparência, sons, vibração, lembretes e sobre.
 import { app, P, personal, displayName } from '../state.js';
 import { THEMES, THEME_ORDER, themeName, isFreeTheme, FONTS, FONT_ORDER, SIZES, applyAppearance, storedAppearance, swatch } from '../ui/theme.js';
-import { soundPrefs, setSoundPrefs, play } from '../core/sound.js';
+import { soundPrefs, setSoundPrefs, play, preview, PACKS, PACK_ORDER } from '../core/sound.js';
 import { hapticsOn, setHaptics, hapticsSupported, haptic } from '../ui/haptics.js';
 import * as notify from '../core/notify.js';
 import { isNative } from '../native.js';
@@ -9,7 +9,7 @@ import { googleAvailable } from '../core/cloud.js';
 import { esc, fmtInt } from '../lib/util.js';
 import { icon, toast, confirmDialog, promptDialog } from '../ui/ui.js';
 import { avatar } from './common.js';
-import { MODUS, useItemEvent, THEME_PRICES } from '../core/game.js';
+import { MODUS, useItemEvent, THEME_PRICES, ownsPack } from '../core/game.js';
 import { WD_LETTER, WD_SHORT } from '../lib/util.js';
 
 const toggle = (name, on, label) => `<span class="toggle"><input type="checkbox" data-${name}${on ? ' checked' : ''} aria-label="${esc(label)}"><i></i></span>`;
@@ -78,6 +78,7 @@ export const settingsView = {
       <section class="set-group"><h2>Sons e vibração</h2><div class="set-list">
         <label class="set-row">${icon(sp.on ? 'volume' : 'mute')}<span class="grow">Sons<small>Ao concluir tarefas, ganhar XP e subir de nível</small></span>${toggle('sound', sp.on, 'Sons')}</label>
         <div class="set-row"${sp.on ? '' : ' hidden'}><span class="grow">Volume<input type="range" min="0.1" max="1" step="0.05" value="${sp.volume}" data-volume aria-label="Volume dos sons"></span><button type="button" class="btn small" data-hear>Ouvir</button></div>
+        <div class="set-row"${sp.on ? '' : ' hidden'}><span class="grow">Conjunto de sons<small>Mais conjuntos na Loja</small></span><select data-pack aria-label="Conjunto de sons">${PACK_ORDER.filter((k) => ownsPack(k, S)).map((k) => `<option value="${k}"${(sp.pack || 'classic') === k ? ' selected' : ''}>${esc(PACKS[k].name)}</option>`).join('')}</select></div>
         ${hapticsSupported() || isNative() ? `<label class="set-row">${icon('phone')}<span class="grow">Vibração<small>Um toque leve ao marcar e concluir</small></span>${toggle('haptics', hapticsOn(), 'Vibração')}</label>` : ''}
       </div></section>
 
@@ -150,6 +151,10 @@ function bind(el, S) {
     setSoundPrefs({ on: e.target.checked });
     if (e.target.checked) play('complete');
     rerender();
+  };
+  el.querySelector('[data-pack]').onchange = (e) => {
+    setSoundPrefs({ pack: e.target.value });
+    preview(e.target.value);
   };
   el.querySelector('[data-volume]').onchange = (e) => {
     setSoundPrefs({ volume: Number(e.target.value) });

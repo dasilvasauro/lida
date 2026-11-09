@@ -10,6 +10,9 @@ import { esc, fmtDayLong, plural } from '../lib/util.js';
 import { icon } from '../ui/ui.js';
 import { play } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
+import { isBoardMode, viewBar, bindViewBar, kanban, bindKanban } from './kanban.js';
+import { sprintCard, bindSprint } from './tasks.js';
+import { buckets } from '../core/tasks.js';
 
 export const BOARD_MQ = '(min-width: 1200px)';
 export const isBoard = () => matchMedia(BOARD_MQ).matches;
@@ -77,6 +80,19 @@ export const boardView = {
   sub: () => fmtDayLong(today()),
   render(el) {
     const S = P();
+    if (isBoardMode('painel')) {
+      // Quadro no Painel: as colunas de tarefas ocupam o lugar de Hoje e Planejar; o resumo fica.
+      const sp = buckets(S, today()).sprint;
+      el.innerHTML = `<div class="board kb-wide">
+        <div class="board-col b-kb">${viewBar('painel')}${sp ? sprintCard(sp) : ''}${kanban({ screen: 'painel' }, S)}</div>
+        <aside class="board-col b-side" aria-label="Resumo do dia">${side(S)}</aside>
+      </div>`;
+      bindViewBar(el);
+      bindKanban(el);
+      bindSprint(el);
+      bindSide(el);
+      return;
+    }
     el.innerHTML = `<div class="board">
       <div class="board-col b-today"></div>
       <div class="board-col b-plan"><div class="b-plan-title"><h2>Planejar</h2><span class="hint">${plural(S.task.filter((t) => !t.done && !t.failed && !t.archived && !t.due && t.kind !== 'routine').length, 'tarefa', 'tarefas')} na entrada</span></div><div class="b-plan-body"></div></div>
@@ -84,6 +100,11 @@ export const boardView = {
     </div>`;
     todayView.render(el.querySelector('.b-today'));
     planView.render(el.querySelector('.b-plan-body'));
+    bindSide(el);
+  },
+};
+
+function bindSide(el) {
     el.querySelectorAll('[data-sh]').forEach(
       (b) =>
         (b.onclick = async () => {
@@ -104,5 +125,4 @@ export const boardView = {
           app.refresh();
         }),
     );
-  },
-};
+}

@@ -9,9 +9,9 @@ import { esc, fmtInt, plural, addDays, sum, weekday, MSHORT, WD_SHORT, ymOf, fmt
 import { icon, sheet, toast, confirmDialog, empty, COLORS, colorPicker, readForm } from '../ui/ui.js';
 import { columns, line, heat } from '../ui/chart.js';
 import { IPL_PARTS, dayIPL, grade, gradeLine, monthIPL } from '../core/ipl.js';
-import { showDaySummary, showMonthSummary, partsBars } from './summary.js';
+import { showDaySummary, showMonthSummary, showYearSummary, partsBars } from './summary.js';
 import { haptic } from '../ui/haptics.js';
-import { avatar, levelCard } from './common.js';
+import { avatar, levelCard, openMascot } from './common.js';
 
 export const MOODS = [
   { id: 'radiant', emoji: '😄', name: 'Radiante' },
@@ -154,6 +154,7 @@ function iplSection(S, d) {
       ${g ? `<p class="grade-line">${esc(gradeLine(g))}</p>` : ''}
       ${last30.length > 1 ? `<figure class="chart-card flat"><figcaption><b>Flutuação</b><span>últimos 30 dias</span></figcaption>${line(last30.map((p) => ({ value: p.score, label: lbl(p.date), tip: `IPL ${p.score} · ${grade(p.score)}|${lbl(p.date)} · ${plural(p.tasksDone || 0, 'tarefa', 'tarefas')}` })), { ariaLabel: 'IPL diário nos últimos 30 dias' })}</figure>` : ''}
       ${now.score != null ? `<div class="ipl-today"><small>Partes de hoje</small>${partsBars(now.parts, { compact: true })}</div>` : ''}
+      ${S.year.length ? `<div class="past years">${[...S.year].sort((a, b) => b.year - a.year).slice(0, 3).map((x) => `<button type="button" data-sum-year="${x.year}"><small>${x.year}</small><b>${esc(x.grade || '–')}</b></button>`).join('')}</div>` : ''}
       ${past.length ? `<div class="past">${past.map((x) => `<button type="button" data-sum-month="${x.month}"><small>${esc(fmtMonth(x.month).split(' de ')[0].slice(0, 3))}</small><b>${esc(x.grade || grade(x.score || 0))}</b></button>`).join('')}</div>` : ''}
       <details class="ipl-how">
         <summary>${icon('bulb', 'sm')} Como o IPL é calculado</summary>
@@ -374,8 +375,10 @@ function bind(el) {
         meView.render(el);
       }),
   );
+  el.querySelector('[data-mascot]')?.addEventListener('click', () => (haptic('tick'), openMascot(P().money.level)));
   el.querySelector('[data-sum-day]')?.addEventListener('click', () => showDaySummary(addDays(today(), -1)));
   el.querySelector('[data-sum-today]')?.addEventListener('click', () => showDaySummary(today()));
+  el.querySelectorAll('[data-sum-year]').forEach((b) => (b.onclick = () => showYearSummary(Number(b.dataset.sumYear))));
   el.querySelectorAll('[data-sum-month]').forEach((b) => (b.onclick = () => showMonthSummary(b.dataset.sumMonth)));
   el.querySelectorAll('[data-vision]').forEach((b) => (b.onclick = () => editVision(false)));
   el.querySelector('[data-review]')?.addEventListener('click', () => editVision(true));
