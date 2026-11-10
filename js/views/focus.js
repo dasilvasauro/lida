@@ -5,12 +5,12 @@
 // O estado fica no registro sincronizado "focus" (core/focus.js): é o mesmo em todos os aparelhos.
 import { personal, P, app } from '../state.js';
 import { commit } from '../core/game.js';
-import { toggleTask } from '../core/tasks.js';
+import { toggleTask, toggleSub } from '../core/tasks.js';
 import { timerAlert, liveTimer } from '../core/notify.js';
 import { POMO_DEF, saveFocus, focusOf, focusedTask, setFocus } from '../core/focus.js';
 import { today, nowMs } from '../lib/clock.js';
 import { esc, sum, plural } from '../lib/util.js';
-import { icon, sheet, toast } from '../ui/ui.js';
+import { icon, sheet, toast, bar } from '../ui/ui.js';
 import { play } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
 import { celebrate } from './celebrate.js';
@@ -426,6 +426,7 @@ export function focusCard(S = P()) {
     <div class="fc-top"><span class="fc-rec"><i></i>Em foco</span><span class="fc-time" data-fc-time>${f?.since ? ago(f.since) : ''}</span></div>
     <h3>${esc(t.title)}</h3>
     <p class="fc-meta" data-fc-meta>${timed ? 'Modo foco com tempo' : pomoOn ? `Pomodoro · ${fmt(leftNow())}` : 'Sincronizado com seus outros aparelhos'}</p>
+    ${fcSubs(t)}
     <div class="fc-acts">
       <button type="button" class="btn small primary" data-fc-done>${icon('check')}Concluir</button>
       ${timed ? `<button type="button" class="btn small" data-fc-open>${icon('timer')}Abrir cronômetro</button>` : `<button type="button" class="btn small" data-fc-pomo>${icon(pomo.running ? 'pause' : 'play')}${pomo.running ? 'Pausar' : pomoOn ? 'Continuar' : 'Pomodoro'}</button>`}
@@ -434,10 +435,31 @@ export function focusCard(S = P()) {
   </section>`;
 }
 
+// Subtarefas (ou itens da rotina) da tarefa em foco, marcáveis ali mesmo.
+function fcSubs(t) {
+  const subs = t.subtasks || [];
+  if (!subs.length) return '';
+  const n = subs.filter((x) => x.done).length;
+  return `<div class="fc-subs"><div class="fc-subs-head"><span>${t.kind === 'routine' ? 'Itens da rotina' : 'Subtarefas'}</span><b>${n}/${subs.length}</b></div>${bar(n / subs.length, { cls: 'thin', label: 'Progresso' })}
+    <ul>${subs.map((x) => `<li><label class="check mini${x.done ? ' on' : ''}"><input type="checkbox" data-fcsub="${esc(x.id)}"${x.done ? ' checked' : ''}><span>${esc(x.title)}</span></label></li>`).join('')}</ul></div>`;
+}
+
 export function bindFocusCard(el) {
   const card = el.querySelector('[data-focuscard]');
   if (!card) return;
   const id = card.dataset.id;
+  card.querySelectorAll('[data-fcsub]').forEach(
+    (c) =>
+      (c.onchange = async () => {
+        c.closest('.check')?.classList.toggle('on', c.checked);
+        const r = await toggleSub(id, c.dataset.fcsub);
+        if (r?.done) {
+          play('progress', { fraction: r.fraction });
+          haptic('tick');
+        } else play('uncheck');
+        app.refresh();
+      }),
+  );
   card.querySelector('[data-fc-done]').onclick = async () => {
     if (task.taskId === id) {
       timerAlert('focus', null);

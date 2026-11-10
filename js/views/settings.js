@@ -12,6 +12,7 @@ import { avatar } from './common.js';
 import { MODUS, useItemEvent, THEME_PRICES, ownsPack } from '../core/game.js';
 import { WD_LETTER, WD_SHORT } from '../lib/util.js';
 import { CHANGELOG, KIND_LABEL } from '../core/changelog.js';
+import { isDesktop, glassOn, setGlass } from '../desktop.js';
 
 const toggle = (name, on, label) => `<span class="toggle"><input type="checkbox" data-${name}${on ? ' checked' : ''} aria-label="${esc(label)}"><i></i></span>`;
 // Para linhas que não são <label> (têm outro controle dentro): o próprio botão vira o rótulo.
@@ -56,6 +57,7 @@ export const settingsView = {
           const on = ap.theme === id;
           return `<button type="button" class="theme-opt${on ? ' on' : ''}${owned ? '' : ' locked'}" data-theme="${id}" aria-pressed="${on}"${owned ? '' : ' aria-disabled="true"'}>${swatch(id)}<span>${esc(themeName(id))}</span>${id === 'sistema' ? '<small>Segue o aparelho</small>' : owned ? '' : `<small>${lockLabel(id)}</small>`}</button>`;
         }).join('')}</div>
+        ${isDesktop() ? `<div class="set-list set-after"><label class="set-row">${icon('sparkles')}<span class="grow">Barra lateral translúcida<small>O fundo da barra fica transparente e o KDE desfoca o que está atrás (veja no README como ligar o desfoque no KWin)</small></span>${toggle('glass', glassOn(), 'Barra lateral translúcida')}</label></div>` : ''}
       </section>
 
       <section class="set-group"><h2>Fonte</h2>
@@ -151,6 +153,7 @@ function bind(el, S) {
   );
 
   el.querySelector('[data-changelog]').onclick = () => openChangelog();
+  el.querySelector('[data-glass]')?.addEventListener('change', (e) => setGlass(e.target.checked));
   el.querySelector('[data-sound]').onchange = (e) => {
     setSoundPrefs({ on: e.target.checked });
     if (e.target.checked) play('complete');

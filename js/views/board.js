@@ -7,7 +7,7 @@ import { glance } from '../core/glance.js';
 import { dayIPL, grade } from '../core/ipl.js';
 import { today } from '../lib/clock.js';
 import { esc, fmtDayLong, plural } from '../lib/util.js';
-import { icon } from '../ui/ui.js';
+import { icon, toast } from '../ui/ui.js';
 import { play } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
 import { isBoardMode, viewBar, bindViewBar, kanban, bindKanban } from './kanban.js';
@@ -122,6 +122,7 @@ function bindSide(el) {
           const r = await H.addWater(Number(b.dataset.sw));
           play('water');
           if (r.hit) play('complete');
+          if (r.streakPrize) toast(`Ofensiva de ${r.streakPrize.days} dias de água: +200 XP e +200 de ouro!`, { ms: 5000 });
           app.refresh();
         }),
     );

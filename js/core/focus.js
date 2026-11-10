@@ -46,7 +46,8 @@ export function focusSummary(S = P(), now = nowMs()) {
   const tk = f.task?.taskId && t?.id === f.task.taskId ? f.task : null;
   const taskLeft = tk ? Math.round(tk.running ? (tk.endsAt - now) / 1000 : tk.left) : null;
   return {
-    task: t ? { id: t.id, title: t.title, priority: t.priority, due: t.due || null } : null,
+    // Subtarefas (ou itens da rotina) vão junto: aparecem no cartão de foco, na CLI e no widget.
+    task: t ? { id: t.id, title: t.title, priority: t.priority, due: t.due || null, kind: t.kind || 'normal', subtasks: (t.subtasks || []).map((x) => ({ id: x.id, title: x.title, done: !!x.done })) } : null,
     since: t ? f.since || null : null,
     pomo: { ...pomo, leftSec: pomoLeft, active: pomo.running || pomoLeft !== (pomo.mode === 'focus' ? pomo.focusMin : pomo.breakMin) * 60 },
     timer: tk ? { running: !!tk.running, endsAt: tk.endsAt || null, leftSec: taskLeft, total: tk.total } : null,

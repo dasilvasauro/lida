@@ -3,7 +3,7 @@
 Tarefas e hábitos num só lugar, com uma pequena recompensa a cada passo concluído.
 Funciona no navegador (celular e computador) e como app Android, offline, com os dados cifrados no aparelho.
 
-> **Lida 3 — alfa 11.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
+> **Lida 3 — alfa 12.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
 > A versão anterior (React) continua no ar na branch `main` até a nova alcançar o que ela fazia.
 
 ---
@@ -51,7 +51,8 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | alfa 8 | **Lida para Linux** (Qt/PySide6): menu global do KDE, bandeja, CLI `lida`, widgets do Plasma (foco/Pomodoro e Anéis), script de instalação | Pronta |
 | alfa 9 | **Quadro (Kanban)** com Lista/Quadro em Hoje, Planejar, projetos e Painel; **resumão do ano** com IPL pela média dos meses; **Lidinho**, o mascote que troca de roupa a cada título; **4 conjuntos de sons** na Loja; **Congelamento Automático**; Carta da Sorte que premia mais; fonte retrô **VT323**; copiar a descrição; simular dias no modo demo | Pronta |
 | alfa 10 | **Virada do dia confiável** entre aparelhos (puxa do servidor antes de fechar; sem conexão, espera), consertos automáticos (falha por engano, rotina duplicada, notas dos últimos 7 dias refeitas), repetida que vence continua a série, **revisão de ontem** antes do resumo e **Novidades e correções** em Ajustes | Pronta |
-| alfa 11 | Revisão de ontem com **hábitos e água**, **foco em rotinas**, power-ups no **cartão da tarefa**, **Live Update** com progresso e status em Ajustes, VT323 sem inflar a interface, textos novos do Lidinho | **Esta versão** |
+| alfa 11 | Revisão de ontem com **hábitos e água**, **foco em rotinas**, power-ups no **cartão da tarefa**, **Live Update** com progresso e status em Ajustes, VT323 sem inflar a interface, textos novos do Lidinho | Pronta |
+| alfa 12 | Temas **Edna, Monocromo, Bumblebee e Tumbleweed**, subtarefas na tarefa em foco (cartão, widget e CLI), ofensiva da água, +30% de ouro nas tarefas, anéis e barras animados, **barra lateral translúcida** no Linux | **Esta versão** |
 
 ## Como o jogo funciona
 
@@ -59,7 +60,7 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 
 | Tipo | Como funciona |
 |---|---|
-| Tarefa | Recompensa por prioridade: P0 150 XP / 50 de ouro … P4 25 XP / 10 de ouro. |
+| Tarefa | Recompensa por prioridade: P0 150 XP / 65 de ouro, P1 100 / 52, P2 75 / 40, P3 50 / 28, P4 25 / 15. A punição de uma tarefa vencida é menor no ouro (P0 50 … P4 10). |
 | Com tempo | Tem duração (5 a 120 min). O ▶ abre o modo foco com cronômetro, que continua certo com a tela desligada. |
 | Sprint | Objetivo maior com etapas e data de fim. Um ativo por vez, mostrado no topo de Hoje com o progresso das etapas e dos dias. |
 | Desafio do dia | Vale só para hoje. Um por dia. |
@@ -158,6 +159,14 @@ No Quadro, escolha **Agrupar por** Data (Atrasadas, Hoje, Amanhã, Esta semana, 
 ou Projeto. Arrastar um cartão para outra coluna muda a data, a prioridade ou o projeto (com Desfazer). No mouse, é só
 arrastar; no toque, segure o cartão um instante e arraste (segurar e soltar sem mover abre a edição). Cada coluna tem
 o seu "Adicionar tarefa", que já cria a tarefa naquela coluna.
+
+**Temas da Loja:** Aqua, Matrix, Rosa, Tomate, Cinza, Laranja, **Monocromo** (tudo em cinza, até emojis e o
+Lidinho) e **Bumblebee** (preto e amarelo) por 2.500 de ouro; **Edna** (inspirado no tema do KDE, ardósia com
+destaque azul e gradiente verde-água → índigo) e **Tumbleweed** (claro, com a barra lateral preta e o verde do
+Evernote) por 3.000.
+
+**Água em ofensiva:** a cada 7 dias seguidos batendo a meta de água, 200 XP e 200 de ouro (fora os 20 XP e 10 de
+ouro de cada dia).
 
 **Sons:** o conjunto Clássico é de graça; na Loja (aba Sons) há Retrô 8-bit, Madeira e sinos, Cristal e Digital
 (900 de ouro cada, valem em todos os aparelhos). Toque no alto-falante para ouvir antes de comprar; troque em Ajustes.
@@ -276,6 +285,20 @@ O que a CLI tem a mais que o gtasks++: linguagem natural ao adicionar (datas, ho
 etiquetas, repetição), foco **global** (a mesma tarefa em foco no celular e no widget), Pomodoro, hábitos, água,
 IPL, `--json` em tudo e completar comandos no **bash, zsh e fish** (instalados pelo `install.sh`).
 
+### Barra lateral translúcida (blur)
+
+Em **Ajustes > Tema** (ou no menu **Exibir**), ligue **Barra lateral translúcida**. A janela do Lida passa a ter fundo
+transparente só na barra lateral; o desfoque do que fica atrás é feito pelo KWin:
+
+- **X11:** basta o efeito **Desfoque** estar ligado em *Configurações do sistema > Gerenciamento de janelas > Efeitos
+  da área de trabalho*. O Lida pede o desfoque sozinho (precisa do `xprop`, que vem com o `xorg-xprop`).
+- **Wayland (padrão do Plasma 6):** um app Qt sem as bibliotecas do KDE não consegue pedir o desfoque. Instale o efeito
+  **Better Blur** (`kwin-effects-forceblur`, no AUR ou em github.com/taj-ny/kwin-effects-forceblur), ligue em *Efeitos
+  da área de trabalho*, abra a engrenagem dele e, em **Force blur**, adicione a classe de janela
+  `io.github.dasilvasauro.lida`. Desligue o efeito **Desfoque** padrão para não ter dois desfoques ao mesmo tempo.
+
+Sem o desfoque do KWin, a barra fica só transparente (mostra o papel de parede nítido).
+
 ### Widgets do Plasma
 
 Clique com o botão direito no painel ou na área de trabalho > **Adicionar widgets** > procure "Lida".
@@ -330,8 +353,10 @@ Tudo em **Ajustes > Lembretes**, cada tipo com seu interruptor e horário:
 
 ## Foco
 
-- **Tarefa em foco**: em Hoje, **Focar** (ou, no editor da tarefa, **Focar**). Aparece um cartão "Em foco" no topo,
-  com Concluir, Pomodoro e Parar foco, e a tarefa ganha a marca "Em foco" na lista.
+- **Tarefa em foco**: em Hoje, **Focar** (ou, no cartão da tarefa, **Focar**). Aparece um cartão "Em foco" no topo,
+  com Concluir, Pomodoro e Parar foco, e a tarefa ganha a marca "Em foco" na lista. Rotinas também podem entrar em
+  foco. As subtarefas (ou os itens da rotina) aparecem marcáveis no cartão de foco, no widget do Plasma e na CLI
+  (`lida foco status`; `lida sub foco 2` marca o 2º item da tarefa em foco).
 - **Global e entre aparelhos**: a tarefa em foco, o Pomodoro e o modo foco das tarefas com tempo ficam num registro
   sincronizado (cifrado como o resto). Começou no computador, aparece no celular, e vice-versa. Os cronômetros
   guardam a hora de término, então cada aparelho conta sozinho. O celular recebe a mudança quando o Lida está

@@ -262,6 +262,18 @@ def header(st):
     ft = focus_text(st.get("focus") or {})
     if ft:
         print("  " + ft)
+        print_focus_subs((st.get("focus") or {}).get("task"))
+
+
+def print_focus_subs(task, indent="      "):
+    """Subtarefas (ou itens da rotina) da tarefa em foco, numeradas para `lida sub foco N`."""
+    subs = (task or {}).get("subtasks") or []
+    if not subs:
+        return
+    n = sum(1 for s in subs if s["done"])
+    print(indent + dim(("Itens da rotina" if task.get("kind") == "routine" else "Subtarefas") + f" {n}/{len(subs)}"))
+    for j, s in enumerate(subs, 1):
+        print(f"{indent}{green('☑') if s['done'] else dim('☐')} {dim(s['title']) if s['done'] else s['title']} {dim(f'({j})')}")
 
 
 # ---------------------------------------------------------------- comandos
@@ -361,7 +373,10 @@ def cmd_focus(a):
         return print(json.dumps(r, ensure_ascii=False)) if a.json else ok(f"Concluída: {r['done']['title']}{_reward(r.get('reward'))}")
     if a.what in ("status",) or (not a.what and (a.json or not sys.stdout.isatty())):
         f = call("focus", {})
-        return print(json.dumps(f, ensure_ascii=False)) if a.json else print(focus_text(f) or dim("Nada em foco."))
+        if a.json:
+            return print(json.dumps(f, ensure_ascii=False))
+        print(focus_text(f) or dim("Nada em foco."))
+        return print_focus_subs(f.get("task"), "  ")
     if a.what:
         f = call("focus", {"ref": ref_of(" ".join([a.what] + a.rest))})
         if a.json:
@@ -506,7 +521,7 @@ def focus_screen():
                 last = time.time()
             f = st.get("focus") or {}
             task = f.get("task")
-            full = next((t for t in st.get("today") or [] if task and t["id"] == task["id"]), None) or task or {}
+            full = task or next((t for t in st.get("today") or [] if task and t["id"] == task["id"]), None) or {}
             subs = full.get("subtasks") or []
             sel = min(sel, max(0, len(subs) - 1))
             cols = shutil.get_terminal_size((80, 24)).columns
@@ -719,7 +734,7 @@ def parser():
     s.add_argument("-H", "--hora", dest="time", help="HH:MM (ou 'nenhum')")
     s.add_argument("-P", "--prioridade", dest="priority")
     s.add_argument("-n", "--notas", dest="notes")
-    s = add("sub", cmd_sub, "marca/desmarca a subtarefa N de uma tarefa", ["subtarefa"])
+    s = add("sub", cmd_sub, "marca/desmarca a subtarefa N de uma tarefa (\"foco\" = a tarefa em foco)", ["subtarefa"])
     s.add_argument("ref")
     s.add_argument("n", type=int)
 

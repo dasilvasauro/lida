@@ -54,7 +54,7 @@ test('concluir dá recompensa; reabrir devolve', async () => {
   const id = await tasks.addTask({ title: 'Escrever relatório', priority: 'P1', due: today() });
   const r = await tasks.toggleTask(id);
   assert.equal(r.done, true);
-  assert.deepEqual([r.reward.xp, r.reward.gold], [100, 40]);
+  assert.deepEqual([r.reward.xp, r.reward.gold], [100, 52]);
   assert.equal(P().money.xp, 100);
   assert.ok(tasks.buckets(P()).doneToday.some((t) => t.id === id));
   await tasks.toggleTask(id);
@@ -598,6 +598,23 @@ test('revisão de ontem: tarefas, hábitos e água que ficaram para trás', asyn
   assert.ok(left.water && left.water.ml >= 250 && left.water.ml < left.water.goal);
   await habits.setCount(P().byId.get(hid), 1, d0);
   assert.ok(!leftovers(P(), d0, []) || !leftovers(P(), d0, []).habits.some((h) => h.id === hid));
+  resetClock();
+  initClock(false);
+});
+
+test('água: 7 dias seguidos na meta rendem 200 XP e 200 de ouro (uma vez por ofensiva de 7)', async () => {
+  initClock(true);
+  const d0 = today();
+  const goal = habits.waterGoal(P());
+  for (let i = 6; i >= 1; i--) await habits.addWater(goal, addDays(d0, -i));
+  const xp = P().money.xp;
+  const r = await habits.addWater(goal, d0);
+  assert.equal(r.streak % 7, 0);
+  assert.deepEqual([r.streakPrize.xp, r.streakPrize.gold], [200, 200]);
+  assert.equal(P().money.xp, xp + 20 + 200);
+  assert.ok(personal.get(`ev_wstreak_${d0}`));
+  await habits.undoWater(d0);
+  assert.equal(personal.get(`ev_wstreak_${d0}`), null, 'desfazer abaixo da meta devolve');
   resetClock();
   initClock(false);
 });

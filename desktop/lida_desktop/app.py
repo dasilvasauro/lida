@@ -25,7 +25,7 @@ _FLAGS = "--disable-background-timer-throttling --disable-renderer-backgrounding
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "") + " " + _FLAGS).strip()
 
 from PySide6.QtCore import QObject, QSettings, Qt, QTimer, QUrl, Signal  # noqa: E402
-from PySide6.QtGui import QAction, QActionGroup, QDesktopServices, QIcon, QKeySequence  # noqa: E402
+from PySide6.QtGui import QAction, QActionGroup, QDesktopServices, QGuiApplication, QIcon, QKeySequence  # noqa: E402
 from PySide6.QtWebEngineCore import (  # noqa: E402
     QWebEnginePage,
     QWebEngineProfile,
@@ -143,6 +143,11 @@ class Window(QMainWindow):
         self.view.setPage(self.page)
         self.page.loadStarted.connect(lambda: self.hub.ready.clear())
         self.setCentralWidget(self.view)
+        # Janela com fundo transparente: a página pinta tudo de opaco, menos a barra lateral quando
+        # "Barra lateral translúcida" está ligada. O desfoque do que fica atrás é do KWin (ver README).
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.page.setBackgroundColor(Qt.GlobalColor.transparent)
+        self._blur_hint()
 
         self.hub = Hub(
             run_js=lambda rid, cmd, args: self.bridge.exec_js.emit(rid, cmd, json.dumps(args)),
@@ -186,6 +191,20 @@ class Window(QMainWindow):
 
     def _exec_js(self, rid, cmd, args_json):
         self.page.runJavaScript(f"window.lidaDesktop ? window.lidaDesktop.exec({rid}, {json.dumps(cmd)}, {args_json}) : null")
+
+    def _blur_hint(self):
+        """No X11, pede ao KWin para desfocar o que fica atrás da janela (_KDE_NET_WM_BLUR_BEHIND_REGION com um
+        retângulo maior que a tela = a janela toda). No Wayland não há como pedir daqui: o efeito "Better Blur" do KWin faz isso
+        pela classe da janela (ver README). Falhar aqui não atrapalha nada."""
+        if QGuiApplication.platformName() != "xcb":
+            return
+        try:
+            import subprocess
+
+            wid = int(self.winId())
+            subprocess.run(["xprop", "-id", str(wid), "-f", "_KDE_NET_WM_BLUR_BEHIND_REGION", "32c", "-set", "_KDE_NET_WM_BLUR_BEHIND_REGION", "0, 0, 16384, 16384"], check=False, timeout=3, capture_output=True)
+        except Exception:
+            pass
 
     def ui(self, action, value=None):
         self._exec_js(0, "ui", json.dumps({"action": action, "value": value}))
@@ -278,6 +297,7 @@ class Window(QMainWindow):
         self.g_font = QActionGroup(self)
         self.g_size = QActionGroup(self)
         self.a_showdone = self._act(v, "Mostrar concluídas em Hoje", lambda on: self.ui("showDone", on), checkable=True)
+        self.a_glass = self._act(v, "Barra lateral translúcida", lambda on: self.ui("glass", on), checkable=True)
         v.addSeparator()
         self._act(v, "Tela cheia", lambda: self.showNormal() if self.isFullScreen() else self.showFullScreen(), "F11")
         if self.debug:
@@ -368,6 +388,7 @@ class Window(QMainWindow):
         self.a_sound.setChecked(bool(ui.get("sound")))
         self.a_punish.setChecked(bool(ui.get("punish")))
         self.a_showdone.setChecked(bool(ui.get("showDone")))
+        self.a_glass.setChecked(bool(ui.get("glass")))
         for k, a in self.a_notify.items():
             a.setChecked(bool((ui.get("notify") or {}).get(k)))
             if k != "on":

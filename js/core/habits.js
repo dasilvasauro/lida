@@ -134,6 +134,8 @@ export const waterGlass = (S = P()) => S.prefs.waterGlass || 250;
 export const waterBottle = (S = P()) => S.prefs.waterBottle || 500;
 export const waterToday = (S = P(), day = today()) => sum(S.waterByDate.get(day) || [], (w) => w.ml || 0);
 
+export const WATER_STREAK_PRIZE = { xp: 200, gold: 200 };
+
 // Constância da água: dias seguidos batendo a meta (contando hoje se já bateu) e os últimos 7 dias.
 const waterHit = (S, day) => waterToday(S, day) >= waterGoal(S);
 export function waterStreak(S = P(), day = today()) {
@@ -159,8 +161,15 @@ export async function addWater(ml, day = today()) {
   const batch = [{ type: 'water', id: `wa_${uid(10)}`, data: { date: day, ml, at: nowMs() } }];
   const hit = before < goal && before + ml >= goal;
   if (hit && !personal.get(`ev_water_${day}`)) batch.push({ type: 'ev', id: `ev_water_${day}`, data: { kind: 'water', date: day, xp: 20, gold: 10 } });
+  // Ofensiva da água: a cada 7 dias seguidos batendo a meta, 200 XP e 200 de ouro (fixo).
+  let streak = 0;
+  if (hit) {
+    streak = 1;
+    for (let d = addDays(day, -1); streak < 800 && waterHit(S, d); d = addDays(d, -1)) streak++;
+    if (streak % 7 === 0 && !personal.get(`ev_wstreak_${day}`)) batch.push({ type: 'ev', id: `ev_wstreak_${day}`, data: { kind: 'water', ref: `ofensiva:${streak}`, date: day, xp: WATER_STREAK_PRIZE.xp, gold: WATER_STREAK_PRIZE.gold } });
+  }
   const res = await commit(batch);
-  return { total: before + ml, goal, hit, ...res };
+  return { total: before + ml, goal, hit, streak, streakPrize: hit && streak % 7 === 0 ? { ...WATER_STREAK_PRIZE, days: streak } : null, ...res };
 }
 
 export async function undoWater(day = today()) {
@@ -169,6 +178,7 @@ export async function undoWater(day = today()) {
   if (!list.length) return null;
   await personal.remove(list[0].id);
   if (waterToday(P(), day) < waterGoal() && personal.get(`ev_water_${day}`)) await personal.remove(`ev_water_${day}`);
+  if (waterToday(P(), day) < waterGoal() && personal.get(`ev_wstreak_${day}`)) await personal.remove(`ev_wstreak_${day}`);
   return list[0].ml;
 }
 
