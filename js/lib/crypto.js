@@ -100,3 +100,28 @@ export async function unseal(key, iv, ct, aad) {
 // Serialização da "embalagem" da chave para JSON/Firestore.
 export const b64 = (u8) => btoa(String.fromCharCode(...u8));
 export const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+
+// base64 em blocos (arquivos grandes estouram o limite de argumentos do String.fromCharCode).
+export const b64big = (u8) => {
+  let s = '';
+  for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+  return btoa(s);
+};
+
+// Arquivo cifrado com uma senha (backup .lida): chave aleatória embrulhada pela senha, conteúdo
+// comprimido e cifrado com AES-GCM. Sem a senha, o arquivo é ilegível.
+export async function sealWithPassword(pass, obj) {
+  const raw = rand(32);
+  const wrap = await wrapRaw(pass, raw);
+  const key = await importDataKey(raw);
+  raw.fill(0);
+  const { iv, ct } = await seal(key, obj, 'lida-backup', true);
+  return { wrap: { v: wrap.v, iter: wrap.iter, salt: b64(wrap.salt), iv: b64(wrap.iv), ct: b64(wrap.ct) }, iv: b64(iv), ct: b64big(ct) };
+}
+export async function openWithPassword(pass, pkg) {
+  const w = pkg.wrap;
+  const raw = await unwrapRaw(pass, { v: w.v, iter: w.iter, salt: unb64(w.salt), iv: unb64(w.iv), ct: unb64(w.ct) });
+  const key = await importDataKey(raw);
+  raw.fill(0);
+  return unseal(key, unb64(pkg.iv), unb64(pkg.ct), 'lida-backup');
+}

@@ -15,6 +15,15 @@ import { focusTask, focusOn } from './focus.js';
 import { focusOf } from '../core/focus.js';
 import { REMIND_BEFORE, notifyPrefs } from '../core/notify.js';
 
+// Etiqueta nova tem id derivado do nome: a mesma "@contas" criada em dois aparelhos é um registro só.
+export const tagId = (name) =>
+  `tag_${String(name)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || 'x'}`;
+
 /* ---------- Linha ---------- */
 export function taskRow(t, { showDue = false, S = P(), i = 0 } = {}) {
   const day = today();
@@ -289,7 +298,7 @@ export async function addFromText(text, defaults = {}) {
   const batch = [];
   const newIds = [];
   for (const name of r.newTags) {
-    const id = uid();
+    const id = tagId(name);
     newIds.push(id);
     batch.push({ type: 'tag', id, data: { name, color: COLORS[(S.tag.length + batch.length) % COLORS.length] } });
   }
@@ -642,7 +651,7 @@ export function editTask(id, defaults = {}) {
           if (!name) return;
           const S2 = P();
           const ex = S2.tag.find((x) => x.name.toLowerCase() === name.toLowerCase());
-          const id = ex?.id || (await personal.save('tag', { name, color: COLORS[S2.tag.length % COLORS.length] }));
+          const id = ex?.id || (await personal.save('tag', { name, color: COLORS[S2.tag.length % COLORS.length] }, tagId(name)));
           if (!selTags.includes(id)) selTags.push(id);
           tagsBox.innerHTML = tagChips(P(), selTags);
           bindTags();

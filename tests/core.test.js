@@ -618,3 +618,34 @@ test('água: 7 dias seguidos na meta rendem 200 XP e 200 de ouro (uma vez por of
   resetClock();
   initClock(false);
 });
+
+test('conflito entre dois aparelhos da mesma pessoa: vence o mais novo e fica o aviso para escolher', async () => {
+  personal.setDevice('aparelhoA');
+  const id = await tasks.addTask({ title: 'Original', priority: 'P3' });
+  await personal.patch(id, { title: 'Mudado no A' });
+  const remote = { ...personal.foreignVersion(id, { title: 'Mudado no B' }, personal.getMe(), { concurrent: true }) };
+  remote.fd = { ...(remote.fd || {}), title: 'aparelhoB' };
+  await personal.applyPlainMany([remote]);
+  assert.equal(P().byId.get(id).title, 'Mudado no B');
+  const c = personal.conflicts().find((x) => x.id === id && x.field === 'title');
+  assert.ok(c, 'conflito registrado');
+  assert.equal(c.mine, 'Mudado no A');
+  await personal.resolveConflict(c.cid, true);
+  assert.equal(P().byId.get(id).title, 'Mudado no A');
+  personal.setDevice(null);
+});
+
+test('backup .lida: exporta cifrado com senha e importa juntando com o que existe', async () => {
+  const B = await import('../js/core/backup.js');
+  const id = await tasks.addTask({ title: 'Está no backup', priority: 'P2' });
+  const { name, text } = await B.exportBackup('senha-forte-123');
+  assert.match(name, /^lida-backup-\d{4}-\d{2}-\d{2}\.lida$/);
+  assert.ok(!text.includes('Está no backup'), 'o conteúdo não aparece em texto puro');
+  await assert.rejects(() => B.importBackup(text, 'errada'), /Senha incorreta/);
+  await personal.remove(id);
+  assert.equal(P().byId.get(id), undefined);
+  const r = await B.importBackup(text, 'senha-forte-123');
+  assert.ok(r.count > 0);
+  // A exclusão feita depois do backup é mais nova: continua excluída (junção, não substituição).
+  assert.equal(P().byId.get(id), undefined);
+});

@@ -4,15 +4,17 @@ import { THEMES, THEME_ORDER, themeName, isFreeTheme, FONTS, FONT_ORDER, SIZES, 
 import { soundPrefs, setSoundPrefs, play, preview, PACKS, PACK_ORDER } from '../core/sound.js';
 import { hapticsOn, setHaptics, hapticsSupported, haptic } from '../ui/haptics.js';
 import * as notify from '../core/notify.js';
-import { isNative } from '../native.js';
+import { isNative, hasPlugin, plugin } from '../native.js';
 import { googleAvailable } from '../core/cloud.js';
 import { esc, fmtInt } from '../lib/util.js';
 import { icon, toast, confirmDialog, promptDialog, sheet } from '../ui/ui.js';
-import { avatar } from './common.js';
+import { avatar, openAvatar } from './common.js';
 import { MODUS, useItemEvent, THEME_PRICES, ownsPack } from '../core/game.js';
 import { WD_LETTER, WD_SHORT } from '../lib/util.js';
 import { CHANGELOG, KIND_LABEL } from '../core/changelog.js';
 import { isDesktop, glassOn, setGlass } from '../desktop.js';
+import { openSync, syncRowText } from './sync.js';
+import { checkUpdate, updaterAvailable } from './update.js';
 
 const toggle = (name, on, label) => `<span class="toggle"><input type="checkbox" data-${name}${on ? ' checked' : ''} aria-label="${esc(label)}"><i></i></span>`;
 // Para linhas que não são <label> (têm outro controle dentro): o próprio botão vira o rótulo.
@@ -45,7 +47,8 @@ export const settingsView = {
 
     el.innerHTML = `
       <section class="set-group"><h2>Conta</h2><div class="set-list">
-        <div class="set-user">${avatar(52)}<div class="grow"><b>${esc(name)}</b><span>${esc(sub)}</span></div><button type="button" class="btn small" data-name>${icon('edit')}Nome</button></div>
+        <div class="set-user"><button type="button" class="av-edit" data-avatar aria-label="Trocar a foto de perfil">${avatar(52)}<i>${icon('edit', 'sm')}</i></button><div class="grow"><b>${esc(name)}</b><span>${esc(sub)}</span></div><button type="button" class="btn small" data-name>${icon('edit')}Nome</button></div>
+        ${app.sync ? `<button type="button" class="set-row" data-syncrow>${icon('cloud')}<span class="grow">Sincronização<small>${esc(syncRowText() || '')}</small></span>${icon('right', 'sm')}</button>` : ''}
         ${!app.demo && app.mode === 'local' && googleAvailable() ? `<button type="button" class="set-row" data-connect>${icon('cloud')}<span class="grow">Conectar conta Google<small>Sincronize entre aparelhos. Os dados continuam cifrados com a sua senha.</small></span>${icon('right', 'sm')}</button>` : ''}
         ${!app.demo ? `<label class="set-row">${icon('lock')}<span class="grow">Pedir senha ao abrir<small>Mais privacidade em aparelhos compartilhados</small></span>${toggle('reqpass', requirePass, 'Pedir senha ao abrir')}</label>
         <button type="button" class="set-row" data-pass>${icon('edit')}<span class="grow">Alterar senha</span>${icon('right', 'sm')}</button>` : ''}
@@ -113,7 +116,14 @@ export const settingsView = {
           : ''
       }
 
+      <section class="set-group"><h2>Backup</h2><div class="set-list">
+        <button type="button" class="set-row" data-bkexp>${icon('download')}<span class="grow">Exportar backup<small>Um arquivo .lida com todos os seus dados, cifrado com uma senha que você escolhe</small></span>${icon('right', 'sm')}</button>
+        <button type="button" class="set-row" data-bkimp>${icon('upload')}<span class="grow">Importar backup<small>Junta com o que já está aqui: serve para restaurar e para trocar de aparelho ou de versão do Lida</small></span>${icon('right', 'sm')}</button>
+        <input type="file" accept=".lida,application/octet-stream,application/json" data-bkfile hidden>
+      </div></section>
+
       <section class="set-group"><h2>Sobre</h2><div class="set-list">
+        ${updaterAvailable() ? `<button type="button" class="set-row" data-checkupd>${icon('download')}<span class="grow">Procurar atualização<small>O Lida também procura sozinho, uma vez por dia</small></span>${icon('right', 'sm')}</button>` : ''}
         <button type="button" class="set-row" data-changelog>${icon('sparkles')}<span class="grow">Novidades e correções<small>O que mudou em cada versão</small></span>${icon('right', 'sm')}</button>
         <div class="set-row"><span class="grow">Lida<small>Versão ${esc(app.version)}${isNative() ? ' · Android' : ''}</small></span><span class="val">${fmtInt(personal.stats().live)} registros</span></div>
         ${app.demo ? `<button type="button" class="set-row" data-demo>${icon('flask')}<span class="grow">Sair do modo demo<small>Volta para a tela inicial. Os dados de exemplo continuam guardados.</small></span></button>` : ''}
@@ -153,6 +163,17 @@ function bind(el, S) {
   );
 
   el.querySelector('[data-changelog]').onclick = () => openChangelog();
+  el.querySelector('[data-bkexp]').onclick = () => backupExport();
+  const bkfile = el.querySelector('[data-bkfile]');
+  el.querySelector('[data-bkimp]').onclick = () => bkfile.click();
+  bkfile.onchange = async () => {
+    const f = bkfile.files[0];
+    bkfile.value = '';
+    if (f) await backupImport(f);
+  };
+  el.querySelector('[data-checkupd]')?.addEventListener('click', () => checkUpdate({ manual: true }));
+  el.querySelector('[data-syncrow]')?.addEventListener('click', () => openSync());
+  el.querySelector('[data-avatar]').onclick = () => openAvatar(() => app.refresh?.());
   el.querySelector('[data-glass]')?.addEventListener('change', (e) => setGlass(e.target.checked));
   el.querySelector('[data-sound]').onchange = (e) => {
     setSoundPrefs({ on: e.target.checked });
@@ -320,4 +341,56 @@ export function openChangelog() {
         <ul>${r.items.map(([k, t]) => `<li class="cl-${k}"><span class="cl-kind">${KIND_LABEL[k]}</span><p>${esc(t)}</p></li>`).join('')}</ul></section>`,
     ).join('')}</div>`,
   });
+}
+
+/* ---------- Backup .lida ---------- */
+async function backupExport() {
+  const pass = await promptDialog('Senha do backup', { label: 'Crie uma senha para este arquivo (pode ser a mesma do Lida). Sem ela, ninguém abre o backup, nem você.', type: 'password', ok: 'Exportar' });
+  if (pass == null) return;
+  if (pass.length < 6) return toast('Use pelo menos 6 caracteres.');
+  toast('Preparando o backup…');
+  try {
+    const { exportBackup } = await import('../core/backup.js');
+    const { name, text } = await exportBackup(pass);
+    const where = await saveFile(name, text);
+    toast(where ? `Backup salvo em ${where}.` : 'Backup pronto.', { ms: 6000 });
+  } catch (e) {
+    toast(e?.message || 'Não consegui criar o backup.');
+  }
+}
+
+async function backupImport(file) {
+  const text = await file.text();
+  const B = await import('../core/backup.js');
+  let head;
+  try {
+    head = B.readBackupHeader(text);
+  } catch (e) {
+    return toast(e.message);
+  }
+  const when = head.at ? new Date(head.at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+  const pass = await promptDialog('Importar backup', { label: `Backup de ${when} (${head.count || '?'} registros, versão ${head.app || '?'}). Digite a senha dele.`, type: 'password', ok: 'Importar' });
+  if (pass == null) return;
+  try {
+    const r = await B.importBackup(text, pass);
+    toast(`Backup importado: ${fmtInt(r.count)} registros juntados com os daqui.`, { ms: 6000 });
+    app.refresh?.();
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+// Salva um arquivo de texto: no Android, em Downloads; no computador e na web, pelo navegador.
+async function saveFile(name, text) {
+  if (hasPlugin('LidaApp')) {
+    const r = await plugin('LidaApp').saveFile({ name, mime: 'application/octet-stream', data: btoa(text) });
+    return r?.where || null;
+  }
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/octet-stream' }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: name });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  return isDesktop() ? `Downloads/${name}` : null;
 }

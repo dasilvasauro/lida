@@ -67,6 +67,15 @@
                 android:resource="@xml/widget_rings_info" />
         </receiver>
 
+        <!-- Atualização dentro do app: resultado da instalação e reabertura depois de atualizar. -->
+        <receiver
+            android:name=".UpdateReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -87,4 +96,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Atualizar o Lida sem sair dele (pede, uma vez, "Instalar apps desconhecidos"). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>

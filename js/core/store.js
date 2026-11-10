@@ -27,6 +27,7 @@ export function createStore({ name = 'space', watch = {} } = {}) {
   let db = null;
   let key = null;
   let me = 'local';
+  let device = null; // aparelho (num espaço pessoal, "me" é o mesmo em todos os aparelhos da pessoa)
   const recs = new Map();
   let version = 0;
   const subs = new Set();
@@ -47,7 +48,7 @@ export function createStore({ name = 'space', watch = {} } = {}) {
   }
 
   async function sealRow(rec) {
-    const payload = rec.del ? { type: rec.type } : { type: rec.type, data: rec.data, fv: rec.fv, fb: rec.fb, fp: rec.fp, cb: rec.cb, ca: rec.ca };
+    const payload = rec.del ? { type: rec.type } : { type: rec.type, data: rec.data, fv: rec.fv, fb: rec.fb, fp: rec.fp, fd: rec.fd, cb: rec.cb, ca: rec.ca };
     const { iv, ct } = await seal(key, payload, aad(rec));
     return { id: rec.id, u: rec.u, by: rec.by, su: rec.su || null, del: rec.del ? 1 : 0, iv, ct };
   }
@@ -67,15 +68,17 @@ export function createStore({ name = 'space', watch = {} } = {}) {
     const fv = { ...(live?.fv || {}) };
     const fb = { ...(live?.fb || {}) };
     const fp = { ...(live?.fp || {}) };
+    const fd = { ...(live?.fd || {}) };
     const old = live?.data || {};
     for (const k of new Set([...Object.keys(old), ...Object.keys(clean)])) {
       if (!same(old[k], clean[k]) || !fv[k]) {
         fp[k] = fv[k] || '';
         fv[k] = u;
         fb[k] = me;
+        if (device) fd[k] = device;
       }
     }
-    return { id, type, data: clean, fv, fb, fp, u, by: me, su: prev?.su || null, cb: live ? live.cb : me, ca: live ? live.ca : nowMs(), del: false };
+    return { id, type, data: clean, fv, fb, fp, fd, u, by: me, su: prev?.su || null, cb: live ? live.cb : me, ca: live ? live.ca : nowMs(), del: false };
   }
 
   /* ---------- Junção campo a campo ---------- */
@@ -84,6 +87,7 @@ export function createStore({ name = 'space', watch = {} } = {}) {
     const fv = {};
     const fb = {};
     const fp = {};
+    const fd = {};
     let fromA = false;
     let fromB = false;
     const lost = [];
@@ -97,13 +101,14 @@ export function createStore({ name = 'space', watch = {} } = {}) {
       if (src.fv?.[k]) fv[k] = src.fv[k];
       if (src.fb?.[k]) fb[k] = src.fb[k];
       if (src.fp?.[k] != null) fp[k] = src.fp[k];
+      if (src.fd?.[k]) fd[k] = src.fd[k];
       if (same(a.data?.[k], b.data?.[k])) continue;
       if (useB) {
         fromB = true;
         lost.push(k);
       } else if (va > vb) fromA = true;
     }
-    return { data, fv, fb, fp, fromA, fromB, lost };
+    return { data, fv, fb, fp, fd, fromA, fromB, lost };
   }
 
   function noteConflicts(local, remote, lost) {
@@ -112,11 +117,14 @@ export function createStore({ name = 'space', watch = {} } = {}) {
     const now = nowMs();
     for (const k of lost) {
       if (!w[k]) continue;
-      if (local.fb?.[k] !== me || remote.fb?.[k] === me) continue;
+      // Quem gravou cada lado: o aparelho (espaço pessoal, mesma pessoa em vários aparelhos) ou a pessoa.
+      const mine = device && local.fd?.[k] ? local.fd[k] === device : local.fb?.[k] === me;
+      const theirsMine = device && remote.fd?.[k] ? remote.fd[k] === device : remote.fb?.[k] === me;
+      if (!mine || theirsMine) continue;
       if ((remote.fp?.[k] ?? '') === (local.fv?.[k] ?? '')) continue; // a outra pessoa partiu do meu valor
       if (now - hlcMs(local.fv?.[k]) > CONFLICT_WINDOW) continue;
       pending = pending.filter((c) => !(c.id === local.id && c.field === k));
-      pending.push({ cid: uid(8), id: local.id, type: local.type, field: k, label: w[k], mine: local.data?.[k], theirs: remote.data?.[k], by: remote.fb?.[k], at: now });
+      pending.push({ cid: uid(8), id: local.id, type: local.type, field: k, label: w[k], mine: local.data?.[k], theirs: remote.data?.[k], by: remote.fb?.[k], dev: remote.fd?.[k] || null, title: remote.data?.title || remote.data?.name || local.data?.title || local.data?.name || '', at: now });
     }
     if (pending.length) csubs.forEach((f) => f(pending));
   }
@@ -126,7 +134,7 @@ export function createStore({ name = 'space', watch = {} } = {}) {
     observe(r.u);
     const incoming = r.del
       ? { id: r.id, type: r.type, u: r.u, by: r.by, su: serverU ?? cur?.su ?? null, del: true }
-      : { id: r.id, type: r.type, data: r.data || {}, fv: r.fv || {}, fb: r.fb || {}, fp: r.fp || {}, u: r.u, by: r.by, cb: r.cb, ca: r.ca, su: serverU ?? cur?.su ?? null, del: false };
+      : { id: r.id, type: r.type, data: r.data || {}, fv: r.fv || {}, fb: r.fb || {}, fp: r.fp || {}, fd: r.fd || {}, u: r.u, by: r.by, cb: r.cb, ca: r.ca, su: serverU ?? cur?.su ?? null, del: false };
 
     if (!cur) return { rec: incoming, outbox: false };
     if (cur.u === r.u) return serverU && cur.su !== serverU ? { rec: { ...cur, su: serverU }, outbox: false, quiet: true } : null;
@@ -142,7 +150,7 @@ export function createStore({ name = 'space', watch = {} } = {}) {
     noteConflicts(cur, incoming, m.lost);
     if (!m.fromA) return { rec: incoming, outbox: false };
     return {
-      rec: { ...cur, data: m.data, fv: m.fv, fb: m.fb, fp: m.fp, u: tick(), by: me, su: incoming.su, cb: cur.cb || incoming.cb, ca: Math.min(cur.ca || Infinity, incoming.ca || Infinity) },
+      rec: { ...cur, data: m.data, fv: m.fv, fb: m.fb, fp: m.fp, fd: m.fd, u: tick(), by: me, su: incoming.su, cb: cur.cb || incoming.cb, ca: Math.min(cur.ca || Infinity, incoming.ca || Infinity) },
       outbox: true,
     };
   }
@@ -174,6 +182,7 @@ export function createStore({ name = 'space', watch = {} } = {}) {
     subscribe: (f) => (subs.add(f), () => subs.delete(f)),
     setKick: (f) => (kick = f),
     setMe: (u) => (me = u),
+    setDevice: (d) => (device = d || null),
     getMe: () => me,
     getVersion: () => version,
     getDB: () => db,
@@ -285,6 +294,14 @@ export function createStore({ name = 'space', watch = {} } = {}) {
       const results = [];
       for (const r of list) results.push(await mergeIn(r, null));
       return commitMerged(results);
+    },
+
+    // Põe registros na fila de envio (ex.: depois de importar um backup, para subirem para a nuvem).
+    async queue(ids) {
+      const live = ids.filter((id) => recs.has(id));
+      if (!live.length) return;
+      await db.write([], live);
+      kick();
     },
 
     async markServer(id, u) {

@@ -3,6 +3,20 @@
 // tipo: 'novo' | 'melhoria' | 'correcao'
 export const CHANGELOG = [
   {
+    v: '3.0.0-alfa.13',
+    date: '2026-11-10',
+    title: 'Sincronização visível, backup e atualização dentro do app',
+    items: [
+      ['novo', 'Status da sincronização no topo, com o horário da última sincronização. Um toque mostra os detalhes: o que ainda está esperando para subir, "Sincronizar agora" e as mudanças feitas ao mesmo tempo em dois aparelhos, para você escolher qual fica.'],
+      ['novo', 'Backup .lida em Ajustes: exporta todos os dados num arquivo cifrado com uma senha sua e importa juntando com o que já existe (serve para restaurar e para trocar de aparelho ou de versão).'],
+      ['novo', 'Foto de perfil: envie uma foto (reduzida e cifrada), use o Lidinho do seu título ou a inicial.'],
+      ['novo', 'Atualização dentro do app (APK do GitHub): o Lida avisa quando sai versão nova, mostra o que mudou e baixa, confere e instala sem você sair dele.'],
+      ['melhoria', 'Conflitos agora são percebidos entre aparelhos da mesma pessoa (antes só entre pessoas diferentes).'],
+      ['correcao', 'A mesma etiqueta criada em dois aparelhos virava duas. Agora é uma só.'],
+      ['melhoria', 'App do Linux sem modo de desenvolvedor, e a depuração do app Android fica desligada.'],
+    ],
+  },
+  {
     v: '3.0.0-alfa.12',
     date: '2026-11-10',
     title: 'Temas novos, foco com subtarefas e barra translúcida',

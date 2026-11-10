@@ -7,7 +7,7 @@ Em volta dele, o que só um app nativo dá:
 - notificações do sistema para os lembretes;
 - a CLI `lida` e os widgets do Plasma, que conversam com o app (ver server.py).
 
-Uso: lida-desktop [--background] [--action nova-tarefa|pomodoro|focar|buscar] [--debug]
+Uso: lida-desktop [--background] [--action nova-tarefa|pomodoro|focar|buscar] [--demo]
 """
 
 import argparse
@@ -22,9 +22,12 @@ from .server import Hub, make_http, make_socket, mark_stopped, serve
 
 # Com a janela escondida na bandeja, o Chromium segura os temporizadores (lembretes, Pomodoro).
 _FLAGS = "--disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows"
-os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "") + " " + _FLAGS).strip()
+# Sem ferramentas de desenvolvedor: nada de depuração remota da página (nem por variável de ambiente).
+os.environ.pop("QTWEBENGINE_REMOTE_DEBUGGING", None)
+_user_flags = " ".join(f for f in os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "").split() if not f.startswith(("--remote-debugging", "--auto-open-devtools")))
+os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (_user_flags + " " + _FLAGS).strip()
 
-from PySide6.QtCore import QObject, QSettings, Qt, QTimer, QUrl, Signal  # noqa: E402
+from PySide6.QtCore import QObject, QSettings, QStandardPaths, Qt, QTimer, QUrl, Signal  # noqa: E402
 from PySide6.QtGui import QAction, QActionGroup, QDesktopServices, QGuiApplication, QIcon, QKeySequence  # noqa: E402
 from PySide6.QtWebEngineCore import (  # noqa: E402
     QWebEnginePage,
@@ -63,7 +66,6 @@ class Bridge(QObject):
     state = Signal(str)
     show = Signal(str)
     quit = Signal()
-    shot = Signal(str, int, int)
 
 
 class Page(QWebEnginePage):
@@ -92,10 +94,9 @@ class View(QWebEngineView):
 
 
 class Window(QMainWindow):
-    def __init__(self, app, background=False, debug=False, demo=False):
+    def __init__(self, app, background=False, demo=False):
         super().__init__()
         self.app = app
-        self.debug = debug
         self.settings = QSettings("Lida", "desktop")
         self.state = {}
         self.token = secrets.token_urlsafe(24)
@@ -111,7 +112,6 @@ class Window(QMainWindow):
         self.bridge.state.connect(self._on_state)
         self.bridge.show.connect(self.show_window)
         self.bridge.quit.connect(self.quit)
-        self.bridge.shot.connect(lambda p, w, h: (self.resize(w, h), QTimer.singleShot(900, lambda: self.grab().save(p))))
 
         # Perfil persistente: os dados do Lida (IndexedDB, sessão do Firebase) ficam em ~/.local/share/lida.
         self.profile = QWebEngineProfile("lida", self)
@@ -119,6 +119,7 @@ class Window(QMainWindow):
         self.profile.setCachePath(str(paths.PROFILE_DIR / "cache"))
         self.profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.ForcePersistentCookies)
         self.profile.setNotificationPresenter(self._notify)
+        self.profile.downloadRequested.connect(self._download)
         script = QWebEngineScript()
         script.setName("lida-desktop")
         src = f"window.__LIDA_DESKTOP__ = {json.dumps({'token': self.token, 'version': VERSION, 'platform': 'linux'})};"
@@ -181,9 +182,6 @@ class Window(QMainWindow):
         if cmd == "show":
             self.bridge.show.emit(args.get("route") or "")
             return {"ok": True, "data": {"shown": True}}
-        if cmd == "shot" and self.debug:  # captura da janela (testes)
-            self.bridge.shot.emit(args.get("path") or "/tmp/lida.png", int(args.get("w") or 1280), int(args.get("h") or 820))
-            return {"ok": True, "data": {"path": args.get("path")}}
         if cmd == "quit":
             self.bridge.quit.emit()
             return {"ok": True, "data": {"quit": True}}
@@ -219,6 +217,19 @@ class Window(QMainWindow):
         self._last_notification = notification
         self.tray.showMessage(notification.title(), notification.message(), self.windowIcon(), 9000)
         notification.show()
+
+    # Downloads da página (backup .lida): vão direto para a pasta Downloads, com aviso na bandeja.
+    def _download(self, req):
+        folder = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation) or str(paths.HOME)
+        req.setDownloadDirectory(folder)
+        name = req.downloadFileName()
+        req.accept()
+
+        def done():
+            if req.isFinished():
+                self.tray.showMessage("Lida", f"Arquivo salvo em {folder}/{name}", self.windowIcon(), 6000)
+
+        req.isFinishedChanged.connect(done)
 
     def _permission(self, permission):
         permission.grant()
@@ -300,9 +311,6 @@ class Window(QMainWindow):
         self.a_glass = self._act(v, "Barra lateral translúcida", lambda on: self.ui("glass", on), checkable=True)
         v.addSeparator()
         self._act(v, "Tela cheia", lambda: self.showNormal() if self.isFullScreen() else self.showFullScreen(), "F11")
-        if self.debug:
-            self._act(v, "Recarregar", lambda: self.view.reload(), "Ctrl+R")
-            self._act(v, "Ferramentas do desenvolvedor", self._devtools, "F12")
 
         f = mb.addMenu("&Foco")
         self.a_pick = self._act(f, "Focar numa tarefa…", lambda: (self.show_window(), self.ui("tool", "pick-focus")), "Ctrl+Shift+F")
@@ -330,12 +338,6 @@ class Window(QMainWindow):
         h = mb.addMenu("Aj&uda")
         self._act(h, "Comandos do terminal (lida --help)", self._cli_help)
         self._act(h, "Sobre o Lida", lambda: QMessageBox.about(self, "Lida", f"<b>Lida {VERSION}</b><br>Tarefas e hábitos, com jogo.<br>App Linux em Qt/PySide6."))
-
-    def _devtools(self):
-        self._dev = QWebEngineView()
-        self.page.setDevToolsPage(self._dev.page())
-        self._dev.resize(1000, 700)
-        self._dev.show()
 
     def _cli_help(self):
         QMessageBox.information(
@@ -468,7 +470,6 @@ def main():
     ap = argparse.ArgumentParser(prog="lida-desktop", description="Lida para Linux")
     ap.add_argument("--background", action="store_true", help="abre só na bandeja (sem janela)")
     ap.add_argument("--action", choices=sorted(ACTIONS), help="abre direto numa ação")
-    ap.add_argument("--debug", action="store_true", help="menu de desenvolvedor (recarregar, DevTools)")
     ap.add_argument("--demo", action="store_true", help="abre o modo demo (dados de exemplo)")
     args = ap.parse_args()
     paths.ensure_dirs()
@@ -494,7 +495,7 @@ def main():
     if icon.isNull():
         icon = QIcon(str(paths.WEB_DIR / "icons" / "pwa-512x512.png"))
     app.setWindowIcon(icon)
-    win = Window(app, background=args.background, debug=args.debug, demo=args.demo)
+    win = Window(app, background=args.background, demo=args.demo)
     if args.action:
         cmd, a = ACTIONS[args.action]
         QTimer.singleShot(2500, lambda: win.show_window() or win._exec_js(0, cmd, json.dumps(a)))

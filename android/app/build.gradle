@@ -10,12 +10,18 @@ android {
         // O workflow do GitHub Actions passa a versão; localmente fica 1 / "dev".
         versionCode((System.getenv("LIDA_VERSION_CODE") ?: "1") as int)
         versionName(System.getenv("LIDA_VERSION_NAME") ?: "dev")
+        // Atualizador dentro do app (baixa a Release do GitHub). Desligado na variante do F-Droid
+        // (LIDA_FLAVOR=fdroid), onde quem atualiza é o próprio F-Droid.
+        buildConfigField "boolean", "LIDA_UPDATER", (System.getenv("LIDA_FLAVOR") == "fdroid" ? "false" : "true")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
+    }
+    buildFeatures {
+        buildConfig = true
     }
     // Assinatura do APK de release: a chave vem dos segredos do repositório (ver README, "APK").
     // Sempre a mesma chave, para o Android aceitar atualizações por cima da versão instalada.

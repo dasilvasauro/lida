@@ -21,6 +21,12 @@ export function createSync(store, { sid, uid: me, idb }) {
   let lastPresence = 0;
   let conflictRounds = 0;
   let cursor = 0;
+  let lastOk = 0; // última vez em que este aparelho conversou com o servidor sem nada pendente
+  const markOk = () => {
+    lastOk = Date.now();
+    listeners.forEach((f) => f(status));
+    idb.put('meta', lastOk, 'lastSyncOk').catch?.(() => {});
+  };
   let markStarted = () => {};
   const started = new Promise((r) => (markStarted = r));
   const listeners = new Set();
@@ -89,9 +95,11 @@ export function createSync(store, { sid, uid: me, idb }) {
           }
         }
       }
-      if ((await idb.keys('outbox')).length && conflictRounds < 6) again = true;
+      const left = (await idb.keys('outbox')).length;
+      if (left && conflictRounds < 6) again = true;
       else conflictRounds = 0;
       setStatus('synced');
+      if (!left) markOk();
     } catch (e) {
       setStatus(!navigator.onLine ? 'offline' : e.code === 'permission-denied' ? 'denied' : 'error');
     } finally {
@@ -145,6 +153,8 @@ export function createSync(store, { sid, uid: me, idb }) {
     onStatus: (f) => (listeners.add(f), f(status), () => listeners.delete(f)),
     getStatus: () => status,
     syncNow: () => schedule(0),
+    lastSync: () => lastOk,
+    pending: async () => (await idb.keys('outbox')).length,
 
     // Puxa do SERVIDOR (não do cache) tudo o que mudou desde o último cursor e espera aplicar.
     // A virada do dia só roda depois disso: o listener pode estar parado (app em segundo plano a
@@ -166,6 +176,7 @@ export function createSync(store, { sid, uid: me, idb }) {
           await idb.put('meta', cursor, 'cursor');
         }
         await idb.put('meta', Date.now(), 'lastPull');
+        if (!(await idb.keys('outbox')).length) markOk();
         return true;
       } catch {
         return false;
@@ -183,6 +194,7 @@ export function createSync(store, { sid, uid: me, idb }) {
       if (lastPull && Date.now() - lastPull > HORIZON - 5 * DAY) await reconcile();
 
       cursor = (await idb.get('meta', 'cursor')) || 0;
+      lastOk = (await idb.get('meta', 'lastSyncOk')) || 0;
       markStarted();
       const q = F.query(recCol(), F.where('ts', '>', F.Timestamp.fromMillis(Math.max(0, cursor - 120000))));
       setStatus(navigator.onLine ? 'syncing' : 'offline');
@@ -208,6 +220,7 @@ export function createSync(store, { sid, uid: me, idb }) {
           await idb.put('meta', Date.now(), 'lastPull');
           heartbeat();
           if (!pushing) setStatus('synced');
+          if (!snap.metadata.fromCache && !pushing && !(await idb.keys('outbox')).length) markOk();
         },
         (err) => setStatus(err.code === 'permission-denied' ? 'denied' : 'error'),
       );

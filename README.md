@@ -3,7 +3,7 @@
 Tarefas e hábitos num só lugar, com uma pequena recompensa a cada passo concluído.
 Funciona no navegador (celular e computador) e como app Android, offline, com os dados cifrados no aparelho.
 
-> **Lida 3 — alfa 12.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
+> **Lida 3 — alfa 13.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
 > A versão anterior (React) continua no ar na branch `main` até a nova alcançar o que ela fazia.
 
 ---
@@ -52,7 +52,8 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | alfa 9 | **Quadro (Kanban)** com Lista/Quadro em Hoje, Planejar, projetos e Painel; **resumão do ano** com IPL pela média dos meses; **Lidinho**, o mascote que troca de roupa a cada título; **4 conjuntos de sons** na Loja; **Congelamento Automático**; Carta da Sorte que premia mais; fonte retrô **VT323**; copiar a descrição; simular dias no modo demo | Pronta |
 | alfa 10 | **Virada do dia confiável** entre aparelhos (puxa do servidor antes de fechar; sem conexão, espera), consertos automáticos (falha por engano, rotina duplicada, notas dos últimos 7 dias refeitas), repetida que vence continua a série, **revisão de ontem** antes do resumo e **Novidades e correções** em Ajustes | Pronta |
 | alfa 11 | Revisão de ontem com **hábitos e água**, **foco em rotinas**, power-ups no **cartão da tarefa**, **Live Update** com progresso e status em Ajustes, VT323 sem inflar a interface, textos novos do Lidinho | Pronta |
-| alfa 12 | Temas **Edna, Monocromo, Bumblebee e Tumbleweed**, subtarefas na tarefa em foco (cartão, widget e CLI), ofensiva da água, +30% de ouro nas tarefas, anéis e barras animados, **barra lateral translúcida** no Linux | **Esta versão** |
+| alfa 12 | Temas **Edna, Monocromo, Bumblebee e Tumbleweed**, subtarefas na tarefa em foco (cartão, widget e CLI), ofensiva da água, +30% de ouro nas tarefas, anéis e barras animados, **barra lateral translúcida** no Linux | Pronta |
+| alfa 13 | **Status e horário da sincronização**, conflitos entre aparelhos, **backup .lida** cifrado, **foto de perfil** ou Lidinho, **atualização dentro do app** com changelog, Releases com link fixo do APK, fim do modo de desenvolvedor | **Esta versão** |
 
 ## Como o jogo funciona
 
@@ -165,6 +166,19 @@ Lidinho) e **Bumblebee** (preto e amarelo) por 2.500 de ouro; **Edna** (inspirad
 destaque azul e gradiente verde-água → índigo) e **Tumbleweed** (claro, com a barra lateral preta e o verde do
 Evernote) por 3.000.
 
+**Sincronização visível:** na conta Google, o topo mostra o status e o horário da última sincronização
+("Sincronizado · 14:32"). Um toque abre os detalhes: quantas alterações esperam para subir, **Sincronizar
+agora** e, quando dois aparelhos mudaram o mesmo campo (título, data, descrição, prioridade…) antes de um ver
+o outro, a lista dessas mudanças para você escolher qual versão fica.
+
+**Backup .lida (Ajustes > Backup):** exporta todos os dados num arquivo cifrado com uma senha que você
+escolhe; sem ela, ninguém abre o arquivo. Importar **junta** com o que já existe (vence a versão mais nova de
+cada campo, como na sincronização), então serve para restaurar e para levar os dados a outro aparelho ou a
+outra versão do Lida. No Android o arquivo vai para Downloads; no Linux, para a pasta Downloads.
+
+**Foto de perfil (toque no avatar em Ajustes):** uma foto sua (reduzida para 256 px e cifrada), o Lidinho do
+seu título ou a inicial do nome.
+
 **Água em ofensiva:** a cada 7 dias seguidos batendo a meta de água, 200 XP e 200 de ouro (fora os 20 XP e 10 de
 ouro de cada dia).
 
@@ -192,8 +206,9 @@ o ícone de instalar na barra de endereço.
 
 ## Usar no Android (APK)
 
-1. No GitHub, abra **Actions > Android**, clique na execução mais recente e baixe o arquivo em **Artifacts**
-   (é um .zip com o APK dentro). Versões com tag (ex.: `v3.0.0`) também aparecem em **Releases**.
+1. Baixe o APK da versão mais nova direto (sem zip):
+   **https://github.com/dasilvasauro/lida/releases/latest/download/lida.apk**
+   (builds de teste, sem tag, ficam em **Actions > Android > Artifacts**, dentro de um .zip).
 2. No celular, abra o APK e permita a instalação de fontes desconhecidas quando o Android pedir.
 3. Em **Ajustes > Lembretes**, ligue os lembretes e aceite a permissão de notificações.
 4. No Android 12 ou mais novo, se aparecer "Horário aproximado", toque em **Permitir** e libere
@@ -201,7 +216,20 @@ o ícone de instalar na barra de endereço.
 5. Recomendado: em *Configurações > Apps > Lida > Bateria*, escolha **Sem restrições**. Alguns fabricantes
    (Xiaomi, Samsung, Motorola) seguram alarmes de apps "otimizados".
 
-Atualizar: instale o APK novo por cima. Os dados ficam.
+Atualizar: o próprio Lida avisa quando sai versão nova (uma vez por dia, ou em **Ajustes > Procurar
+atualização**), mostra o que mudou e, em **Atualizar agora**, baixa, confere o SHA-256 e instala sem sair do
+app. Na primeira vez o Android pede para liberar **Instalar apps desconhecidos** para o Lida e confirma a
+atualização; do Android 12 em diante as seguintes podem dispensar a confirmação (o sistema decide). Ao
+terminar, o Lida reabre sozinho ou deixa uma notificação "toque para abrir". Os dados ficam.
+
+### Publicar uma versão (Release)
+
+1. Registre as novidades da versão em `js/core/changelog.js` (o topo da lista) e suba a versão em
+   `js/state.js` (`app.version`). O workflow recusa publicar uma versão que não esteja no changelog.
+2. Crie e envie a tag com o mesmo número: `git tag v3.0.0-alfa.13 && git push origin v3.0.0-alfa.13`.
+3. O GitHub Actions compila o APK assinado e cria a Release com `lida.apk` (nome fixo, para o link acima),
+   `latest.json` (lido pelo atualizador do app: versão, SHA-256 e novidades) e o texto da Release tirado do
+   changelog. O pacote do Linux é anexado à mesma Release.
 Se o APK for de **depuração** (sem a chave de assinatura configurada, veja abaixo), cada build sai com uma
 assinatura diferente e o Android só instala depois de desinstalar a versão anterior.
 
@@ -327,7 +355,7 @@ para mudar o comando (`lida`), a frequência de leitura e, no Foco, a largura do
 
 O app serve os arquivos em `http://localhost:47390` (só para o próprio computador). A porta é fixa porque os dados
 do navegador embutido ficam guardados por endereço; para mudar, use a variável `LIDA_PORT` (os dados não vêm junto).
-Modo demo: `lida-desktop --demo`. Ferramentas de desenvolvedor: `lida-desktop --debug` (F12).
+Modo demo: `lida-desktop --demo` (dados de exemplo, separados da sua conta). O app não tem ferramentas de desenvolvedor.
 
 ## Lembretes
 

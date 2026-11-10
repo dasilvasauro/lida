@@ -1,12 +1,12 @@
 // Estado de sessão compartilhado entre as telas.
 import { createStore } from './core/store.js';
-import { buildPersonal, buildShared, SHARED_WATCH } from './core/model.js';
+import { buildPersonal, buildShared, SHARED_WATCH, PERSONAL_WATCH } from './core/model.js';
 
-export const personal = createStore({ name: 'pessoal' });
+export const personal = createStore({ name: 'pessoal', watch: PERSONAL_WATCH });
 export const shared = createStore({ name: 'compartilhado', watch: SHARED_WATCH });
 
 export const app = {
-  version: '3.0.0-alfa.12',
+  version: '3.0.0-alfa.13',
   demo: false, // modo demo: banco separado, sem nuvem, relógio ajustável
   mode: 'local', // 'local' | 'cloud'
   me: 'local',

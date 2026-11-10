@@ -1,5 +1,6 @@
 # Gera o APK do Lida a cada push nas branches principais (e manualmente, em Actions > Android > Run workflow).
-# O APK fica em Actions > (execução) > Artifacts. Em tags "v*" (ex.: v3.0.0), vira também um Release.
+# O APK fica em Actions > (execução) > Artifacts. Em tags "v*" (ex.: v3.0.0-alfa.13), vira também uma Release
+# com lida.apk + latest.json (o app usa para se atualizar sozinho; ver scripts/release.mjs).
 # Assinatura: com os segredos LIDA_KEYSTORE_* configurados, sai um APK de release assinado sempre com a
 # mesma chave (atualiza por cima da versão instalada). Sem eles, sai um APK de depuração.
 name: Android
@@ -98,9 +99,19 @@ jobs:
           path: ${{ runner.temp }}/Lida-*.apk
           if-no-files-found: error
 
+      # Tags v*: Release com nome de arquivo fixo (link .../releases/latest/download/lida.apk), o
+      # latest.json do atualizador do app (versão, SHA-256, novidades) e o texto tirado do changelog.
+      # Só com APK assinado: um APK de depuração não instalaria por cima da versão do usuário.
+      - name: Arquivos da Release
+        if: startsWith(github.ref, 'refs/tags/v') && steps.keystore.outputs.signed == 'true'
+        run: node scripts/release.mjs "${GITHUB_REF_NAME#v}" "$LIDA_VERSION_CODE" "$RUNNER_TEMP/Lida-$LIDA_VERSION_NAME.apk" "$RUNNER_TEMP/release"
+
       - name: Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') && steps.keystore.outputs.signed == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ runner.temp }}/Lida-*.apk
-          generate_release_notes: true
+          files: |
+            ${{ runner.temp }}/release/lida.apk
+            ${{ runner.temp }}/release/latest.json
+          body_path: ${{ runner.temp }}/release/release-notes.md
+          make_latest: true

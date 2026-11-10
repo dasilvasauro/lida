@@ -14,12 +14,18 @@
 //                     (ex.: ev_fail_<tarefa>) não contam em dobro se dois aparelhos os gerarem.
 import { sum, ymOf } from '../lib/util.js';
 
-export const PERSONAL_TYPES = ['task', 'project', 'tag', 'routine', 'habit', 'hlog', 'quit', 'water', 'ev', 'wallet', 'score', 'month', 'hist', 'mood', 'vision', 'refl', 'brain', 'prefs', 'dayp', 'focus', 'year'];
+export const PERSONAL_TYPES = ['task', 'project', 'tag', 'routine', 'habit', 'hlog', 'quit', 'water', 'ev', 'wallet', 'score', 'month', 'hist', 'mood', 'vision', 'refl', 'brain', 'prefs', 'dayp', 'focus', 'year', 'profile'];
 
 export const HABIT_DAYS_ALL = [0, 1, 2, 3, 4, 5, 6];
 export const SHARED_TYPES = ['task', 'project', 'tag', 'member'];
 
 // Campos com aviso quando a alteração de uma pessoa é sobreposta pela de outra (espaço compartilhado).
+// Campos em que vale avisar quando dois aparelhos mudaram ao mesmo tempo (ver store.js, conflitos).
+export const PERSONAL_WATCH = {
+  task: { title: 'título', notes: 'descrição', due: 'data', time: 'horário', priority: 'prioridade' },
+  habit: { title: 'nome do hábito', goal: 'meta do hábito' },
+  project: { name: 'nome do projeto' },
+};
 export const SHARED_WATCH = {
   task: { title: 'título', notes: 'descrição', due: 'data', time: 'horário', priority: 'prioridade' },
   project: { name: 'nome do projeto' },
@@ -93,6 +99,7 @@ export function buildPersonal(list) {
   S.moodByDate = new Map(S.mood.map((x) => [x.date, x.mood]));
   S.prefs = S.prefs[0] || {};
   S.walletMeta = S.wallet[0] || {};
+  S.profileMeta = S.profile[0] || {};
   S.vision = S.vision[0] || null;
   S.focus = S.focus.find((x) => x.id === 'focus') || null; // foco global (ver core/focus.js)
   S.money = wallet(S.ev);

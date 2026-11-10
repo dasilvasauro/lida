@@ -14,6 +14,8 @@ import { addWater, waterGlass, waterToday, waterGoal, isScheduled, isDone } from
 import { seedDemo } from './core/demo.js';
 import { simulateDays, PACES } from './core/simulate.js';
 import { reviewYesterday, leftovers } from './views/review.js';
+import { initSyncPill } from './views/sync.js';
+import { initUpdates } from './views/update.js';
 import { initSound } from './core/sound.js';
 import { app, personal, P, setPref } from './state.js';
 import { applyAppearance, storedAppearance, FONTS, THEMES } from './ui/theme.js';
@@ -109,6 +111,7 @@ async function boot() {
   if (!device) await idb.put('meta', (device = uid(6)), 'device');
   app.device = device;
   initHLC(device);
+  personal.setDevice(device);
 
   if (app.demo) return bootDemo(idb);
 
@@ -254,7 +257,7 @@ function shell() {
         <header class="topbar"><h1><span data-title></span><span class="sub" data-sub></span></h1>
           <button type="button" class="timer-chip" data-timer-chip hidden></button>
           <button type="button" class="icon-btn" data-search aria-label="Buscar (/)">${icon('search')}</button>
-          <span class="sync-dot" data-dot hidden></span>
+          <button type="button" class="sync-pill" data-dot hidden><i class="sync-dot"></i><span data-synctext></span></button>
           <button type="button" class="me-btn" data-me aria-label="Ajustes e conta"></button></header>
       </div>
       <main id="view" tabindex="-1"></main>
@@ -264,16 +267,7 @@ function shell() {
   document.querySelectorAll('[data-rail-tool]').forEach((b) => b.addEventListener('click', () => app.actions.tool(b.dataset.railTool)));
   $('[data-search]').onclick = () => openSearch();
   $('[data-me]').onclick = () => (location.hash = current === 'eu' ? 'ajustes' : 'eu');
-  if (app.sync) {
-    const dot = $('[data-dot]');
-    dot.hidden = false;
-    const L = { synced: 'Sincronizado', syncing: 'Sincronizando', offline: 'Sem conexão: as alterações ficam salvas e sobem quando a internet voltar', error: 'Erro ao sincronizar', denied: 'Sem acesso aos dados na nuvem', local: 'Somente neste aparelho' };
-    app.sync.onStatus((s) => {
-      dot.dataset.s = s;
-      dot.title = L[s] || '';
-      dot.setAttribute('aria-label', L[s] || '');
-    });
-  }
+  initSyncPill();
   if (app.demo) demobar();
 }
 
@@ -480,6 +474,7 @@ function start() {
   deepLinks();
   updateWidget();
   initDesktop();
+  initUpdates();
   // Ao voltar para o app (ex.: depois de trocar o tema do sistema), reaplica as cores das barras.
   plugin('App')?.addListener?.('resume', () => appearance());
   runDay();
