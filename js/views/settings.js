@@ -105,6 +105,7 @@ export const settingsView = {
         isNative()
           ? `<section class="set-group"><h2>Foco</h2><div class="set-list" data-focusset>
         <label class="set-row">${icon('target')}<span class="grow">Notificação do foco<small>Tarefa em foco, Pomodoro e modo foco ficam numa notificação fixa com a contagem. No Android 16, também como chip na barra de status</small></span>${toggle('nlive', np.live !== false, 'Notificação do foco')}</label>
+        <button type="button" class="set-row" data-liverow hidden>${icon('bolt')}<span class="grow">Live Update<small data-livenote>Verificando…</small></span>${icon('right', 'sm')}</button>
         <label class="set-row">${icon('timer')}<span class="grow">Relógio flutuante<small data-ovnote>Ao minimizar o Lida com um cronômetro rodando, um relógio fica por cima dos outros apps. Arraste para mover; toque para voltar</small></span>${toggle('noverlay', false, 'Relógio flutuante')}</label>
       </div></section>`
           : ''
@@ -213,6 +214,23 @@ function bind(el, S) {
       fs.querySelector('[data-ovnote]').textContent = r?.on && !r?.granted ? 'Falta liberar "Sobrepor a outros apps" para o Lida nas configurações do Android. Depois volte aqui.' : 'Ao minimizar o Lida com um cronômetro rodando, um relógio fica por cima dos outros apps. Arraste para mover; toque para voltar';
     };
     notify.overlayStatus().then(paintOv);
+    // Live Update: só no Android 16+. Mostra se está liberada e se a notificação atual foi promovida.
+    const lr = fs.querySelector('[data-liverow]');
+    notify.liveStatus().then((r) => {
+      if (!r?.supported) return;
+      lr.hidden = false;
+      const maker = r.maker || '';
+      const where = maker.includes('samsung') ? 'na barra de status e na Now Bar' : /xiaomi|redmi|poco/.test(maker) ? 'na barra de status e na ilha' : 'na barra de status';
+      lr.querySelector('[data-livenote]').textContent =
+        r.allowed === false
+          ? `Desligada para o Lida. Toque para liberar e ver o tempo ${where}.`
+          : r.promoted === false
+            ? `Liberada, mas o Android não promoveu a notificação atual. Toque para revisar.`
+            : r.promoted
+              ? `Ativa: o tempo aparece ${where}.`
+              : `Liberada: com um cronômetro rodando, o tempo aparece ${where}.`;
+    });
+    lr.onclick = () => notify.openLiveSettings();
     fs.addEventListener('change', async (e) => {
       const t = e.target;
       if (t.matches('[data-nlive]')) {

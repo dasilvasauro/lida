@@ -172,6 +172,18 @@ export async function undoWater(day = today()) {
   return list[0].ml;
 }
 
+// O que ficou de ontem. Devolve null quando não há nada para revisar.
+// (revisão de ontem: tarefas pendentes vêm de tasks.pendingOn)
+export function leftovers(S, y, tasks) {
+  const habits = S.habit.filter((h) => !h.archived && (!h.createdDay || h.createdDay <= y) && isScheduled(h, y) && !isDone(S, h, y));
+  const usesWater = S.water.some((w) => w.date >= addDays(y, -14) && w.date <= y);
+  const ml = waterToday(S, y);
+  const goal = waterGoal(S);
+  const water = usesWater && ml < goal ? { ml, goal } : null;
+  if (!tasks.length && !habits.length && !water) return null;
+  return { tasks, habits, water };
+}
+
 /* ---------- Rotinas ---------- */
 export const MAX_ROUTINES = 5;
 

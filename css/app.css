@@ -10,7 +10,9 @@
 @font-face { font-family: 'Inter'; src: url('../fonts/inter.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
 @font-face { font-family: 'Nunito'; src: url('../fonts/nunito.woff2') format('woff2'); font-weight: 200 1000; font-display: swap; }
 @font-face { font-family: 'Lexend'; src: url('../fonts/lexend.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
-@font-face { font-family: 'VT323'; src: url('../fonts/vt323.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+/* VT323 tem o desenho pequeno no mesmo tamanho de letra: size-adjust aumenta só as letras dela,
+   sem aumentar a interface (que é medida em rem). As métricas deixam a linha com a mesma altura das outras. */
+@font-face { font-family: 'VT323'; src: url('../fonts/vt323.woff2') format('woff2'); font-weight: 400; font-display: swap; size-adjust: 128%; ascent-override: 78%; descent-override: 22%; line-gap-override: 0%; }
 @font-face { font-family: 'Lora'; src: url('../fonts/lora.woff2') format('woff2'); font-weight: 400 700; font-display: swap; }
 @font-face { font-family: 'Atkinson Hyperlegible'; src: url('../fonts/atkinson-400.woff2') format('woff2'); font-weight: 400; font-display: swap; }
 @font-face { font-family: 'Atkinson Hyperlegible'; src: url('../fonts/atkinson-700.woff2') format('woff2'); font-weight: 700; font-display: swap; }
@@ -1684,11 +1686,6 @@ body.kb-dragging, body.kb-dragging * { cursor: grabbing !important; }
 .mc-item.locked .mc-txt h3 { color: var(--dim); letter-spacing: 0.2em; }
 .mc-item.locked { background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
 
-/* ---------- Revisão de ontem ---------- */
-.review-list { margin: .5333rem 0 .2667rem; }
-.review-item .task-body { cursor: default; }
-.review-item .task-check:disabled { opacity: 0.6; }
-
 /* ---------- Novidades e correções ---------- */
 .changelog { display: grid; gap: 1.0667rem; }
 .cl-ver { padding: .9333rem 1.0667rem; border-radius: 1.0667rem; background: var(--surface-2); }
@@ -1703,3 +1700,47 @@ body.kb-dragging, body.kb-dragging * { cursor: grabbing !important; }
 .cl-novo { --tc: var(--accent); }
 .cl-melhoria { --tc: var(--pos); }
 .cl-correcao { --tc: var(--p1); }
+
+/* ---------- Power-ups no cartão da tarefa ---------- */
+.td-powers { display: grid; gap: .4rem; }
+.td-power { display: flex; align-items: center; gap: .8rem; width: 100%; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: .9333rem; background: var(--surface); color: inherit; font: inherit; text-align: left; cursor: pointer; transition: border-color 0.15s, transform 0.12s; }
+.td-power:hover { border-color: color-mix(in srgb, var(--pos) 45%, var(--line)); }
+.td-power:active { transform: scale(0.99); }
+.td-power b { display: block; font-size: .9333rem; }
+.td-power small { display: block; color: var(--muted); font-size: .8rem; }
+.tdp-ic { flex: none; display: grid; place-items: center; width: 2.2667rem; height: 2.2667rem; border-radius: .7333rem; background: color-mix(in srgb, var(--pos) 15%, transparent); color: var(--pos); }
+.tdp-n { flex: none; padding: .1333rem .5333rem; border-radius: 99px; background: color-mix(in srgb, var(--pos) 15%, transparent); color: var(--pos); font-size: .8rem; font-weight: 800; }
+.td-power.empty { opacity: 0.65; }
+.td-power.empty .tdp-n { background: var(--surface-2); color: var(--muted); }
+
+/* ---------- Revisão de ontem ---------- */
+.rv .rv-date { margin: -.4rem 0 .2667rem; color: var(--accent); font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+.rv-sec { margin-top: 1.0667rem; padding: .8rem .9333rem; border-radius: 1.0667rem; background: var(--surface-2); }
+.rv-sec > header { display: flex; align-items: center; gap: .5333rem; margin-bottom: .5333rem; color: var(--muted); }
+.rv-sec > header h3 { margin: 0; font-size: .8667rem; font-weight: 800; color: var(--text); text-transform: uppercase; letter-spacing: 0.05em; }
+.rv-sec > header .ic { width: 1.0667rem; height: 1.0667rem; }
+.rv-list .rv-item { padding: .6rem 2px; }
+.rv-list .rv-item:last-child { padding-bottom: .2667rem; }
+.rv-item .task-body { cursor: default; }
+.rv-habits { display: grid; grid-template-columns: repeat(auto-fill, minmax(11.2rem, 1fr)); gap: .5333rem; }
+.rv-habit { display: flex; align-items: center; gap: .6667rem; padding: .5333rem .6667rem; border: 1.5px solid var(--line); border-radius: .9333rem; background: var(--surface); color: inherit; font: inherit; text-align: left; cursor: pointer; transition: border-color 0.15s, background 0.15s, transform 0.12s; }
+.rv-habit:active { transform: scale(0.98); }
+.rvh-face { position: relative; flex: none; display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 50%; background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--c); transition: background 0.2s; }
+.rvh-face .emoji { font-size: 1.2rem; line-height: 1; }
+.rvh-ok { position: absolute; right: -.2rem; bottom: -.2rem; display: grid; place-items: center; width: 1.1333rem; height: 1.1333rem; border-radius: 50%; background: var(--c); color: var(--bg); transform: scale(0); transition: transform 0.25s var(--spring); }
+.rvh-ok .ic { width: .7333rem; height: .7333rem; stroke-width: 3.2; }
+.rvh-txt { min-width: 0; }
+.rvh-txt b { display: block; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rvh-txt small { display: block; color: var(--muted); font-size: .7667rem; }
+.rv-habit.on { border-color: var(--c); background: color-mix(in srgb, var(--c) 9%, var(--surface)); }
+.rv-habit.on .rvh-ok { transform: scale(1); }
+.rv-habit.on small { color: var(--c); font-weight: 700; }
+.rv-water .rvw-top { display: flex; align-items: baseline; gap: .4rem; margin-bottom: .4rem; }
+.rv-water .rvw-top b { font-size: 1.2rem; }
+.rv-water .rvw-top span { color: var(--muted); font-size: .8667rem; }
+.rvw-bar { display: block; height: .6rem; border-radius: 99px; background: var(--surface-3, var(--line)); overflow: hidden; }
+.rvw-bar i { display: block; height: 100%; border-radius: inherit; background: var(--p2); transition: width 0.35s var(--ease); }
+.rv-water-sec.hit .rvw-bar i { background: var(--pos); }
+.rvw-btns { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6667rem; }
+.rvw-btns .btn small { margin-left: .2667rem; color: var(--muted); font-weight: 600; }
+.rv-actions { position: sticky; bottom: 0; padding-top: .8rem; background: linear-gradient(transparent, var(--sheet-bg, var(--surface)) 35%); }

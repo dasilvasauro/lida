@@ -39,7 +39,7 @@ export function levelCard(S) {
 export function openMascot(level) {
   sheet({
     title: 'Lidinho',
-    body: `<p class="sheet-text">A cada título novo, o Lidinho ganha roupa, acessório e pose novos. Os próximos ficam na sombra até você chegar lá.</p>${mascotCollection(level)}`,
+    body: `<p class="sheet-text">Cada título é uma fase da sua jornada de produtividade. Os próximos ficam na sombra até você chegar lá.</p>${mascotCollection(level)}`,
     onMount(el) {
       setTimeout(() => el.querySelector('[data-now]')?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 260);
     },

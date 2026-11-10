@@ -3,7 +3,7 @@
 Tarefas e hábitos num só lugar, com uma pequena recompensa a cada passo concluído.
 Funciona no navegador (celular e computador) e como app Android, offline, com os dados cifrados no aparelho.
 
-> **Lida 3 — alfa 10.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
+> **Lida 3 — alfa 11.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
 > A versão anterior (React) continua no ar na branch `main` até a nova alcançar o que ela fazia.
 
 ---
@@ -50,7 +50,8 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | alfa 7 | **Foco global** (tarefa em foco e cronômetros sincronizados entre aparelhos), **Painel** em telas largas (Hoje + Planejar + resumo), notificação do foco colorida, **relógio flutuante** e widget **Anéis** no Android, tamanho real da interface, constância da água, hábitos em dia de folga, reflexões em tela cheia | Pronta |
 | alfa 8 | **Lida para Linux** (Qt/PySide6): menu global do KDE, bandeja, CLI `lida`, widgets do Plasma (foco/Pomodoro e Anéis), script de instalação | Pronta |
 | alfa 9 | **Quadro (Kanban)** com Lista/Quadro em Hoje, Planejar, projetos e Painel; **resumão do ano** com IPL pela média dos meses; **Lidinho**, o mascote que troca de roupa a cada título; **4 conjuntos de sons** na Loja; **Congelamento Automático**; Carta da Sorte que premia mais; fonte retrô **VT323**; copiar a descrição; simular dias no modo demo | Pronta |
-| alfa 10 | **Virada do dia confiável** entre aparelhos (puxa do servidor antes de fechar; sem conexão, espera), consertos automáticos (falha por engano, rotina duplicada, notas dos últimos 7 dias refeitas), repetida que vence continua a série, **revisão de ontem** antes do resumo e **Novidades e correções** em Ajustes | **Esta versão** |
+| alfa 10 | **Virada do dia confiável** entre aparelhos (puxa do servidor antes de fechar; sem conexão, espera), consertos automáticos (falha por engano, rotina duplicada, notas dos últimos 7 dias refeitas), repetida que vence continua a série, **revisão de ontem** antes do resumo e **Novidades e correções** em Ajustes | Pronta |
+| alfa 11 | Revisão de ontem com **hábitos e água**, **foco em rotinas**, power-ups no **cartão da tarefa**, **Live Update** com progresso e status em Ajustes, VT323 sem inflar a interface, textos novos do Lidinho | **Esta versão** |
 
 ## Como o jogo funciona
 
@@ -72,9 +73,9 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
   (na virada do mês, o **resumo do mês**; na virada do ano, o **resumão do ano**, com o IPL do ano pela média das
   notas dos meses, o melhor e o pior mês, o projeto que mais andou e o hábito mais firme). Uma tarefa que venceu ainda pode ser concluída, sem recompensa,
   ou reagendada para hoje.
-- **Revisão de ontem:** se o último dia aberto foi ontem e ficou tarefa de ontem sem marcar, antes de fechar o dia o
-  Lida mostra essas tarefas. Marque o que você fez e esqueceu: conta para ontem, com a recompensa normal, e só depois
-  o IPL é calculado. Depois de vários dias longe, a revisão não aparece (os dias fecham direto).
+- **Revisão de ontem:** se o último dia aberto foi ontem e ficou algo de ontem sem marcar (tarefas, hábitos ou a meta
+  de água), antes de fechar o dia o Lida mostra o que ficou. Marque o que você fez e esqueceu, ou some os copos que
+  faltaram: conta para ontem, com a recompensa normal, e só depois o IPL é calculado. Depois de vários dias longe, a revisão não aparece (os dias fecham direto).
 - **Com dois aparelhos:** a virada só acontece depois de puxar do servidor o que mudou nos outros aparelhos. Sem
   conexão, ela espera (o app avisa) e roda assim que conectar. Se mesmo assim chegar algo atrasado, a virada seguinte
   conserta: desfaz falhas marcadas por engano (devolvendo a punição), arquiva rotinas de dias já fechados e refaz as
@@ -145,6 +146,12 @@ Exemplo: `Pagar luz amanhã 9h p1 #Casa @contas`. Enquanto você digita, aparece
 
 **Descrição:** aceita `**negrito**`, `*itálico*`, `~~riscado~~`, `` `código` ``, `[texto](https://link)`, links soltos,
 listas com `- ` e listas de verificação com `- [ ] ` (clicáveis).
+
+**Power-ups na tarefa:** toque na tarefa para abrir o cartão; Respiro (+3 h no horário) e Alívio (prazo para o dia
+seguinte, sem punição) ficam lá, com quantos você tem.
+
+**Foco em rotinas:** toque na rotina para abrir o cartão (itens marcáveis, Concluir, Focar) ou escolha a rotina em
+"Focar numa tarefa".
 
 **Lista ou Quadro:** Hoje, Planejar, cada projeto e o Painel (telas largas) têm o botão Lista/Quadro, lembrado por tela.
 No Quadro, escolha **Agrupar por** Data (Atrasadas, Hoje, Amanhã, Esta semana, Depois, Sem data), Prioridade (P0 a P4)
@@ -333,6 +340,17 @@ Tudo em **Ajustes > Lembretes**, cada tipo com seu interruptor e horário:
   vermelha até o Android 15 e Live Update no 16. **Relógio flutuante** (Ajustes > Foco): ao minimizar o Lida com um
   cronômetro rodando, um relógio fica por cima dos outros apps; arraste para mover, toque para voltar. Precisa da
   permissão **"Sobrepor a outros apps"**, que o próprio Ajustes abre.
+- **Live Update (Android 16)**: a notificação do foco pede para ser promovida (chip com o tempo na barra de status e,
+  nos aparelhos que mostram Live Updates de outros apps, na Now Bar da Samsung e na ilha da Xiaomi). Com duração
+  conhecida (Pomodoro, modo foco), vem com barra de progresso. Em **Ajustes > Foco > Live Update** dá para ver se
+  está liberada, se a notificação atual foi promovida, e abrir a tela do Android para liberar.
+  - **Samsung (One UI 8)**: a Now Bar mostra Live Updates de apps de terceiros conforme o aparelho e a versão; em
+    alguns, só com a opção "Live notifications for all apps" nas Opções do desenvolvedor. O Lida faz a parte dele
+    (pedido de promoção dentro das regras do Android); se o chip aparece na barra de status mas não na Now Bar,
+    é decisão do One UI.
+  - **Xiaomi (HyperOS)**: a ilha não desenha o cronômetro do Android, então o chip leva o tempo em texto ("24 min",
+    "45 s"), atualizado pelo serviço. O relógio "vivo" na Super Island exige a API de notificação de foco da Xiaomi,
+    que só funciona para apps liberados por ela (pedido por e-mail); sem isso, o sistema mostra a notificação comum.
 
 ## Widgets (Android)
 

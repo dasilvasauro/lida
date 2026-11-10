@@ -252,17 +252,17 @@ export const mascotFor = (level, opts) => mascotSvg(levelTitle(level), opts);
 
 /* ---------- Coleção (ao tocar no Lidinho) ---------- */
 export const MASCOT_TEXT = {
-  Aprendiz: 'Tudo começa com um broto. O Lidinho acabou de chegar e está curioso com tudo: cada tarefa concluída é uma descoberta.',
-  Iniciante: 'Mochila nas costas e pé na estrada. Os primeiros hábitos já estão a caminho de virar rotina.',
-  Praticante: 'Faixa na testa e fôlego em dia. Praticar um pouco todo dia é o que transforma esforço em costume.',
-  Constante: 'Nem pressa, nem pausa. O vento muda, o cachecol balança, e o Lidinho segue no ritmo dele.',
-  Disciplinado: 'Óculos no rosto e foco no que importa. Disciplina é fazer o combinado mesmo nos dias sem vontade.',
-  Persistente: 'Caiu? Levanta. A faixa de honra é para quem não desiste nos dias difíceis.',
-  Veterano: 'Boina, cajado e muitas histórias. Já viu dias bons, dias ruins e muitos recomeços.',
-  Especialista: 'Capelo e diploma na mão! O Lidinho domina a arte de transformar plano em feito.',
-  Mestre: 'Capa ao vento e mãos na cintura. Agora o Lidinho inspira quem está começando.',
-  'Grão-Mestre': 'Cajado erguido e estrela na ponta. A essa altura, produtividade parece mágica (mas é treino).',
-  Lenda: 'Coroa, capa e confete. Poucos chegam até aqui: o Lidinho virou lenda, e você também.',
+  Aprendiz: 'Todo sistema de produtividade começa igual: uma lista grande demais e a certeza de que amanhã você faz tudo. Por enquanto, a meta é uma só: anotar o que aparece e concluir a primeira tarefa. O resto vem.',
+  Iniciante: 'Você já percebeu que tarefa sem data vira lenda urbana na Entrada. Hora de priorizar: nem tudo é P0, por mais que pareça. Comece pelo que mais importa, não pelo que é mais fácil de riscar.',
+  Praticante: 'Aqui entram os fundamentos: blocos de foco, pausas de verdade e a regra dos dois minutos (se leva menos que isso, faça agora). Produtividade é treino, não talento.',
+  Constante: 'O segredo sem graça que nenhum curso vende: constância vence intensidade. Um pouco todo dia rende mais que uma maratona por mês seguida de três semanas de culpa.',
+  Disciplinado: 'Motivação é visita; disciplina é quem mora na casa. Você já faz o combinado mesmo sem vontade e sabe que "depois eu vejo" tem prazo de validade.',
+  Persistente: 'A sequência quebrou? Acontece. A regra de ouro é não falhar dois dias seguidos. Persistir não é nunca cair, é levantar rápido.',
+  Veterano: 'Você sobreviveu a semanas caóticas, revisões semanais esquecidas e caixas de entrada lotadas. E aprendeu: o melhor sistema é o que você usa, não o que você planeja usar.',
+  Especialista: 'Capturar, organizar, priorizar, executar: o fluxo já é seu. Você diz não ao que não importa e protege o tempo de trabalho profundo como se fosse a última fatia de pizza.',
+  Mestre: 'Nesse nível, produtividade não é fazer mais, é fazer o que importa e ainda sobrar tempo. Menos tarefas, mais impacto. O você do nível 1 não acreditaria.',
+  'Grão-Mestre': 'Você antecipa gargalos, delega sem culpa e põe o descanso no plano. Visto de fora parece mágica; você sabe que é método repetido mil vezes.',
+  Lenda: 'Cinquenta níveis de tarefas feitas, hábitos mantidos e prazos respeitados. Não existe próximo título: o desafio agora é manter o ritmo sem perder a graça. Lenda também tira folga.',
 };
 
 export function mascotCollection(level) {

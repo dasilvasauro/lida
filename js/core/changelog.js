@@ -3,6 +3,19 @@
 // tipo: 'novo' | 'melhoria' | 'correcao'
 export const CHANGELOG = [
   {
+    v: '3.0.0-alfa.11',
+    date: '2026-11-10',
+    title: 'Revisão completa, foco em rotinas e Live Update',
+    items: [
+      ['novo', 'A revisão de ontem agora inclui hábitos e água: marque o hábito que você fez e esqueceu, ou some os copos que faltaram, tudo valendo para ontem.'],
+      ['novo', 'Dá para focar em rotinas: toque na rotina para abrir o cartão (com os itens marcáveis) e use Focar, ou escolha em "Focar numa tarefa".'],
+      ['melhoria', 'Power-ups (Respiro e Alívio) saíram da edição e foram para o cartão da tarefa, com a quantidade que você tem.'],
+      ['melhoria', 'Live Update (Android 16): a notificação do foco ganhou barra de progresso, o pedido de promoção ficou completo e, em Ajustes > Foco, dá para ver se está ativa e liberar com um toque. Na Xiaomi, o chip mostra o tempo em texto.'],
+      ['melhoria', 'Textos do Lidinho reescritos: cada título fala de uma fase da produtividade.'],
+      ['correcao', 'Com a fonte VT323, a interface inteira ficava maior e espaçada. Agora só as letras dela são ajustadas; espaços e botões ficam iguais aos das outras fontes.'],
+    ],
+  },
+  {
     v: '3.0.0-alfa.10',
     date: '2026-11-10',
     title: 'Virada do dia confiável',

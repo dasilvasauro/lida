@@ -584,3 +584,20 @@ test('dois aparelhos: conclusão que chega depois da virada desfaz a falha e ref
   resetClock();
   initClock(false);
 });
+
+test('revisão de ontem: tarefas, hábitos e água que ficaram para trás', async () => {
+  initClock(true);
+  const d0 = today();
+  const { leftovers } = habits;
+  const hid = await habits.saveHabit(null, { title: 'Alongar', goal: 1 });
+  await personal.save('habit', { ...game.strip(personal.get(hid)), createdDay: addDays(d0, -3) }, hid);
+  await habits.addWater(250, d0);
+  shiftDays(1);
+  const left = leftovers(P(), d0, tasks.pendingOn(P(), d0));
+  assert.ok(left.habits.some((h) => h.id === hid));
+  assert.ok(left.water && left.water.ml >= 250 && left.water.ml < left.water.goal);
+  await habits.setCount(P().byId.get(hid), 1, d0);
+  assert.ok(!leftovers(P(), d0, []) || !leftovers(P(), d0, []).habits.some((h) => h.id === hid));
+  resetClock();
+  initClock(false);
+});

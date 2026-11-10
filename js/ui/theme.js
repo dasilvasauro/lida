@@ -133,7 +133,7 @@ export const FONTS = {
   atkinson: { name: 'Atkinson Hyperlegible', stack: "'Atkinson Hyperlegible', system-ui, sans-serif", note: 'Máxima legibilidade' },
   lora: { name: 'Lora', stack: "'Lora', Georgia, serif", note: 'Com serifa, tom editorial' },
   // Retrô de terminal. Tem desenho pequeno: o tamanho base sobe para ficar legível.
-  vt323: { name: 'VT323', stack: "'VT323', ui-monospace, monospace", note: 'Retrô, de terminal antigo', scale: 1.3 },
+  vt323: { name: 'VT323', stack: "'VT323', ui-monospace, monospace", note: 'Retrô, de terminal antigo' },
 };
 export const FONT_ORDER = ['manrope', 'inter', 'nunito', 'lexend', 'atkinson', 'lora', 'vt323'];
 
@@ -177,7 +177,7 @@ export function applyAppearance({ theme = 'sistema', font = 'manrope', size = 'm
   for (const [k, v] of Object.entries(VAR)) vars[v] = t[k];
   if (!FONTS[font]) font = 'manrope'; // inclui quem tinha escolhido a antiga "fonte do sistema"
   vars['--font'] = FONTS[font].stack;
-  vars['--fs'] = `${Math.round((SIZES[size] || SIZES[defaultSize()]).px * (FONTS[font].scale || 1) * 10) / 10}px`;
+  vars['--fs'] = `${(SIZES[size] || SIZES[defaultSize()]).px}px`;
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
   root.style.colorScheme = t.scheme;
   root.dataset.scheme = t.scheme;

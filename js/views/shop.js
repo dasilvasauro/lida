@@ -59,7 +59,7 @@ export const shopView = {
 function invTile(k, n) {
   const it = G.ITEMS[k];
   const act = { luckyCard: 'Abrir', magicDice: 'Rolar', xpBoost: 'Ativar', goldBoost: 'Ativar', dayOff: 'Usar' }[k];
-  const where = { respite: 'Use na tarefa', relief: 'Use na tarefa', freeze: 'Use no hábito', autoFreeze: 'Automático', extraP0: 'Automático', extraP1: 'Automático', bonusTask: 'Ao criar', changeModus: 'Em Ajustes', extraQuitter: 'Ativo' }[k];
+  const where = { respite: 'No cartão da tarefa', relief: 'No cartão da tarefa', freeze: 'Use no hábito', autoFreeze: 'Automático', extraP0: 'Automático', extraP1: 'Automático', bonusTask: 'Ao criar', changeModus: 'Em Ajustes', extraQuitter: 'Ativo' }[k];
   return `<div class="inv-tile tone-${TONE[k] || 'acc'}"><span class="inv-ic">${icon(it.icon)}<b>${n}</b></span><span class="grow"><b>${esc(it.name)}</b><small>${act ? '' : esc(where || '')}</small></span>${act ? `<button type="button" class="btn small primary" data-use="${k}">${act}</button>` : ''}</div>`;
 }
 

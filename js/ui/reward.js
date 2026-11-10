@@ -23,7 +23,7 @@ export function levelUp(level, res = {}) {
     ${title !== prevTitle ? `<div class="lvl-up-mascot">${mascotSvg(title, { size: 112, cls: 'hop' })}</div>` : ''}
     <div class="lvl-badge">${level}</div>
     <h2 id="lvl-t">Você chegou ao nível ${level}</h2>
-    <p>${title !== prevTitle ? `Novo título: <b>${esc(title)}</b>. O Lidinho trocou de roupa!` : `Continue assim, ${esc(title)}.`}</p>
+    <p>${title !== prevTitle ? `Novo título: <b>${esc(title)}</b>.` : `Continue assim, ${esc(title)}.`}</p>
     ${gifts(level, res)}
     <button type="button" class="btn primary wide" data-ok>Continuar</button>
   </div>`;

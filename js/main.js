@@ -13,8 +13,8 @@ import { reminders } from './core/reminders.js';
 import { addWater, waterGlass, waterToday, waterGoal, isScheduled, isDone } from './core/habits.js';
 import { seedDemo } from './core/demo.js';
 import { simulateDays, PACES } from './core/simulate.js';
-import { initSound, play } from './core/sound.js';
-import { haptic } from './ui/haptics.js';
+import { reviewYesterday, leftovers } from './views/review.js';
+import { initSound } from './core/sound.js';
 import { app, personal, P, setPref } from './state.js';
 import { applyAppearance, storedAppearance, FONTS, THEMES } from './ui/theme.js';
 import { icon, initTips, toast, sheet, banner } from './ui/ui.js';
@@ -201,8 +201,8 @@ async function closeDay() {
   const S = P();
   const y = addDays(d, -1);
   if (S.prefs.lastDay === y) {
-    const pend = pendingOn(S, y);
-    if (pend.length) await reviewYesterday(pend, y);
+    const left = leftovers(S, y, pendingOn(S, y));
+    if (left) await reviewYesterday(y, left);
   }
   const r = await processDays().catch((e) => (console.warn('Virada do dia', e), null));
   if (!r) return;
@@ -218,63 +218,6 @@ async function closeDay() {
   const n = r.failed.length;
   const lost = r.penalty.xp || r.penalty.gold ? ` (${fmtInt(r.penalty.xp)} XP, ${fmtInt(r.penalty.gold)} de ouro)` : '';
   setTimeout(() => toast(`${n === 1 ? 'Uma tarefa venceu' : `${n} tarefas venceram`} desde a última visita${lost}.`, { ms: 6000 }), 900);
-}
-
-function reviewMeta(t) {
-  const p = t.projectId && P().byId.get(t.projectId);
-  const m = [t.time ? `<span>${icon('timer')}${esc(fmtTime(t.time))}</span>` : '', t.kind === 'routine' ? `<span>${icon('repeat')}Rotina</span>` : '', p ? `<span class="tag"><i class="dot" style="--c:${esc(p.color || 'var(--dim)')}"></i>${esc(p.name)}</span>` : ''].filter(Boolean);
-  return m.length ? `<div class="task-meta">${m.join('')}</div>` : '';
-}
-
-// Revisão de ontem: o que era para ontem e ficou sem marcar. Marcar aqui conclui com a data de ontem
-// (recompensa normal, conta no IPL de ontem). Fechar a folha fecha o dia.
-function reviewYesterday(list, y) {
-  return new Promise((resolve) => {
-    const done = new Set();
-    sheet({
-      title: 'Antes de fechar ontem',
-      body: `<p class="sheet-text">${list.length === 1 ? 'Esta tarefa era para ontem e ficou' : 'Estas tarefas eram para ontem e ficaram'} sem marcar. Se você fez e esqueceu, marque agora: conta para ontem, com a recompensa normal. O que ficar sem marcar conta como não feito, e só então o IPL de ontem é calculado.</p>
-        <ul class="tasks review-list">${list
-          .map(
-            (t) => `<li class="task review-item" data-rid="${esc(t.id)}"><button type="button" class="task-check" data-p="${esc(t.kind === 'routine' ? 'R' : t.priority || 'P4')}" aria-label="Fiz: ${esc(t.title)}" aria-pressed="false">${icon('check')}</button>
-            <div class="task-body"><span class="task-title">${esc(t.title)}</span>${reviewMeta(t)}</div></li>`,
-          )
-          .join('')}</ul>
-        <div class="sheet-actions"><button type="button" class="btn primary wide" data-closeday>${icon('check')}<span data-cdl>Fechar o dia de ontem</span></button></div>`,
-      onMount(el, close) {
-        const label = el.querySelector('[data-cdl]');
-        const paint = () => (label.textContent = done.size ? `Fechar o dia (${done.size} de ${list.length} feitas)` : 'Fechar o dia de ontem');
-        el.querySelectorAll('[data-rid]').forEach((li) => {
-          const btn = li.querySelector('.task-check');
-          btn.onclick = async () => {
-            const id = li.dataset.rid;
-            btn.disabled = true;
-            if (!done.has(id)) {
-              li.classList.add('done');
-              btn.classList.add('on', 'popping');
-              setTimeout(() => btn.classList.remove('popping'), 450);
-              btn.setAttribute('aria-pressed', 'true');
-              play('complete');
-              haptic('done');
-              await toggleTask(id, { on: y });
-              done.add(id);
-            } else {
-              li.classList.remove('done');
-              btn.classList.remove('on', 'popping');
-              btn.setAttribute('aria-pressed', 'false');
-              play('uncheck');
-              await toggleTask(id);
-              done.delete(id);
-            }
-            btn.disabled = false;
-            paint();
-          };
-        });
-        el.querySelector('[data-closeday]').onclick = close;
-      },
-      onClose: () => resolve(done.size),
-    });
-  });
 }
 
 async function bootDemo(idb) {
