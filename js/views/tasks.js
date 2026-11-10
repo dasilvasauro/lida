@@ -187,10 +187,11 @@ async function onSub(input, taskId) {
 
 export async function onCheck(btn, li, id) {
   const wasDone = li.classList.contains('done');
-  btn.classList.remove('pop');
+  btn.classList.remove('popping');
   void btn.offsetWidth;
   if (!wasDone) {
-    btn.classList.add('pop');
+    btn.classList.add('popping');
+    setTimeout(() => btn.classList.remove('popping'), 450);
     li.classList.add('done');
     play('complete');
     haptic('done');

@@ -641,9 +641,9 @@ body.has-sheet { overflow: hidden; }
 .td-actions .btn { flex: 1 1 auto; justify-content: center; }
 .task.done .task-check .ic { transform: scale(1); }
 .task.done .task-title { color: var(--dim); text-decoration: line-through; text-decoration-thickness: 1.5px; }
-.task-check.pop { animation: checkpop 0.42s var(--spring); }
+.task-check.popping { animation: checkpop 0.42s var(--spring); }
 @keyframes checkpop { 0% { transform: scale(1); } 35% { transform: scale(0.82); } 70% { transform: scale(1.18); } 100% { transform: scale(1); } }
-.task-check.pop::after { content: ''; position: absolute; inset: -.4rem; border-radius: 50%; border: 2px solid var(--c); opacity: 0; animation: ripple 0.5s var(--ease); }
+.task-check.popping::after { content: ''; position: absolute; inset: -.4rem; border-radius: 50%; border: 2px solid var(--c); opacity: 0; animation: ripple 0.5s var(--ease); }
 @keyframes ripple { 0% { opacity: 0.6; transform: scale(0.6); } 100% { opacity: 0; transform: scale(1.5); } }
 .task-body { flex: 1; min-width: 0; display: grid; gap: .2rem; cursor: pointer; }
 .task-title { font-size: 1rem; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; transition: color 0.2s; }
@@ -1075,7 +1075,7 @@ button.chip:hover { color: var(--text); border-color: color-mix(in srgb, var(--a
 .hab-face .emoji { font-size: 1.4667rem; line-height: 1; }
 .habit.done .hab-face { color: var(--bg); }
 .habit.done .hab-face .ic { width: 1.6rem; height: 1.6rem; stroke-width: 2.6; }
-.hab-face.pop .ic { animation: checkIn 0.4s var(--spring); }
+.hab-face.popping .ic { animation: checkIn 0.4s var(--spring); }
 @keyframes checkIn { from { transform: scale(0.3); opacity: 0; } }
 .hab-tap.bump { animation: bump 0.36s var(--spring); }
 @keyframes bump { 40% { transform: scale(0.88); } 75% { transform: scale(1.08); } }
@@ -1683,3 +1683,23 @@ body.kb-dragging, body.kb-dragging * { cursor: grabbing !important; }
 .mc-tag { padding: .1333rem .4667rem; border-radius: 99px; background: var(--accent); color: var(--on-accent); font-size: .7rem; font-weight: 800; }
 .mc-item.locked .mc-txt h3 { color: var(--dim); letter-spacing: 0.2em; }
 .mc-item.locked { background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+
+/* ---------- Revisão de ontem ---------- */
+.review-list { margin: .5333rem 0 .2667rem; }
+.review-item .task-body { cursor: default; }
+.review-item .task-check:disabled { opacity: 0.6; }
+
+/* ---------- Novidades e correções ---------- */
+.changelog { display: grid; gap: 1.0667rem; }
+.cl-ver { padding: .9333rem 1.0667rem; border-radius: 1.0667rem; background: var(--surface-2); }
+.cl-ver.latest { background: color-mix(in srgb, var(--accent) 9%, var(--surface-2)); }
+.cl-ver header { display: grid; gap: .1333rem; margin-bottom: .6667rem; }
+.cl-ver header b { font-size: 1rem; }
+.cl-ver header small { color: var(--muted); font-size: .7667rem; font-weight: 600; }
+.cl-ver ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .6667rem; }
+.cl-ver li { display: grid; grid-template-columns: auto 1fr; gap: .6667rem; align-items: start; }
+.cl-ver li p { margin: 0; font-size: .8667rem; line-height: 1.5; }
+.cl-kind { margin-top: .1rem; padding: .1333rem .4667rem; border-radius: 99px; font-size: .7rem; font-weight: 800; white-space: nowrap; background: color-mix(in srgb, var(--tc, var(--accent)) 16%, transparent); color: var(--tc, var(--accent)); }
+.cl-novo { --tc: var(--accent); }
+.cl-melhoria { --tc: var(--pos); }
+.cl-correcao { --tc: var(--p1); }

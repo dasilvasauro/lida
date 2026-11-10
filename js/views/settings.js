@@ -7,10 +7,11 @@ import * as notify from '../core/notify.js';
 import { isNative } from '../native.js';
 import { googleAvailable } from '../core/cloud.js';
 import { esc, fmtInt } from '../lib/util.js';
-import { icon, toast, confirmDialog, promptDialog } from '../ui/ui.js';
+import { icon, toast, confirmDialog, promptDialog, sheet } from '../ui/ui.js';
 import { avatar } from './common.js';
 import { MODUS, useItemEvent, THEME_PRICES, ownsPack } from '../core/game.js';
 import { WD_LETTER, WD_SHORT } from '../lib/util.js';
+import { CHANGELOG, KIND_LABEL } from '../core/changelog.js';
 
 const toggle = (name, on, label) => `<span class="toggle"><input type="checkbox" data-${name}${on ? ' checked' : ''} aria-label="${esc(label)}"><i></i></span>`;
 // Para linhas que não são <label> (têm outro controle dentro): o próprio botão vira o rótulo.
@@ -110,6 +111,7 @@ export const settingsView = {
       }
 
       <section class="set-group"><h2>Sobre</h2><div class="set-list">
+        <button type="button" class="set-row" data-changelog>${icon('sparkles')}<span class="grow">Novidades e correções<small>O que mudou em cada versão</small></span>${icon('right', 'sm')}</button>
         <div class="set-row"><span class="grow">Lida<small>Versão ${esc(app.version)}${isNative() ? ' · Android' : ''}</small></span><span class="val">${fmtInt(personal.stats().live)} registros</span></div>
         ${app.demo ? `<button type="button" class="set-row" data-demo>${icon('flask')}<span class="grow">Sair do modo demo<small>Volta para a tela inicial. Os dados de exemplo continuam guardados.</small></span></button>` : ''}
         ${!app.demo ? `<button type="button" class="set-row danger-text" data-exit>${icon(app.mode === 'cloud' ? 'logout' : 'lock')}<span class="grow">${app.mode === 'cloud' ? 'Sair da conta' : 'Bloquear agora'}</span></button>` : ''}
@@ -147,6 +149,7 @@ function bind(el, S) {
     }),
   );
 
+  el.querySelector('[data-changelog]').onclick = () => openChangelog();
   el.querySelector('[data-sound]').onchange = (e) => {
     setSoundPrefs({ on: e.target.checked });
     if (e.target.checked) play('complete');
@@ -285,3 +288,15 @@ async function permRow(el) {
   }
 }
 
+
+// Novidades e correções (js/core/changelog.js), da versão mais nova para a mais antiga.
+export function openChangelog() {
+  const fmt = (iso) => iso.split('-').reverse().join('/');
+  sheet({
+    title: 'Novidades e correções',
+    body: `<div class="changelog">${CHANGELOG.map(
+      (r, i) => `<section class="cl-ver${i === 0 ? ' latest' : ''}"><header><b>${esc(r.title)}</b><small>${esc(r.v)} · ${fmt(r.date)}${r.v === app.version ? ' · esta versão' : ''}</small></header>
+        <ul>${r.items.map(([k, t]) => `<li class="cl-${k}"><span class="cl-kind">${KIND_LABEL[k]}</span><p>${esc(t)}</p></li>`).join('')}</ul></section>`,
+    ).join('')}</div>`,
+  });
+}

@@ -3,7 +3,7 @@
 Tarefas e hábitos num só lugar, com uma pequena recompensa a cada passo concluído.
 Funciona no navegador (celular e computador) e como app Android, offline, com os dados cifrados no aparelho.
 
-> **Lida 3 — alfa 9.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
+> **Lida 3 — alfa 10.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
 > A versão anterior (React) continua no ar na branch `main` até a nova alcançar o que ela fazia.
 
 ---
@@ -49,7 +49,8 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | alfa 6 | **IPL** revisado com gráfico e explicação, **resumo do dia** e **do mês**, subtarefas visíveis e recolhíveis, editar segurando, seletor de horário próprio, água com copo e garrafa, qualquer emoji nos hábitos, avisos dispensáveis, mais lembretes (antecedência, atrasadas, hábitos, caixa de entrada, aviso com o app aberto), **cronômetro na notificação** (Live Update no Android 16) | Pronta |
 | alfa 7 | **Foco global** (tarefa em foco e cronômetros sincronizados entre aparelhos), **Painel** em telas largas (Hoje + Planejar + resumo), notificação do foco colorida, **relógio flutuante** e widget **Anéis** no Android, tamanho real da interface, constância da água, hábitos em dia de folga, reflexões em tela cheia | Pronta |
 | alfa 8 | **Lida para Linux** (Qt/PySide6): menu global do KDE, bandeja, CLI `lida`, widgets do Plasma (foco/Pomodoro e Anéis), script de instalação | Pronta |
-| alfa 9 | **Quadro (Kanban)** com Lista/Quadro em Hoje, Planejar, projetos e Painel; **resumão do ano** com IPL pela média dos meses; **Lidinho**, o mascote que troca de roupa a cada título; **4 conjuntos de sons** na Loja; **Congelamento Automático**; Carta da Sorte que premia mais; fonte retrô **VT323**; copiar a descrição; simular dias no modo demo | **Esta versão** |
+| alfa 9 | **Quadro (Kanban)** com Lista/Quadro em Hoje, Planejar, projetos e Painel; **resumão do ano** com IPL pela média dos meses; **Lidinho**, o mascote que troca de roupa a cada título; **4 conjuntos de sons** na Loja; **Congelamento Automático**; Carta da Sorte que premia mais; fonte retrô **VT323**; copiar a descrição; simular dias no modo demo | Pronta |
+| alfa 10 | **Virada do dia confiável** entre aparelhos (puxa do servidor antes de fechar; sem conexão, espera), consertos automáticos (falha por engano, rotina duplicada, notas dos últimos 7 dias refeitas), repetida que vence continua a série, **revisão de ontem** antes do resumo e **Novidades e correções** em Ajustes | **Esta versão** |
 
 ## Como o jogo funciona
 
@@ -71,6 +72,13 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
   (na virada do mês, o **resumo do mês**; na virada do ano, o **resumão do ano**, com o IPL do ano pela média das
   notas dos meses, o melhor e o pior mês, o projeto que mais andou e o hábito mais firme). Uma tarefa que venceu ainda pode ser concluída, sem recompensa,
   ou reagendada para hoje.
+- **Revisão de ontem:** se o último dia aberto foi ontem e ficou tarefa de ontem sem marcar, antes de fechar o dia o
+  Lida mostra essas tarefas. Marque o que você fez e esqueceu: conta para ontem, com a recompensa normal, e só depois
+  o IPL é calculado. Depois de vários dias longe, a revisão não aparece (os dias fecham direto).
+- **Com dois aparelhos:** a virada só acontece depois de puxar do servidor o que mudou nos outros aparelhos. Sem
+  conexão, ela espera (o app avisa) e roda assim que conectar. Se mesmo assim chegar algo atrasado, a virada seguinte
+  conserta: desfaz falhas marcadas por engano (devolvendo a punição), arquiva rotinas de dias já fechados e refaz as
+  notas dos últimos 7 dias, do mês e do ano.
 - **Estilo de jogo (Ajustes):** Multitarefa (+20% em tudo), Minimalista (+50% em P0/P1), Pontual (+30% com data),
   Ambicioso (+80% em sprints e desafios). Trocar depois custa um item da Loja.
 - **Marcos de nível:** Carta da Sorte a cada 5 níveis (e a cada nível depois do 25), +15 vouchers no 15, temas no 10, 20 e 35,
@@ -425,6 +433,9 @@ Para testar a versão web da `v3` sem tirar o Lida atual do ar, rode localmente 
 
 ## Desenvolvimento
 
+**Novidades e correções:** toda versão registra o que mudou em `js/core/changelog.js` (aparece em Ajustes). O teste
+falha se a versão do app não estiver no topo da lista.
+
 Ícones: as fontes ficam em `art/icons/` (SVG) e `python3 scripts/make-icons.py` gera todos os tamanhos (web, PWA,
 bandeja do Linux, ícone adaptativo/temático e splash do Android). Precisa de playwright e Pillow; os PNGs gerados
 ficam no repositório.
@@ -455,6 +466,11 @@ android/                                  projeto Android (Capacitor); compilado
 Ao publicar uma versão nova: aumente `VERSION` em `sw.js` e `app.version` em `js/state.js`.
 
 ## Limites honestos
+
+- **Virada sem conexão**: na conta Google, se o aparelho não falar com o servidor, os dias anteriores ficam sem fechar
+  (sem falhas, sem nota) até conectar. É de propósito: fechar com dados velhos era o que fazia tarefas sumirem.
+- **Tarefas que já tinham sumido**: voltam sozinhas na primeira virada com esta versão quando a falha foi registrada
+  antes do prazo atual (o caso do Alívio). As notas antigas só são refeitas se forem dos últimos 7 dias.
 
 - **Quadro (Kanban)**: a ordem dos cartões dentro de uma coluna segue as regras da coluna (prioridade ou data) e não
   é guardada ao arrastar; arrastar só troca de coluna. "Esta semana" põe a tarefa para depois de amanhã e "Depois"

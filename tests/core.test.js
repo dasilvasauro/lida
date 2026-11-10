@@ -489,3 +489,98 @@ test('resumo do ano: IPL pela média dos meses', () => {
   assert.equal(y.bestDay.score, 99);
   assert.equal(y.months.length, 3);
 });
+
+test('virada: falha registrada antes do prazo atual (Alívio em outro aparelho) é desfeita, com a punição', async () => {
+  initClock(true);
+  const d = today();
+  const id = await tasks.addTask({ title: 'Adiada no outro celular', priority: 'P2', due: d });
+  // O outro aparelho fechou ontem com dados velhos (prazo ontem) e marcou falha; o Alívio (prazo hoje) venceu na junção.
+  await personal.save('task', { ...game.strip(personal.get(id)), failed: true, failedOn: addDays(d, -1) }, id);
+  await personal.save('ev', { kind: 'fail', ref: id, date: addDays(d, -1), xp: -20, gold: -5 }, `ev_fail_${id}`);
+  const r = await tasks.processDays();
+  assert.equal(P().byId.get(id).failed, undefined);
+  assert.equal(personal.get(`ev_fail_${id}`), null, 'punição devolvida');
+  assert.ok(r.restored.some((t) => t.id === id));
+  assert.ok(tasks.buckets(P()).today.some((t) => t.id === id), 'de volta em Hoje');
+  resetClock();
+  initClock(false);
+});
+
+test('virada: rotina de um dia já fechado que chegou aberta é arquivada (sem "Noite" duplicada)', async () => {
+  initClock(true);
+  const d = today();
+  await personal.save('prefs', { ...game.strip(personal.get('prefs')), lastDay: d }, 'prefs');
+  await personal.save('task', { title: 'Noite', kind: 'routine', routineId: 'rN', due: addDays(d, -1), subtasks: [] }, `rt_rN_${addDays(d, -1)}`);
+  await tasks.processDays();
+  assert.equal(P().byId.get(`rt_rN_${addDays(d, -1)}`).archived, true);
+  assert.equal(tasks.buckets(P()).overdue.filter((t) => t.title === 'Noite').length, 0);
+  resetClock();
+  initClock(false);
+});
+
+test('virada: repetida que venceu continua a série (a próxima nasce)', async () => {
+  initClock(true);
+  const d0 = today();
+  const id = await tasks.addTask({ title: 'Remédio', priority: 'P3', due: d0, recurrence: { type: 'daily' } });
+  await personal.save('prefs', { ...game.strip(personal.get('prefs')), lastDay: d0 }, 'prefs');
+  shiftDays(1);
+  await tasks.processDays();
+  const t = P().byId.get(id);
+  assert.equal(t.failed, true);
+  assert.equal(t.failedOn, d0);
+  assert.ok(P().byId.get(`rc_${id}_${today()}`), 'próxima ocorrência criada');
+  resetClock();
+  initClock(false);
+});
+
+test('revisão de ontem: concluir com a data de ontem conta para ontem; nota é refeita se os fatos mudam', async () => {
+  initClock(true);
+  const d0 = today();
+  const id = await tasks.addTask({ title: 'Esqueci de marcar', priority: 'P1', due: d0 });
+  await personal.save('prefs', { ...game.strip(personal.get('prefs')), lastDay: d0 }, 'prefs');
+  shiftDays(1);
+  assert.ok(tasks.pendingOn(P(), d0).some((t) => t.id === id));
+  await tasks.toggleTask(id, { on: d0 });
+  assert.equal(tasks.doneDay(P().byId.get(id)), d0);
+  assert.equal(personal.get(`ev_done_${id}`)?.date, d0);
+  await tasks.processDays();
+  assert.equal(P().byId.get(id).failed, undefined);
+  const sc = personal.get(`sc_${d0}`);
+  assert.ok(sc.tasksDone >= 1);
+  // Nota fechada com fatos velhos (ex.: outro aparelho fechou antes): a próxima virada refaz.
+  await personal.save('score', { ...game.strip(sc), tasksDone: 0, score: 1 }, `sc_${d0}`);
+  const r = await tasks.processDays();
+  assert.ok(r.healed.includes(d0));
+  assert.ok(personal.get(`sc_${d0}`).tasksDone >= 1);
+  resetClock();
+  initClock(false);
+});
+
+test('changelog: a versão atual do app está registrada no topo', async () => {
+  const { CHANGELOG } = await import('../js/core/changelog.js');
+  const { app } = await import('../js/state.js');
+  assert.equal(CHANGELOG[0].v, app.version, 'registre as novidades da versão em js/core/changelog.js');
+  for (const r of CHANGELOG) assert.ok(r.items.length && r.date && r.title);
+});
+
+test('dois aparelhos: conclusão que chega depois da virada desfaz a falha e refaz a nota de ontem', async () => {
+  initClock(true);
+  const d0 = today();
+  const id = await tasks.addTask({ title: 'Feita no outro celular', priority: 'P1', due: d0 });
+  await personal.save('prefs', { ...game.strip(personal.get('prefs')), lastDay: d0 }, 'prefs');
+  shiftDays(1);
+  await tasks.processDays(); // este aparelho fechou ontem sem saber
+  assert.equal(P().byId.get(id).failed, true);
+  const before = personal.get(`sc_${d0}`).tasksDone || 0;
+  // Chega a versão do outro aparelho: concluída ontem às 22h.
+  const remote = personal.foreignVersion(id, { done: true, doneAt: tasks.endOfDay(d0) - 2 * 3600000 }, 'outro');
+  await personal.applyPlainMany([remote]);
+  assert.equal(P().byId.get(id).done, true);
+  const r = await tasks.processDays();
+  assert.equal(P().byId.get(id).failed, undefined);
+  assert.equal(personal.get(`ev_fail_${id}`), null);
+  assert.ok(r.healed.includes(d0));
+  assert.equal(personal.get(`sc_${d0}`).tasksDone, before + 1);
+  resetClock();
+  initClock(false);
+});

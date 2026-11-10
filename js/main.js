@@ -3,17 +3,18 @@ import { openDB, deleteDB } from './lib/idb.js';
 import { initClock, today, shiftDays, resetClock, clockOffset } from './lib/clock.js';
 import { initHLC } from './lib/hlc.js';
 import { createKey, changePass } from './lib/crypto.js';
-import { uid, esc, $, debounce } from './lib/util.js';
+import { uid, esc, $, debounce, addDays } from './lib/util.js';
 import * as cloud from './core/cloud.js';
 import { createSync } from './core/sync.js';
 import * as legacy from './core/legacy.js';
 import * as notify from './core/notify.js';
-import { processDays, buckets, toggleTask } from './core/tasks.js';
+import { processDays, buckets, toggleTask, pendingOn, ensureRoutines } from './core/tasks.js';
 import { reminders } from './core/reminders.js';
 import { addWater, waterGlass, waterToday, waterGoal, isScheduled, isDone } from './core/habits.js';
 import { seedDemo } from './core/demo.js';
 import { simulateDays, PACES } from './core/simulate.js';
-import { initSound } from './core/sound.js';
+import { initSound, play } from './core/sound.js';
+import { haptic } from './ui/haptics.js';
 import { app, personal, P, setPref } from './state.js';
 import { applyAppearance, storedAppearance, FONTS, THEMES } from './ui/theme.js';
 import { icon, initTips, toast, sheet, banner } from './ui/ui.js';
@@ -172,26 +173,43 @@ async function startCloud(idb) {
   }
 }
 
-// Antes de fechar os dias anteriores, espera a primeira sincronização (até 8 s): uma tarefa
-// concluída em outro aparelho não deve ser marcada como vencida aqui.
-function firstSync() {
-  if (!app.sync) return Promise.resolve();
-  return new Promise((resolve) => {
-    const t = setTimeout(done, 8000);
-    let off = () => {};
-    function done() {
-      clearTimeout(t);
-      setTimeout(() => off(), 0);
-      resolve();
-    }
-    off = app.sync.onStatus((st) => ['synced', 'offline', 'error', 'denied'].includes(st) && done());
-  });
+// Virada do dia, sempre com dados frescos.
+// Na conta Google, antes de fechar qualquer dia o app puxa do servidor tudo o que mudou nos outros
+// aparelhos (tarefa concluída, Alívio usado, rotina feita). Sem conexão, a virada fica adiada e roda
+// assim que a sincronização voltar: fechar o dia com dados velhos marcava como vencidas tarefas que
+// já tinham sido feitas ou adiadas em outro aparelho. Antes de fechar ontem, a revisão mostra o que
+// era para ontem e ficou sem marcar (só quando o último dia aberto foi ontem).
+let dayJob = null;
+let dayDeferred = false;
+const runDay = () => (dayJob ||= closeDay().finally(() => (dayJob = null)));
+
+async function fresh() {
+  if (app.mode !== 'cloud') return true;
+  return !!(app.sync && (await app.sync.pullNow()));
 }
 
-async function runDay() {
-  await firstSync();
+async function closeDay() {
+  const d = today();
+  const behind = (P().prefs.lastDay || d) < d;
+  if (!(await fresh())) {
+    await ensureRoutines().catch(() => {});
+    if (behind && !dayDeferred) setTimeout(() => toast('Sem sincronizar, o dia anterior só fecha quando o Lida conectar. Assim nada que você fez em outro aparelho é marcado como vencido.', { ms: 6500 }), 900);
+    dayDeferred = behind;
+    return;
+  }
+  dayDeferred = false;
+  const S = P();
+  const y = addDays(d, -1);
+  if (S.prefs.lastDay === y) {
+    const pend = pendingOn(S, y);
+    if (pend.length) await reviewYesterday(pend, y);
+  }
   const r = await processDays().catch((e) => (console.warn('Virada do dia', e), null));
   if (!r) return;
+  if (r.restored.length) {
+    const n = r.restored.length;
+    setTimeout(() => toast(n === 1 ? `“${r.restored[0].title}” voltou para a lista: ela tinha sido marcada como vencida por engano (o prazo foi adiado em outro aparelho).` : `${n} tarefas voltaram para a lista: tinham sido marcadas como vencidas por engano (prazo adiado em outro aparelho).`, { ms: 7000 }), 600);
+  }
   if (r.autoFreeze?.length) {
     const n = r.autoFreeze.reduce((a, x) => a + x.habits.length, 0);
     setTimeout(() => toast(`Congelamento Automático: ${n === 1 ? `“${r.autoFreeze[0].habits[0]}” manteve a sequência` : `${n} hábitos mantiveram a sequência`}.`, { ms: 6000 }), 700);
@@ -200,6 +218,63 @@ async function runDay() {
   const n = r.failed.length;
   const lost = r.penalty.xp || r.penalty.gold ? ` (${fmtInt(r.penalty.xp)} XP, ${fmtInt(r.penalty.gold)} de ouro)` : '';
   setTimeout(() => toast(`${n === 1 ? 'Uma tarefa venceu' : `${n} tarefas venceram`} desde a última visita${lost}.`, { ms: 6000 }), 900);
+}
+
+function reviewMeta(t) {
+  const p = t.projectId && P().byId.get(t.projectId);
+  const m = [t.time ? `<span>${icon('timer')}${esc(fmtTime(t.time))}</span>` : '', t.kind === 'routine' ? `<span>${icon('repeat')}Rotina</span>` : '', p ? `<span class="tag"><i class="dot" style="--c:${esc(p.color || 'var(--dim)')}"></i>${esc(p.name)}</span>` : ''].filter(Boolean);
+  return m.length ? `<div class="task-meta">${m.join('')}</div>` : '';
+}
+
+// Revisão de ontem: o que era para ontem e ficou sem marcar. Marcar aqui conclui com a data de ontem
+// (recompensa normal, conta no IPL de ontem). Fechar a folha fecha o dia.
+function reviewYesterday(list, y) {
+  return new Promise((resolve) => {
+    const done = new Set();
+    sheet({
+      title: 'Antes de fechar ontem',
+      body: `<p class="sheet-text">${list.length === 1 ? 'Esta tarefa era para ontem e ficou' : 'Estas tarefas eram para ontem e ficaram'} sem marcar. Se você fez e esqueceu, marque agora: conta para ontem, com a recompensa normal. O que ficar sem marcar conta como não feito, e só então o IPL de ontem é calculado.</p>
+        <ul class="tasks review-list">${list
+          .map(
+            (t) => `<li class="task review-item" data-rid="${esc(t.id)}"><button type="button" class="task-check" data-p="${esc(t.kind === 'routine' ? 'R' : t.priority || 'P4')}" aria-label="Fiz: ${esc(t.title)}" aria-pressed="false">${icon('check')}</button>
+            <div class="task-body"><span class="task-title">${esc(t.title)}</span>${reviewMeta(t)}</div></li>`,
+          )
+          .join('')}</ul>
+        <div class="sheet-actions"><button type="button" class="btn primary wide" data-closeday>${icon('check')}<span data-cdl>Fechar o dia de ontem</span></button></div>`,
+      onMount(el, close) {
+        const label = el.querySelector('[data-cdl]');
+        const paint = () => (label.textContent = done.size ? `Fechar o dia (${done.size} de ${list.length} feitas)` : 'Fechar o dia de ontem');
+        el.querySelectorAll('[data-rid]').forEach((li) => {
+          const btn = li.querySelector('.task-check');
+          btn.onclick = async () => {
+            const id = li.dataset.rid;
+            btn.disabled = true;
+            if (!done.has(id)) {
+              li.classList.add('done');
+              btn.classList.add('on', 'popping');
+              setTimeout(() => btn.classList.remove('popping'), 450);
+              btn.setAttribute('aria-pressed', 'true');
+              play('complete');
+              haptic('done');
+              await toggleTask(id, { on: y });
+              done.add(id);
+            } else {
+              li.classList.remove('done');
+              btn.classList.remove('on', 'popping');
+              btn.setAttribute('aria-pressed', 'false');
+              play('uncheck');
+              await toggleTask(id);
+              done.delete(id);
+            }
+            btn.disabled = false;
+            paint();
+          };
+        });
+        el.querySelector('[data-closeday]').onclick = close;
+      },
+      onClose: () => resolve(done.size),
+    });
+  });
 }
 
 async function bootDemo(idb) {
@@ -469,7 +544,8 @@ function start() {
   // Virada do dia com o app aberto: fecha o dia anterior, redesenha e reagenda.
   let day = today();
   const tickDay = () => {
-    if (today() === day) return;
+    // Virada adiada por falta de conexão: tenta de novo (a cada minuto, ao voltar ao app e ao reconectar).
+    if (today() === day) return dayDeferred && navigator.onLine && runDay().then(() => render(false));
     day = today();
     runDay();
     render(false);
@@ -477,6 +553,7 @@ function start() {
     updateWidget();
   };
   setInterval(tickDay, 60000);
+  window.addEventListener('online', () => setTimeout(tickDay, 2500));
   document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && tickDay());
 
   document.addEventListener('keydown', (e) => {
