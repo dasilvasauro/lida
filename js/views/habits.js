@@ -282,7 +282,8 @@ async function onWater(ml) {
   haptic('tick');
   if (r.hit) {
     setTimeout(() => play('complete'), 200);
-    celebrate('Meta de água batida', { xp: 20, gold: 10 }, r);
+    if (r.streakPrize) celebrate(`Ofensiva de ${r.streakPrize.days} dias de água!`, { xp: 20 + r.streakPrize.xp, gold: 10 + r.streakPrize.gold }, r);
+    else celebrate('Meta de água batida', { xp: 20, gold: 10 }, r);
   }
 }
 

@@ -239,15 +239,17 @@ html.board-wide .nav [data-nav='planejar'] { display: none; }
     gap: 2px;
     padding: calc(env(safe-area-inset-top, 0px) + 1.4667rem) .9333rem 1.4667rem;
     border-top: 0;
-    border-right: 1px solid var(--line);
-    background: var(--surface);
+    border-right: 1px solid var(--nav-line, var(--line));
+    background: var(--nav-bg, var(--surface));
+    color: var(--nav-text, var(--text));
   }
+  .nav .brand { color: var(--nav-text, var(--text)); }
   .nav .brand { display: flex; align-items: center; gap: .6667rem; font-size: 1.3333rem; font-weight: 800; padding: .2667rem .6667rem 1.4667rem; letter-spacing: calc(-0.02em * var(--tk)); }
   .nav .brand img { border-radius: .5333rem; }
-  .nav [data-nav] { flex: none; flex-direction: row; justify-content: flex-start; gap: .8rem; padding: .6rem .8rem; font-size: .9333rem; color: var(--muted); }
-  .nav [data-nav] .count { display: inline; margin-left: auto; font-size: .8rem; color: var(--dim); font-weight: 700; }
-  .nav [data-nav]:hover { background: var(--surface-2); color: var(--text); }
-  .nav [data-nav].on { background: var(--surface-2); }
+  .nav [data-nav] { flex: none; flex-direction: row; justify-content: flex-start; gap: .8rem; padding: .6rem .8rem; font-size: .9333rem; color: var(--nav-muted, var(--muted)); }
+  .nav [data-nav] .count { display: inline; margin-left: auto; font-size: .8rem; color: var(--nav-dim, var(--dim)); font-weight: 700; }
+  .nav [data-nav]:hover { background: var(--nav-hover, var(--surface-2)); color: var(--nav-text, var(--text)); }
+  .nav [data-nav].on { background: var(--nav-hover, var(--surface-2)); color: var(--nav-text, var(--text)); }
   .nav .nav-new { display: flex; align-items: center; gap: .6667rem; margin-top: auto; padding: .8rem .9333rem; border: 0; border-radius: var(--r); background: var(--accent); color: var(--on-accent); font-weight: 700; }
   .fab { display: none; }
   .main-col { margin-left: var(--rail); padding-bottom: 4.2667rem; }
@@ -841,9 +843,9 @@ button.set-row:hover { background: var(--surface-2); }
 .nav [data-nav].on .ic { animation: navPop 0.4s var(--spring); }
 @keyframes navPop { 40% { transform: translateY(-.2rem) scale(1.12); } }
 @media (min-width: 960px) {
-  .nav-pill { width: auto; left: .9333rem; right: .9333rem; margin: 0; top: 0; height: var(--h, 2.6667rem); border-radius: .6667rem; background: var(--surface-2); transform: translateY(var(--y, -6.6667rem)); transition: transform 0.3s var(--ease); }
+  .nav-pill { width: auto; left: .9333rem; right: .9333rem; margin: 0; top: 0; height: var(--h, 2.6667rem); border-radius: .6667rem; background: var(--nav-hover, var(--surface-2)); transform: translateY(var(--y, -6.6667rem)); transition: transform 0.3s var(--ease); }
   .nav [data-nav].on, .nav [data-nav]:hover { background: transparent; }
-  .nav [data-nav]:hover:not(.on) { background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+  .nav [data-nav]:hover:not(.on) { background: color-mix(in srgb, var(--nav-hover, var(--surface-2)) 60%, transparent); }
 }
 
 /* =====================================================================
@@ -882,6 +884,10 @@ a.lvl-link:hover { color: inherit; }
 .fc-time { font-size: .8rem; color: var(--muted); font-weight: 600; }
 .focus-card h3 { font-size: 1.2rem; line-height: 1.3; }
 .fc-meta { margin: 0; font-size: .8667rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.fc-subs { display: grid; gap: .4rem; margin: .2667rem 0 .1333rem; padding: .6rem .7333rem; border-radius: .8rem; background: color-mix(in srgb, var(--surface) 70%, transparent); }
+.fc-subs-head { display: flex; justify-content: space-between; font-size: .7667rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.fc-subs-head b { color: var(--text); }
+.fc-subs ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .1333rem; }
 .fc-acts { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .2667rem; }
 .badge.pos { --tone: var(--pos); }
 .badge.acc { --tone: var(--accent); }
@@ -941,15 +947,15 @@ button.chip:hover { color: var(--text); border-color: color-mix(in srgb, var(--a
 /* Ferramentas no trilho (computador) */
 .rail-tools { display: none; }
 @media (min-width: 960px) {
-  .rail-tools { display: grid; gap: 2px; margin-top: 1.2rem; padding-top: .9333rem; border-top: 1px solid var(--line); }
-  .rail-tools > span { padding: 0 .8rem .4rem; font-size: .7667rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim); }
-  .rail-tools button { display: flex; align-items: center; gap: .8rem; padding: .6rem .8rem; border: 0; border-radius: .6667rem; background: none; color: var(--muted); font-size: .9333rem; font-weight: 600; text-align: left; }
-  .rail-tools button:hover { background: var(--surface-2); color: var(--text); }
-  .rail-projects a { display: flex; align-items: center; gap: .6667rem; padding: .5333rem .8rem; border-radius: .6667rem; color: var(--muted); font-size: .9rem; font-weight: 600; text-decoration: none; }
-  .rail-projects a:hover, .rail-projects a.on { background: var(--surface-2); color: var(--text); }
+  .rail-tools { display: grid; gap: 2px; margin-top: 1.2rem; padding-top: .9333rem; border-top: 1px solid var(--nav-line, var(--line)); }
+  .rail-tools > span { padding: 0 .8rem .4rem; font-size: .7667rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--nav-dim, var(--dim)); }
+  .rail-tools button { display: flex; align-items: center; gap: .8rem; padding: .6rem .8rem; border: 0; border-radius: .6667rem; background: none; color: var(--nav-muted, var(--muted)); font-size: .9333rem; font-weight: 600; text-align: left; }
+  .rail-tools button:hover { background: var(--nav-hover, var(--surface-2)); color: var(--nav-text, var(--text)); }
+  .rail-projects a { display: flex; align-items: center; gap: .6667rem; padding: .5333rem .8rem; border-radius: .6667rem; color: var(--nav-muted, var(--muted)); font-size: .9rem; font-weight: 600; text-decoration: none; }
+  .rail-projects a:hover, .rail-projects a.on { background: var(--nav-hover, var(--surface-2)); color: var(--nav-text, var(--text)); }
   .rail-projects a i { width: .5333rem; height: .5333rem; border-radius: 50%; flex: none; }
   .rail-projects a span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .rail-projects a small { font-size: .8rem; color: var(--dim); font-weight: 700; }
+  .rail-projects a small { font-size: .8rem; color: var(--nav-dim, var(--dim)); font-weight: 700; }
 }
 
 /* Planejar */
@@ -1744,3 +1750,14 @@ body.kb-dragging, body.kb-dragging * { cursor: grabbing !important; }
 .rvw-btns { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6667rem; }
 .rvw-btns .btn small { margin-left: .2667rem; color: var(--muted); font-weight: 600; }
 .rv-actions { position: sticky; bottom: 0; padding-top: .8rem; background: linear-gradient(transparent, var(--sheet-bg, var(--surface)) 35%); }
+
+/* ---------- Monocromo: tudo em escala de cinza (emojis, mascote, fotos) ---------- */
+html.is-gray :is(.emoji, .mascot, img, .rvh-face, .hab-face, .lucky, .dot, .tagchip, .rail-projects a i, .mood-pick, .mood-strip, .proj-head, .testbar, .kb-dot, .rv-habit, .sh-tap, .badge) { filter: grayscale(1); }
+
+/* ---------- App do computador: barra lateral translúcida (o KWin desfoca o que fica atrás) ---------- */
+@media (min-width: 960px) {
+  html.is-glass, html.is-glass body { background: transparent; }
+  html.is-glass .main-col { background: var(--bg); min-height: 100dvh; }
+  html.is-glass .nav { background: color-mix(in srgb, var(--nav-bg, var(--surface)) var(--glass, 62%), transparent); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+.set-after { margin-top: .8rem; }

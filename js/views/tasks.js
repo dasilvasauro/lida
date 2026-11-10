@@ -5,7 +5,7 @@ import { toggleTask, toggleSub, addTask, saveTask, removeTask, strip, checkTask,
 import { ITEMS, applyTaskItem } from '../core/game.js';
 import { esc, uid, relDay, fmtTime, plural, addDays, weekday, WD_SHORT, WD_LETTER, fmtDateHuman, isoOfMs } from '../lib/util.js';
 import { today } from '../lib/clock.js';
-import { icon, sheet, toast, confirmDialog, promptDialog, opt, readForm, bar, COLORS, copyText } from '../ui/ui.js';
+import { icon, sheet, toast, confirmDialog, promptDialog, opt, readForm, bar, COLORS, copyText, morph } from '../ui/ui.js';
 import { parseQuick } from '../core/parse.js';
 import { renderRich, richToolbar, bindToolbar, toggleCheckLine, plainPreview } from '../ui/rich.js';
 import { play } from '../core/sound.js';
@@ -387,7 +387,7 @@ export function openTask(id) {
       const si = sprintInfo(t);
       sprint = `<div class="td-sprint"><div><small>Etapas</small>${bar(si.steps, { label: 'Etapas' })}<b>${si.done}/${si.count}</b></div><div><small>Dias</small>${bar(si.time, { cls: 'time', label: 'Tempo' })}<b>${si.elapsed}/${si.total}</b></div></div>`;
     }
-    el.querySelector('[data-td]').innerHTML = `
+    const tdHtml = `
       <div class="td-head">
         <button type="button" class="task-check${t.done ? ' on' : ''}" data-p="${esc(isRoutine ? 'R' : t.priority || 'P4')}" data-tdcheck aria-label="${t.done ? 'Reabrir' : 'Concluir'}">${icon('check')}</button>
         <div class="grow">
@@ -425,6 +425,8 @@ export function openTask(id) {
         ${kind === 'timed' && !t.done ? `<button type="button" class="btn ghost" data-tdplay>${icon('play')}Modo foco</button>` : ''}
         <button type="button" class="btn ghost" data-tdedit>${icon('edit')}${isRoutine ? 'Editar rotina' : 'Editar'}</button>
       </div>`;
+    const box = el.querySelector('[data-td]');
+    morph(box, () => (box.innerHTML = tdHtml));
     const done = async () => {
       const was = !!P().byId.get(id)?.done;
       play(was ? 'uncheck' : 'complete');

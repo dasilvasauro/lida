@@ -86,7 +86,8 @@ function resolve(list, ref, what = 'tarefa') {
 }
 const findTask = (S, ref, { open = true } = {}) =>
   resolve(
-    S.task.filter((t) => !t.archived && t.kind !== 'routine' && (!open || isOpen(t))),
+    // Rotinas entram só as de hoje (dá para focar nelas e marcar os itens pela CLI e pelo widget).
+    S.task.filter((t) => !t.archived && (t.kind !== 'routine' || t.due === today()) && (!open || isOpen(t))),
     ref,
   );
 
@@ -145,6 +146,7 @@ function stateNow() {
       notify: { on: np.on, tasks: np.tasks, habits: np.habits, morning: np.morning, daily: np.daily, water: np.water, inApp: np.inApp !== false },
       punish: S.prefs.punishments !== false,
       showDone: prefs().showDone,
+      glass: glassOn(),
     },
   };
 }
@@ -221,7 +223,8 @@ const COMMANDS = {
     return taskOut(P(), P().byId.get(t.id));
   },
   sub: async ({ ref, n }) => {
-    const t = findTask(P(), ref);
+    // "foco" (ou "focus"): a tarefa em foco, para marcar os itens dela sem saber o id.
+    const t = ['foco', 'focus'].includes(String(ref).trim().toLowerCase()) ? focusedTask() || (() => { throw new Error('Nenhuma tarefa em foco.'); })() : findTask(P(), ref);
     const subs = t.subtasks || [];
     const i = Number(n) - 1;
     if (!subs[i]) throw new Error(`"${t.title}" não tem a subtarefa ${n}.`);
@@ -269,7 +272,7 @@ const COMMANDS = {
     const v = ml === 'copo' || ml == null ? H.waterGlass(S) : ml === 'garrafa' ? H.waterBottle(S) : Number(ml);
     if (!(v > 0 && v <= 5000)) throw new Error('Quantidade inválida. Use copo, garrafa ou um número em ml.');
     const r = await H.addWater(v);
-    return { added: v, total: r.total, goal: r.goal, hit: r.hit };
+    return { added: v, total: r.total, goal: r.goal, hit: r.hit, streak: r.streak || undefined, prize: r.streakPrize || undefined };
   },
   ipl: () => {
     const S = P();
@@ -301,15 +304,35 @@ const COMMANDS = {
       A.reschedule?.();
     } else if (action === 'punish') await personal.save('prefs', { ...strip(personal.get('prefs') || {}), punishments: !!value }, 'prefs');
     else if (action === 'showDone') A.setShowDone?.(!!value);
+    else if (action === 'glass') setGlass(!!value);
     A.refresh?.();
     pushState();
     return { ok: true };
   },
 };
 
+// Barra lateral translúcida (o fundo da janela fica transparente ali; o KWin desfoca o que está atrás).
+export const glassOn = () => {
+  try {
+    return localStorage.getItem('lida.glass') === '1';
+  } catch {
+    return false;
+  }
+};
+export function setGlass(on) {
+  try {
+    localStorage.setItem('lida.glass', on ? '1' : '0');
+  } catch {
+    /* sem armazenamento */
+  }
+  document.documentElement.classList.toggle('is-glass', !!on && isDesktop());
+  pushState();
+}
+
 export function initDesktop() {
   if (!isDesktop()) return;
   document.documentElement.classList.add('is-desktop');
+  document.documentElement.classList.toggle('is-glass', glassOn());
   window.lidaDesktop = {
     async exec(id, cmd, args) {
       let out;

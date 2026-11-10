@@ -3,6 +3,19 @@
 // tipo: 'novo' | 'melhoria' | 'correcao'
 export const CHANGELOG = [
   {
+    v: '3.0.0-alfa.12',
+    date: '2026-11-10',
+    title: 'Temas novos, foco com subtarefas e barra translúcida',
+    items: [
+      ['novo', 'Quatro temas na Loja: Edna (inspirado no tema do KDE), Monocromo (tudo em cinza), Bumblebee (preto e amarelo) e Tumbleweed (claro, com a barra lateral preta e verde do Evernote).'],
+      ['novo', 'Subtarefas e itens de rotina aparecem na tarefa em foco: no cartão de foco em Hoje (marcáveis), no widget do Plasma e na CLI (`lida sub foco N`).'],
+      ['novo', 'Ofensiva da água: 7 dias seguidos batendo a meta rendem 200 XP e 200 de ouro.'],
+      ['novo', 'App do Linux: barra lateral translúcida, com o desfoque do KWin (Ajustes > Tema ou menu Exibir).'],
+      ['melhoria', 'Tarefas rendem cerca de 30% mais ouro (P0 65, P1 52, P2 40, P3 28, P4 15). A punição continua igual.'],
+      ['correcao', 'Anéis e barras de progresso pulavam direto para o valor novo ao concluir tarefas ou subtarefas. Agora a trajetória anima.'],
+    ],
+  },
+  {
     v: '3.0.0-alfa.11',
     date: '2026-11-10',
     title: 'Revisão completa, foco em rotinas e Live Update',

@@ -17,7 +17,7 @@ import { reviewYesterday, leftovers } from './views/review.js';
 import { initSound } from './core/sound.js';
 import { app, personal, P, setPref } from './state.js';
 import { applyAppearance, storedAppearance, FONTS, THEMES } from './ui/theme.js';
-import { icon, initTips, toast, sheet, banner } from './ui/ui.js';
+import { icon, initTips, toast, sheet, banner, morph } from './ui/ui.js';
 import { initPickers } from './ui/pickers.js';
 import { isNative, plugin, call } from './native.js';
 import * as gate from './views/gate.js';
@@ -363,7 +363,7 @@ function render(animate = false) {
   clearTimeout(render.t);
   el.classList.remove('enter', 'from-left', 'from-right', 'from-up');
   if (!animate) {
-    draw();
+    morph(el, draw);
     return window.scrollTo(0, y);
   }
   draw();
@@ -531,8 +531,8 @@ async function onNotifyAction(action, extra = {}) {
     toast('Vou lembrar de novo em 1 hora.');
   } else if (action === 'water') {
     const ml = waterGlass(); // botão da notificação: um copo
-    await addWater(ml);
-    toast(`+${ml} ml registrados.`);
+    const r = await addWater(ml);
+    toast(r.streakPrize ? `+${ml} ml. Ofensiva de ${r.streakPrize.days} dias de água: +200 XP e +200 de ouro!` : `+${ml} ml registrados.`);
   }
 }
 

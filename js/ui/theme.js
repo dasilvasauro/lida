@@ -9,6 +9,8 @@
 //                                     (XP, sprints, metas de hábito e água)
 //   pos, neg, warn                    concluído/ganho, falha/perda, atenção
 //   p0..p4                            cores das prioridades (P0 crítica … P4 sem prioridade)
+//   nav (opcional)                    barra lateral do computador com cor própria (ex.: Tumbleweed):
+//                                     { bg, text, muted, dim, line, hover }
 // Todas as combinações de texto foram escolhidas para contraste legível (≥ 4.5:1 para text e muted).
 
 const T = {
@@ -116,10 +118,44 @@ const T = {
     pos: '#15803d', neg: '#dc2626', warn: '#a16207',
     p0: '#dc2626', p1: '#c2410c', p2: '#2563eb', p3: '#8a6449', p4: '#c4a184',
   },
+  edna: {
+    name: 'Edna', scheme: 'dark', unlock: { shop: true },
+    bg: '#232c36', surface: '#2a3441', surface2: '#313c4a', surface3: '#3a4757', line: '#36414e',
+    text: '#e6ebf1', muted: '#a3afbd', dim: '#6c7a8a',
+    accent: '#3daee9', onAccent: '#0f1720', g1: '#1fbfa5', g2: '#6a5fd8',
+    pos: '#3ccf8e', neg: '#ef5577', warn: '#f2c14e',
+    p0: '#ef5577', p1: '#f39c4a', p2: '#3daee9', p3: '#97a3b2', p4: '#6c7a8a',
+    nav: { bg: '#25303b', text: '#e6ebf1', muted: '#a3afbd', dim: '#6c7a8a', line: '#2f3a46', hover: '#2f3b48' },
+  },
+  monocromo: {
+    name: 'Monocromo', scheme: 'light', unlock: { shop: true }, gray: true,
+    bg: '#f2f2f2', surface: '#ffffff', surface2: '#e9e9e9', surface3: '#dadada', line: '#d6d6d6',
+    text: '#0a0a0a', muted: '#4a4a4a', dim: '#8a8a8a',
+    accent: '#111111', onAccent: '#ffffff', g1: '#111111', g2: '#9a9a9a',
+    pos: '#1f1f1f', neg: '#6e6e6e', warn: '#555555',
+    p0: '#000000', p1: '#3a3a3a', p2: '#5e5e5e', p3: '#8a8a8a', p4: '#b5b5b5',
+  },
+  bumblebee: {
+    name: 'Bumblebee', scheme: 'dark', unlock: { shop: true },
+    bg: '#0b0b0b', surface: '#141414', surface2: '#1c1c1c', surface3: '#262626', line: '#2a2a2a',
+    text: '#f5f5f0', muted: '#b8b4a2', dim: '#706c5e',
+    accent: '#ffd400', onAccent: '#0b0b0b', g1: '#ffb300', g2: '#ffe94d',
+    pos: '#ffd400', neg: '#ff5c4d', warn: '#ff9f1a',
+    p0: '#ff5c4d', p1: '#ff9f1a', p2: '#ffd400', p3: '#b8b4a2', p4: '#706c5e',
+  },
+  tumbleweed: {
+    name: 'Tumbleweed', scheme: 'light', unlock: { shop: true },
+    bg: '#f7f7f5', surface: '#ffffff', surface2: '#efefec', surface3: '#e2e2de', line: '#e3e3df',
+    text: '#1a1a1a', muted: '#5a5a55', dim: '#9a9a94',
+    accent: '#00a82d', onAccent: '#ffffff', g1: '#00a82d', g2: '#2dbe60',
+    pos: '#00862a', neg: '#d93f3f', warn: '#a87200',
+    p0: '#d93f3f', p1: '#d4740f', p2: '#2f7fe0', p3: '#6e6e68', p4: '#b0b0aa',
+    nav: { bg: '#1a1a1a', text: '#f2f2f0', muted: '#b9b9b3', dim: '#7c7c76', line: '#262626', hover: '#2a2a2a' },
+  },
 };
 
 export const THEMES = T;
-export const THEME_ORDER = ['sistema', 'grafite', 'claro', 'amoled', 'suave', 'manteiga', 'marinho', 'darcula', 'cinza', 'aqua', 'rosa', 'laranja', 'tomate', 'matrix'];
+export const THEME_ORDER = ['sistema', 'grafite', 'claro', 'amoled', 'suave', 'manteiga', 'marinho', 'darcula', 'cinza', 'aqua', 'rosa', 'laranja', 'tomate', 'matrix', 'edna', 'monocromo', 'bumblebee', 'tumbleweed'];
 export const themeName = (id) => (id === 'sistema' ? 'Automático' : T[id]?.name || id);
 export const isFreeTheme = (id) => id === 'sistema' || id === 'grafite' || id === 'claro';
 
@@ -167,6 +203,8 @@ export const resolveTheme = (id) => {
   return id;
 };
 
+const NAV_KEYS = ['bg', 'text', 'muted', 'dim', 'line', 'hover'];
+
 // Aplica tema, fonte e tamanho. Guarda as variáveis resolvidas para o index.html pintar a
 // primeira tela já com as cores certas (sem "piscar" no tema padrão).
 export function applyAppearance({ theme = 'sistema', font = 'manrope', size = 'm' } = {}) {
@@ -178,9 +216,16 @@ export function applyAppearance({ theme = 'sistema', font = 'manrope', size = 'm
   if (!FONTS[font]) font = 'manrope'; // inclui quem tinha escolhido a antiga "fonte do sistema"
   vars['--font'] = FONTS[font].stack;
   vars['--fs'] = `${(SIZES[size] || SIZES[defaultSize()]).px}px`;
+  // Barra lateral com cor própria (só alguns temas). Sem ela, o CSS usa as cores de superfície.
+  for (const k of NAV_KEYS) {
+    if (t.nav?.[k]) vars[`--nav-${k}`] = t.nav[k];
+    else root.style.removeProperty(`--nav-${k}`);
+  }
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
   root.style.colorScheme = t.scheme;
   root.dataset.scheme = t.scheme;
+  root.dataset.theme = id;
+  root.classList.toggle('is-gray', !!t.gray);
   root.dataset.font = font;
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', t.bg);
   ls.set('lida.appearance', JSON.stringify({ theme, font, size }));
@@ -199,5 +244,5 @@ export function storedAppearance() {
 // Amostra do tema para os seletores (bolinhas com fundo, superfície e destaque).
 export const swatch = (id) => {
   const t = T[resolveTheme(id)];
-  return `<span class="swatch" style="--sw-bg:${t.bg};--sw-s:${t.surface2};--sw-a:${t.accent};--sw-g1:${t.g1};--sw-g2:${t.g2}" aria-hidden="true"><i></i><i></i><i></i></span>`;
+  return `<span class="swatch" style="--sw-bg:${t.bg};--sw-s:${t.nav?.bg || t.surface2};--sw-a:${t.accent};--sw-g1:${t.g1};--sw-g2:${t.g2}" aria-hidden="true"><i></i><i></i><i></i></span>`;
 };

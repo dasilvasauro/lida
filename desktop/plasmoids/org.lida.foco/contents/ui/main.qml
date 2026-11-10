@@ -28,6 +28,9 @@ PlasmoidItem {
     readonly property bool appOn: !!st.running
     readonly property var fz: st.focus || ({})
     readonly property var fTask: fz.task || null
+    // Subtarefas (ou itens da rotina) da tarefa em foco: aparecem no cartão de foco, marcáveis.
+    readonly property var fSubs: fTask && fTask.subtasks ? fTask.subtasks : []
+    readonly property int fSubsDone: fSubs.filter(function (s) { return s.done }).length
     readonly property var pomo: fz.pomo || ({})
     readonly property var tmr: fz.timer || null
     readonly property var gl: st.glance || ({ tasks: {}, habits: {}, water: {} })
@@ -574,6 +577,69 @@ PlasmoidItem {
                         pixelSize: 15
                         bold: true
                         maxWidth: Math.max(80, full.width - 48)
+                    }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        visible: !!root.fTask && root.fSubs.length > 0
+                        spacing: 3
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text { Layout.fillWidth: true; text: root.fTask && root.fTask.kind === "routine" ? "ITENS DA ROTINA" : "SUBTAREFAS"; color: root.cMuted; font.pixelSize: 10; font.bold: true; font.letterSpacing: 0.6 }
+                            Text { text: root.fSubsDone + "/" + root.fSubs.length; color: root.cText; font.pixelSize: 11; font.bold: true }
+                        }
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: 3
+                            radius: 1.5
+                            color: root.cSurface3
+                            Rectangle {
+                                width: parent.width * (root.fSubs.length ? root.fSubsDone / root.fSubs.length : 0)
+                                height: parent.height
+                                radius: 1.5
+                                color: root.cPos
+                                Behavior on width { NumberAnimation { duration: 450; easing.type: Easing.OutCubic } }
+                            }
+                        }
+                        Repeater {
+                            model: root.fSubs
+                            delegate: Rectangle {
+                                required property var modelData
+                                required property int index
+                                Layout.fillWidth: true
+                                implicitWidth: 100
+                                implicitHeight: 24
+                                radius: 6
+                                color: subMa.containsMouse ? root.tint(root.cText, 0.05) : "transparent"
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 2
+                                    anchors.rightMargin: 4
+                                    spacing: 7
+                                    Rectangle {
+                                        implicitWidth: 14; implicitHeight: 14; radius: 4
+                                        color: modelData.done ? root.cPos : "transparent"
+                                        border.width: modelData.done ? 0 : 1.5
+                                        border.color: root.cDim
+                                        LIcon { anchors.centerIn: parent; visible: !!modelData.done; name: "check"; size: 10; color: root.cOnAccent }
+                                    }
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: modelData.title
+                                        color: modelData.done ? root.cDim : root.cText
+                                        font.pixelSize: 12
+                                        font.strikeout: !!modelData.done
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                                MouseArea {
+                                    id: subMa
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.lida("sub foco " + (index + 1))
+                                }
+                            }
+                        }
                     }
                     Rectangle {
                         Layout.fillWidth: true

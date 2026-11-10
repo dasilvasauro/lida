@@ -46,7 +46,7 @@ export const ITEMS = {
 export const SHOP_GOLD = ['magicDice', 'xpBoost', 'goldBoost', 'respite', 'relief', 'bonusTask', 'extraP0', 'extraP1', 'changeModus', 'extraQuitter'];
 export const SHOP_VOUCHERS = ['freeze', 'autoFreeze', 'dayOff', 'instantLuck'];
 
-export const THEME_PRICES = { aqua: 2500, matrix: 2500, rosa: 2500, tomate: 2500, cinza: 2500, laranja: 2500 };
+export const THEME_PRICES = { aqua: 2500, matrix: 2500, rosa: 2500, tomate: 2500, cinza: 2500, laranja: 2500, edna: 3000, monocromo: 2500, bumblebee: 2500, tumbleweed: 3000 };
 
 /* ---------- Marcos de nível ---------- */
 export const MILESTONES = [
@@ -98,7 +98,9 @@ export async function commit(items) {
 }
 
 /* ---------- Recompensa de uma tarefa ---------- */
-const BASE = { P0: [150, 50], P1: [100, 40], P2: [75, 30], P3: [50, 20], P4: [25, 10] };
+// [XP, ouro]. O ouro das tarefas subiu ~30% no alfa 12; a punição continua nos valores antigos.
+const BASE = { P0: [150, 65], P1: [100, 52], P2: [75, 40], P3: [50, 28], P4: [25, 15] };
+const PENALTY = { P0: [150, 50], P1: [100, 40], P2: [75, 30], P3: [50, 20], P4: [25, 10] };
 const rnd = (a, b) => a + Math.random() * (b - a);
 
 export function rewardFor(task, S = P()) {
@@ -134,7 +136,7 @@ export function rewardFor(task, S = P()) {
 
 // Punição de uma tarefa que venceu: os mesmos valores-base, sem nunca baixar de nível.
 export function penaltyFor(task, S = P()) {
-  const [bx, bg] = BASE[task.priority] || BASE.P4;
+  const [bx, bg] = PENALTY[task.priority] || PENALTY.P4;
   const m = S.money;
   return { xp: -Math.min(bx, Math.max(0, m.xp - xpForLevel(m.level))), gold: -Math.min(bg, Math.max(0, m.gold)) };
 }

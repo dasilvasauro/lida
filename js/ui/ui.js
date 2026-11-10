@@ -430,6 +430,54 @@ export function ring(value, { size = 44, stroke = 5, label = '' } = {}) {
   </svg>`;
 }
 
+/* ---------- Animação entre redesenhos ---------- */
+// As telas são redesenhadas inteiras (innerHTML). Sem isto, anéis e barras de progresso pulavam
+// direto para o valor novo. morph() guarda o valor de cada anel/barra antes de redesenhar, põe o
+// valor antigo nos elementos novos e, no quadro seguinte, o valor novo: a transição do CSS anda.
+const MORPH = '.ring-v, .ring-arc, .hab-arc, .bar > i, [data-morph]';
+const morphVal = (n) => (n.matches('.bar > i') || n.dataset.morph === 'width' ? ['width', n.style.width] : ['stroke-dashoffset', n.getAttribute('stroke-dashoffset')]);
+function morphKeys(root) {
+  const seen = new Map();
+  const out = new Map();
+  for (const n of root.querySelectorAll(MORPH)) {
+    const host = n.closest('[data-id],[data-sprint],[data-anim],[data-rhab]');
+    const scope = host ? host.dataset.id || host.dataset.sprint || host.dataset.anim || host.dataset.rhab : 'root';
+    const kind = n.classList[0] || n.tagName;
+    const base = `${scope}|${kind}`;
+    const i = seen.get(base) || 0;
+    seen.set(base, i + 1);
+    out.set(`${base}|${i}`, n);
+  }
+  return out;
+}
+export function morph(root, draw) {
+  const before = new Map([...morphKeys(root)].map(([k, n]) => [k, morphVal(n)]));
+  draw();
+  if (!before.size || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const moves = [];
+  for (const [k, n] of morphKeys(root)) {
+    const old = before.get(k);
+    if (!old) continue;
+    const [prop, to] = morphVal(n);
+    if (old[0] !== prop || old[1] == null || old[1] === to) continue;
+    moves.push([n, prop, old[1], to]);
+  }
+  if (!moves.length) return;
+  for (const [n, prop, from] of moves) {
+    n.style.transition = 'none';
+    if (prop === 'width') n.style.width = from;
+    else n.setAttribute('stroke-dashoffset', from);
+  }
+  void root.offsetWidth;
+  requestAnimationFrame(() => {
+    for (const [n, prop, , to] of moves) {
+      n.style.transition = '';
+      if (prop === 'width') n.style.width = to;
+      else n.setAttribute('stroke-dashoffset', to);
+    }
+  });
+}
+
 // Barra de progresso com o gradiente do tema.
 export const bar = (value, { cls = '', label = '' } = {}) =>
   `<div class="bar ${cls}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(Math.max(0, Math.min(1, value || 0)) * 100)}"${label ? ` aria-label="${esc(label)}"` : ''}><i style="width:${Math.max(0, Math.min(1, value || 0)) * 100}%"></i></div>`;
