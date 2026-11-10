@@ -1,16 +1,17 @@
 // Ajustes: conta, aparência, sons, vibração, lembretes e sobre.
 import { app, P, personal, displayName } from '../state.js';
 import { THEMES, THEME_ORDER, themeName, isFreeTheme, FONTS, FONT_ORDER, SIZES, applyAppearance, storedAppearance, swatch } from '../ui/theme.js';
-import { soundPrefs, setSoundPrefs, play } from '../core/sound.js';
+import { soundPrefs, setSoundPrefs, play, preview, PACKS, PACK_ORDER } from '../core/sound.js';
 import { hapticsOn, setHaptics, hapticsSupported, haptic } from '../ui/haptics.js';
 import * as notify from '../core/notify.js';
 import { isNative } from '../native.js';
 import { googleAvailable } from '../core/cloud.js';
 import { esc, fmtInt } from '../lib/util.js';
-import { icon, toast, confirmDialog, promptDialog } from '../ui/ui.js';
+import { icon, toast, confirmDialog, promptDialog, sheet } from '../ui/ui.js';
 import { avatar } from './common.js';
-import { MODUS, useItemEvent, THEME_PRICES } from '../core/game.js';
+import { MODUS, useItemEvent, THEME_PRICES, ownsPack } from '../core/game.js';
 import { WD_LETTER, WD_SHORT } from '../lib/util.js';
+import { CHANGELOG, KIND_LABEL } from '../core/changelog.js';
 
 const toggle = (name, on, label) => `<span class="toggle"><input type="checkbox" data-${name}${on ? ' checked' : ''} aria-label="${esc(label)}"><i></i></span>`;
 // Para linhas que não são <label> (têm outro controle dentro): o próprio botão vira o rótulo.
@@ -78,6 +79,7 @@ export const settingsView = {
       <section class="set-group"><h2>Sons e vibração</h2><div class="set-list">
         <label class="set-row">${icon(sp.on ? 'volume' : 'mute')}<span class="grow">Sons<small>Ao concluir tarefas, ganhar XP e subir de nível</small></span>${toggle('sound', sp.on, 'Sons')}</label>
         <div class="set-row"${sp.on ? '' : ' hidden'}><span class="grow">Volume<input type="range" min="0.1" max="1" step="0.05" value="${sp.volume}" data-volume aria-label="Volume dos sons"></span><button type="button" class="btn small" data-hear>Ouvir</button></div>
+        <div class="set-row"${sp.on ? '' : ' hidden'}><span class="grow">Conjunto de sons<small>Mais conjuntos na Loja</small></span><select data-pack aria-label="Conjunto de sons">${PACK_ORDER.filter((k) => ownsPack(k, S)).map((k) => `<option value="${k}"${(sp.pack || 'classic') === k ? ' selected' : ''}>${esc(PACKS[k].name)}</option>`).join('')}</select></div>
         ${hapticsSupported() || isNative() ? `<label class="set-row">${icon('phone')}<span class="grow">Vibração<small>Um toque leve ao marcar e concluir</small></span>${toggle('haptics', hapticsOn(), 'Vibração')}</label>` : ''}
       </div></section>
 
@@ -103,12 +105,14 @@ export const settingsView = {
         isNative()
           ? `<section class="set-group"><h2>Foco</h2><div class="set-list" data-focusset>
         <label class="set-row">${icon('target')}<span class="grow">Notificação do foco<small>Tarefa em foco, Pomodoro e modo foco ficam numa notificação fixa com a contagem. No Android 16, também como chip na barra de status</small></span>${toggle('nlive', np.live !== false, 'Notificação do foco')}</label>
+        <button type="button" class="set-row" data-liverow hidden>${icon('bolt')}<span class="grow">Live Update<small data-livenote>Verificando…</small></span>${icon('right', 'sm')}</button>
         <label class="set-row">${icon('timer')}<span class="grow">Relógio flutuante<small data-ovnote>Ao minimizar o Lida com um cronômetro rodando, um relógio fica por cima dos outros apps. Arraste para mover; toque para voltar</small></span>${toggle('noverlay', false, 'Relógio flutuante')}</label>
       </div></section>`
           : ''
       }
 
       <section class="set-group"><h2>Sobre</h2><div class="set-list">
+        <button type="button" class="set-row" data-changelog>${icon('sparkles')}<span class="grow">Novidades e correções<small>O que mudou em cada versão</small></span>${icon('right', 'sm')}</button>
         <div class="set-row"><span class="grow">Lida<small>Versão ${esc(app.version)}${isNative() ? ' · Android' : ''}</small></span><span class="val">${fmtInt(personal.stats().live)} registros</span></div>
         ${app.demo ? `<button type="button" class="set-row" data-demo>${icon('flask')}<span class="grow">Sair do modo demo<small>Volta para a tela inicial. Os dados de exemplo continuam guardados.</small></span></button>` : ''}
         ${!app.demo ? `<button type="button" class="set-row danger-text" data-exit>${icon(app.mode === 'cloud' ? 'logout' : 'lock')}<span class="grow">${app.mode === 'cloud' ? 'Sair da conta' : 'Bloquear agora'}</span></button>` : ''}
@@ -146,10 +150,15 @@ function bind(el, S) {
     }),
   );
 
+  el.querySelector('[data-changelog]').onclick = () => openChangelog();
   el.querySelector('[data-sound]').onchange = (e) => {
     setSoundPrefs({ on: e.target.checked });
     if (e.target.checked) play('complete');
     rerender();
+  };
+  el.querySelector('[data-pack]').onchange = (e) => {
+    setSoundPrefs({ pack: e.target.value });
+    preview(e.target.value);
   };
   el.querySelector('[data-volume]').onchange = (e) => {
     setSoundPrefs({ volume: Number(e.target.value) });
@@ -205,6 +214,23 @@ function bind(el, S) {
       fs.querySelector('[data-ovnote]').textContent = r?.on && !r?.granted ? 'Falta liberar "Sobrepor a outros apps" para o Lida nas configurações do Android. Depois volte aqui.' : 'Ao minimizar o Lida com um cronômetro rodando, um relógio fica por cima dos outros apps. Arraste para mover; toque para voltar';
     };
     notify.overlayStatus().then(paintOv);
+    // Live Update: só no Android 16+. Mostra se está liberada e se a notificação atual foi promovida.
+    const lr = fs.querySelector('[data-liverow]');
+    notify.liveStatus().then((r) => {
+      if (!r?.supported) return;
+      lr.hidden = false;
+      const maker = r.maker || '';
+      const where = maker.includes('samsung') ? 'na barra de status e na Now Bar' : /xiaomi|redmi|poco/.test(maker) ? 'na barra de status e na ilha' : 'na barra de status';
+      lr.querySelector('[data-livenote]').textContent =
+        r.allowed === false
+          ? `Desligada para o Lida. Toque para liberar e ver o tempo ${where}.`
+          : r.promoted === false
+            ? `Liberada, mas o Android não promoveu a notificação atual. Toque para revisar.`
+            : r.promoted
+              ? `Ativa: o tempo aparece ${where}.`
+              : `Liberada: com um cronômetro rodando, o tempo aparece ${where}.`;
+    });
+    lr.onclick = () => notify.openLiveSettings();
     fs.addEventListener('change', async (e) => {
       const t = e.target;
       if (t.matches('[data-nlive]')) {
@@ -280,3 +306,15 @@ async function permRow(el) {
   }
 }
 
+
+// Novidades e correções (js/core/changelog.js), da versão mais nova para a mais antiga.
+export function openChangelog() {
+  const fmt = (iso) => iso.split('-').reverse().join('/');
+  sheet({
+    title: 'Novidades e correções',
+    body: `<div class="changelog">${CHANGELOG.map(
+      (r, i) => `<section class="cl-ver${i === 0 ? ' latest' : ''}"><header><b>${esc(r.title)}</b><small>${esc(r.v)} · ${fmt(r.date)}${r.v === app.version ? ' · esta versão' : ''}</small></header>
+        <ul>${r.items.map(([k, t]) => `<li class="cl-${k}"><span class="cl-kind">${KIND_LABEL[k]}</span><p>${esc(t)}</p></li>`).join('')}</ul></section>`,
+    ).join('')}</div>`,
+  });
+}

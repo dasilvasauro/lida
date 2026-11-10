@@ -34,6 +34,8 @@ public class LidaTimerPlugin extends Plugin {
         if (startedAt != null) b.putLong("startedAt", startedAt);
         Long leftMs = call.getLong("leftMs");
         if (leftMs != null) b.putLong("leftMs", leftMs);
+        Long totalMs = call.getLong("totalMs");
+        if (totalMs != null) b.putLong("totalMs", totalMs);
         Long timeoutMs = call.getLong("timeoutMs");
         if (timeoutMs != null) b.putLong("timeoutMs", timeoutMs);
         b.putBoolean("paused", call.getBoolean("paused", false));
@@ -105,6 +107,55 @@ public class LidaTimerPlugin extends Plugin {
             Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getContext().getPackageName()));
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             getContext().startActivity(i);
+        }
+        call.resolve();
+    }
+
+    /* ---------- Live Update (Android 16+: chip na barra de status, Now Bar, ilha) ---------- */
+
+    // supported: o Android tem Live Updates; allowed: o usuário deixa o Lida promover notificações;
+    // promoted: a notificação de foco que está na tela foi promovida agora (ou null sem notificação).
+    @PluginMethod
+    public void liveStatus(PluginCall call) {
+        JSObject r = new JSObject();
+        boolean supported = Build.VERSION.SDK_INT >= 36;
+        r.put("supported", supported);
+        r.put("maker", Build.MANUFACTURER == null ? "" : Build.MANUFACTURER.toLowerCase());
+        if (supported) {
+            android.app.NotificationManager nm = FocusService.manager(getContext());
+            Object allowed = FocusService.invoke(nm, "canPostPromotedNotifications", new Class<?>[] {});
+            if (allowed != null) r.put("allowed", (Boolean) allowed);
+            try {
+                int flag = android.app.Notification.class.getField("FLAG_PROMOTED_ONGOING").getInt(null);
+                for (android.service.notification.StatusBarNotification sbn : nm.getActiveNotifications()) {
+                    if (sbn.getId() == FocusService.ID) r.put("promoted", (sbn.getNotification().flags & flag) != 0);
+                }
+            } catch (Exception ignored) {
+                // sem a constante: não informa
+            }
+        }
+        call.resolve(r);
+    }
+
+    // Abre a tela do Android para permitir as Live Updates do Lida.
+    @PluginMethod
+    public void openLiveSettings(PluginCall call) {
+        Context ctx = getContext();
+        Intent i;
+        if (Build.VERSION.SDK_INT >= 36) {
+            i = new Intent("android.settings.MANAGE_APP_PROMOTED_NOTIFICATIONS");
+            i.putExtra(Settings.EXTRA_APP_PACKAGE, ctx.getPackageName());
+        } else {
+            i = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+            i.putExtra(Settings.EXTRA_APP_PACKAGE, ctx.getPackageName());
+        }
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            ctx.startActivity(i);
+        } catch (Exception e) {
+            Intent alt = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + ctx.getPackageName()));
+            alt.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            ctx.startActivity(alt);
         }
         call.resolve();
     }

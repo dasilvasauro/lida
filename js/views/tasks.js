@@ -5,7 +5,7 @@ import { toggleTask, toggleSub, addTask, saveTask, removeTask, strip, checkTask,
 import { ITEMS, applyTaskItem } from '../core/game.js';
 import { esc, uid, relDay, fmtTime, plural, addDays, weekday, WD_SHORT, WD_LETTER, fmtDateHuman, isoOfMs } from '../lib/util.js';
 import { today } from '../lib/clock.js';
-import { icon, sheet, toast, confirmDialog, promptDialog, opt, readForm, bar, COLORS } from '../ui/ui.js';
+import { icon, sheet, toast, confirmDialog, promptDialog, opt, readForm, bar, COLORS, copyText } from '../ui/ui.js';
 import { parseQuick } from '../core/parse.js';
 import { renderRich, richToolbar, bindToolbar, toggleCheckLine, plainPreview } from '../ui/rich.js';
 import { play } from '../core/sound.js';
@@ -152,7 +152,7 @@ export const taskList = (list, opts = {}) => `<ul class="tasks">${list.map((t, i
 
 // Liga cliques de concluir/abrir em qualquer lista dentro de `root`.
 export function bindTasks(root) {
-  root.querySelectorAll('.task').forEach((li) => {
+  root.querySelectorAll('.task:not(.kb-card)').forEach((li) => {
     const id = li.dataset.id;
     li.querySelector('[data-check]').onclick = (e) => onCheck(e.currentTarget, li, id);
     const body = li.querySelector('[data-open]');
@@ -187,10 +187,11 @@ async function onSub(input, taskId) {
 
 export async function onCheck(btn, li, id) {
   const wasDone = li.classList.contains('done');
-  btn.classList.remove('pop');
+  btn.classList.remove('popping');
   void btn.offsetWidth;
   if (!wasDone) {
-    btn.classList.add('pop');
+    btn.classList.add('popping');
+    setTimeout(() => btn.classList.remove('popping'), 450);
     li.classList.add('done');
     play('complete');
     haptic('done');
@@ -256,8 +257,8 @@ export function bindSprint(root) {
 /* ---------- Adicionar rápido ---------- */
 // defaults: campos que a tarefa nova recebe (ex.: { due: hoje } na tela Hoje).
 // O texto é lido em linguagem natural: "Pagar luz amanhã 9h p1 #Casa @contas".
-export function quickAdd(defaults = {}) {
-  return `<form class="quick-add" data-quick="${esc(defaults.due || defaults.projectId || 'sem-data')}">
+export function quickAdd(defaults = {}, key = '') {
+  return `<form class="quick-add" data-quick="${esc(key || defaults.due || defaults.projectId || 'sem-data')}">
     <span class="qa-plus">${icon('plus')}</span>
     <input name="title" placeholder="Adicionar tarefa" autocomplete="off" enterkeyhint="done" aria-label="Nova tarefa" aria-describedby="qa-help">
     <button type="button" class="icon-btn qa-more" data-more aria-label="Mais opções">${icon('more')}</button>
@@ -357,7 +358,6 @@ export function bindQuick(root) {
 export function openTask(id) {
   const t0 = P().byId.get(id);
   if (!t0) return;
-  if (t0.kind === 'routine') return editTask(id);
   let close = null;
   const draw = (el) => {
     const S = P();
@@ -371,6 +371,9 @@ export function openTask(id) {
     const tags = (t.tags || []).map((x) => S.byId.get(x)).filter(Boolean);
     const inFocus = focusOf(S)?.taskId === id && !t.done;
     const late = t.due && t.due < today() && !t.done;
+    const isRoutine = kind === 'routine';
+    // Power-ups que valem para esta tarefa: Respiro (+3 h, precisa de horário) e Alívio (+1 dia, precisa de data).
+    const powers = !t.done && !t.failed && !isRoutine && kind !== 'sprint' ? ['respite', 'relief'].filter((k) => (k === 'respite' ? t.time : t.due)) : [];
     const rows = [];
     if (t.due) rows.push([icon('plan'), kind === 'sprint' ? 'Fim' : 'Data', `<span class="${late ? 'neg' : ''}">${esc(fmtDateHuman(t.due))}${late ? ' · atrasada' : ''}</span>`]);
     if (t.time) rows.push([icon('timer'), 'Horário', esc(fmtTime(t.time)) + (t.remindBefore ? ` <small>(lembrete ${t.remindBefore >= 60 ? `${t.remindBefore / 60} h` : `${t.remindBefore} min`} antes)</small>` : '')]);
@@ -386,11 +389,11 @@ export function openTask(id) {
     }
     el.querySelector('[data-td]').innerHTML = `
       <div class="td-head">
-        <button type="button" class="task-check${t.done ? ' on' : ''}" data-p="${esc(t.priority || 'P4')}" data-tdcheck aria-label="${t.done ? 'Reabrir' : 'Concluir'}">${icon('check')}</button>
+        <button type="button" class="task-check${t.done ? ' on' : ''}" data-p="${esc(isRoutine ? 'R' : t.priority || 'P4')}" data-tdcheck aria-label="${t.done ? 'Reabrir' : 'Concluir'}">${icon('check')}</button>
         <div class="grow">
           <h3 class="td-title${t.done ? ' done' : ''}">${esc(t.title)}</h3>
           <div class="td-badges">
-            ${pr && pr.id !== 'P4' ? `<span class="badge prio" style="--tone:var(--${pr.tone})">${pr.short} · ${pr.name}</span>` : ''}
+            ${!isRoutine && pr && pr.id !== 'P4' ? `<span class="badge prio" style="--tone:var(--${pr.tone})">${pr.short} · ${pr.name}</span>` : ''}
             ${kind !== 'normal' ? `<span class="badge acc">${icon(TASK_KINDS[kind].icon)}${TASK_KINDS[kind].label}</span>` : ''}
             ${inFocus ? `<span class="badge focus">${icon('target')}Em foco</span>` : ''}
             ${t.failed && !t.done ? '<span class="badge warm">Venceu</span>' : ''}
@@ -399,10 +402,20 @@ export function openTask(id) {
       </div>
       ${rows.length ? `<dl class="td-rows">${rows.map(([ic, k, v]) => `<div><dt>${ic}<span>${k}</span></dt><dd>${v}</dd></div>`).join('')}</dl>` : ''}
       ${sprint}
-      ${t.notes ? `<div class="td-sec"><h4>Descrição</h4><div class="rich td-notes" data-tdnotes>${renderRich(t.notes)}</div></div>` : ''}
+      ${t.notes ? `<div class="td-sec"><h4>Descrição<button type="button" class="td-copy" data-tdcopy aria-label="Copiar a descrição">${icon('copy', 'sm')}<span>Copiar</span></button></h4><div class="rich td-notes" data-tdnotes>${renderRich(t.notes)}</div></div>` : ''}
+      ${
+        powers.length
+          ? `<div class="td-sec"><h4>Power-ups</h4><div class="td-powers">${powers
+              .map((k) => {
+                const n = S.money.items[k] || 0;
+                return `<button type="button" class="td-power${n ? '' : ' empty'}" data-tdpower="${k}"><span class="tdp-ic">${icon(ITEMS[k].icon)}</span><span class="grow"><b>${ITEMS[k].name}</b><small>${k === 'respite' ? 'Mais 3 horas no horário' : 'Prazo para o dia seguinte, sem punição'}</small></span><span class="tdp-n">${n ? `${n}×` : 'Loja'}</span></button>`;
+              })
+              .join('')}</div></div>`
+          : ''
+      }
       ${
         subs.length
-          ? `<div class="td-sec"><h4>${kind === 'sprint' ? 'Etapas' : 'Subtarefas'} <span class="count">${doneN}/${subs.length}</span></h4>${bar(doneN / subs.length, { cls: 'thin', label: 'Progresso' })}
+          ? `<div class="td-sec"><h4>${kind === 'sprint' ? 'Etapas' : isRoutine ? 'Itens' : 'Subtarefas'} <span class="count">${doneN}/${subs.length}</span></h4>${bar(doneN / subs.length, { cls: 'thin', label: 'Progresso' })}
         <ul class="td-subs">${subs.map((x) => `<li><label class="check${x.done ? ' on' : ''}"><input type="checkbox" data-tdsub="${esc(x.id)}"${x.done ? ' checked' : ''}><span>${esc(x.title)}</span></label></li>`).join('')}</ul></div>`
           : ''
       }
@@ -410,7 +423,7 @@ export function openTask(id) {
         <button type="button" class="btn ${t.done ? 'ghost' : 'primary'}" data-tddone>${icon(t.done ? 'refresh' : 'check')}${t.done ? 'Reabrir' : 'Concluir'}</button>
         ${!t.done && !t.failed && kind !== 'sprint' ? `<button type="button" class="btn ghost" data-tdfocus>${icon('target')}${inFocus ? 'Parar foco' : 'Focar'}</button>` : ''}
         ${kind === 'timed' && !t.done ? `<button type="button" class="btn ghost" data-tdplay>${icon('play')}Modo foco</button>` : ''}
-        <button type="button" class="btn ghost" data-tdedit>${icon('edit')}Editar</button>
+        <button type="button" class="btn ghost" data-tdedit>${icon('edit')}${isRoutine ? 'Editar rotina' : 'Editar'}</button>
       </div>`;
     const done = async () => {
       const was = !!P().byId.get(id)?.done;
@@ -435,6 +448,38 @@ export function openTask(id) {
       setTimeout(() => focusTask(id), 230);
     });
     el.querySelector('[data-goproj]')?.addEventListener('click', () => close());
+    el.querySelectorAll('[data-tdpower]').forEach(
+      (b) =>
+        (b.onclick = async () => {
+          const k = b.dataset.tdpower;
+          const cur = P().byId.get(id);
+          if (!((P().money.items[k] || 0) > 0)) {
+            play('error');
+            return toast(`Você não tem ${ITEMS[k].name}.`, { action: 'Ir à Loja', onAction: () => (close(), app.nav('loja')) });
+          }
+          if (!(await confirmDialog(`Usar ${ITEMS[k].name} em "${cur.title}"? ${ITEMS[k].desc}`, { ok: 'Usar', title: ITEMS[k].name }))) return;
+          if (await applyTaskItem(k, P().byId.get(id))) {
+            play('powerup');
+            haptic('start');
+            const n = P().byId.get(id);
+            toast(k === 'respite' ? `Respiro usado: novo horário ${fmtTime(n.time)}.` : `Alívio usado: novo prazo ${fmtDateHuman(n.due).toLowerCase()}.`);
+          }
+          draw(el);
+        }),
+    );
+    el.querySelector('[data-tdcopy]')?.addEventListener('click', async (e) => {
+      const b = e.currentTarget;
+      const ok = await copyText(P().byId.get(id)?.notes || '');
+      haptic('tick');
+      if (!ok) return toast('Não consegui copiar.');
+      b.classList.add('done');
+      b.querySelector('span').textContent = 'Copiada';
+      setTimeout(() => {
+        if (!b.isConnected) return;
+        b.classList.remove('done');
+        b.querySelector('span').textContent = 'Copiar';
+      }, 1600);
+    });
     el.querySelectorAll('[data-tdsub]').forEach(
       (c) =>
         (c.onchange = async () => {
@@ -457,7 +502,7 @@ export function openTask(id) {
     );
   };
   close = sheet({
-    title: 'Tarefa',
+    title: t0.kind === 'routine' ? 'Rotina' : 'Tarefa',
     body: '<div class="task-detail" data-td></div>',
     onMount(el) {
       draw(el);
@@ -511,7 +556,6 @@ export function editTask(id, defaults = {}) {
         <button type="button" class="icon-btn" data-subdel="${i}" aria-label="Remover ${esc(s.title)}">${icon('x', 'sm')}</button></li>`,
       )
       .join('');
-  const powerups = id && !t.done && !t.failed ? ['respite', 'relief'].filter((k) => (S.money.items[k] || 0) > 0 && (k === 'respite' ? t.time : t.due)) : [];
   sheet({
     title: id ? 'Editar tarefa' : 'Nova tarefa',
     wide: true,
@@ -544,12 +588,7 @@ export function editTask(id, defaults = {}) {
         <ul class="subs" data-subs>${subHtml()}</ul>
         <div class="sub-add"><input data-subnew placeholder="${kind === 'sprint' ? 'Adicionar etapa' : 'Adicionar subtarefa'}" autocomplete="off" aria-label="Nova subtarefa"><button type="button" class="btn small" data-subadd>${icon('plus')}Adicionar</button></div>
       </div>
-      ${
-        powerups.length
-          ? `<div class="field"><span>Power-ups</span><div class="chips">${powerups.map((k) => `<button type="button" class="chip" data-power="${k}">${icon(ITEMS[k].icon)}${ITEMS[k].name} · ${k === 'respite' ? '+3 h' : '+1 dia'}<small>${S.money.items[k]}</small></button>`).join('')}</div></div>`
-          : ''
-      }
-      ${t.failed ? `<p class="form-meta neg">Esta tarefa venceu. Ainda dá para concluir, mas sem recompensa.</p>` : ''}
+            ${t.failed ? `<p class="form-meta neg">Esta tarefa venceu. Ainda dá para concluir, mas sem recompensa.</p>` : ''}
       <p class="form-meta" data-repeatnote>${t.recurrence ? esc(recurrenceLabel(t.recurrence)) + '. Ao concluir, a próxima ocorrência é criada sozinha.' : ''}</p>
       <div class="sheet-actions">
         ${id ? `<button type="button" class="btn ghost danger-text" data-del>${icon('trash')}Excluir</button>` : '<span></span>'}
@@ -673,18 +712,6 @@ export function editTask(id, defaults = {}) {
           addSub();
         }
       };
-      el.querySelectorAll('[data-power]').forEach((b) =>
-        b.addEventListener('click', async () => {
-          const k = b.dataset.power;
-          if (!(await confirmDialog(`Usar ${ITEMS[k].name} em "${t.title}"? ${ITEMS[k].desc}`, { ok: 'Usar', title: ITEMS[k].name }))) return;
-          close();
-          if (await applyTaskItem(k, P().byId.get(id))) {
-            play('powerup');
-            haptic('start');
-            toast(k === 'respite' ? 'Respiro usado: +3 horas de prazo.' : 'Alívio usado: prazo adiado em 1 dia.');
-          }
-        }),
-      );
       el.querySelector('[data-del]')?.addEventListener('click', async () => {
         if (prefs().confirmDelete && !(await confirmDialog(`Excluir "${t.title}"? Esta ação não pode ser desfeita.`, { ok: 'Excluir', danger: true, title: 'Excluir tarefa' }))) return;
         close();

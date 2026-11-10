@@ -25,7 +25,6 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.Chronometer;
 import android.widget.LinearLayout;
-import java.lang.reflect.Method;
 
 /**
  * Serviço em primeiro plano do foco: mantém a notificação fixa da tarefa em foco / Pomodoro
@@ -61,6 +60,7 @@ public class FocusService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? null : intent.getAction();
         if (ACTION_HIDE.equals(action)) {
+            ticker.removeCallbacks(tick);
             removeOverlay();
             running = false;
             stopForeground(true);
@@ -86,11 +86,13 @@ public class FocusService extends Service {
             return START_NOT_STICKY;
         }
         refreshOverlay();
+        scheduleTick();
         return START_NOT_STICKY;
     }
 
     @Override
     public void onDestroy() {
+        ticker.removeCallbacks(tick);
         removeOverlay();
         running = false;
         super.onDestroy();
@@ -160,30 +162,99 @@ public class FocusService extends Service {
         if (timeoutMs > 0 && Build.VERSION.SDK_INT >= 26) b.setTimeoutAfter(timeoutMs);
 
         if (Build.VERSION.SDK_INT >= 36) {
-            // Android 16: Live Update (chip com o tempo na barra de status). Notificação colorida
-            // não pode ser promovida, então aqui a cor fica só no destaque.
+            // Android 16: Live Update (chip na barra de status, Now Bar da Samsung, ilha da Xiaomi).
+            // Regras para ser promovida: contínua, com título, sem cor de fundo (setColorized),
+            // sem layout próprio, canal acima de IMPORTANCE_MIN e a permissão POST_PROMOTED_NOTIFICATIONS.
+            // (APIs do Android 16 chamadas por reflexão: o build não depende da versão exata do SDK.)
             Bundle extras = new Bundle();
             extras.putBoolean("android.requestPromotedOngoing", true);
             b.addExtras(extras);
-            try {
-                Method m = Notification.Builder.class.getMethod("setRequestPromotedOngoing", boolean.class);
-                m.invoke(b, true);
-            } catch (Exception ignored) {
-                // sem a API
+            invoke(b, "setRequestPromotedOngoing", new Class<?>[] { boolean.class }, true);
+            // Com duração conhecida, estilo de progresso: a barra anda conforme o tempo passa.
+            long totalMs = s.getLong("totalMs", 0);
+            if (totalMs > 0 && (endsAt > 0 || paused)) {
+                long left = paused ? s.getLong("leftMs", 0) : Math.max(0, endsAt - System.currentTimeMillis());
+                int max = 1000;
+                int done = (int) Math.max(0, Math.min(max, Math.round((1 - (double) left / totalMs) * max)));
+                Object style = progressStyle(max, done, color);
+                if (style != null) b.setStyle((Notification.Style) style);
             }
-            if (chip != null && paused) {
-                try {
-                    Method m = Notification.Builder.class.getMethod("setShortCriticalText", String.class);
-                    m.invoke(b, chip);
-                } catch (Exception ignored) {
-                    // opcional
-                }
-            }
+            // O texto curto do chip. Pausado: "Pausa". Na Xiaomi (HyperOS), a ilha não mostra o
+            // cronômetro do sistema, então o chip leva o tempo em texto (atualizado pelo serviço).
+            String critical = paused ? chip : (isXiaomi() ? clockText(endsAt, startedAt) : null);
+            if (critical != null) invoke(b, "setShortCriticalText", new Class<?>[] { String.class }, critical);
         } else if (foreground && focus) {
             // Até o Android 15: notificação de serviço em primeiro plano pode ser toda colorida.
             b.setColorized(true);
         }
         return b.build();
+    }
+
+    static Object invoke(Object target, String name, Class<?>[] types, Object... args) {
+        try {
+            return target.getClass().getMethod(name, types).invoke(target, args);
+        } catch (Exception e) {
+            return null; // API ausente neste Android
+        }
+    }
+
+    // Notification.ProgressStyle (Android 16) com um segmento na cor do foco.
+    static Object progressStyle(int max, int progress, int color) {
+        try {
+            Class<?> ps = Class.forName("android.app.Notification$ProgressStyle");
+            Class<?> seg = Class.forName("android.app.Notification$ProgressStyle$Segment");
+            Object segment = seg.getConstructor(int.class).newInstance(max);
+            seg.getMethod("setColor", int.class).invoke(segment, color);
+            Object style = ps.getConstructor().newInstance();
+            ps.getMethod("setStyledByProgress", boolean.class).invoke(style, true);
+            ps.getMethod("setProgressSegments", java.util.List.class).invoke(style, java.util.Collections.singletonList(segment));
+            ps.getMethod("setProgress", int.class).invoke(style, progress);
+            return style;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    static boolean isXiaomi() {
+        String m = Build.MANUFACTURER == null ? "" : Build.MANUFACTURER.toLowerCase();
+        return m.contains("xiaomi") || m.contains("redmi") || m.contains("poco");
+    }
+
+    // "24 min", "45 s" (contagem) ou "1h05" / "12 min" (tempo desde o início do foco). Cabe no chip (até ~7 letras).
+    static String clockText(long endsAt, long startedAt) {
+        long now = System.currentTimeMillis();
+        long ms = endsAt > 0 ? Math.max(0, endsAt - now) : startedAt > 0 ? Math.max(0, now - startedAt) : -1;
+        if (ms < 0) return null;
+        long sec = ms / 1000;
+        if (endsAt > 0 && sec < 60) return sec + " s";
+        long min = endsAt > 0 ? (sec + 59) / 60 : sec / 60;
+        if (min >= 60) return (min / 60) + "h" + String.format(java.util.Locale.ROOT, "%02d", min % 60);
+        return min + " min";
+    }
+
+    // Enquanto roda, refaz a notificação de tempos em tempos: a barra de progresso anda e, na Xiaomi,
+    // o texto do chip acompanha o relógio. Sem nada disso (Android até o 15, fora da Xiaomi), não roda.
+    private final android.os.Handler ticker = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable tick = new Runnable() {
+        @Override
+        public void run() {
+            if (!running || current == null || current.getBoolean("paused", false)) return;
+            long endsAt = current.getLong("endsAt", 0);
+            try {
+                manager(FocusService.this).notify(ID, build(FocusService.this, current, true));
+            } catch (Exception ignored) {
+                // sem permissão
+            }
+            long left = endsAt > 0 ? endsAt - System.currentTimeMillis() : Long.MAX_VALUE;
+            if (endsAt > 0 && left <= 0) return;
+            ticker.postDelayed(this, isXiaomi() && left < 70000 ? 5000 : isXiaomi() ? 30000 : 15000);
+        }
+    };
+
+    private void scheduleTick() {
+        ticker.removeCallbacks(tick);
+        boolean wants = Build.VERSION.SDK_INT >= 36 && current != null && !current.getBoolean("paused", false) && (current.getLong("totalMs", 0) > 0 || isXiaomi());
+        if (wants) ticker.postDelayed(tick, isXiaomi() ? 5000 : 15000);
     }
 
     /* ---------- Relógio flutuante ---------- */

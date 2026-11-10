@@ -120,7 +120,9 @@ function habitCard(S, h, d, i) {
   const sub = log?.mod
     ? log.mod === 'freeze'
       ? 'Protegido hoje com Congelamento'
-      : 'Folga hoje'
+      : log.mod === 'autoFreeze'
+        ? 'Salvo pelo Congelamento Automático'
+        : 'Folga hoje'
     : !scheduled
       ? done
         ? 'Feito na folga · extra'
@@ -232,7 +234,7 @@ function patchCard(card, h) {
   card.classList.toggle('done', next.classList.contains('done'));
   const face = card.querySelector('.hab-face');
   face.innerHTML = next.querySelector('.hab-face').innerHTML;
-  face.classList.toggle('pop', !wasDone && next.classList.contains('done'));
+  face.classList.toggle('popping', !wasDone && next.classList.contains('done'));
   card.querySelector('.hab-body small').innerHTML = next.querySelector('.hab-body small').innerHTML;
   card.querySelector('.hab-week').innerHTML = next.querySelector('.hab-week').innerHTML;
   card.querySelector('.hab-side').innerHTML = next.querySelector('.hab-side').innerHTML;

@@ -91,25 +91,23 @@ export const removeTask = async (id) => {
 };
 
 // Conclui ou reabre. Devolve { done, reward, levelUp } para a tela animar.
-export async function toggleTask(id) {
+// opts.on: concluir com data de um dia que passou (revisão de ontem): conta para aquele dia.
+export async function toggleTask(id, { on = null } = {}) {
   const t = personal.get(id);
   if (!t) return null;
   if (!t.done) {
     const reward = t.failed ? { xp: 0, gold: 0, parts: [] } : rewardFor(t);
-    const day = today();
-    const batch = [{ type: 'task', id, data: { ...strip(t), done: true, doneAt: nowMs() } }];
+    const day = on && on < today() ? on : today();
+    const batch = [{ type: 'task', id, data: { ...strip(t), done: true, doneAt: day === today() ? nowMs() : endOfDay(day) } }];
     if (reward.xp || reward.gold) batch.push({ type: 'ev', id: doneEventId(id), data: { kind: 'done', ref: id, date: day, xp: reward.xp, gold: reward.gold } });
     // Repetição: a próxima ocorrência tem id derivado da série e da data, então dois aparelhos
     // concluindo a mesma tarefa não criam duas cópias.
     if (t.recurrence && !t.nextGenerated) {
       const from = t.due && t.due > day ? t.due : t.due || day;
-      const next = nextOccurrence(from, t.recurrence);
-      if (next) {
-        const series = t.series || t.id;
+      const n = nextRecurrence(t, from, day);
+      if (n) {
         batch[0].data.nextGenerated = true;
-        const copy = { ...strip(t), series, due: next, createdDay: day, subtasks: (t.subtasks || []).map((s) => ({ ...s, done: false })) };
-        for (const k of ['done', 'doneAt', 'failed', 'archived', 'nextGenerated', 'postponed', 'reprioritized', 'powerups']) delete copy[k];
-        batch.push({ type: 'task', id: `rc_${series}_${next}`, data: copy });
+        batch.push(n);
       }
     }
     const res = await commit(batch);
@@ -121,6 +119,18 @@ export async function toggleTask(id) {
   await personal.save('task', data, id);
   if (personal.get(doneEventId(id))) await personal.remove(doneEventId(id));
   return { done: false };
+}
+
+// Próxima ocorrência de uma tarefa repetida (id derivado da série e da data: dois aparelhos geram
+// o mesmo registro). minDue: pula ocorrências que já passaram (quando a anterior venceu).
+export function nextRecurrence(t, from, day = today(), minDue = null) {
+  let next = nextOccurrence(from, t.recurrence);
+  for (let i = 0; next && minDue && next < minDue && i < 800; i++) next = nextOccurrence(next, t.recurrence);
+  if (!next) return null;
+  const series = t.series || t.id;
+  const copy = { ...strip(t), series, due: next, createdDay: day, subtasks: (t.subtasks || []).map((s) => ({ ...s, done: false })) };
+  for (const k of ['done', 'doneAt', 'failed', 'failedOn', 'archived', 'nextGenerated', 'nextId', 'nextByFail', 'postponed', 'reprioritized', 'powerups']) delete copy[k];
+  return { type: 'task', id: `rc_${series}_${next}`, data: copy };
 }
 
 // Marca uma etapa/subtarefa. Devolve a fração concluída (para o som de progresso).
@@ -180,47 +190,129 @@ export function routineBatch(S, day) {
 
 /* ---------- Virada do dia ---------- */
 const MAX_DAYS = 30;
+const HEAL_DAYS = 7; // notas dos últimos dias são refeitas se os fatos mudarem (sincronização atrasada)
+
+// Fim do dia local em ms (para concluir "ontem" na revisão do dia).
+export const endOfDay = (day) => {
+  const [y, m, dd] = day.split('-').map(Number);
+  return new Date(y, m - 1, dd, 23, 59, 0).getTime();
+};
+
+// Dia em que a falha foi registrada (campo novo; nos registros antigos, a data do evento de punição).
+const failDayOf = (t) => t.failedOn || personal.get(`ev_fail_${t.id}`)?.date || null;
+
+// Consertos que rodam em toda virada (e a cada abertura), para os dados nunca ficarem incoerentes
+// mesmo quando a sincronização chega atrasada ou fora de ordem:
+// - concluída até o prazo, mas marcada como falha (o outro aparelho fechou o dia antes de saber): desfaz a falha;
+// - falha registrada ANTES do prazo atual (ex.: Alívio usado em outro aparelho adiou o prazo): desfaz a falha;
+// - rotina de um dia já fechado que ficou aberta (chegou por sincronização depois da virada): arquiva.
+// Devolve { batch, drop: ids de punições a devolver, restored: tarefas que voltaram para a lista }.
+export function repairBatch(S, d = today()) {
+  const batch = [];
+  const drop = [];
+  const restored = [];
+  const last = S.prefs.lastDay || d;
+  for (const t of S.task) {
+    if (t.failed) {
+      const fd = failDayOf(t);
+      const doneOk = t.done && t.due && doneDay(t) <= t.due;
+      const stale = !t.done && t.due && (fd ? fd < t.due : t.due >= d);
+      if (doneOk || stale) {
+        const data = strip(t);
+        delete data.failed;
+        delete data.failedOn;
+        // A próxima ocorrência criada pela falha: se ainda não foi feita, sai (a tarefa voltou, ou a
+        // conclusão no outro aparelho já criou a dela).
+        if (t.nextByFail && t.nextId) {
+          const c = personal.get(t.nextId);
+          const doneNext = t.done && t.recurrence && t.due ? `rc_${t.series || t.id}_${nextOccurrence(t.due, t.recurrence)}` : null;
+          if (c && !c.done && t.nextId !== doneNext) drop.push(t.nextId);
+          if (stale && !(c && c.done)) delete data.nextGenerated;
+          delete data.nextId;
+          delete data.nextByFail;
+        }
+        batch.push({ type: 'task', id: t.id, data });
+        if (personal.get(`ev_fail_${t.id}`)) drop.push(`ev_fail_${t.id}`);
+        if (stale) restored.push(t);
+        continue;
+      }
+    }
+    if (t.kind === 'routine' && !t.done && !t.archived && t.due && t.due < last) batch.push({ type: 'task', id: t.id, data: { ...strip(t), archived: true } });
+  }
+  return { batch, drop, restored };
+}
+
+// Números de um dia fechado (nota do IPL, tarefas, hábitos). Usado ao fechar e ao refazer.
+export function dayRecord(S, day) {
+  let tasksDone = 0;
+  let penalties = 0;
+  for (const t of S.task) {
+    if (t.failed && !t.done && !t.archived && t.due === day && t.kind !== 'routine') penalties++;
+    if (t.done && doneDay(t) === day) {
+      tasksDone++;
+      if (t.postponed) penalties++;
+    }
+  }
+  const hab = habitsOnDay(S, day);
+  penalties += hab.missed;
+  const ipl = dayIPL(S, day);
+  return { date: day, score: ipl.score, parts: ipl.parts, v: 2, tasksDone, habitsDone: hab.done, habitsTotal: hab.done + hab.missed, penalties, off: ipl.off || undefined };
+}
+const sameFacts = (a, b) => (a.score ?? null) === (b.score ?? null) && (a.tasksDone || 0) === (b.tasksDone || 0) && (a.habitsDone || 0) === (b.habitsDone || 0) && (a.habitsTotal || 0) === (b.habitsTotal || 0);
+
+// Tarefas que eram para `day` e ficaram sem marcar (oferecidas na revisão antes de fechar o dia).
+export const pendingOn = (S, day) => S.task.filter((t) => t.due === day && !t.done && !t.failed && !t.archived && t.kind !== 'sprint').sort(byPriority);
 
 // Fecha os dias entre o último processado e hoje: tarefas vencidas falham (com punição, se ligada),
 // rotinas não feitas são arquivadas, cada dia ganha uma nota no IPL e as rotinas de hoje são criadas.
 // É idempotente: ids derivados (ev_fail_<tarefa>, sc_<dia>, rt_<rotina>_<dia>) evitam duplicar
-// quando dois aparelhos processam o mesmo dia.
+// quando dois aparelhos processam o mesmo dia. Quem chama deve garantir dados frescos antes
+// (main.js puxa do servidor e, sem conexão, adia o fechamento).
 export async function processDays() {
-  const S = P();
   const d = today();
+  const summary = { days: 0, closed: [], months: [], failed: [], penalty: { xp: 0, gold: 0 }, archived: 0, restored: [], healed: [] };
+
+  // 1. Consertos (gravados antes, para o resto já enxergar os dados certos).
+  const fix = repairBatch(P(), d);
+  if (fix.batch.length) await personal.saveMany(fix.batch);
+  if (fix.drop.length) await personal.removeMany(fix.drop);
+  summary.restored = fix.restored;
+
+  const S = P();
   const last = S.prefs.lastDay;
   const batch = [];
-  const summary = { days: 0, closed: [], months: [], failed: [], penalty: { xp: 0, gold: 0 }, archived: 0 };
   const fresh = new Map(); // notas fechadas agora (ainda não estão na fotografia)
-
-  // Conserto: tarefa concluída em outro aparelho e marcada como falha aqui antes da sincronização.
-  // Só quando foi concluída até o dia do prazo (concluir depois de vencer não devolve a punição).
-  for (const t of S.task) {
-    if (t.done && t.failed && t.due && doneDay(t) <= t.due) {
-      const data = strip(t);
-      delete data.failed;
-      batch.push({ type: 'task', id: t.id, data });
-      if (personal.get(`ev_fail_${t.id}`)) await personal.remove(`ev_fail_${t.id}`);
-    }
-  }
 
   if (last && last < d) {
     let day = last < addDays(d, -MAX_DAYS) ? addDays(d, -MAX_DAYS) : last;
     const running = { xp: S.money.xp, gold: S.money.gold, level: S.money.level };
     const punish = S.prefs.punishments !== false;
+    // A vista enxerga o que é decidido agora (falhas, arquivadas e proteções do Congelamento
+    // Automático), ainda fora da fotografia, para a nota do dia e para os dias seguintes.
+    const view = { ...S, hlogMap: new Map(S.hlogMap), task: [...S.task] };
+    const put = (t) => (view.task[view.task.findIndex((x) => x.id === t.id)] = t);
+    let autoLeft = S.money.items.autoFreeze || 0;
     while (day < d) {
-      let tasksDone = 0;
-      let penalties = 0;
       for (const t of S.task) {
         if (t.done || t.failed || t.archived || t.due !== day) continue;
         if (t.kind === 'routine') {
           batch.push({ type: 'task', id: t.id, data: { ...strip(t), archived: true } });
+          put({ ...t, archived: true });
           summary.archived++;
           continue;
         }
-        batch.push({ type: 'task', id: t.id, data: { ...strip(t), failed: true } });
+        const failData = { ...strip(t), failed: true, failedOn: day };
+        // Repetida que venceu: a série continua (antes, a próxima só nascia ao concluir).
+        if (t.recurrence && !t.nextGenerated) {
+          const n = nextRecurrence(t, t.due, d, d);
+          if (n) {
+            Object.assign(failData, { nextGenerated: true, nextId: n.id, nextByFail: true });
+            if (!personal.raw(n.id)) batch.push(n);
+          }
+        }
+        batch.push({ type: 'task', id: t.id, data: failData });
+        put({ ...t, failed: true, failedOn: day });
         summary.failed.push(t);
-        penalties++;
         if (punish && t.kind !== 'bonus' && !personal.get(`ev_fail_${t.id}`)) {
           const p = penaltyFor(t, { money: running });
           if (p.xp || p.gold) {
@@ -232,16 +324,23 @@ export async function processDays() {
           }
         }
       }
-      for (const t of S.task) {
-        if (!t.done || doneDay(t) !== day) continue;
-        tasksDone++;
-        if (t.postponed) penalties++;
+      // Congelamento Automático: protege os hábitos em sequência que ficaram por fazer. Um item por dia.
+      if (autoLeft > 0 && !personal.get(`ev_af_${day}`)) {
+        const saved = autoFreezeTargets(view, day);
+        if (saved.length) {
+          autoLeft--;
+          batch.push({ type: 'ev', id: `ev_af_${day}`, data: { kind: 'use', ref: `autoFreeze:${day}`, date: day, items: { autoFreeze: -1 } } });
+          for (const h of saved) {
+            const prev = view.hlogMap.get(`${h.id}|${day}`);
+            const data = { habitId: h.id, date: day, count: prev?.count || 0, mod: 'autoFreeze' };
+            batch.push({ type: 'hlog', id: `hl_${h.id}_${day}`, data });
+            view.hlogMap.set(`${h.id}|${day}`, { id: `hl_${h.id}_${day}`, ...data });
+          }
+          summary.autoFreeze = [...(summary.autoFreeze || []), { day, habits: saved.map((h) => h.title || h.name || 'Hábito') }];
+        }
       }
-      const hab = habitsOnDay(S, day);
-      penalties += hab.missed;
       // IPL do dia (ver core/ipl.js): partes ponderadas, só as que se aplicam ao seu uso.
-      const ipl = dayIPL(S, day);
-      const rec = { date: day, score: ipl.score, parts: ipl.parts, v: 2, tasksDone, habitsDone: hab.done, habitsTotal: hab.done + hab.missed, penalties, off: ipl.off || undefined };
+      const rec = dayRecord(view, day);
       if (!personal.get(`sc_${day}`)) {
         batch.push({ type: 'score', id: `sc_${day}`, data: rec });
         fresh.set(day, rec);
@@ -251,19 +350,72 @@ export async function processDays() {
       day = addDays(day, 1);
     }
     // Virada do mês: fecha os meses que terminaram (média do IPL e os números do mês).
+    const freshMonths = new Map();
     for (let ym = ymOf(last); ym < ymOf(d); ym = addMonths(ym, 1)) {
       if (personal.get(`mo_${ym}`)) continue;
       const rec = monthRecord(S, ym, fresh);
       if (!rec) continue;
       batch.push({ type: 'month', id: `mo_${ym}`, data: rec });
+      freshMonths.set(ym, rec);
       summary.months.push(ym);
+    }
+    // Virada do ano: o resumão, com o IPL do ano pela média dos meses.
+    for (let y = Number(last.slice(0, 4)); y < Number(d.slice(0, 4)); y++) {
+      if (personal.get(`yr_${y}`)) continue;
+      const rec = yearRecord(S, y, freshMonths, fresh);
+      if (!rec) continue;
+      batch.push({ type: 'year', id: `yr_${y}`, data: rec });
+      (summary.years ||= []).push(y);
     }
   }
 
   batch.push(...routineBatch(S, d));
   if (last !== d) batch.push({ type: 'prefs', id: 'prefs', data: { ...strip(personal.get('prefs') || {}), lastDay: d } });
   if (batch.length) await personal.saveMany(batch);
+
+  // 2. Notas que já estavam fechadas: se os fatos mudaram depois (tarefa concluída em outro aparelho
+  // chegou atrasada, falha desfeita, prazo adiado), refaz a nota do dia, do mês e do ano.
+  summary.healed = await healScores(fresh);
   return summary;
+}
+
+async function healScores(skip = new Map()) {
+  const S = P();
+  const d = today();
+  const changed = new Map();
+  for (let i = HEAL_DAYS; i >= 1; i--) {
+    const day = addDays(d, -i);
+    if (skip.has(day)) continue;
+    const old = personal.get(`sc_${day}`);
+    if (!old || old.v !== 2) continue;
+    const rec = dayRecord(S, day);
+    if (sameFacts(old, rec)) continue;
+    changed.set(day, rec);
+  }
+  if (!changed.size) return [];
+  const batch = [...changed].map(([day, rec]) => ({ type: 'score', id: `sc_${day}`, data: { ...strip(personal.get(`sc_${day}`)), ...rec, healed: true } }));
+  const months = new Map();
+  for (const ym of new Set([...changed.keys()].map(ymOf))) {
+    if (!personal.get(`mo_${ym}`)) continue;
+    const rec = monthRecord(S, ym, changed);
+    if (rec) {
+      months.set(ym, rec);
+      batch.push({ type: 'month', id: `mo_${ym}`, data: rec });
+    }
+  }
+  for (const y of new Set([...months.keys()].map((ym) => Number(ym.slice(0, 4))))) {
+    if (!personal.get(`yr_${y}`)) continue;
+    const rec = yearRecord(S, y, months, changed);
+    if (rec) batch.push({ type: 'year', id: `yr_${y}`, data: rec });
+  }
+  await personal.saveMany(batch);
+  return [...changed.keys()];
+}
+
+// Só as rotinas de hoje (quando a virada fica adiada por falta de conexão).
+export async function ensureRoutines() {
+  const b = routineBatch(P(), today());
+  if (b.length) await personal.saveMany(b);
 }
 
 // Fechamento de um mês: IPL médio, melhor dia e os totais.
@@ -299,6 +451,67 @@ export function monthRecord(S, ym, fresh = new Map()) {
     goldLost: neg('gold'),
     focusSec: evs.filter((e) => e.kind === 'focus').reduce((a, e) => a + (e.focusSec || 0), 0),
     best: best ? { date: best.date, score: best.score } : null,
+  };
+}
+
+// Hábitos programados para o dia, não cumpridos nem protegidos, que vinham numa sequência
+// (o dia programado anterior foi cumprido ou protegido). São os que o Congelamento Automático salva.
+export function autoFreezeTargets(S, day) {
+  const out = [];
+  const done = (h, d) => {
+    const l = S.hlogMap.get(`${h.id}|${d}`);
+    return (l?.count || 0) >= (h.goal || 1) || !!l?.mod;
+  };
+  for (const h of S.habit) {
+    if (h.archived || (h.createdDay && h.createdDay > day)) continue;
+    const days = h.days || HABIT_DAYS_ALL;
+    if (!days.includes(weekday(day)) || done(h, day)) continue;
+    for (let i = 1; i <= 7; i++) {
+      const p = addDays(day, -i);
+      if (h.createdDay && p < h.createdDay) break;
+      if (!days.includes(weekday(p))) continue;
+      if (done(h, p)) out.push(h);
+      break;
+    }
+  }
+  return out;
+}
+
+// Resumo do ano: soma dos meses e o IPL do ano como a média das notas dos meses (cada mês pesa
+// igual, tenha 10 ou 31 dias avaliados). Meses ainda sem registro são calculados na hora.
+export function yearRecord(S, year, freshMonths = new Map(), fresh = new Map()) {
+  const months = [];
+  for (let m = 1; m <= 12; m++) {
+    const ym = `${year}-${String(m).padStart(2, '0')}`;
+    const rec = freshMonths.get(ym) || S.month.find((x) => x.month === ym && x.days != null) || S.month.find((x) => x.month === ym) || monthRecord(S, ym, fresh);
+    if (rec) months.push({ ...rec, month: ym });
+  }
+  if (!months.length) return null;
+  const scored = months.filter((x) => x.score != null);
+  const score = scored.length ? Math.round(scored.reduce((a, x) => a + x.score, 0) / scored.length) : null;
+  const add = (k) => months.reduce((a, x) => a + (x[k] || 0), 0);
+  const top = (arr, f) => arr.reduce((a, x) => (!a || f(x) > f(a) ? x : a), null);
+  const bestMonth = top(scored, (x) => x.score);
+  const worstMonth = top(scored, (x) => -x.score);
+  const bestDay = top(months.filter((x) => x.best), (x) => x.best.score)?.best || null;
+  return {
+    year,
+    score,
+    grade: score == null ? null : grade(score),
+    months: months.map((x) => ({ month: x.month, score: x.score ?? null, grade: x.grade || (x.score != null ? grade(x.score) : null), tasksDone: x.tasksDone || 0 })),
+    days: add('days'),
+    tasksDone: add('tasksDone'),
+    failed: add('failed'),
+    habitsDone: add('habitsDone'),
+    habitsTotal: add('habitsTotal'),
+    xp: add('xp'),
+    xpLost: add('xpLost'),
+    gold: add('gold'),
+    goldLost: add('goldLost'),
+    focusSec: add('focusSec'),
+    bestMonth: bestMonth ? { month: bestMonth.month, score: bestMonth.score } : null,
+    worstMonth: worstMonth && worstMonth !== bestMonth ? { month: worstMonth.month, score: worstMonth.score } : null,
+    bestDay,
   };
 }
 

@@ -3,15 +3,17 @@ import { openDB, deleteDB } from './lib/idb.js';
 import { initClock, today, shiftDays, resetClock, clockOffset } from './lib/clock.js';
 import { initHLC } from './lib/hlc.js';
 import { createKey, changePass } from './lib/crypto.js';
-import { uid, esc, $, debounce } from './lib/util.js';
+import { uid, esc, $, debounce, addDays } from './lib/util.js';
 import * as cloud from './core/cloud.js';
 import { createSync } from './core/sync.js';
 import * as legacy from './core/legacy.js';
 import * as notify from './core/notify.js';
-import { processDays, buckets, toggleTask } from './core/tasks.js';
+import { processDays, buckets, toggleTask, pendingOn, ensureRoutines } from './core/tasks.js';
 import { reminders } from './core/reminders.js';
 import { addWater, waterGlass, waterToday, waterGoal, isScheduled, isDone } from './core/habits.js';
 import { seedDemo } from './core/demo.js';
+import { simulateDays, PACES } from './core/simulate.js';
+import { reviewYesterday, leftovers } from './views/review.js';
 import { initSound } from './core/sound.js';
 import { app, personal, P, setPref } from './state.js';
 import { applyAppearance, storedAppearance, FONTS, THEMES } from './ui/theme.js';
@@ -70,7 +72,12 @@ const ls = {
 function appearance(a = storedAppearance()) {
   const r = applyAppearance(a);
   if (isNative()) {
-    call('StatusBar', 'setStyle', { style: r.scheme === 'dark' ? 'DARK' : 'LIGHT' });
+    // Ícones da barra de status e da barra de navegação: claros no tema escuro, escuros no claro.
+    // O SystemBars (núcleo do Capacitor 8) reaplica o estilo dele a cada mudança de configuração;
+    // por isso o estilo vai para ele (que guarda) e para o StatusBar (aparelhos mais antigos).
+    const style = r.scheme === 'dark' ? 'DARK' : 'LIGHT';
+    call('SystemBars', 'setStyle', { style });
+    call('StatusBar', 'setStyle', { style });
     call('StatusBar', 'setBackgroundColor', { color: r.bg });
   }
   return r;
@@ -166,26 +173,47 @@ async function startCloud(idb) {
   }
 }
 
-// Antes de fechar os dias anteriores, espera a primeira sincronização (até 8 s): uma tarefa
-// concluída em outro aparelho não deve ser marcada como vencida aqui.
-function firstSync() {
-  if (!app.sync) return Promise.resolve();
-  return new Promise((resolve) => {
-    const t = setTimeout(done, 8000);
-    let off = () => {};
-    function done() {
-      clearTimeout(t);
-      setTimeout(() => off(), 0);
-      resolve();
-    }
-    off = app.sync.onStatus((st) => ['synced', 'offline', 'error', 'denied'].includes(st) && done());
-  });
+// Virada do dia, sempre com dados frescos.
+// Na conta Google, antes de fechar qualquer dia o app puxa do servidor tudo o que mudou nos outros
+// aparelhos (tarefa concluída, Alívio usado, rotina feita). Sem conexão, a virada fica adiada e roda
+// assim que a sincronização voltar: fechar o dia com dados velhos marcava como vencidas tarefas que
+// já tinham sido feitas ou adiadas em outro aparelho. Antes de fechar ontem, a revisão mostra o que
+// era para ontem e ficou sem marcar (só quando o último dia aberto foi ontem).
+let dayJob = null;
+let dayDeferred = false;
+const runDay = () => (dayJob ||= closeDay().finally(() => (dayJob = null)));
+
+async function fresh() {
+  if (app.mode !== 'cloud') return true;
+  return !!(app.sync && (await app.sync.pullNow()));
 }
 
-async function runDay() {
-  await firstSync();
+async function closeDay() {
+  const d = today();
+  const behind = (P().prefs.lastDay || d) < d;
+  if (!(await fresh())) {
+    await ensureRoutines().catch(() => {});
+    if (behind && !dayDeferred) setTimeout(() => toast('Sem sincronizar, o dia anterior só fecha quando o Lida conectar. Assim nada que você fez em outro aparelho é marcado como vencido.', { ms: 6500 }), 900);
+    dayDeferred = behind;
+    return;
+  }
+  dayDeferred = false;
+  const S = P();
+  const y = addDays(d, -1);
+  if (S.prefs.lastDay === y) {
+    const left = leftovers(S, y, pendingOn(S, y));
+    if (left) await reviewYesterday(y, left);
+  }
   const r = await processDays().catch((e) => (console.warn('Virada do dia', e), null));
   if (!r) return;
+  if (r.restored.length) {
+    const n = r.restored.length;
+    setTimeout(() => toast(n === 1 ? `“${r.restored[0].title}” voltou para a lista: ela tinha sido marcada como vencida por engano (o prazo foi adiado em outro aparelho).` : `${n} tarefas voltaram para a lista: tinham sido marcadas como vencidas por engano (prazo adiado em outro aparelho).`, { ms: 7000 }), 600);
+  }
+  if (r.autoFreeze?.length) {
+    const n = r.autoFreeze.reduce((a, x) => a + x.habits.length, 0);
+    setTimeout(() => toast(`Congelamento Automático: ${n === 1 ? `“${r.autoFreeze[0].habits[0]}” manteve a sequência` : `${n} hábitos mantiveram a sequência`}.`, { ms: 6000 }), 700);
+  }
   if (maybeShowSummaries(r) || !r.failed.length) return;
   const n = r.failed.length;
   const lost = r.penalty.xp || r.penalty.gold ? ` (${fmtInt(r.penalty.xp)} XP, ${fmtInt(r.penalty.gold)} de ouro)` : '';
@@ -452,12 +480,15 @@ function start() {
   deepLinks();
   updateWidget();
   initDesktop();
+  // Ao voltar para o app (ex.: depois de trocar o tema do sistema), reaplica as cores das barras.
+  plugin('App')?.addListener?.('resume', () => appearance());
   runDay();
 
   // Virada do dia com o app aberto: fecha o dia anterior, redesenha e reagenda.
   let day = today();
   const tickDay = () => {
-    if (today() === day) return;
+    // Virada adiada por falta de conexão: tenta de novo (a cada minuto, ao voltar ao app e ao reconectar).
+    if (today() === day) return dayDeferred && navigator.onLine && runDay().then(() => render(false));
     day = today();
     runDay();
     render(false);
@@ -465,6 +496,7 @@ function start() {
     updateWidget();
   };
   setInterval(tickDay, 60000);
+  window.addEventListener('online', () => setTimeout(tickDay, 2500));
   document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && tickDay());
 
   document.addEventListener('keydown', (e) => {
@@ -582,6 +614,7 @@ function demobar() {
     bar.innerHTML = `<span class="tb-label">${icon('flask')}Demo<b>${off ? `relógio ${off > 0 ? '+' : ''}${off} dia${Math.abs(off) > 1 ? 's' : ''}` : 'dados de exemplo'}</b></span>
       <div class="tb-actions">
         <button type="button" data-next>Avançar um dia</button>
+        <button type="button" data-sim>Simular…</button>
         ${off ? '<button type="button" data-now>Voltar para hoje</button>' : ''}
         <button type="button" data-reset>Recomeçar</button>
       </div>`;
@@ -597,8 +630,49 @@ function demobar() {
       render(false);
     });
     bar.querySelector('[data-reset]').onclick = () => app.actions.resetDemo();
+    bar.querySelector('[data-sim]').onclick = () => simSheet(draw);
   };
   draw();
+}
+
+// Simular dias (debug): o relógio avança e cada dia é vivido com tarefas, hábitos, água e humor.
+function simSheet(draw) {
+  let days = 30;
+  let pace = 'bom';
+  sheet({
+    title: 'Simular dias',
+    body: `<p class="sheet-text">O relógio do demo avança dia a dia. Em cada dia são criadas tarefas (a maioria concluída), hábitos são cumpridos, água e humor registrados, e a virada fecha o IPL, o mês e o ano como no uso de verdade.</p>
+      <div class="field"><span>Quantos dias</span><div class="seg small" data-days>${[7, 30, 60].map((n) => `<button type="button" data-v="${n}" class="${n === days ? 'on' : ''}">${n === 30 ? 'Um mês' : n === 60 ? 'Dois meses' : 'Uma semana'}</button>`).join('')}</div></div>
+      <div class="field"><span>Ritmo</span><div class="seg small" data-pace>${Object.entries(PACES).map(([k, v]) => `<button type="button" data-v="${k}" class="${k === pace ? 'on' : ''}">${v.label}</button>`).join('')}</div></div>
+      <p class="hint" data-sim-status></p>
+      <div class="sheet-actions"><button type="button" class="btn ghost" data-close>Cancelar</button><button type="button" class="btn primary" data-run>${icon('play')}Simular</button></div>`,
+    onMount(el, close) {
+      const seg = (sel, set) =>
+        el.querySelectorAll(`${sel} button`).forEach(
+          (b) =>
+            (b.onclick = () => {
+              set(b.dataset.v);
+              el.querySelectorAll(`${sel} button`).forEach((x) => x.classList.toggle('on', x === b));
+            }),
+        );
+      seg('[data-days]', (v) => (days = Number(v)));
+      seg('[data-pace]', (v) => (pace = v));
+      el.querySelector('[data-close]').onclick = close;
+      el.querySelector('[data-run]').onclick = async (e) => {
+        const btn = e.currentTarget;
+        const st = el.querySelector('[data-sim-status]');
+        btn.disabled = true;
+        el.querySelectorAll('.seg button, [data-close]').forEach((b) => (b.disabled = true));
+        const r = await simulateDays(days, { pace, onProgress: (i, n) => (st.textContent = `Dia ${i} de ${n}: ${today().split('-').reverse().join('/')}`) });
+        // Mais um dia, para fechar o último simulado e mostrar os resumos (dia, mês, ano).
+        shiftDays(1);
+        close();
+        draw();
+        toast(`${r.days} dias simulados: ${r.done} de ${r.tasks} tarefas concluídas, ${r.habits} hábitos cumpridos.`, { ms: 6000 });
+        runDay().then(() => render(false));
+      };
+    },
+  });
 }
 
 /* ---------- Ações globais ---------- */

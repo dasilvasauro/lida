@@ -132,8 +132,10 @@ export const FONTS = {
   lexend: { name: 'Lexend', stack: "'Lexend', system-ui, sans-serif", note: 'Feita para leitura fluida' },
   atkinson: { name: 'Atkinson Hyperlegible', stack: "'Atkinson Hyperlegible', system-ui, sans-serif", note: 'Máxima legibilidade' },
   lora: { name: 'Lora', stack: "'Lora', Georgia, serif", note: 'Com serifa, tom editorial' },
+  // Retrô de terminal. Tem desenho pequeno: o tamanho base sobe para ficar legível.
+  vt323: { name: 'VT323', stack: "'VT323', ui-monospace, monospace", note: 'Retrô, de terminal antigo' },
 };
-export const FONT_ORDER = ['manrope', 'inter', 'nunito', 'lexend', 'atkinson', 'lora'];
+export const FONT_ORDER = ['manrope', 'inter', 'nunito', 'lexend', 'atkinson', 'lora', 'vt323'];
 
 // Tamanho da interface: tudo no CSS é medido em rem a partir deste valor (texto, espaços, botões),
 // então a escolha muda o tamanho do app inteiro, não só da letra.

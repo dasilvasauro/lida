@@ -310,6 +310,14 @@ export async function liveTimer(state) {
   return p.show(want).catch(() => {});
 }
 
+// Live Update (Android 16+): se o sistema promove a notificação do foco (chip na barra de status,
+// Now Bar da Samsung, ilha da Xiaomi) e o atalho para a tela do Android que libera isso.
+export async function liveStatus() {
+  if (!hasPlugin('LidaTimer')) return null;
+  return plugin('LidaTimer').liveStatus().catch(() => null);
+}
+export const openLiveSettings = () => hasPlugin('LidaTimer') && plugin('LidaTimer').openLiveSettings().catch(() => {});
+
 // Relógio flutuante (APK): aparece por cima dos outros apps quando o Lida é minimizado com um
 // cronômetro rodando. Precisa da permissão "Sobrepor a outros apps", dada nas configurações.
 export async function overlayStatus() {

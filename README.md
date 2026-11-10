@@ -3,7 +3,7 @@
 Tarefas e hábitos num só lugar, com uma pequena recompensa a cada passo concluído.
 Funciona no navegador (celular e computador) e como app Android, offline, com os dados cifrados no aparelho.
 
-> **Lida 3 — alfa 8.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
+> **Lida 3 — alfa 11.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
 > A versão anterior (React) continua no ar na branch `main` até a nova alcançar o que ela fazia.
 
 ---
@@ -33,9 +33,9 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 - **App Android de verdade.** O APK é gerado automaticamente pelo GitHub Actions, sem Android Studio.
   Lembretes são agendados no próprio celular: chegam sem internet e com o app fechado.
 - **Aparência.** 14 temas com paleta por função (fundo, superfícies, texto, destaque, progresso,
-  prioridades), 7 fontes embutidas (funcionam offline) ou a fonte do sistema, 3 tamanhos de texto.
+  prioridades), 8 fontes embutidas (funcionam offline), incluindo a retrô VT323, e 4 tamanhos de interface.
 - **Sons.** Sintetizados no aparelho (nenhum arquivo para baixar): concluir, XP, subir de nível,
-  progresso. Volume ajustável, podem ser desligados.
+  progresso. Volume ajustável, podem ser desligados, e mais 4 conjuntos de timbres na Loja.
 
 ## O que já funciona e o que vem depois
 
@@ -48,7 +48,10 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | 7 | **Login com Google no APK** (seletor de contas do Android) | Pronta (precisa do passo 4 de "Sua parte") |
 | alfa 6 | **IPL** revisado com gráfico e explicação, **resumo do dia** e **do mês**, subtarefas visíveis e recolhíveis, editar segurando, seletor de horário próprio, água com copo e garrafa, qualquer emoji nos hábitos, avisos dispensáveis, mais lembretes (antecedência, atrasadas, hábitos, caixa de entrada, aviso com o app aberto), **cronômetro na notificação** (Live Update no Android 16) | Pronta |
 | alfa 7 | **Foco global** (tarefa em foco e cronômetros sincronizados entre aparelhos), **Painel** em telas largas (Hoje + Planejar + resumo), notificação do foco colorida, **relógio flutuante** e widget **Anéis** no Android, tamanho real da interface, constância da água, hábitos em dia de folga, reflexões em tela cheia | Pronta |
-| alfa 8 | **Lida para Linux** (Qt/PySide6): menu global do KDE, bandeja, CLI `lida`, widgets do Plasma (foco/Pomodoro e Anéis), script de instalação | **Esta versão** |
+| alfa 8 | **Lida para Linux** (Qt/PySide6): menu global do KDE, bandeja, CLI `lida`, widgets do Plasma (foco/Pomodoro e Anéis), script de instalação | Pronta |
+| alfa 9 | **Quadro (Kanban)** com Lista/Quadro em Hoje, Planejar, projetos e Painel; **resumão do ano** com IPL pela média dos meses; **Lidinho**, o mascote que troca de roupa a cada título; **4 conjuntos de sons** na Loja; **Congelamento Automático**; Carta da Sorte que premia mais; fonte retrô **VT323**; copiar a descrição; simular dias no modo demo | Pronta |
+| alfa 10 | **Virada do dia confiável** entre aparelhos (puxa do servidor antes de fechar; sem conexão, espera), consertos automáticos (falha por engano, rotina duplicada, notas dos últimos 7 dias refeitas), repetida que vence continua a série, **revisão de ontem** antes do resumo e **Novidades e correções** em Ajustes | Pronta |
+| alfa 11 | Revisão de ontem com **hábitos e água**, **foco em rotinas**, power-ups no **cartão da tarefa**, **Live Update** com progresso e status em Ajustes, VT323 sem inflar a interface, textos novos do Lidinho | **Esta versão** |
 
 ## Como o jogo funciona
 
@@ -67,13 +70,28 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 - **Virada do dia:** ao abrir o app (ou à meia-noite com ele aberto), cada dia que passou é fechado: tarefas vencidas
   falham e tiram XP e ouro (nunca baixam de nível; dá para desligar em Ajustes), rotinas não feitas são arquivadas,
   o dia ganha uma nota no IPL e as rotinas de hoje aparecem. Na primeira abertura do dia aparece o **resumo de ontem**
-  (e, na virada do mês, o **resumo do mês**). Uma tarefa que venceu ainda pode ser concluída, sem recompensa,
+  (na virada do mês, o **resumo do mês**; na virada do ano, o **resumão do ano**, com o IPL do ano pela média das
+  notas dos meses, o melhor e o pior mês, o projeto que mais andou e o hábito mais firme). Uma tarefa que venceu ainda pode ser concluída, sem recompensa,
   ou reagendada para hoje.
+- **Revisão de ontem:** se o último dia aberto foi ontem e ficou algo de ontem sem marcar (tarefas, hábitos ou a meta
+  de água), antes de fechar o dia o Lida mostra o que ficou. Marque o que você fez e esqueceu, ou some os copos que
+  faltaram: conta para ontem, com a recompensa normal, e só depois o IPL é calculado. Depois de vários dias longe, a revisão não aparece (os dias fecham direto).
+- **Com dois aparelhos:** a virada só acontece depois de puxar do servidor o que mudou nos outros aparelhos. Sem
+  conexão, ela espera (o app avisa) e roda assim que conectar. Se mesmo assim chegar algo atrasado, a virada seguinte
+  conserta: desfaz falhas marcadas por engano (devolvendo a punição), arquiva rotinas de dias já fechados e refaz as
+  notas dos últimos 7 dias, do mês e do ano.
 - **Estilo de jogo (Ajustes):** Multitarefa (+20% em tudo), Minimalista (+50% em P0/P1), Pontual (+30% com data),
   Ambicioso (+80% em sprints e desafios). Trocar depois custa um item da Loja.
 - **Marcos de nível:** Carta da Sorte a cada 5 níveis (e a cada nível depois do 25), +15 vouchers no 15, temas no 10, 20 e 35,
   P0 sem limite no 30, P1 sem limite no 40, Darcula e +40 vouchers no 50. Títulos: Aprendiz, Iniciante, Praticante,
-  Constante, Disciplinado, Persistente, Veterano, Especialista, Mestre, Grão-Mestre e Lenda.
+  Constante, Disciplinado, Persistente, Veterano, Especialista, Mestre, Grão-Mestre e Lenda. O **Lidinho**, o mascote
+  (um bichinho redondo com o Λ na testa), aparece no cartão de nível e muda de roupa, pose e ângulo a cada título:
+  curioso com o broto na cabeça, caminhando de mochila, correndo de faixa na testa, acenando de cachecol, lendo de óculos,
+  mostrando o muque com a faixa de honra, explorador de boina e cajado, pulando com o diploma, herói de capa, mago
+  lançando feitiço e, na Lenda, saltando de coroa no meio do confete. Tocar nele abre a coleção: o título atual e os
+  anteriores com um texto curto, e os próximos só na sombra, sem o nome.
+- **Carta da Sorte:** quase sempre premia, quase sempre pouco: 30 a 60 de ouro (30%), 60 a 120 XP (25%), 100 de ouro (12%),
+  200 XP (10%), 1 voucher (7%), um item (5%), a sorte grande de 300 de ouro ou 500 XP (3%) e nada (8%).
 
 **IPL — Índice de Produtividade do Lida (aba Eu):** nota de 0 a 100 por dia, com média do mês (A+ a F) e gráfico
 de 30 dias. Não conta só tarefas: avalia o dia por partes, e **só entram as partes que fazem sentido para o seu uso**.
@@ -101,6 +119,8 @@ volta ao dia 1.
 - Toque no círculo para marcar (soma 1 até a meta do dia; na meta, volta a zero). Bater a meta rende progresso de voucher:
   a cada 3, um voucher.
 - A sequência conta só os dias escolhidos para o hábito. Congelamento protege um dia; Folga dos hábitos protege o dia inteiro.
+  **Congelamento Automático** (9 vouchers, o triplo do normal) não precisa ser usado: na virada de um dia perdido, ele
+  salva sozinho todos os hábitos que vinham em sequência e ficaram por fazer. Um item por dia perdido.
 - **Água:** meta diária ajustável (padrão 2 L) e tamanho do copo. Bater a meta rende 20 XP e 10 de ouro.
 - **Desapego:** um check-in por dia sem recair. As recompensas crescem ao longo de um ciclo de 7 dias (o 7º traz uma
   Carta da Sorte). Recaída: volta ao dia 1 e perde metade do XP do nível atual e do ouro. Um espaço grátis; mais na Loja.
@@ -126,6 +146,27 @@ Exemplo: `Pagar luz amanhã 9h p1 #Casa @contas`. Enquanto você digita, aparece
 
 **Descrição:** aceita `**negrito**`, `*itálico*`, `~~riscado~~`, `` `código` ``, `[texto](https://link)`, links soltos,
 listas com `- ` e listas de verificação com `- [ ] ` (clicáveis).
+
+**Power-ups na tarefa:** toque na tarefa para abrir o cartão; Respiro (+3 h no horário) e Alívio (prazo para o dia
+seguinte, sem punição) ficam lá, com quantos você tem.
+
+**Foco em rotinas:** toque na rotina para abrir o cartão (itens marcáveis, Concluir, Focar) ou escolha a rotina em
+"Focar numa tarefa".
+
+**Lista ou Quadro:** Hoje, Planejar, cada projeto e o Painel (telas largas) têm o botão Lista/Quadro, lembrado por tela.
+No Quadro, escolha **Agrupar por** Data (Atrasadas, Hoje, Amanhã, Esta semana, Depois, Sem data), Prioridade (P0 a P4)
+ou Projeto. Arrastar um cartão para outra coluna muda a data, a prioridade ou o projeto (com Desfazer). No mouse, é só
+arrastar; no toque, segure o cartão um instante e arraste (segurar e soltar sem mover abre a edição). Cada coluna tem
+o seu "Adicionar tarefa", que já cria a tarefa naquela coluna.
+
+**Sons:** o conjunto Clássico é de graça; na Loja (aba Sons) há Retrô 8-bit, Madeira e sinos, Cristal e Digital
+(900 de ouro cada, valem em todos os aparelhos). Toque no alto-falante para ouvir antes de comprar; troque em Ajustes.
+
+**Fontes:** além das outras, a **VT323**, retrô de terminal antigo (aparece um pouco maior, porque o desenho dela é pequeno).
+
+**Modo demo:** a barra de cima tem **Simular…**: avança o relógio uma semana, um mês ou dois, vivendo cada dia com
+tarefas, hábitos, água e humor (no ritmo Bom, Médio ou Fraco). A virada fecha o IPL, os meses e o ano de verdade,
+então dá para ver o resumo do mês e o resumão do ano.
 
 Atalhos no computador: **Q**/**N** nova tarefa, **/** ou **Ctrl+K** buscar, **P** Pomodoro, **B** Esvaziar a mente, **1–5** seções.
 
@@ -299,6 +340,17 @@ Tudo em **Ajustes > Lembretes**, cada tipo com seu interruptor e horário:
   vermelha até o Android 15 e Live Update no 16. **Relógio flutuante** (Ajustes > Foco): ao minimizar o Lida com um
   cronômetro rodando, um relógio fica por cima dos outros apps; arraste para mover, toque para voltar. Precisa da
   permissão **"Sobrepor a outros apps"**, que o próprio Ajustes abre.
+- **Live Update (Android 16)**: a notificação do foco pede para ser promovida (chip com o tempo na barra de status e,
+  nos aparelhos que mostram Live Updates de outros apps, na Now Bar da Samsung e na ilha da Xiaomi). Com duração
+  conhecida (Pomodoro, modo foco), vem com barra de progresso. Em **Ajustes > Foco > Live Update** dá para ver se
+  está liberada, se a notificação atual foi promovida, e abrir a tela do Android para liberar.
+  - **Samsung (One UI 8)**: a Now Bar mostra Live Updates de apps de terceiros conforme o aparelho e a versão; em
+    alguns, só com a opção "Live notifications for all apps" nas Opções do desenvolvedor. O Lida faz a parte dele
+    (pedido de promoção dentro das regras do Android); se o chip aparece na barra de status mas não na Now Bar,
+    é decisão do One UI.
+  - **Xiaomi (HyperOS)**: a ilha não desenha o cronômetro do Android, então o chip leva o tempo em texto ("24 min",
+    "45 s"), atualizado pelo serviço. O relógio "vivo" na Super Island exige a API de notificação de foco da Xiaomi,
+    que só funciona para apps liberados por ela (pedido por e-mail); sem isso, o sistema mostra a notificação comum.
 
 ## Widgets (Android)
 
@@ -399,6 +451,9 @@ Para testar a versão web da `v3` sem tirar o Lida atual do ar, rode localmente 
 
 ## Desenvolvimento
 
+**Novidades e correções:** toda versão registra o que mudou em `js/core/changelog.js` (aparece em Ajustes). O teste
+falha se a versão do app não estiver no topo da lista.
+
 Ícones: as fontes ficam em `art/icons/` (SVG) e `python3 scripts/make-icons.py` gera todos os tamanhos (web, PWA,
 bandeja do Linux, ícone adaptativo/temático e splash do Android). Precisa de playwright e Pillow; os PNGs gerados
 ficam no repositório.
@@ -429,6 +484,18 @@ android/                                  projeto Android (Capacitor); compilado
 Ao publicar uma versão nova: aumente `VERSION` em `sw.js` e `app.version` em `js/state.js`.
 
 ## Limites honestos
+
+- **Virada sem conexão**: na conta Google, se o aparelho não falar com o servidor, os dias anteriores ficam sem fechar
+  (sem falhas, sem nota) até conectar. É de propósito: fechar com dados velhos era o que fazia tarefas sumirem.
+- **Tarefas que já tinham sumido**: voltam sozinhas na primeira virada com esta versão quando a falha foi registrada
+  antes do prazo atual (o caso do Alívio). As notas antigas só são refeitas se forem dos últimos 7 dias.
+
+- **Quadro (Kanban)**: a ordem dos cartões dentro de uma coluna segue as regras da coluna (prioridade ou data) e não
+  é guardada ao arrastar; arrastar só troca de coluna. "Esta semana" põe a tarefa para depois de amanhã e "Depois"
+  para daqui a 7 dias (dá para ajustar na edição). O arrasto no toque foi testado no emulador do Chromium, não num
+  celular de verdade.
+- **Barra de status no Android**: agora o app pede ícones escuros nos temas claros pelos dois plugins (SystemBars e
+  StatusBar) e reaplica ao voltar para o app. Não deu para testar num aparelho daqui.
 
 - **Login com Google no APK**: usa o seletor de contas nativo do Android. Só funciona no APK assinado com a
   sua chave (a impressão digital dela fica cadastrada no Firebase). Sem o segredo `GOOGLE_SERVICES_JSON`, o APK

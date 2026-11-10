@@ -20,7 +20,14 @@ export function createSync(store, { sid, uid: me, idb }) {
   let status = 'local';
   let lastPresence = 0;
   let conflictRounds = 0;
+  let cursor = 0;
+  let markStarted = () => {};
+  const started = new Promise((r) => (markStarted = r));
   const listeners = new Set();
+  const toRow = (d) => {
+    const x = d.data();
+    return x.ts ? { id: d.id, u: x.u, by: x.by, del: !!x.del, iv: U(x.iv), ct: U(x.ct), ts: x.ts.toMillis() } : null;
+  };
 
   const setStatus = (s) => {
     status = s;
@@ -139,6 +146,32 @@ export function createSync(store, { sid, uid: me, idb }) {
     getStatus: () => status,
     syncNow: () => schedule(0),
 
+    // Puxa do SERVIDOR (não do cache) tudo o que mudou desde o último cursor e espera aplicar.
+    // A virada do dia só roda depois disso: o listener pode estar parado (app em segundo plano a
+    // noite toda) e o status "sincronizado" não garante que as mudanças dos outros aparelhos chegaram.
+    // Devolve false sem conexão ou se o servidor não responder a tempo.
+    async pullNow(ms = 9000) {
+      const timeout = new Promise((r) => setTimeout(() => r('timeout'), ms));
+      try {
+        if ((await Promise.race([started.then(() => 'ok'), timeout])) !== 'ok' || !fb || !navigator.onLine) return false;
+        const { F } = fb;
+        const q = F.query(recCol(), F.where('ts', '>', F.Timestamp.fromMillis(Math.max(0, cursor - 120000))));
+        const snap = await Promise.race([F.getDocsFromServer(q), timeout]);
+        if (snap === 'timeout') return false;
+        const rows = snap.docs.map(toRow).filter(Boolean);
+        if (rows.length) await store.applyRemoteMany(rows);
+        const max = Math.max(cursor, ...rows.map((r) => r.ts));
+        if (max > cursor) {
+          cursor = max;
+          await idb.put('meta', cursor, 'cursor');
+        }
+        await idb.put('meta', Date.now(), 'lastPull');
+        return true;
+      } catch {
+        return false;
+      }
+    },
+
     async start() {
       fb = await loadFirebase();
       const { F } = fb;
@@ -149,7 +182,8 @@ export function createSync(store, { sid, uid: me, idb }) {
       const lastPull = (await idb.get('meta', 'lastPull')) || 0;
       if (lastPull && Date.now() - lastPull > HORIZON - 5 * DAY) await reconcile();
 
-      let cursor = (await idb.get('meta', 'cursor')) || 0;
+      cursor = (await idb.get('meta', 'cursor')) || 0;
+      markStarted();
       const q = F.query(recCol(), F.where('ts', '>', F.Timestamp.fromMillis(Math.max(0, cursor - 120000))));
       setStatus(navigator.onLine ? 'syncing' : 'offline');
       unsub = F.onSnapshot(

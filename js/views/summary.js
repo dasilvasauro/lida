@@ -2,11 +2,11 @@
 // Também abrem a partir da aba Eu.
 import { P } from '../state.js';
 import { IPL_PARTS, dayIPL, grade, gradeLine, partsTip } from '../core/ipl.js';
-import { monthRecord, doneDay, habitsOnDay } from '../core/tasks.js';
+import { monthRecord, yearRecord, doneDay, habitsOnDay } from '../core/tasks.js';
 import { today } from '../lib/clock.js';
-import { esc, fmtInt, fmtSigned, plural, sum, addDays, fmtDayLong, fmtMonth, fmtMl, ymOf, addMonths, cap } from '../lib/util.js';
+import { esc, fmtInt, fmtSigned, plural, sum, addDays, fmtDayLong, fmtMonth, fmtMl, ymOf, addMonths, cap, MSHORT, MONTHS } from '../lib/util.js';
 import { sheet, icon } from '../ui/ui.js';
-import { line } from '../ui/chart.js';
+import { line, columns } from '../ui/chart.js';
 import { face, MOODS } from './me.js';
 
 const SEEN = 'lida.summarySeen';
@@ -127,6 +127,71 @@ export function showMonthSummary(ym) {
   });
 }
 
+/* ---------- Ano ---------- */
+// Destaques que não ficam no registro (vêm dos dados do ano): projeto que mais andou, hábito mais
+// firme, humor mais comum, água bebida.
+function yearHighlights(S, y) {
+  const inY = (d) => d && d.startsWith(`${y}-`);
+  const out = [];
+  const byProj = new Map();
+  for (const t of S.task) if (t.done && t.projectId && inY(doneDay(t))) byProj.set(t.projectId, (byProj.get(t.projectId) || 0) + 1);
+  const [pid, pn] = [...byProj].sort((a, b) => b[1] - a[1])[0] || [];
+  const proj = pid && S.byId.get(pid);
+  if (proj) out.push(['folder', 'Projeto que mais andou', esc(proj.name), plural(pn, 'tarefa concluída', 'tarefas concluídas')]);
+  let bestH = null;
+  for (const h of S.habit) {
+    const n = (S.hlogByHabit.get(h.id) || []).filter((l) => inY(l.date) && ((l.count || 0) >= (h.goal || 1) || l.mod)).length;
+    if (n && (!bestH || n > bestH.n)) bestH = { h, n };
+  }
+  if (bestH) out.push(['repeat', 'Hábito mais firme', esc(`${bestH.h.icon ? `${bestH.h.icon} ` : ''}${bestH.h.title || bestH.h.name || 'Hábito'}`), plural(bestH.n, 'dia cumprido', 'dias cumpridos')]);
+  const mc = new Map();
+  for (const m of S.mood) if (inY(m.date)) mc.set(m.mood, (mc.get(m.mood) || 0) + 1);
+  const [mid, mn] = [...mc].sort((a, b) => b[1] - a[1])[0] || [];
+  const mood = MOODS.find((m) => m.id === mid);
+  if (mood) out.push(['mood', 'Humor mais comum', esc(mood.name), plural(mn, 'dia', 'dias')]);
+  const ml = sum(S.water.filter((w) => inY(w.date)), (w) => w.ml || 0);
+  if (ml) out.push(['water', 'Água no ano', fmtMl(ml), `${Math.round(ml / 250).toLocaleString('pt-BR')} copos`]);
+  return out;
+}
+
+export function showYearSummary(y) {
+  const S = P();
+  const rec = S.year.find((x) => x.year === y) || yearRecord(S, y);
+  if (!rec) return;
+  const prev = S.year.find((x) => x.year === y - 1);
+  const diff = rec.score != null && prev?.score != null ? rec.score - prev.score : null;
+  const mName = (ym) => MONTHS[Number(ym.slice(5, 7)) - 1];
+  const scored = rec.months.filter((m) => m.score != null);
+  const hl = yearHighlights(S, y);
+  sheet({
+    title: `Seu ${y}`,
+    wide: true,
+    body: `<div class="summary year-sum">
+      <p class="sum-date">O ano em resumo · ${plural(rec.days || 0, 'dia avaliado', 'dias avaliados')} em ${plural(scored.length, 'mês', 'meses')}</p>
+      <div class="sum-hero">
+        ${rec.score != null ? `<div class="sum-ring" style="--p:${rec.score}"><b>${rec.score}</b><small>IPL do ano</small></div><div><div class="sum-grade">${rec.grade || grade(rec.score)}</div><p>${esc(gradeLine(rec.grade || grade(rec.score)))}</p><p class="hint">Média das notas dos meses: cada mês pesa igual.${diff != null ? ` ${diff === 0 ? 'Igual a' : `${diff > 0 ? '+' : '−'}${Math.abs(diff)} em relação a`} ${y - 1}.` : ''}</p></div>` : '<div><div class="sum-grade small">Sem nota</div><p>Nenhum mês avaliado neste ano.</p></div>'}
+      </div>
+      ${scored.length > 1 ? `<figure class="card chart-card"><figcaption><b>IPL por mês</b>${rec.bestMonth ? `<span>melhor: ${esc(mName(rec.bestMonth.month))}, com ${rec.bestMonth.score}</span>` : ''}</figcaption>${columns(Array.from({ length: 12 }, (_, i) => { const m = rec.months.find((x) => Number(x.month.slice(5, 7)) === i + 1); return { label: MSHORT[i], value: m?.score || 0, tip: m?.score != null ? `IPL ${m.score} · ${m.grade}|${cap(MONTHS[i])}` : `Sem nota|${cap(MONTHS[i])}` }; }), { every: 2, ariaLabel: `IPL de cada mês de ${y}` })}</figure>` : ''}
+      ${scored.length ? `<div class="past year-months">${scored.map((m) => `<button type="button" data-sum-month="${m.month}"><small>${MSHORT[Number(m.month.slice(5, 7)) - 1]}</small><b>${esc(m.grade)}</b></button>`).join('')}</div>` : ''}
+      <div class="tiles">
+        ${tile('Tarefas concluídas', fmtInt(rec.tasksDone || 0), rec.failed ? plural(rec.failed, 'venceu', 'venceram') : '')}
+        ${tile('Hábitos em dia', rec.habitsTotal ? `${Math.round(((rec.habitsDone || 0) / rec.habitsTotal) * 100)}%` : '–', rec.habitsTotal ? `${fmtInt(rec.habitsDone)} de ${fmtInt(rec.habitsTotal)}` : '')}
+        ${tile('XP ganho', fmtInt(rec.xp || 0), rec.xpLost ? `${fmtInt(-rec.xpLost)} perdidos` : '')}
+        ${tile('Ouro ganho', fmtInt(rec.gold || 0), rec.goldLost ? `${fmtInt(-rec.goldLost)} perdidos` : '')}
+        ${tile('Foco', rec.focusSec ? fmtFocus(rec.focusSec) : '–')}
+        ${tile('Melhor dia', rec.bestDay ? String(rec.bestDay.score) : '–', rec.bestDay ? esc(fmtDayLong(rec.bestDay.date)) : '')}
+      </div>
+      ${hl.length ? `<div class="year-hl">${hl.map(([ic, l, v, s]) => `<div class="yh">${icon(ic)}<div><small>${esc(l)}</small><b>${v}</b><span>${esc(s)}</span></div></div>`).join('')}</div>` : ''}
+      ${rec.worstMonth ? `<p class="hint">O mês mais difícil foi ${esc(mName(rec.worstMonth.month))} (${rec.worstMonth.score}). Faz parte: o que conta é a média.</p>` : ''}
+      <div class="sheet-actions"><button type="button" class="btn primary" data-close-sum>${Number(today().slice(0, 4)) === y + 1 ? `Bora para ${y + 1}` : 'Fechar'}</button></div>
+    </div>`,
+    onMount(el, close) {
+      el.querySelector('[data-close-sum]').onclick = close;
+      el.querySelectorAll('[data-sum-month]').forEach((b) => (b.onclick = () => (close(), setTimeout(() => showMonthSummary(b.dataset.sumMonth), 260))));
+    },
+  });
+}
+
 // Chamado depois da virada do dia: mostra o resumo do mês (se fechou) e o de ontem, uma vez cada.
 export function maybeShowSummaries(r) {
   const S = P();
@@ -138,6 +203,11 @@ export function maybeShowSummaries(r) {
   if (s.month !== ym && (r?.months?.includes(ym) || S.month.some((m) => m.month === ym && m.days != null))) {
     queue.push(() => showMonthSummary(ym));
     markSeen('month', ym);
+  }
+  const yr = Number(d.slice(0, 4)) - 1;
+  if (s.year !== yr && (r?.years?.includes(yr) || S.year.some((x) => x.year === yr))) {
+    queue.push(() => showYearSummary(yr));
+    markSeen('year', yr);
   }
   const rec = S.scoreByDate.get(y);
   if (s.day !== y && rec && (rec.score != null || rec.tasksDone || (r?.failed?.length ?? 0))) {
