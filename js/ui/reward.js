@@ -1,7 +1,7 @@
 // Pop-up de subida de nível: limpo, um cartão que entra com mola, alguns confetes e um botão.
 import { esc } from '../lib/util.js';
 import { levelTitle } from '../core/model.js';
-import { MILESTONES } from '../core/game.js';
+import { MILESTONES, itemsGiftText } from '../core/game.js';
 import { play } from '../core/sound.js';
 import { haptic } from './haptics.js';
 import { mascotSvg } from './mascot.js';
@@ -49,6 +49,7 @@ function gifts(level, res) {
   const rows = [];
   if (res.cards) rows.push(`+${res.cards} ${res.cards === 1 ? 'Carta da Sorte' : 'Cartas da Sorte'}`);
   if (res.vouchers) rows.push(`+${res.vouchers} vouchers`);
-  for (const m of MILESTONES) if (m.level === level && !/Carta|vouchers/.test(m.text)) rows.push(m.text);
+  if (res.items && Object.keys(res.items).length) rows.push(itemsGiftText(res.items));
+  for (const m of MILESTONES) if (m.level === level && m.unlock && !/Carta/.test(m.unlock)) rows.push(m.unlock);
   return rows.length ? `<ul class="reward-gifts">${rows.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>` : '';
 }

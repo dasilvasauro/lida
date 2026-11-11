@@ -44,8 +44,9 @@ test('repetição: próxima data', () => {
 test('níveis e títulos', () => {
   assert.equal(levelOf(0), 1);
   assert.equal(levelOf(2500), 6);
-  assert.equal(levelTitle(1), 'Aprendiz');
-  assert.equal(levelTitle(41), 'Grão-Mestre');
+  assert.equal(levelTitle(1), 'Neófito');
+  assert.equal(levelTitle(41), 'Lifehacker');
+  assert.equal(levelTitle(50), 'Soberano');
   const w = wallet([{ xp: 10, gold: 5, voucherProgress: 2 }, { xp: 5, voucherProgress: 2, items: { dado: 1 } }]);
   assert.deepEqual([w.xp, w.gold, w.vouchers, w.voucherProgress, w.items.dado], [15, 5, 1, 1, 1]);
 });
@@ -215,15 +216,52 @@ test('desafio: um por dia; sprint: um ativo e com etapas', async () => {
   assert.equal(tasks.checkTask({ title: 'S2', kind: 'sprint', due: addDays(today(), 9), subtasks: [{ id: 'a', title: 'a' }] }).ok, false);
 });
 
-test('marcos de nível dão Cartas da Sorte e vouchers uma única vez', async () => {
+test('marcos de nível dão Cartas da Sorte e os títulos dão presentes, uma única vez', async () => {
+  await game.grantPastTitles(); // o que os testes anteriores já tinham alcançado (como na abertura do app)
   const m = P().money;
   const cards = m.items.luckyCard || 0;
+  const vouchers = m.vouchers;
   // Leva até o nível 15 (xp 19600).
   const r = await game.commit([{ type: 'ev', id: 'ev_t_lvl', data: { xp: Math.max(0, 19600 - m.xp) } }]);
   assert.equal(r.levelUp, 15);
-  const gained = [...Array(15 - m.level).keys()].map((i) => game.levelGift(m.level + 1 + i));
-  assert.equal(P().money.items.luckyCard, cards + gained.reduce((a, g) => a + g.cards, 0));
+  const range = [...Array(15 - m.level).keys()].map((i) => m.level + 1 + i);
+  assert.equal(P().money.items.luckyCard, cards + range.reduce((a, n) => a + game.levelGift(n).cards, 0));
+  const tv = range.reduce((a, n) => a + (game.TITLE_GIFTS[n]?.vouchers || 0), 0);
+  assert.equal(P().money.vouchers, vouchers + tv);
+  assert.equal(r.vouchers, tv);
   assert.ok(personal.get('ev_lvl_15'));
+  assert.ok(personal.get('ev_title_12'));
+  // O nível 15 não dá mais vouchers (passaram para os títulos).
+  assert.equal(game.levelGift(15).vouchers, 0);
+  // Nada a entregar de novo.
+  assert.equal(await game.grantPastTitles(), null);
+});
+
+test('títulos: quem já tinha os títulos ganha os presentes uma vez, sem os 15 vouchers do antigo nível 15', async () => {
+  // Simula quem chegou ao 15 antes do alfa 14: ev_lvl_15 com 15 vouchers e nenhum ev_title.
+  const titles = Object.keys(game.TITLE_GIFTS).map(Number).filter((lv) => lv <= P().money.level);
+  await personal.removeMany(titles.map((lv) => `ev_title_${lv}`));
+  await personal.save('ev', { ...personal.raw('ev_lvl_15').data, vouchers: 15 }, 'ev_lvl_15');
+  const before = P().money;
+  const g = await game.grantPastTitles();
+  const total = titles.reduce((a, lv) => a + (game.TITLE_GIFTS[lv].vouchers || 0), 0);
+  assert.equal(g.vouchers, total - 15);
+  assert.deepEqual(g.titles, ['Iniciado', 'Diligente', 'Perseverante', 'Erudito']);
+  assert.equal(P().money.vouchers, before.vouchers + total - 15);
+  assert.equal(P().money.items.freeze || 0, (before.items.freeze || 0) + 1);
+  assert.equal(await game.grantPastTitles(), null);
+  // O próximo título (Obstinado, 16) chega inteiro: o desconto não se repete.
+  const r = await game.commit([{ type: 'ev', id: 'ev_t_lvl16', data: { xp: 22500 - P().money.xp } }]);
+  assert.equal(r.levelUp, 16);
+  assert.equal(r.vouchers, 8);
+  assert.deepEqual(r.items, { autoFreeze: 1 });
+});
+
+test('marcos: um por título e por desbloqueio, em ordem', () => {
+  const lv = game.MILESTONES.map((x) => x.level);
+  assert.deepEqual(lv, [...lv].sort((a, b) => a - b));
+  assert.ok(game.MILESTONES.find((x) => x.level === 50).text.includes('Darcula'));
+  assert.ok(game.MILESTONES.find((x) => x.level === 37).text.startsWith('Lifehacker'));
 });
 
 test('virada do dia: vencida falha com punição, bônus não pune, rotina é criada', async () => {
@@ -460,7 +498,7 @@ test('Congelamento Automático salva a sequência no dia perdido, um item por di
   const hid = await habits.saveHabit(null, { title: 'Meditar', goal: 1 });
   const fresh = await habits.saveHabit(null, { title: 'Novo sem sequência', goal: 1 });
   await habits.setCount(P().byId.get(hid), 1, d0);
-  await give({ items: { autoFreeze: 1 } });
+  await give({ items: { autoFreeze: 1 - (P().money.items.autoFreeze || 0) } }); // exatamente um (o título Obstinado também dá um)
   await personal.save('prefs', { ...game.strip(personal.get('prefs')), lastDay: d0 }, 'prefs');
   shiftDays(3); // perdeu d0+1 e d0+2
   const sum = await tasks.processDays();

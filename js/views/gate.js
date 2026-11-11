@@ -6,6 +6,7 @@ import { createKey, unlockKey } from '../lib/crypto.js';
 import { uid, esc, fmtInt } from '../lib/util.js';
 import { icon } from '../ui/ui.js';
 import { isNative } from '../native.js';
+import { enterWithFiles, anyFilesProvider } from './cloudfiles.js';
 
 let host;
 function screen(html) {
@@ -57,7 +58,7 @@ const SLIDES = [
   {
     title: 'Cada passo conta',
     text: 'Concluir rende XP e ouro. Suba de nível, ganhe títulos e troque o ouro por vantagens na Loja.',
-    art: `<div class="art-card art-level"><div class="lvl-badge">7</div><div class="grow"><b>Nível 7 · Praticante</b><div class="bar"><i style="width:68%"></i></div></div><span class="art-pop">+75 XP</span></div>`,
+    art: `<div class="art-card art-level"><div class="lvl-badge">7</div><div class="grow"><b>Nível 7 · Diligente</b><div class="bar"><i style="width:68%"></i></div></div><span class="art-pop">+75 XP</span></div>`,
   },
   {
     title: 'Hábitos que ficam',
@@ -134,7 +135,14 @@ export function welcome() {
       </div>
       ${isNative() && cloud.cloudConfigured() && !cloud.googleAvailable() ? `<p class="gate-note">Este APK foi gerado sem a configuração do Firebase, então o login com Google não está disponível nele. Os dados ficam neste aparelho.</p>` : ''}
       <p class="gate-err"${cloud.getConfigError() ? '' : ' hidden'}>${esc(cloud.getConfigError())}</p>
+      ${anyFilesProvider() ? `<button type="button" class="gate-link" data-files>${icon('cloud')}Já uso o Lida com Dropbox, OneDrive ou Nextcloud</button>` : ''}
       <button type="button" class="gate-link" data-demo>${icon('flask')}Explorar com dados de exemplo</button>`);
+    h.querySelector('[data-files]')?.addEventListener('click', async () => {
+      busy(true);
+      const r = await enterWithFiles().catch((e) => (err(e.message), null));
+      if (r) return resolve(r);
+      busy(false);
+    });
     h.querySelector('[data-local]').onclick = () => createLocal().then(resolve);
     h.querySelector('[data-demo]').onclick = () => {
       localStorage.setItem('lida.demo', '1');

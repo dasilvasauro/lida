@@ -3,6 +3,18 @@
 // tipo: 'novo' | 'melhoria' | 'correcao'
 export const CHANGELOG = [
   {
+    v: '3.0.0-alfa.14',
+    date: '2026-11-11',
+    title: 'Sincronize pela sua nuvem e o Lidinho novo',
+    items: [
+      ['novo', 'Sincronização pela sua própria nuvem: Dropbox, OneDrive ou Nextcloud (e outros servidores WebDAV). Tudo vai cifrado com a sua senha do Lida: quem guarda os arquivos não consegue ler nada. Em Ajustes > Conta.'],
+      ['novo', 'Quem usa a conta Google pode mover a sincronização para a própria nuvem (Ajustes > Mover a sincronização). Num aparelho novo, a tela de entrada tem "Já uso o Lida com Dropbox, OneDrive ou Nextcloud".'],
+      ['novo', 'Lidinho redesenhado, com um desenho para cada título.'],
+      ['novo', 'Títulos novos, agora 12: Neófito, Iniciado, Diligente, Perseverante, Erudito, Obstinado, Calejado, Virtuoso, Mestre, Lifehacker, Ancestral e Soberano.'],
+      ['melhoria', 'Cada título agora dá um presente ao ser alcançado (vouchers e, em alguns, um item), crescendo junto com a distância entre um título e o próximo. Os 15 vouchers do nível 15 passaram para os títulos. Quem já tinha títulos recebe os presentes deles uma vez, sem contar duas vezes o que o nível 15 já tinha dado. Temas, Cartas da Sorte e os limites de P0 e P1 continuam nos mesmos níveis.'],
+    ],
+  },
+  {
     v: '3.0.0-alfa.13',
     date: '2026-11-10',
     title: 'Sincronização visível, backup e atualização dentro do app',

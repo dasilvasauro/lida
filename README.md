@@ -53,7 +53,9 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | alfa 10 | **Virada do dia confiável** entre aparelhos (puxa do servidor antes de fechar; sem conexão, espera), consertos automáticos (falha por engano, rotina duplicada, notas dos últimos 7 dias refeitas), repetida que vence continua a série, **revisão de ontem** antes do resumo e **Novidades e correções** em Ajustes | Pronta |
 | alfa 11 | Revisão de ontem com **hábitos e água**, **foco em rotinas**, power-ups no **cartão da tarefa**, **Live Update** com progresso e status em Ajustes, VT323 sem inflar a interface, textos novos do Lidinho | Pronta |
 | alfa 12 | Temas **Edna, Monocromo, Bumblebee e Tumbleweed**, subtarefas na tarefa em foco (cartão, widget e CLI), ofensiva da água, +30% de ouro nas tarefas, anéis e barras animados, **barra lateral translúcida** no Linux | Pronta |
-| alfa 13 | **Status e horário da sincronização**, conflitos entre aparelhos, **backup .lida** cifrado, **foto de perfil** ou Lidinho, **atualização dentro do app** com changelog, Releases com link fixo do APK, fim do modo de desenvolvedor | **Esta versão** |
+| alfa 13 | **Status e horário da sincronização**, conflitos entre aparelhos, **backup .lida** cifrado, **foto de perfil** ou Lidinho, **atualização dentro do app** com changelog, Releases com link fixo do APK, fim do modo de desenvolvedor | Pronta |
+| alfa 14 | **Sincronização pela sua nuvem** (Dropbox, OneDrive, Nextcloud/WebDAV), **mover a sincronização** da conta Google para ela, **Lidinho redesenhado**, 12 títulos novos com presentes | **Esta versão** |
+| próxima | Variante **Libre** (sem Google nem Firebase) para o F-Droid ou um repositório próprio, licença | Planejada |
 
 ## Como o jogo funciona
 
@@ -84,14 +86,18 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
   notas dos últimos 7 dias, do mês e do ano.
 - **Estilo de jogo (Ajustes):** Multitarefa (+20% em tudo), Minimalista (+50% em P0/P1), Pontual (+30% com data),
   Ambicioso (+80% em sprints e desafios). Trocar depois custa um item da Loja.
-- **Marcos de nível:** Carta da Sorte a cada 5 níveis (e a cada nível depois do 25), +15 vouchers no 15, temas no 10, 20 e 35,
-  P0 sem limite no 30, P1 sem limite no 40, Darcula e +40 vouchers no 50. Títulos: Aprendiz, Iniciante, Praticante,
-  Constante, Disciplinado, Persistente, Veterano, Especialista, Mestre, Grão-Mestre e Lenda. O **Lidinho**, o mascote
-  (um bichinho redondo com o Λ na testa), aparece no cartão de nível e muda de roupa, pose e ângulo a cada título:
-  curioso com o broto na cabeça, caminhando de mochila, correndo de faixa na testa, acenando de cachecol, lendo de óculos,
-  mostrando o muque com a faixa de honra, explorador de boina e cajado, pulando com o diploma, herói de capa, mago
-  lançando feitiço e, na Lenda, saltando de coroa no meio do confete. Tocar nele abre a coleção: o título atual e os
-  anteriores com um texto curto, e os próximos só na sombra, sem o nome.
+- **Títulos (12):** Neófito (1), Iniciado (3), Diligente (5), Perseverante (8), Erudito (12), Obstinado (16),
+  Calejado (20), Virtuoso (25), Mestre (30), Lifehacker (37), Ancestral (44) e Soberano (50). Cada título dá um presente
+  ao ser alcançado, que cresce junto com a distância até o próximo: Iniciado e Diligente +3 vouchers, Perseverante
+  +5 e um Congelamento, Erudito +5 e um Impulso de XP, Obstinado +8 e um Congelamento Automático, Calejado +8,
+  Virtuoso +10, Mestre +10, Lifehacker +12 e um Dado Mágico, Ancestral +15 e um Impulso de Ouro, Soberano +40.
+  Quem já tinha títulos antes do alfa 14 recebe os presentes deles uma vez (descontados os 15 vouchers que o
+  nível 15 dava antes).
+- **Marcos de nível:** Carta da Sorte a cada 5 níveis (e a cada nível depois do 25), temas no 10, 20, 35 e 50 (Darcula),
+  P0 sem limite no 30, P1 sem limite no 40, mais o presente de cada título. O **Lidinho**, o mascote (um bichinho
+  redondo e lavanda), aparece no cartão de nível, no avatar (se você quiser) e no aviso de título novo, com um desenho
+  para cada título (`icons/lidinho/`). Tocar nele abre a coleção: o título atual e os anteriores com um texto curto,
+  e os próximos só na silhueta, sem o nome.
 - **Carta da Sorte:** quase sempre premia, quase sempre pouco: 30 a 60 de ouro (30%), 60 a 120 XP (25%), 100 de ouro (12%),
   200 XP (10%), 1 voucher (7%), um item (5%), a sorte grande de 300 de ouro ou 500 XP (3%) e nada (8%).
 
@@ -435,6 +441,29 @@ O cofre antigo não é alterado nem apagado.
 - Offline: tudo funciona; as alterações sobem quando a internet voltar (bolinha ao lado do título).
 - Em Ajustes: pedir a senha a cada abertura, alterar a senha, sair da conta.
 
+**Onde sincronizar** (Ajustes > Conta):
+
+| | Conta Google (servidor do Lida) | Sua nuvem: Dropbox, OneDrive, Nextcloud/WebDAV |
+|---|---|---|
+| Quem guarda | Firestore do projeto do Lida | Uma pasta sua (`Aplicativos/Lida` ou a pasta WebDAV que você indicar) |
+| Chega nos outros aparelhos | Na hora | Em até 1 minuto com o app aberto (e ao abrir) |
+| Web | Sim | Dropbox sim; WebDAV só se o servidor liberar CORS; OneDrive não (use o app) |
+| Android e Linux | Sim | Sim, as três |
+
+- **Conectar:** em "só neste aparelho", toque em **Sincronizar pela sua nuvem**. Com a conta Google, **Mover a
+  sincronização para a sua nuvem** (os dados continuam os mesmos; faça o mesmo nos outros aparelhos). Num aparelho
+  novo, na tela de entrada: **Já uso o Lida com Dropbox, OneDrive ou Nextcloud** (pede a senha do Lida de lá).
+- **Se a pasta já tem um Lida de outro aparelho** que começou separado, o Lida pede a senha usada lá e junta os
+  dados dos dois, sem perder nada.
+- **Como fica a pasta:** `space.json` (a chave do espaço, embrulhada pela sua senha) e `log/` com pacotes cifrados,
+  um conjunto por aparelho (dois aparelhos nunca escrevem no mesmo arquivo, então não aparecem "cópias em conflito").
+  Cada aparelho junta os próprios pacotes de tempos em tempos. Sem a senha, nada ali é legível. Não edite nem mova
+  esses arquivos; para começar do zero, desconecte em todos os aparelhos e apague a pasta.
+- **Login:** Dropbox abre no navegador e mostra um código para colar no Lida; OneDrive mostra um código para digitar
+  em microsoft.com/devicelogin; Nextcloud usa endereço, usuário e uma **senha de app**. O acesso fica guardado
+  cifrado no aparelho. Se vencer ou for removido, o status mostra "Sem acesso à nuvem" e o botão **Conectar de novo**.
+- O app do Linux, a CLI `lida` e os widgets do Plasma seguem iguais: eles falam com o app, que sincroniza.
+
 ## Sua parte: publicar
 
 ### 1. Enviar a branch `v3`
@@ -497,7 +526,30 @@ Se perder a chave, o próximo APK não instala por cima: será preciso desinstal
 Se o login falhar com "O Google recusou o login", quase sempre é a impressão digital: confira se o SHA-1 cadastrado
 é o da chave que assina o APK (a do passo 3, não uma chave de depuração).
 
-### 5. Testar
+### 5. Dropbox e OneDrive (uma vez)
+
+O Nextcloud/WebDAV funciona sem nada disso. Para o Dropbox e o OneDrive, o Lida precisa estar registrado neles
+(não há segredo envolvido: o login usa PKCE e código de aparelho). Depois, cole os dois valores em
+`js/sync-config.js`, faça commit e gere a versão de novo.
+
+**Dropbox**
+1. Entre em <https://www.dropbox.com/developers/apps> > **Create app**.
+2. **Scoped access** > **App folder** > nome `Lida` (se já existir, outro nome; a pasta fica em `Aplicativos/<nome>`).
+3. Aba **Permissions**: marque `files.metadata.read`, `files.content.read` e `files.content.write` > **Submit**.
+4. Aba **Settings**: copie o **App key** para `dropboxAppKey`. (Não precisa de Redirect URI.)
+5. O app nasce em "Development" (até 500 pessoas). Para liberar para todo mundo: **Apply for production** na mesma página.
+
+**OneDrive (Microsoft)**
+1. Entre em <https://entra.microsoft.com> > **Aplicativos** > **Registros de aplicativo** > **Novo registro**.
+   (Com conta pessoal, a Microsoft pode pedir para criar um diretório gratuito antes.)
+2. Nome `Lida`; tipos de conta: **Contas em qualquer diretório organizacional e contas Microsoft pessoais**;
+   redirecionamento: deixe em branco > **Registrar**.
+3. **Autenticação** > **Permitir fluxos de clientes públicos**: **Sim** > Salvar.
+4. **Permissões de API** > **Adicionar** > Microsoft Graph > **Permissões delegadas**: `Files.ReadWrite.AppFolder`,
+   `User.Read` e `offline_access`.
+5. Em **Visão geral**, copie o **ID do aplicativo (cliente)** para `microsoftClientId`.
+
+### 6. Testar
 
 Abra **Actions > Android > Run workflow** (branch `v3`). Em uns 5 minutos o APK aparece em Artifacts.
 Para testar a versão web da `v3` sem tirar o Lida atual do ar, rode localmente (abaixo).
@@ -526,6 +578,9 @@ css/app.css                               estilos (cores vêm de js/ui/theme.js)
 js/main.js                                inicialização, rotas, ações globais
 js/state.js                               estado da sessão e repositórios (pessoal, compartilhado)
 js/core/   store, sync, cloud             motor de registros cifrados (o mesmo do Pago/Zelo)
+js/core/   filesync, providers, net       sincronização pela nuvem da pessoa (Dropbox, OneDrive, WebDAV)
+js/sync-config.js                         chaves públicas do Dropbox e da Microsoft (ver "Sua parte", passo 5)
+icons/lidinho/                            o Lidinho de cada título (WebP com fundo transparente)
            model, tasks                   regras: prioridades, XP, níveis, repetição, lembretes
            legacy                         importação do Lida anterior
            notify, sound, demo            lembretes, sons, dados de exemplo

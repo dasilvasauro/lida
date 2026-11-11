@@ -125,17 +125,18 @@ export const monthEvents = (S, ym) => S.ev.filter((e) => e.date && ymOf(e.date) 
 /* ---------- Títulos por nível ---------- */
 // Um título novo a cada faixa. A curva de XP é a mesma do Lida anterior (nível = √(xp/100) + 1).
 export const LEVEL_TITLES = [
-  [1, 'Aprendiz'],
-  [3, 'Iniciante'],
-  [5, 'Praticante'],
-  [8, 'Constante'],
-  [12, 'Disciplinado'],
-  [16, 'Persistente'],
-  [20, 'Veterano'],
-  [25, 'Especialista'],
+  [1, 'Neófito'],
+  [3, 'Iniciado'],
+  [5, 'Diligente'],
+  [8, 'Perseverante'],
+  [12, 'Erudito'],
+  [16, 'Obstinado'],
+  [20, 'Calejado'],
+  [25, 'Virtuoso'],
   [30, 'Mestre'],
-  [40, 'Grão-Mestre'],
-  [50, 'Lenda'],
+  [37, 'Lifehacker'],
+  [44, 'Ancestral'],
+  [50, 'Soberano'],
 ];
 export function levelTitle(level) {
   let t = LEVEL_TITLES[0][1];

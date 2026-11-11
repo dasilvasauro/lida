@@ -5,6 +5,8 @@ import { app, personal } from '../state.js';
 import { esc, fmtDateHuman } from '../lib/util.js';
 import { icon, sheet, toast } from '../ui/ui.js';
 import { haptic } from '../ui/haptics.js';
+import { providerName } from '../core/providers.js';
+import { reconnectFiles } from './cloudfiles.js';
 
 const LABEL = {
   synced: 'Sincronizado',
@@ -14,13 +16,14 @@ const LABEL = {
   denied: 'Sem acesso à nuvem',
   local: 'Somente neste aparelho',
 };
+const where = () => (app.mode === 'files' ? `no ${providerName(app.syncKind)}` : 'na nuvem');
 const HINT = {
-  synced: 'Tudo o que você fez está na nuvem e nos seus outros aparelhos.',
-  syncing: 'Enviando e recebendo as alterações.',
-  offline: 'As alterações ficam guardadas neste aparelho e sobem quando a internet voltar.',
-  error: 'O Lida vai tentar de novo sozinho. Se continuar, toque em Sincronizar agora.',
-  denied: 'A conta não tem acesso a estes dados na nuvem. Entre de novo na conta Google.',
-  local: 'Os dados ficam só aqui. Conecte uma conta em Ajustes para sincronizar.',
+  synced: () => `Tudo o que você fez está ${where()} e nos seus outros aparelhos.`,
+  syncing: () => 'Enviando e recebendo as alterações.',
+  offline: () => 'As alterações ficam guardadas neste aparelho e sobem quando a internet voltar.',
+  error: () => `O Lida vai tentar de novo sozinho. Se continuar, toque em Sincronizar agora.${app.sync?.lastError?.() ? ` (${app.sync.lastError()})` : ''}`,
+  denied: () => (app.mode === 'files' ? `O acesso ao ${providerName(app.syncKind)} venceu ou foi removido. Em Ajustes, toque em ${providerName(app.syncKind)} > Conectar de novo.` : 'A conta não tem acesso a estes dados na nuvem. Entre de novo na conta Google.'),
+  local: () => 'Os dados ficam só aqui. Conecte uma conta em Ajustes para sincronizar.',
 };
 
 const hm = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -93,15 +96,16 @@ export function openSync() {
         const conflicts = personal.conflicts();
         body.innerHTML = `
           <div class="sy-head" data-s="${s}"><span class="sy-ic">${icon(s === 'synced' ? 'check' : s === 'syncing' ? 'refresh' : s === 'local' ? 'phone' : 'cloud')}</span>
-            <div><b>${LABEL[s] || s}</b><p>${HINT[s] || ''}</p></div></div>
+            <div><b>${LABEL[s] || s}</b><p>${esc(HINT[s]?.() || '')}</p></div></div>
           ${
             app.sync
               ? `<dl class="sy-rows">
             <div><dt>Última sincronização</dt><dd>${last ? `${whenText(last)} <small>${agoText(last)}</small>` : 'ainda não terminou nenhuma'}</dd></div>
             <div><dt>Esperando para subir</dt><dd>${pend ? `${pend} alteraç${pend === 1 ? 'ão' : 'ões'}` : 'nada'}</dd></div>
+            <div><dt>Onde</dt><dd>${app.mode === 'files' ? `${esc(providerName(app.syncKind))}${app.syncAccount ? ` <small>${esc(app.syncAccount)}</small>` : ''}` : 'Servidor do Lida (conta Google)'}</dd></div>
             <div><dt>Este aparelho</dt><dd><code>${esc(app.device || '')}</code></dd></div>
           </dl>
-          <button type="button" class="btn primary wide" data-syncnow${s === 'syncing' ? ' disabled' : ''}>${icon('refresh')}Sincronizar agora</button>`
+          ${s === 'denied' && app.mode === 'files' ? `<button type="button" class="btn primary wide" data-reconn>${icon('cloud')}Conectar de novo</button>` : `<button type="button" class="btn primary wide" data-syncnow${s === 'syncing' ? ' disabled' : ''}>${icon('refresh')}Sincronizar agora</button>`}`
               : `<button type="button" class="btn wide" data-goset>${icon('settings')}Abrir Ajustes</button>`
           }
           ${
@@ -126,6 +130,7 @@ export function openSync() {
           app.refresh?.();
           draw();
         });
+        body.querySelector('[data-reconn]')?.addEventListener('click', () => (close(), reconnectFiles()));
         body.querySelector('[data-goset]')?.addEventListener('click', () => (close(), app.nav('ajustes')));
         body.querySelectorAll('[data-cid]').forEach((li) =>
           li.querySelectorAll('[data-keep]').forEach(

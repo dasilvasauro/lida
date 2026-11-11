@@ -16,7 +16,9 @@ import { simulateDays, PACES } from './core/simulate.js';
 import { reviewYesterday, leftovers } from './views/review.js';
 import { initSyncPill } from './views/sync.js';
 import { initUpdates } from './views/update.js';
+import { loadCreds, saveCreds, startFileSync } from './views/cloudfiles.js';
 import { initSound } from './core/sound.js';
+import { grantPastTitles, itemsGiftText } from './core/game.js';
 import { app, personal, P, setPref } from './state.js';
 import { applyAppearance, storedAppearance, FONTS, THEMES } from './ui/theme.js';
 import { icon, initTips, toast, sheet, banner, morph } from './ui/ui.js';
@@ -142,7 +144,9 @@ async function boot() {
   personal.setMe(app.me);
   const opened = await personal.init(idb, key);
   if (res?.legacy) await importLegacy(res.legacy);
+  if (res?.files) await saveCreds(idb, key, res.files);
   if (app.mode === 'cloud') await startCloud(idb);
+  else if (app.mode === 'files') await startFiles(idb);
   gate.closeGate();
   start();
   if (opened.rejected) toast(`${opened.rejected} registros com falha de integridade foram descartados${app.mode === 'cloud' ? ' e serão baixados de novo' : ''}.`);
@@ -176,6 +180,17 @@ async function startCloud(idb) {
   }
 }
 
+// Nuvem da própria pessoa (Dropbox, OneDrive, WebDAV): sem rede, segue com os dados do aparelho.
+async function startFiles(idb) {
+  const creds = await loadCreds(idb, app.key);
+  if (!creds) return toast('A conexão com a sua nuvem se perdeu neste aparelho. Conecte de novo em Ajustes.', { ms: 6000 });
+  try {
+    await startFileSync(idb, creds);
+  } catch (e) {
+    console.warn('Sincronização por arquivos', e);
+  }
+}
+
 // Virada do dia, sempre com dados frescos.
 // Na conta Google, antes de fechar qualquer dia o app puxa do servidor tudo o que mudou nos outros
 // aparelhos (tarefa concluída, Alívio usado, rotina feita). Sem conexão, a virada fica adiada e roda
@@ -187,8 +202,16 @@ let dayDeferred = false;
 const runDay = () => (dayJob ||= closeDay().finally(() => (dayJob = null)));
 
 async function fresh() {
-  if (app.mode !== 'cloud') return true;
+  if (app.mode !== 'cloud' && app.mode !== 'files') return true;
   return !!(app.sync && (await app.sync.pullNow()));
+}
+
+// Presentes dos títulos que a pessoa já tinha quando os títulos ganharam presente (alfa 14). Uma vez.
+async function pastTitles() {
+  const g = await grantPastTitles().catch((e) => (console.warn('Presentes dos títulos', e), null));
+  if (!g || (!g.vouchers && !Object.keys(g.items).length)) return;
+  const what = [g.vouchers ? `${g.vouchers} vouchers` : '', itemsGiftText(g.items)].filter(Boolean).join(' + ');
+  setTimeout(() => toast(`Os títulos agora dão presentes. Pelos que você já tem (${g.titles.join(', ')}), ganhou ${what}.`, { ms: 8000 }), 1200);
 }
 
 async function closeDay() {
@@ -201,6 +224,7 @@ async function closeDay() {
     return;
   }
   dayDeferred = false;
+  await pastTitles();
   const S = P();
   const y = addDays(d, -1);
   if (S.prefs.lastDay === y) {
@@ -729,6 +753,12 @@ Object.assign(app.actions, {
     } catch (e) {
       toast('Não foi possível conectar: ' + (e.message || e.code));
     }
+  },
+  // A sincronização mudou (conectou ou desconectou uma nuvem): refaz o topo e a tela.
+  syncChanged() {
+    shell();
+    updateNavMode();
+    route();
   },
   async signOut() {
     app.sync?.stop();

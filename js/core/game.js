@@ -5,7 +5,7 @@
 // item, ganhar ou perder XP é sempre um evento novo. Eventos com id derivado do motivo
 // (ev_fail_<tarefa>, ev_lvl_<nível>...) não contam em dobro se dois aparelhos os gerarem.
 import { personal, P } from '../state.js';
-import { levelOf, xpForLevel } from './model.js';
+import { levelOf, xpForLevel, LEVEL_TITLES } from './model.js';
 import { today, nowMs } from '../lib/clock.js';
 import { uid } from '../lib/util.js';
 
@@ -49,24 +49,68 @@ export const SHOP_VOUCHERS = ['freeze', 'autoFreeze', 'dayOff', 'instantLuck'];
 export const THEME_PRICES = { aqua: 2500, matrix: 2500, rosa: 2500, tomate: 2500, cinza: 2500, laranja: 2500, edna: 3000, monocromo: 2500, bumblebee: 2500, tumbleweed: 3000 };
 
 /* ---------- Marcos de nível ---------- */
-export const MILESTONES = [
-  { level: 5, text: 'Carta da Sorte', icon: 'clover' },
+// Desde o alfa 14, cada título também dá um presente ao ser alcançado (vouchers e, em alguns, um
+// item). Cresce junto com o esforço: a distância entre um título e o próximo aumenta, o presente
+// também. Os vouchers que vinham no nível 15 passaram para os títulos (quem chega ao 12 já tem
+// 16, contra 15 no nível 15 antes). Desbloqueios (temas, P0 e P1 sem limite) não mudaram de nível:
+// nada do que alguém já ganhou é tirado.
+export const TITLE_GIFTS = {
+  3: { vouchers: 3 },
+  5: { vouchers: 3 },
+  8: { vouchers: 5, items: { freeze: 1 } },
+  12: { vouchers: 5, items: { xpBoost: 1 } },
+  16: { vouchers: 8, items: { autoFreeze: 1 } },
+  20: { vouchers: 8 },
+  25: { vouchers: 10 },
+  30: { vouchers: 10 },
+  37: { vouchers: 12, items: { magicDice: 1 } },
+  44: { vouchers: 15, items: { goldBoost: 1 } },
+  50: { vouchers: 40 },
+};
+// Vouchers que o nível 15 dava antes do alfa 14 (descontados do presente retroativo dos títulos).
+const OLD_LVL15_VOUCHERS = 15;
+
+const itemsText = (items = {}) =>
+  Object.entries(items)
+    .map(([k, n]) => `${n > 1 ? `${n} ` : ''}${ITEMS[k]?.name || k}`)
+    .join(' + ');
+export function titleGiftText(level) {
+  const g = TITLE_GIFTS[level];
+  if (!g) return '';
+  return [g.vouchers ? `+${g.vouchers} vouchers` : '', itemsText(g.items)].filter(Boolean).join(' + ');
+}
+
+// Desbloqueios por nível (os temas, as cartas a partir do 25 e os limites de P0 e P1).
+const UNLOCKS = [
   { level: 10, text: 'Tema Suave', icon: 'palette' },
-  { level: 15, text: '+15 vouchers', icon: 'card' },
   { level: 20, text: 'Tema Manteiga', icon: 'palette' },
   { level: 25, text: 'Uma Carta da Sorte por nível', icon: 'clover' },
   { level: 30, text: 'P0 sem limite', icon: 'flag' },
   { level: 35, text: 'Tema Marinho', icon: 'palette' },
   { level: 40, text: 'P1 sem limite', icon: 'flag' },
-  { level: 50, text: 'Tema Darcula e +40 vouchers', icon: 'crown' },
+  { level: 50, text: 'Tema Darcula', icon: 'crown' },
 ];
-// O que o nível `n` dá ao ser alcançado.
+// Lista de marcos (Eu > Marcos): título novo, presente, desbloqueio e Carta da Sorte (a cada 5
+// níveis até o 20; do 25 em diante, uma por nível).
+export const MILESTONES = (() => {
+  const levels = new Set([...LEVEL_TITLES.map(([l]) => l).filter((l) => l > 1), ...UNLOCKS.map((u) => u.level), 5, 10, 15, 20]);
+  return [...levels]
+    .sort((x, y) => x - y)
+    .map((lv) => {
+      const title = LEVEL_TITLES.find(([l]) => l === lv)?.[1] || '';
+      const u = UNLOCKS.find((x) => x.level === lv);
+      const card = lv % 5 === 0 && lv < 25 ? 'Carta da Sorte' : '';
+      const parts = [title ? titleGiftText(lv) : '', u?.text || '', card].filter(Boolean);
+      return { level: lv, title, unlock: u?.text || '', icon: title ? 'crown' : u?.icon || 'clover', text: `${title ? `${title}: ` : ''}${parts.join(' · ')}` };
+    });
+})();
+
+// Cartas e vouchers que o nível `n` dá ao ser alcançado (fora o presente do título).
 export function levelGift(n) {
   let cards = 0;
   if (n % 5 === 0) cards++;
   if (n >= 25) cards++;
-  const vouchers = n === 15 ? 15 : n === 50 ? 40 : 0;
-  return { cards, vouchers };
+  return { cards, vouchers: 0 };
 }
 
 /* ---------- Saldo ---------- */
@@ -76,7 +120,10 @@ export const boosts = (S = P()) => ({ xp: (S.walletMeta.xpBoostUntil || 0) > now
 
 const ev = (data, id = `ev_${uid(12)}`) => ({ type: 'ev', id, data: { date: today(), ...data } });
 
-// Grava eventos e concede os presentes dos níveis alcançados. Devolve { levelUp, gifts }.
+const titleEv = (lv, g = TITLE_GIFTS[lv], extra = {}) =>
+  ev({ kind: 'title', ref: String(lv), vouchers: g.vouchers || undefined, items: g.items && Object.keys(g.items).length ? { ...g.items } : undefined, ...extra }, `ev_title_${lv}`);
+
+// Grava eventos e concede os presentes dos níveis alcançados. Devolve { levelUp, cards, vouchers, items }.
 export async function commit(items) {
   const before = money().level;
   await personal.saveMany(items);
@@ -85,17 +132,55 @@ export async function commit(items) {
   const gifts = [];
   let cards = 0;
   let vouchers = 0;
+  const got = {};
   for (let n = before + 1; n <= after; n++) {
     const g = levelGift(n);
-    if (!g.cards && !g.vouchers) continue;
-    if (personal.get(`ev_lvl_${n}`)) continue;
-    cards += g.cards;
-    vouchers += g.vouchers;
-    gifts.push(ev({ kind: 'level', ref: String(n), vouchers: g.vouchers || undefined, items: g.cards ? { luckyCard: g.cards } : undefined }, `ev_lvl_${n}`));
+    if (g.cards && !personal.get(`ev_lvl_${n}`)) {
+      cards += g.cards;
+      gifts.push(ev({ kind: 'level', ref: String(n), items: { luckyCard: g.cards } }, `ev_lvl_${n}`));
+    }
+    const t = TITLE_GIFTS[n];
+    if (t && !personal.get(`ev_title_${n}`)) {
+      vouchers += t.vouchers || 0;
+      for (const [k, q] of Object.entries(t.items || {})) got[k] = (got[k] || 0) + q;
+      gifts.push(titleEv(n));
+    }
   }
   if (gifts.length) await personal.saveMany(gifts);
-  return { levelUp: after, cards, vouchers };
+  return { levelUp: after, cards, vouchers, items: got };
 }
+
+// Presentes dos títulos que a pessoa já tinha antes do alfa 14 (uma vez só, com id fixo por
+// título: dois aparelhos fazendo ao mesmo tempo geram o mesmo registro). Os 15 vouchers que o nível
+// 15 dava antes saem desse total, para ninguém ganhar duas vezes pela mesma faixa.
+// Devolve { vouchers, items, titles } do que foi entregue agora (ou null se nada).
+export async function grantPastTitles() {
+  const level = money().level;
+  const due = Object.keys(TITLE_GIFTS)
+    .map(Number)
+    .filter((lv) => lv <= level && !personal.get(`ev_title_${lv}`))
+    .sort((a, b) => a - b);
+  if (!due.length) return null;
+  const old15 = personal.get('ev_lvl_15');
+  let discount = old15 && (old15.vouchers || 0) > 0 && !personal.get('ev_title_disc') ? Math.min(old15.vouchers, OLD_LVL15_VOUCHERS) : 0;
+  const out = [];
+  let vouchers = 0;
+  const got = {};
+  for (const lv of due) {
+    const g = { ...TITLE_GIFTS[lv] };
+    const cut = Math.min(discount, g.vouchers || 0);
+    discount -= cut;
+    g.vouchers = (g.vouchers || 0) - cut;
+    vouchers += g.vouchers;
+    for (const [k, q] of Object.entries(g.items || {})) got[k] = (got[k] || 0) + q;
+    out.push(titleEv(lv, g, { retro: true }));
+  }
+  // Marca que o desconto já foi aplicado (não desconta de novo quando o próximo título chegar).
+  if (old15 && !personal.get('ev_title_disc')) out.push(ev({ kind: 'note', ref: 'title-discount' }, 'ev_title_disc'));
+  await personal.saveMany(out);
+  return { vouchers, items: got, titles: due.map((lv) => LEVEL_TITLES.find(([l]) => l === lv)?.[1]).filter(Boolean) };
+}
+export const itemsGiftText = itemsText;
 
 /* ---------- Recompensa de uma tarefa ---------- */
 // [XP, ouro]. O ouro das tarefas subiu ~30% no alfa 12; a punição continua nos valores antigos.

@@ -84,6 +84,60 @@ class Hub:
         self.on_state(data)
 
 
+def proxy_http(req):
+    """Requisição para a nuvem da pessoa (Dropbox, OneDrive, WebDAV/Nextcloud), feita pelo app.
+
+    A página não consegue sozinha: o WebDAV e o login da Microsoft não liberam CORS, e o fetch não
+    manda PROPFIND/MKCOL para fora. Só https e só texto. Devolve {status, text, headers}.
+    Usa http.client para mandar exatamente os cabeçalhos pedidos (o urllib inventa um Content-Type
+    que o Dropbox recusa).
+    """
+    import http.client
+    import ssl
+    from urllib.parse import urljoin, urlsplit
+
+    url = str(req.get("url") or "")
+    method = str(req.get("method") or "GET").upper()
+    body = req.get("body")
+    data = body.encode("utf-8") if isinstance(body, str) else None
+    if data is None and method in ("POST", "PUT", "PATCH", "PROPFIND"):
+        data = b""
+    headers = {str(k): str(v) for k, v in (req.get("headers") or {}).items()}
+    headers.setdefault("User-Agent", "Lida-Linux")
+    timeout = max(5, min(int(req.get("timeout") or 45), 180))
+    ctx = ssl.create_default_context()
+    try:
+        for _ in range(6):
+            if not url.startswith("https://"):
+                return {"error": "Use um endereço https://"}
+            u = urlsplit(url)
+            proxy = urlsplit(os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy") or "")
+            if proxy.hostname:  # proxy do sistema (CONNECT)
+                conn = http.client.HTTPSConnection(proxy.hostname, proxy.port or 3128, timeout=timeout, context=ctx)
+                conn.set_tunnel(u.hostname, u.port or 443)
+            else:
+                conn = http.client.HTTPSConnection(u.hostname, u.port or 443, timeout=timeout, context=ctx)
+            path = (u.path or "/") + (f"?{u.query}" if u.query else "")
+            conn.request(method, path, body=data, headers=headers)
+            res = conn.getresponse()
+            if res.status in (301, 302, 303, 307, 308) and res.getheader("Location"):
+                res.read()
+                conn.close()
+                url = urljoin(url, res.getheader("Location"))
+                if res.status == 303 or (res.status in (301, 302) and method != "GET"):
+                    method, data = "GET", None
+                # O destino do redirecionamento (download do OneDrive) não recebe o token.
+                headers = {k: v for k, v in headers.items() if k.lower() not in ("authorization", "content-type")}
+                continue
+            raw = res.read(64 * 1024 * 1024)
+            out = {"status": res.status, "text": raw.decode("utf-8", "replace"), "headers": {k.lower(): v for k, v in res.getheaders()}}
+            conn.close()
+            return out
+        return {"error": "Redirecionamentos demais."}
+    except Exception as e:  # noqa: BLE001 - vai para a tela como "sem conexão"
+        return {"error": f"Sem conexão: {e}"}
+
+
 def make_http(hub, token, google_login):
     web = paths.WEB_DIR.resolve()
 
@@ -137,6 +191,8 @@ def make_http(hub, token, google_login):
                 hub.reply(data)
             elif route == "ready":
                 hub.ready.set()
+            elif route == "http":
+                out = proxy_http(data)
             elif route == "google":
                 try:
                     out = {"idToken": google_login()}

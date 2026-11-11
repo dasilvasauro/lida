@@ -25,6 +25,13 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.MessageDigest;
+import java.util.Iterator;
+import java.util.concurrent.TimeUnit;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 /**
  * Coisas do sistema que a página não faz sozinha:
@@ -32,7 +39,10 @@ import java.security.MessageDigest;
  *   entrega ao instalador do Android (PackageInstaller). Do Android 12 em diante, depois que o próprio
  *   Lida fez uma atualização, as próximas podem dispensar a confirmação (o sistema decide);
  * - buscar textos fora do alcance do fetch da página (o GitHub não libera CORS nos arquivos da Release);
- * - salvar arquivos em Downloads (backup .lida).
+ * - salvar arquivos em Downloads (backup .lida);
+ * - conversar com a nuvem da pessoa (Dropbox, OneDrive, WebDAV/Nextcloud) sem as travas de CORS da
+ *   página e com os métodos do WebDAV (PROPFIND, MKCOL), que o HttpURLConnection não aceita;
+ * - abrir um endereço no navegador do sistema (login do Dropbox e da Microsoft).
  * Na variante do F-Droid o atualizador fica desligado (lá quem atualiza é o próprio F-Droid).
  */
 @CapacitorPlugin(name = "LidaApp")
@@ -110,6 +120,88 @@ public class LidaAppPlugin extends Plugin {
                 call.reject("Sem conexão: " + e.getMessage());
             }
         }).start();
+    }
+
+    /* ---------- Nuvem da pessoa ---------- */
+
+    private static OkHttpClient client;
+
+    private static synchronized OkHttpClient client() {
+        if (client == null) {
+            client = new OkHttpClient.Builder()
+                .connectTimeout(20, TimeUnit.SECONDS)
+                .readTimeout(90, TimeUnit.SECONDS)
+                .writeTimeout(90, TimeUnit.SECONDS)
+                .followRedirects(true)
+                .followSslRedirects(false)
+                .build();
+        }
+        return client;
+    }
+
+    // { method, url, headers, body } -> { status, text, headers }. Só https e só texto.
+    @PluginMethod
+    public void http(PluginCall call) {
+        String url = call.getString("url");
+        String method = call.getString("method", "GET").toUpperCase();
+        String body = call.getString("body");
+        JSObject headers = call.getObject("headers", new JSObject());
+        int timeout = call.getInt("timeout", 45000);
+        if (url == null || !url.startsWith("https://")) {
+            call.reject("Use um endereço https://");
+            return;
+        }
+        new Thread(() -> {
+            try {
+                String ctype = null;
+                Request.Builder b = new Request.Builder().url(url);
+                Iterator<String> keys = headers.keys();
+                while (keys.hasNext()) {
+                    String k = keys.next();
+                    String v = headers.getString(k);
+                    if (v == null) continue;
+                    if (k.equalsIgnoreCase("Content-Type")) ctype = v;
+                    else b.header(k, v);
+                }
+                b.header("User-Agent", "Lida-Android");
+                RequestBody rb = null;
+                boolean needsBody = method.equals("POST") || method.equals("PUT") || method.equals("PATCH") || method.equals("PROPFIND");
+                if (body != null || needsBody) {
+                    byte[] bytes = body == null ? new byte[0] : body.getBytes("UTF-8");
+                    rb = RequestBody.create(bytes, ctype == null ? null : MediaType.parse(ctype));
+                }
+                b.method(method, rb);
+                OkHttpClient c = client().newBuilder().callTimeout(Math.max(5000, timeout), TimeUnit.MILLISECONDS).build();
+                try (Response r = c.newCall(b.build()).execute()) {
+                    JSObject out = new JSObject();
+                    out.put("status", r.code());
+                    out.put("text", r.body() != null ? r.body().string() : "");
+                    JSObject h = new JSObject();
+                    for (String name : r.headers().names()) h.put(name.toLowerCase(), r.header(name));
+                    out.put("headers", h);
+                    call.resolve(out);
+                }
+            } catch (Exception e) {
+                call.reject("Sem conexão: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    @PluginMethod
+    public void openUrl(PluginCall call) {
+        String url = call.getString("url");
+        if (url == null || !url.startsWith("https://")) {
+            call.reject("URL inválida");
+            return;
+        }
+        try {
+            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Não há navegador para abrir o endereço.");
+        }
     }
 
     /* ---------- Atualização ---------- */

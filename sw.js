@@ -2,7 +2,7 @@
 // O app inteiro funciona offline depois da primeira abertura.
 // Ao publicar uma nova versão, aumente VERSION aqui e app.version em js/state.js.
 // A lista SHELL é conferida pelos testes (npm test): todo arquivo do app precisa estar nela.
-const VERSION = 'lida-v3.0.0-alfa.13';
+const VERSION = 'lida-v3.0.0-alfa.14';
 const SHELL = [
   './',
   'index.html',
@@ -19,6 +19,18 @@ const SHELL = [
   'icons/apple-touch-icon.png',
   'icons/favicon.ico',
   'icons/icon.svg',
+  'icons/lidinho/ancestral.webp',
+  'icons/lidinho/calejado.webp',
+  'icons/lidinho/diligente.webp',
+  'icons/lidinho/erudito.webp',
+  'icons/lidinho/iniciado.webp',
+  'icons/lidinho/lifehacker.webp',
+  'icons/lidinho/mestre.webp',
+  'icons/lidinho/neofito.webp',
+  'icons/lidinho/obstinado.webp',
+  'icons/lidinho/perseverante.webp',
+  'icons/lidinho/soberano.webp',
+  'icons/lidinho/virtuoso.webp',
   'icons/maskable-512x512.png',
   'icons/pwa-192x192.png',
   'icons/pwa-512x512.png',
@@ -30,6 +42,7 @@ const SHELL = [
   'js/core/changelog.js',
   'js/core/cloud.js',
   'js/core/demo.js',
+  'js/core/filesync.js',
   'js/core/focus.js',
   'js/core/game.js',
   'js/core/glance.js',
@@ -37,8 +50,10 @@ const SHELL = [
   'js/core/ipl.js',
   'js/core/legacy.js',
   'js/core/model.js',
+  'js/core/net.js',
   'js/core/notify.js',
   'js/core/parse.js',
+  'js/core/providers.js',
   'js/core/reminders.js',
   'js/core/simulate.js',
   'js/core/sound.js',
@@ -55,6 +70,7 @@ const SHELL = [
   'js/main.js',
   'js/native.js',
   'js/state.js',
+  'js/sync-config.js',
   'js/ui/chart.js',
   'js/ui/haptics.js',
   'js/ui/mascot.js',
@@ -70,6 +86,7 @@ const SHELL = [
   'js/views/board.js',
   'js/views/brain.js',
   'js/views/celebrate.js',
+  'js/views/cloudfiles.js',
   'js/views/common.js',
   'js/views/focus.js',
   'js/views/gate.js',

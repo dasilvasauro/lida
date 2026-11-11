@@ -14,6 +14,8 @@ import { WD_LETTER, WD_SHORT } from '../lib/util.js';
 import { CHANGELOG, KIND_LABEL } from '../core/changelog.js';
 import { isDesktop, glassOn, setGlass } from '../desktop.js';
 import { openSync, syncRowText } from './sync.js';
+import { connectFiles, reconnectFiles, disconnectFiles, anyFilesProvider } from './cloudfiles.js';
+import { providerName } from '../core/providers.js';
 import { checkUpdate, updaterAvailable } from './update.js';
 
 const toggle = (name, on, label) => `<span class="toggle"><input type="checkbox" data-${name}${on ? ' checked' : ''} aria-label="${esc(label)}"><i></i></span>`;
@@ -42,7 +44,7 @@ export const settingsView = {
     const sp = soundPrefs();
     const np = notify.notifyPrefs();
     const name = displayName() || (app.mode === 'cloud' ? 'Sua conta' : 'Você');
-    const sub = app.demo ? 'Modo demo: dados de exemplo, só neste navegador' : app.mode === 'cloud' ? app.user?.email || 'Conta Google' : 'Somente neste aparelho';
+    const sub = app.demo ? 'Modo demo: dados de exemplo, só neste navegador' : app.mode === 'cloud' ? app.user?.email || 'Conta Google' : app.mode === 'files' ? `${providerName(app.syncKind)}${app.syncAccount ? ` · ${app.syncAccount}` : ''}` : 'Somente neste aparelho';
     const requirePass = localStorage.getItem('lida.requirePass') === '1';
 
     el.innerHTML = `
@@ -50,6 +52,9 @@ export const settingsView = {
         <div class="set-user"><button type="button" class="av-edit" data-avatar aria-label="Trocar a foto de perfil">${avatar(52)}<i>${icon('edit', 'sm')}</i></button><div class="grow"><b>${esc(name)}</b><span>${esc(sub)}</span></div><button type="button" class="btn small" data-name>${icon('edit')}Nome</button></div>
         ${app.sync ? `<button type="button" class="set-row" data-syncrow>${icon('cloud')}<span class="grow">Sincronização<small>${esc(syncRowText() || '')}</small></span>${icon('right', 'sm')}</button>` : ''}
         ${!app.demo && app.mode === 'local' && googleAvailable() ? `<button type="button" class="set-row" data-connect>${icon('cloud')}<span class="grow">Conectar conta Google<small>Sincronize entre aparelhos. Os dados continuam cifrados com a sua senha.</small></span>${icon('right', 'sm')}</button>` : ''}
+        ${!app.demo && app.mode === 'local' && anyFilesProvider() ? `<button type="button" class="set-row" data-files-connect>${icon('cloud')}<span class="grow">Sincronizar pela sua nuvem<small>Dropbox, OneDrive ou Nextcloud/WebDAV. Os arquivos vão cifrados com a sua senha.</small></span>${icon('right', 'sm')}</button>` : ''}
+        ${!app.demo && app.mode === 'cloud' && anyFilesProvider() ? `<button type="button" class="set-row" data-files-move>${icon('swap')}<span class="grow">Mover a sincronização para a sua nuvem<small>Sai do servidor do Lida e passa para o seu Dropbox, OneDrive ou Nextcloud.</small></span>${icon('right', 'sm')}</button>` : ''}
+        ${!app.demo && app.mode === 'files' ? `<button type="button" class="set-row" data-files-manage>${icon('cloud')}<span class="grow">${esc(providerName(app.syncKind))}<small>${app.sync ? `${esc(app.syncAccount || 'Conectado')}${app.sync.getStatus() === 'denied' ? ' · precisa conectar de novo' : ''}` : 'Desconectado neste aparelho: toque para conectar'}</small></span>${icon('right', 'sm')}</button>` : ''}
         ${!app.demo ? `<label class="set-row">${icon('lock')}<span class="grow">Pedir senha ao abrir<small>Mais privacidade em aparelhos compartilhados</small></span>${toggle('reqpass', requirePass, 'Pedir senha ao abrir')}</label>
         <button type="button" class="set-row" data-pass>${icon('edit')}<span class="grow">Alterar senha</span>${icon('right', 'sm')}</button>` : ''}
       </div></section>
@@ -303,6 +308,9 @@ function bind(el, S) {
     await personal.save('prefs', { ...(prefs ? stripView(prefs) : {}), name: v || undefined }, 'prefs');
   };
   el.querySelector('[data-connect]')?.addEventListener('click', () => app.actions.connectGoogle());
+  el.querySelector('[data-files-connect]')?.addEventListener('click', () => connectFiles());
+  el.querySelector('[data-files-move]')?.addEventListener('click', () => connectFiles({ moving: true }));
+  el.querySelector('[data-files-manage]')?.addEventListener('click', () => manageFiles());
   el.querySelector('[data-reqpass]')?.addEventListener('change', (e) => app.actions.setRequirePass(e.target.checked));
   el.querySelector('[data-pass]')?.addEventListener('click', () => app.actions.changePass());
   el.querySelector('[data-demo]')?.addEventListener('click', () => app.actions.toggleDemo());
@@ -393,4 +401,24 @@ async function saveFile(name, text) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
   return isDesktop() ? `Downloads/${name}` : null;
+}
+
+// Nuvem própria conectada: conectar de novo (acesso venceu, senha de app trocada) ou desconectar.
+function manageFiles() {
+  const name = providerName(app.syncKind);
+  sheet({
+    title: name,
+    body: `<p class="sheet-text">${app.syncAccount ? `Conectado como <b>${esc(app.syncAccount)}</b>. ` : ''}Os dados ficam na pasta Aplicativos/Lida (ou na pasta que você indicou), cifrados com a sua senha.</p>
+      <div class="set-list">
+        <button type="button" class="set-row" data-re>${icon('refresh')}<span class="grow">Conectar de novo<small>Se o acesso venceu ou você trocou a senha de app</small></span></button>
+        <button type="button" class="set-row danger-text" data-off>${icon('logout')}<span class="grow">Desconectar<small>Para de sincronizar neste aparelho. Nada é apagado.</small></span></button>
+      </div>`,
+    onMount(el, close) {
+      el.querySelector('[data-re]').onclick = () => (close(), reconnectFiles());
+      el.querySelector('[data-off]').onclick = async () => {
+        close();
+        if (await confirmDialog(`Parar de sincronizar com o ${name} neste aparelho? Os dados continuam aqui e na nuvem.`, { ok: 'Desconectar', danger: true, title: 'Desconectar' })) disconnectFiles();
+      };
+    },
+  });
 }

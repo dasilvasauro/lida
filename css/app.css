@@ -696,6 +696,7 @@ body.has-sheet { overflow: hidden; }
 .lvl-mascot .mascot { width: 100%; height: 100%; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.12)); transition: transform 0.25s var(--spring); }
 .lvl-mascot:hover .mascot { transform: rotate(-6deg) translateY(-2px); }
 .mascot { overflow: visible; }
+img.mascot { display: block; object-fit: contain; user-select: none; -webkit-user-drag: none; -webkit-user-select: none; }
 :root[data-scheme='dark'] .mascot { filter: drop-shadow(0 0 .6px rgba(255, 255, 255, 0.55)) drop-shadow(0 0 .6px rgba(255, 255, 255, 0.4)); }
 :root[data-scheme='dark'] .lvl-mascot .mascot { filter: drop-shadow(0 0 .6px rgba(255, 255, 255, 0.55)) drop-shadow(0 0 .6px rgba(255, 255, 255, 0.4)); }
 .lvl-up-mascot { display: grid; place-items: center; margin: -.5333rem 0 .2667rem; }
@@ -1771,6 +1772,18 @@ html.is-gray :is(.emoji, .mascot, img, .rvh-face, .hab-face, .lucky, .dot, .tagc
 
 /* ---------- Sincronização ---------- */
 .sync-sheet { display: grid; gap: 1.0667rem; }
+/* Nuvem própria (Dropbox, OneDrive, WebDAV) */
+.sheet-wrap.top { z-index: 600; }
+.cf-pick .set-row[disabled] { opacity: .55; cursor: not-allowed; }
+.cf-pick + .hint { margin-top: .8rem; }
+.cf-steps { margin: 0; padding-left: 1.3rem; display: grid; gap: 1.0667rem; }
+.cf-steps li { padding-left: .2667rem; }
+.cf-steps li > b { display: block; margin-bottom: .2667rem; }
+.cf-steps .btn, .cf-steps .form { margin-top: .5333rem; }
+.cf-err { color: var(--neg); font-size: .9rem; font-weight: 600; margin: .4rem 0 0; }
+.cf-device { display: grid; gap: .8rem; }
+.cf-code { justify-self: center; padding: .6667rem 1.2rem; border-radius: .9333rem; background: var(--surface-2); font: 800 1.8rem/1.2 ui-monospace, 'JetBrains Mono', monospace; letter-spacing: .12em; user-select: all; }
+.cf-device .hint .ic { animation: spin 1.4s linear infinite; vertical-align: -.2em; }
 .sy-head { display: flex; gap: .8rem; align-items: flex-start; }
 .sy-ic { flex: none; display: grid; place-items: center; width: 2.6667rem; height: 2.6667rem; border-radius: .9333rem; background: color-mix(in srgb, var(--tc, var(--dim)) 16%, transparent); color: var(--tc, var(--dim)); }
 .sy-head[data-s='synced'] { --tc: var(--pos); }
@@ -1799,7 +1812,7 @@ html.is-gray :is(.emoji, .mascot, img, .rvh-face, .hab-face, .lucky, .dot, .tagc
 
 /* ---------- Avatar (foto, Lidinho, conta Google ou inicial) ---------- */
 .av-mascot { display: inline-grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)); overflow: hidden; flex: none; }
-.av-mascot .mascot { margin-top: 12%; }
+.av-mascot .mascot { margin-top: 8%; }
 .av-img { border-radius: 50%; object-fit: cover; }
 .av-edit { position: relative; flex: none; padding: 0; border: 0; background: none; border-radius: 50%; cursor: pointer; }
 .av-edit > i { position: absolute; right: -.1333rem; bottom: -.1333rem; display: grid; place-items: center; width: 1.4667rem; height: 1.4667rem; border-radius: 50%; background: var(--accent); color: var(--on-accent); border: 2px solid var(--surface); }
