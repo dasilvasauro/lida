@@ -16,6 +16,7 @@ import { simulateDays, PACES } from './core/simulate.js';
 import { reviewYesterday, leftovers } from './views/review.js';
 import { initSyncPill } from './views/sync.js';
 import { initUpdates } from './views/update.js';
+import { initAchievements } from './views/achievements.js';
 import { loadCreds, saveCreds, startFileSync } from './views/cloudfiles.js';
 import { initSound } from './core/sound.js';
 import { grantPastTitles, itemsGiftText } from './core/game.js';
@@ -499,6 +500,7 @@ function start() {
   updateWidget();
   initDesktop();
   initUpdates();
+  initAchievements();
   // Ao voltar para o app (ex.: depois de trocar o tema do sistema), reaplica as cores das barras.
   plugin('App')?.addListener?.('resume', () => appearance());
   runDay();

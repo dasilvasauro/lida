@@ -19,6 +19,7 @@ import sys
 
 from . import APP_ID, VERSION, paths
 from .server import Hub, make_http, make_socket, mark_stopped, serve
+from .updater import Updater, relaunch
 
 # Com a janela escondida na bandeja, o Chromium segura os temporizadores (lembretes, Pomodoro).
 _FLAGS = "--disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows"
@@ -66,6 +67,7 @@ class Bridge(QObject):
     state = Signal(str)
     show = Signal(str)
     quit = Signal()
+    restart = Signal()
 
 
 class Page(QWebEnginePage):
@@ -112,6 +114,7 @@ class Window(QMainWindow):
         self.bridge.state.connect(self._on_state)
         self.bridge.show.connect(self.show_window)
         self.bridge.quit.connect(self.quit)
+        self.bridge.restart.connect(self.restart)
 
         # Perfil persistente: os dados do Lida (IndexedDB, sessão do Firebase) ficam em ~/.local/share/lida.
         self.profile = QWebEngineProfile("lida", self)
@@ -156,7 +159,8 @@ class Window(QMainWindow):
             on_python=self._python_cmd,
         )
         try:
-            self.http = make_http(self.hub, self.token, self._google_login)
+            self.updater = Updater()
+            self.http = make_http(self.hub, self.token, self._google_login, updater=self.updater, restart=lambda: self.bridge.restart.emit())
         except OSError as e:
             QMessageBox.critical(None, "Lida", f"A porta {paths.PORT} já está em uso ({e}). Feche o outro programa ou defina LIDA_PORT.")
             sys.exit(1)
@@ -260,6 +264,11 @@ class Window(QMainWindow):
         else:
             event.accept()
             self.quit()
+
+    def restart(self):
+        """Depois de atualizar: abre a versão nova e fecha esta."""
+        relaunch()
+        self.quit()
 
     def quit(self):
         self.settings.setValue("geometry", self.saveGeometry())

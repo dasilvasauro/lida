@@ -1,5 +1,6 @@
 # Lida para Linux: confere o código Python/QML e monta um pacote (lida-linux.tar.gz) com o app web,
-# o app Qt, a CLI, os widgets do Plasma e o install.sh. Em tags v*, anexa o pacote à Release.
+# o app Qt, a CLI, os widgets do Plasma e o install.sh. O pacote da Release (com o SHA-256 que o app
+# confere ao se atualizar) sai do workflow Android, junto com os APKs.
 name: Linux
 
 on:
@@ -40,8 +41,3 @@ jobs:
         with:
           name: lida-linux
           path: lida-linux.tar.gz
-      - name: Release (tags v*)
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: lida-linux.tar.gz

@@ -19,9 +19,9 @@ AntiFeatures:
     pt-BR: Sincronização opcional com Dropbox e OneDrive (também há Nextcloud/WebDAV).
 
 Builds:
-  - versionName: 3.0.0-alfa.15
-    versionCode: 300000150
-    commit: v3.0.0-alfa.15
+  - versionName: 3.0.0-alfa.16
+    versionCode: 300000160
+    commit: v3.0.0-alfa.16
     subdir: android/app
     sudo:
       - apt-get update
@@ -36,5 +36,5 @@ Builds:
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v3\.
 UpdateCheckData: android/version.properties|versionCode=(\d+)|.|versionName=(.+)
-CurrentVersion: 3.0.0-alfa.15
-CurrentVersionCode: 300000150
+CurrentVersion: 3.0.0-alfa.16
+CurrentVersionCode: 300000160

@@ -1,5 +1,5 @@
 // Monta os arquivos da Release a partir do APK compilado e das Novidades e correções da versão.
-// Uso (no GitHub Actions, em tags v*): node scripts/release.mjs <versão> <apk> <apk-libre> <pasta de saída>
+// Uso (no GitHub Actions, em tags v*): node scripts/release.mjs <versão> <apk> <apk-libre> <pasta de saída> [lida-linux.tar.gz]
 // Gera: lida.apk e lida-libre.apk (nomes fixos, para os links .../releases/latest/download/...), latest.json
 // (lido pelo atualizador do app, com os dois APKs) e release-notes.md (texto da Release). O versionCode
 // vem de android/version.properties. Falha se a versão não estiver no js/core/changelog.js: toda versão
@@ -9,7 +9,7 @@ import { readFileSync, writeFileSync, copyFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { CHANGELOG, KIND_LABEL } from '../js/core/changelog.js';
 
-const [version, apk, apkLibre, out] = process.argv.slice(2);
+const [version, apk, apkLibre, out, linuxPkg] = process.argv.slice(2);
 if (!version || !apk || !apkLibre || !out) {
   console.error('Uso: node scripts/release.mjs <versão> <apk> <apk-libre> <pasta>');
   process.exit(2);
@@ -36,6 +36,13 @@ copyFileSync(apk, join(out, 'lida.apk'));
 const bytesL = readFileSync(apkLibre);
 const sha256Libre = createHash('sha256').update(bytesL).digest('hex');
 copyFileSync(apkLibre, join(out, 'lida-libre.apk'));
+// Pacote do Linux (opcional): o app do Linux se atualiza com ele.
+let linux = null;
+if (linuxPkg) {
+  const b = readFileSync(linuxPkg);
+  linux = { linux: `https://github.com/${process.env.GITHUB_REPOSITORY || 'dasilvasauro/lida'}/releases/download/v${version}/lida-linux.tar.gz`, sha256Linux: createHash('sha256').update(b).digest('hex'), sizeLinux: b.length };
+  copyFileSync(linuxPkg, join(out, 'lida-linux.tar.gz'));
+}
 const repo = process.env.GITHUB_REPOSITORY || 'dasilvasauro/lida';
 const latest = {
   version,
@@ -48,6 +55,7 @@ const latest = {
   apkLibre: `https://github.com/${repo}/releases/download/v${version}/lida-libre.apk`,
   sha256Libre,
   sizeLibre: bytesL.length,
+  ...(linux || {}),
   items: entry.items,
 };
 writeFileSync(join(out, 'latest.json'), JSON.stringify(latest, null, 2));

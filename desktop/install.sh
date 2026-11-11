@@ -109,6 +109,10 @@ for it in index.html manifest.webmanifest css js fonts icons sounds; do
 done
 cp -r "$HERE/lida_desktop" "$LIDA/desktop/"
 find "$LIDA/desktop" -name '__pycache__' -prune -exec rm -rf {} +
+# De onde veio esta instalação: o app usa para atualizar (pacote da Release) ou pedir git pull (repositório).
+SOURCE=package; [ -d "$REPO/.git" ] && SOURCE=git
+VERSION="$(sed -n 's/^VERSION = "\(.*\)"/\1/p' "$HERE/lida_desktop/__init__.py")"
+printf '{"source": "%s", "repo": "%s", "version": "%s"}\n' "$SOURCE" "$REPO" "$VERSION" > "$LIDA/install.json"
 
 # Comandos: o app usa o Python com o Qt; a CLI usa o Python do sistema (abre mais rápido).
 cat > "$BIN/lida-desktop" <<EOF

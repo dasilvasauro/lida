@@ -14,7 +14,7 @@
 //                     (ex.: ev_fail_<tarefa>) não contam em dobro se dois aparelhos os gerarem.
 import { sum, ymOf } from '../lib/util.js';
 
-export const PERSONAL_TYPES = ['task', 'project', 'tag', 'routine', 'habit', 'hlog', 'quit', 'water', 'ev', 'wallet', 'score', 'month', 'hist', 'mood', 'vision', 'refl', 'brain', 'prefs', 'dayp', 'focus', 'year', 'profile'];
+export const PERSONAL_TYPES = ['task', 'project', 'tag', 'routine', 'habit', 'hlog', 'quit', 'water', 'ev', 'wallet', 'score', 'month', 'hist', 'mood', 'vision', 'refl', 'brain', 'prefs', 'dayp', 'focus', 'year', 'profile', 'ach'];
 
 export const HABIT_DAYS_ALL = [0, 1, 2, 3, 4, 5, 6];
 export const SHARED_TYPES = ['task', 'project', 'tag', 'member'];

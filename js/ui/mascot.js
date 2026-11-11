@@ -14,6 +14,10 @@ export const slugOf = (title) =>
     .replace(/[^a-z0-9]+/g, '-');
 const known = new Set(LEVEL_TITLES.map(([, t]) => t));
 export const mascotSrc = (title) => `icons/lidinho/${slugOf(known.has(title) ? title : LEVEL_TITLES[0][1])}.webp`;
+// "Selfie": o rosto e o detalhe da roupa do título, já recortados num círculo (foto de perfil).
+export const selfieSrc = (title) => `icons/lidinho/selfie/${slugOf(known.has(title) ? title : LEVEL_TITLES[0][1])}.webp`;
+// Títulos já alcançados no nível (para escolher o Lidinho da foto de perfil).
+export const unlockedTitles = (level) => LEVEL_TITLES.filter(([min]) => level >= min).map(([, t]) => t);
 
 // Mantém o nome antigo (era SVG desenhado no código): devolve a imagem do título.
 export function mascotSvg(title, { size = 56, cls = '', locked = false } = {}) {

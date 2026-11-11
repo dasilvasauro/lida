@@ -12,6 +12,7 @@ import { IPL_PARTS, dayIPL, grade, gradeLine, monthIPL } from '../core/ipl.js';
 import { showDaySummary, showMonthSummary, showYearSummary, partsBars } from './summary.js';
 import { haptic } from '../ui/haptics.js';
 import { avatar, levelCard, openMascot } from './common.js';
+import { achSection, bindAchSection } from './achievements.js';
 
 export const MOODS = [
   { id: 'radiant', emoji: '😄', name: 'Radiante' },
@@ -60,6 +61,7 @@ export const meView = {
       ${levelCard(S)}
       ${nt ? `<p class="hint next-title">Próximo título: <b>${esc(nt[1])}</b> no nível ${nt[0]}</p>` : ''}
       ${milestones(m.level)}
+      ${achSection(S)}
       ${stats(S, d)}
       ${habitHeat(S, d)}
       ${iplSection(S, d)}
@@ -376,6 +378,7 @@ function bind(el) {
       }),
   );
   el.querySelector('[data-mascot]')?.addEventListener('click', () => (haptic('tick'), openMascot(P().money.level)));
+  bindAchSection(el);
   el.querySelector('[data-sum-day]')?.addEventListener('click', () => showDaySummary(addDays(today(), -1)));
   el.querySelector('[data-sum-today]')?.addEventListener('click', () => showDaySummary(today()));
   el.querySelectorAll('[data-sum-year]').forEach((b) => (b.onclick = () => showYearSummary(Number(b.dataset.sumYear))));

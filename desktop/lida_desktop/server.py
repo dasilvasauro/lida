@@ -2,7 +2,8 @@
 
 - HTTP em http://localhost:PORTA: entrega os arquivos do Lida (a mesma versão web) e recebe da
   página o estado (/__desktop/state), as respostas dos comandos (/__desktop/reply), o aviso de
-  pronto (/__desktop/ready) e o pedido de login com Google (/__desktop/google).
+  pronto (/__desktop/ready), o pedido de login com Google (/__desktop/google), as requisições para a
+  nuvem da pessoa (/__desktop/http) e a atualização do app (/__desktop/update-*).
 - Socket Unix ($XDG_RUNTIME_DIR/lida-desktop.sock): por onde a CLI `lida` manda comandos. Uma linha
   JSON por pedido, uma linha JSON de resposta.
 
@@ -138,7 +139,7 @@ def proxy_http(req):
         return {"error": f"Sem conexão: {e}"}
 
 
-def make_http(hub, token, google_login):
+def make_http(hub, token, google_login, updater=None, restart=None):
     web = paths.WEB_DIR.resolve()
 
     class Handler(BaseHTTPRequestHandler):
@@ -193,6 +194,18 @@ def make_http(hub, token, google_login):
                 hub.ready.set()
             elif route == "http":
                 out = proxy_http(data)
+            elif route == "update-info" and updater:
+                from . import VERSION
+                from .updater import install_info
+
+                info = install_info()
+                out = {"version": VERSION, "source": info.get("source", "unknown"), "repo": info.get("repo", "")}
+            elif route == "update-start" and updater:
+                out = updater.start(data.get("url"), data.get("sha256"))
+            elif route == "update-status" and updater:
+                out = updater.status()
+            elif route == "update-restart" and restart:
+                restart()
             elif route == "google":
                 try:
                     out = {"idToken": google_login()}

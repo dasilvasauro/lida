@@ -2,7 +2,7 @@
 // O app inteiro funciona offline depois da primeira abertura.
 // Ao publicar uma nova versão, aumente VERSION aqui e app.version em js/state.js.
 // A lista SHELL é conferida pelos testes (npm test): todo arquivo do app precisa estar nela.
-const VERSION = 'lida-v3.0.0-alfa.15';
+const VERSION = 'lida-v3.0.0-alfa.16';
 const SHELL = [
   './',
   'index.html',
@@ -29,6 +29,18 @@ const SHELL = [
   'icons/lidinho/neofito.webp',
   'icons/lidinho/obstinado.webp',
   'icons/lidinho/perseverante.webp',
+  'icons/lidinho/selfie/ancestral.webp',
+  'icons/lidinho/selfie/calejado.webp',
+  'icons/lidinho/selfie/diligente.webp',
+  'icons/lidinho/selfie/erudito.webp',
+  'icons/lidinho/selfie/iniciado.webp',
+  'icons/lidinho/selfie/lifehacker.webp',
+  'icons/lidinho/selfie/mestre.webp',
+  'icons/lidinho/selfie/neofito.webp',
+  'icons/lidinho/selfie/obstinado.webp',
+  'icons/lidinho/selfie/perseverante.webp',
+  'icons/lidinho/selfie/soberano.webp',
+  'icons/lidinho/selfie/virtuoso.webp',
   'icons/lidinho/soberano.webp',
   'icons/lidinho/virtuoso.webp',
   'icons/maskable-512x512.png',
@@ -38,6 +50,7 @@ const SHELL = [
   'icons/tray-44.png',
   'icons/tray-64.png',
   'icons/tray.svg',
+  'js/core/achievements.js',
   'js/core/backup.js',
   'js/core/changelog.js',
   'js/core/cloud.js',
@@ -47,6 +60,7 @@ const SHELL = [
   'js/core/game.js',
   'js/core/glance.js',
   'js/core/habits.js',
+  'js/core/i18n.js',
   'js/core/ipl.js',
   'js/core/legacy.js',
   'js/core/model.js',
@@ -68,6 +82,7 @@ const SHELL = [
   'js/lib/hlc.js',
   'js/lib/idb.js',
   'js/lib/util.js',
+  'js/lib/version.js',
   'js/main.js',
   'js/native.js',
   'js/state.js',
@@ -84,6 +99,7 @@ const SHELL = [
   'js/vendor/capacitor.js',
   'js/vendor/jsqr.js',
   'js/vendor/qrcode.js',
+  'js/views/achievements.js',
   'js/views/board.js',
   'js/views/brain.js',
   'js/views/celebrate.js',

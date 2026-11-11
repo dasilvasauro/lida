@@ -3,6 +3,18 @@
 // tipo: 'novo' | 'melhoria' | 'correcao'
 export const CHANGELOG = [
   {
+    v: '3.0.0-alfa.16',
+    date: '2026-11-11',
+    title: 'Conquistas, Lidinho na foto e atualização no Linux',
+    items: [
+      ['novo', 'Conquistas, na aba Eu: 58 metas em sete grupos (tarefas, IPL do mês, água, sequências, hábitos, dias seguidos usando o Lida e dias de folga). Cada uma paga ouro conforme a dificuldade (de 40 a 1.500), resgatado quando você quiser. O que você já tinha feito conta: as conquistas do seu histórico já aparecem desbloqueadas.'],
+      ['novo', 'Ao ganhar uma conquista, a medalha aparece virada, treme e gira para mostrar qual foi.'],
+      ['novo', 'Lidinho na foto de perfil de dois jeitos: inteiro, sem moldura, ou em "selfie" no círculo (o rosto e um detalhe de cada título). Escolha qualquer Lidinho que você já alcançou, ou deixe acompanhar o título.'],
+      ['novo', 'App do Linux: procura versão nova sozinho (ou em Ajustes > Procurar atualização), mostra o que mudou, baixa, confere e instala, e abre de novo já atualizado. Quem instalou pelo git vê os comandos para atualizar.'],
+      ['melhoria', 'As Conquistas já estão em português, inglês e espanhol. O resto do app ganha os dois idiomas na próxima versão.'],
+    ],
+  },
+  {
     v: '3.0.0-alfa.15',
     date: '2026-11-11',
     title: 'Lida Libre e consertos',

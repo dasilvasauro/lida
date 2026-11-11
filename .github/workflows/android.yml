@@ -155,7 +155,12 @@ jobs:
           if grep -q "signed=false" signed-*.txt; then echo "::warning::APKs de depuração: sem Release (configure os segredos LIDA_KEYSTORE_*)."; echo "ok=false" >> "$GITHUB_OUTPUT"; exit 0; fi
           G=$(ls Lida-google-*.apk | head -1); L=$(ls Lida-libre-*.apk | head -1)
           cd "$GITHUB_WORKSPACE"
-          node scripts/release.mjs "${GITHUB_REF_NAME#v}" "$RUNNER_TEMP/apks/$G" "$RUNNER_TEMP/apks/$L" "$RUNNER_TEMP/release"
+          # Pacote do Linux (o app do Linux se atualiza com ele; o latest.json leva o SHA-256).
+          mkdir -p "$RUNNER_TEMP/dist/lida"
+          cp -r index.html manifest.webmanifest css js fonts icons sounds desktop LICENSE "$RUNNER_TEMP/dist/lida/"
+          find "$RUNNER_TEMP/dist" -name '__pycache__' -prune -exec rm -rf {} +
+          tar -C "$RUNNER_TEMP/dist" -czf "$RUNNER_TEMP/lida-linux.tar.gz" lida
+          node scripts/release.mjs "${GITHUB_REF_NAME#v}" "$RUNNER_TEMP/apks/$G" "$RUNNER_TEMP/apks/$L" "$RUNNER_TEMP/release" "$RUNNER_TEMP/lida-linux.tar.gz"
           echo "ok=true" >> "$GITHUB_OUTPUT"
 
       - name: Release
@@ -165,6 +170,7 @@ jobs:
           files: |
             ${{ runner.temp }}/release/lida.apk
             ${{ runner.temp }}/release/lida-libre.apk
+            ${{ runner.temp }}/release/lida-linux.tar.gz
             ${{ runner.temp }}/release/latest.json
           body_path: ${{ runner.temp }}/release/release-notes.md
           make_latest: true

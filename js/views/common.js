@@ -2,19 +2,25 @@
 import { app, displayName, personal, P } from '../state.js';
 import { esc, fmtInt } from '../lib/util.js';
 import { nowMs } from '../lib/clock.js';
-import { levelTitle } from '../core/model.js';
+import { levelTitle, LEVEL_TITLES } from '../core/model.js';
 import { boosts, levelProgress } from '../core/game.js';
 import { icon, bar, sheet } from '../ui/ui.js';
-import { mascotFor, mascotCollection } from '../ui/mascot.js';
+import { mascotFor, mascotCollection, mascotSvg, selfieSrc, unlockedTitles } from '../ui/mascot.js';
 
-// Avatar: a escolha em Ajustes (foto enviada, Lidinho do seu título ou a conta Google); sem nada,
-// a foto da conta Google ou a inicial do nome.
+// Avatar: a escolha em Ajustes (foto enviada, Lidinho inteiro ou em "selfie", conta Google ou inicial);
+// sem nada, a foto da conta Google ou a inicial do nome. O Lidinho pode ser qualquer um já alcançado
+// (profileMeta.lidinho) ou acompanhar o título atual (sem escolha).
+export function avatarTitle(pr = P().profileMeta || {}) {
+  const level = P().money.level;
+  return pr.lidinho && unlockedTitles(level).includes(pr.lidinho) ? pr.lidinho : levelTitle(level);
+}
 export function avatar(size) {
   const letter = (displayName() || 'V').trim()[0].toUpperCase();
   const initial = `<span class="av-initial" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.42)}px">${esc(letter)}</span>`;
   const pr = P().profileMeta || {};
   if (pr.avatar === 'photo' && pr.photo) return `<img class="av-img" src="${esc(pr.photo)}" alt="" width="${size}" height="${size}">`;
-  if (pr.avatar === 'mascot') return `<span class="av-mascot" style="width:${size}px;height:${size}px">${mascotFor(P().money.level, { size: Math.round(size * 0.92) })}</span>`;
+  if (pr.avatar === 'mascot') return `<span class="av-free" style="width:${size}px;height:${size}px">${mascotSvg(avatarTitle(pr), { size })}</span>`;
+  if (pr.avatar === 'selfie') return `<img class="av-img av-selfie" src="${selfieSrc(avatarTitle(pr))}" alt="" width="${size}" height="${size}">`;
   if (pr.avatar === 'initial') return initial;
   const photo = app.user?.photoURL;
   if (!photo) return initial;
@@ -79,28 +85,68 @@ export async function photoFromFile(file, max = 256) {
 
 export const saveProfile = (patch) => personal.save('profile', { ...(P().profileMeta || {}), ...patch }, 'profile');
 
-// Folha para escolher o avatar.
+// Folha para escolher o avatar. Lidinho: inteiro (sem moldura) ou "selfie" (rosto no círculo), de
+// qualquer título já alcançado, ou sempre o do título atual.
 export function openAvatar(onDone) {
   const pr = P().profileMeta || {};
+  const level = P().money.level;
   const cur = pr.avatar || (app.user?.photoURL ? 'google' : 'initial');
+  const t = avatarTitle(pr);
   const opts = [
     ['photo', 'Foto', pr.photo ? `<img src="${esc(pr.photo)}" alt="">` : icon('upload')],
-    ['mascot', 'Lidinho', mascotFor(P().money.level, { size: 56 })],
+    ['selfie', 'Lidinho no círculo', `<img src="${selfieSrc(t)}" alt="">`],
+    ['mascot', 'Lidinho inteiro', `<span class="av-free-art">${mascotSvg(t, { size: 56 })}</span>`],
     ...(app.user?.photoURL ? [['google', 'Conta Google', `<img src="${esc(app.user.photoURL)}" alt="" referrerpolicy="no-referrer">`]] : []),
     ['initial', 'Inicial', `<span class="av-initial">${esc((displayName() || 'V').trim()[0].toUpperCase())}</span>`],
   ];
+  const lidis = () => {
+    const p = P().profileMeta || {};
+    const kind = p.avatar === 'mascot' ? 'mascot' : 'selfie';
+    const chosen = p.lidinho && unlockedTitles(level).includes(p.lidinho) ? p.lidinho : '';
+    const art = (title, locked) => (kind === 'selfie' ? `<img class="${locked ? 'mascot locked' : ''}" src="${selfieSrc(title)}" alt="">` : mascotSvg(title, { size: 52, locked }));
+    return `<div class="av-lidis-head"><b>Qual Lidinho?</b><small>Os próximos aparecem quando você chegar ao título.</small></div>
+      <div class="av-lidis"><button type="button" class="av-lidi${chosen ? '' : ' on'}" data-lidi=""><span class="av-lidi-art">${art(levelTitle(level), false)}</span><span>Sempre o do meu título</span></button>
+      ${LEVEL_TITLES.map(([min, title]) => {
+        const locked = level < min;
+        return `<button type="button" class="av-lidi${chosen === title ? ' on' : ''}" data-lidi="${esc(title)}"${locked ? ' disabled' : ''} aria-label="${locked ? `Libera no nível ${min}` : esc(title)}"><span class="av-lidi-art">${art(title, locked)}</span><span>${locked ? `Nível ${min}` : esc(title)}</span></button>`;
+      }).join('')}</div>`;
+  };
   sheet({
     title: 'Foto de perfil',
     body: `<div class="av-pick">${opts.map(([k, l, art]) => `<button type="button" class="av-opt${cur === k ? ' on' : ''}" data-av="${k}"><span class="av-art">${art}</span><span>${l}</span></button>`).join('')}</div>
-      <p class="hint">A foto é reduzida para 256 px e fica cifrada, como o resto dos seus dados. O Lidinho muda junto com o seu título.</p>
+      <div data-lidiwrap${cur === 'mascot' || cur === 'selfie' ? '' : ' hidden'}>${lidis()}</div>
+      <p class="hint">A foto é reduzida para 256 px e fica cifrada, como o resto dos seus dados.</p>
       <input type="file" accept="image/*" data-avfile hidden>
       <div class="sheet-actions">${pr.photo ? '<button type="button" class="btn ghost" data-avdel>Remover foto</button>' : ''}<button type="button" class="btn primary" data-avok>Pronto</button></div>`,
     onMount(el, close) {
       const file = el.querySelector('[data-avfile]');
+      const wrap = el.querySelector('[data-lidiwrap]');
+      const paintOpts = () => {
+        const p = P().profileMeta || {};
+        const tt = avatarTitle(p);
+        el.querySelector('[data-av="selfie"] .av-art').innerHTML = `<img src="${selfieSrc(tt)}" alt="">`;
+        el.querySelector('[data-av="mascot"] .av-art').innerHTML = `<span class="av-free-art">${mascotSvg(tt, { size: 56 })}</span>`;
+      };
+      const bindLidis = () =>
+        wrap.querySelectorAll('[data-lidi]').forEach(
+          (b) =>
+            (b.onclick = async () => {
+              await saveProfile({ lidinho: b.dataset.lidi || undefined });
+              wrap.querySelectorAll('[data-lidi]').forEach((x) => x.classList.toggle('on', x === b));
+              paintOpts();
+              onDone?.();
+            }),
+        );
+      bindLidis();
       const pick = async (k) => {
         if (k === 'photo' && (!P().profileMeta?.photo || el.querySelector('[data-av="photo"]').classList.contains('on'))) return file.click();
         await saveProfile({ avatar: k });
         el.querySelectorAll('[data-av]').forEach((b) => b.classList.toggle('on', b.dataset.av === k));
+        wrap.hidden = !(k === 'mascot' || k === 'selfie');
+        if (!wrap.hidden) {
+          wrap.innerHTML = lidis();
+          bindLidis();
+        }
         onDone?.();
       };
       el.querySelectorAll('[data-av]').forEach((b) => (b.onclick = () => pick(b.dataset.av)));
@@ -110,6 +156,7 @@ export function openAvatar(onDone) {
           await saveProfile({ avatar: 'photo', photo });
           el.querySelector('[data-av="photo"] .av-art').innerHTML = `<img src="${esc(photo)}" alt="">`;
           el.querySelectorAll('[data-av]').forEach((b) => b.classList.toggle('on', b.dataset.av === 'photo'));
+          wrap.hidden = true;
           onDone?.();
         } catch (e) {
           (await import('../ui/ui.js')).toast(e.message || 'Não consegui usar essa imagem.');
