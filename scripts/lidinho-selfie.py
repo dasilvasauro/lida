@@ -18,17 +18,17 @@ INK = (27, 31, 43, 255)
 # extras: (caixa x0,y0,x1,y1 a 640 px, modo, alvo (u, v, largura) em frações do círculo, giro, espelhar)
 #   u, v = canto de cima à esquerda; modos: 'all' (tudo), 'color' (cores fora do roxo), 'dark' (tinta grossa + cores)
 CFG = {
-    'neofito': ((338, 372, 162), [((222, 30, 432, 172), 'all', (0.24, -0.06, 0.52), 0, False)]),
-    'iniciado': ((372, 348, 124), [((470, 330, 640, 565), 'color', (0.66, 0.52, 0.42), -8, False)]),
-    'diligente': ((402, 318, 128), [((105, 168, 225, 268), 'color', (0.0, 0.16, 0.3), 0, False)]),
-    'perseverante': ((212, 345, 125), []),
+    'neofito': ((330, 366, 140), [((222, 30, 432, 172), 'all', (0.31, -0.02, 0.4), -6, False)]),
+    'iniciado': ((402, 362, 132), []),
+    'diligente': ((372, 302, 134), [('draw', 'tails')]),
+    'perseverante': ((240, 334, 130, -7), [('draw', 'scarf')]),
     'erudito': ((322, 268, 165), []),
     'obstinado': ((265, 360, 135), []),
     'calejado': ((290, 335, 138), [((156, 32, 522, 192), 'dark', (0.06, -0.1, 0.88), 0, False)]),
     'virtuoso': ((330, 345, 128), [((176, 84, 486, 248), 'dark', (0.06, -0.08, 0.86), 0, False)]),
-    'mestre': ((372, 322, 138), [((18, 276, 205, 552), 'color', (-0.14, 0.5, 0.44), 12, False), ((18, 276, 205, 552), 'color', (0.7, 0.5, 0.44), -12, True)]),
-    'lifehacker': ((315, 352, 128), [((2, 118, 186, 285), 'all', (-0.02, 0.02, 0.36), -6, False), ((405, 72, 622, 285), 'all', (0.64, -0.02, 0.4), 6, False)]),
-    'ancestral': ((315, 385, 130), [((212, 100, 422, 252), 'color', (0.2, -0.04, 0.6), 0, False), ((498, 56, 614, 236), 'color', (0.76, 0.12, 0.24), 0, False)]),
+    'mestre': ((372, 322, 140), [('draw', 'cape')]),
+    'lifehacker': ((315, 322, 128), [('draw', 'screen')]),
+    'ancestral': ((318, 392, 128), [((212, 100, 422, 252), 'color', (0.22, -0.17, 0.56), -6, False), ((498, 56, 614, 236), 'color', (0.78, 0.2, 0.22), 0, False)]),
     'soberano': ((322, 272, 120), [((190, 20, 446, 128), 'all', (0.1, -0.03, 0.8), 0, False)]),
 }
 
@@ -73,6 +73,64 @@ def piece(big, box, mode):
     return img.crop(bb) if bb else img
 
 
+def draw_extra(canvas, kind):
+    """Detalhes desenhados aqui mesmo, no traço do Lidinho (tinta escura, cores chapadas)."""
+    k = 4  # desenha grande e reduz (bordas suaves)
+    layer = Image.new('RGBA', (S * k, S * k), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    W = 13 * k
+    P = lambda pts: [(x * S * k, y * S * k) for x, y in pts]
+    if kind == 'cape':
+        # gola da capa: duas abas vermelhas que sobem dos ombros e se fecham num broche dourado
+        red, red_lo = (238, 98, 106, 255), (196, 66, 80, 255)
+        left = P([(-0.05, 0.66), (0.33, 0.76), (0.47, 1.05), (-0.05, 1.05)])
+        right = P([(1.05, 0.66), (0.67, 0.76), (0.53, 1.05), (1.05, 1.05)])
+        for poly, c in ((left, red), (right, red_lo)):
+            d.polygon(poly, fill=c)
+            d.line(poly + [poly[0]], fill=INK, width=W, joint='curve')
+        cx, cy, r = 0.5 * S * k, 0.84 * S * k, 0.08 * S * k
+        d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(245, 200, 76, 255), outline=INK, width=W)
+        d.ellipse((cx - r * 0.35, cy - r * 0.55, cx - r * 0.05, cy - r * 0.25), fill=(255, 240, 190, 255))
+    elif kind == 'screen':
+        # tela flutuante translúcida, inclinada, saindo pelo canto de cima
+        sc = Image.new('RGBA', (int(0.46 * S * k), int(0.32 * S * k)), (0, 0, 0, 0))
+        sd = ImageDraw.Draw(sc)
+        w, h = sc.size
+        sd.rounded_rectangle((W, W, w - W, h - W), radius=int(0.04 * S * k), fill=(196, 236, 248, 215), outline=INK, width=W)
+        for i, f in enumerate((0.34, 0.52, 0.7)):
+            x1 = w * (0.72 if i else 0.56)
+            sd.line((w * 0.18, h * f, x1, h * f), fill=(110, 170, 200, 255), width=int(W * 0.8))
+        sd.ellipse((w * 0.78, h * 0.26, w * 0.86, h * 0.38), fill=(240, 120, 130, 255))
+        sc = sc.rotate(-14, resample=Image.BICUBIC, expand=True)
+        layer.alpha_composite(sc, (int(0.54 * S * k), int(-0.06 * S * k)))
+        sc2 = sc.transpose(Image.FLIP_LEFT_RIGHT).resize((int(sc.width * 0.72), int(sc.height * 0.72)), Image.LANCZOS)
+        layer.alpha_composite(sc2, (int(0.02 * S * k), int(0.0 * S * k)))
+    elif kind == 'scarf':
+        # nó do cachecol e a ponta caindo na diagonal, com listras e franja
+        yel, yel_lo, stripe = (246, 200, 72, 255), (228, 172, 42, 255), (190, 134, 26, 255)
+        tail = P([(0.62, 0.76), (0.76, 0.72), (0.95, 0.9), (0.86, 0.99), (0.7, 0.86)])
+        d.polygon(tail, fill=yel_lo)
+        d.line(tail + [tail[0]], fill=INK, width=W, joint='curve')
+        for a_, b_ in (((0.72, 0.76), (0.66, 0.82)), ((0.81, 0.82), (0.74, 0.89))):
+            d.line(P([a_, b_]), fill=stripe, width=int(W * 1.3))
+        for f in (0.0, 0.33, 0.66):  # franja
+            x0, y0 = 0.95 - f * 0.09, 0.9 + f * 0.09
+            d.line(P([(x0, y0), (x0 + 0.04, y0 + 0.04)]), fill=INK, width=int(W * 0.8))
+        x0, y0, x1, y1 = (v * S * k for v in (0.57, 0.7, 0.75, 0.84))
+        d.ellipse((x0, y0, x1, y1), fill=yel, outline=INK, width=W)
+    elif kind == 'tails':
+        # nó da faixa do lado esquerdo da cabeça, com as duas pontas caindo
+        red, red_lo = (236, 96, 104, 255), (204, 70, 82, 255)
+        t1 = P([(0.22, 0.21), (0.07, 0.31), (0.12, 0.39), (0.25, 0.26)])
+        t2 = P([(0.25, 0.25), (0.15, 0.44), (0.23, 0.48), (0.3, 0.28)])
+        for poly, c in ((t1, red), (t2, red_lo)):
+            d.polygon(poly, fill=c)
+            d.line(poly + [poly[0]], fill=INK, width=W, joint='curve')
+        x, y, r = 0.25 * S * k, 0.2 * S * k, 0.065 * S * k
+        d.ellipse((x - r, y - r, x + r, y + r), fill=red, outline=INK, width=W)
+    canvas.alpha_composite(layer.resize((S, S), Image.LANCZOS))
+
+
 def body_disc(color_hi, color, color_lo):
     """Disco com o sombreado do corpo (para tapar o que não for corpo no recorte)."""
     d = Image.new('RGBA', (S, S), color + (255,))
@@ -83,7 +141,9 @@ def body_disc(color_hi, color, color_lo):
     return d
 
 
-for name, ((cx, cy, r), extras) in CFG.items():
+for name, (base, extras) in CFG.items():
+    cx, cy, r = base[:3]
+    tilt = base[3] if len(base) > 3 else 0  # "muda o ângulo": gira o Lidinho dentro do círculo
     big = Image.open(f'{SRC}/{name}.webp').convert('RGBA').resize((N, N), Image.LANCZOS)
     a = np.array(big)
     # brancos fechados do desenho viram transparentes (depois o disco cobre)
@@ -95,6 +155,8 @@ for name, ((cx, cy, r), extras) in CFG.items():
     big = Image.fromarray(a, 'RGBA')
     # cor do corpo: mediana dos pixels roxos do recorte
     box = (cx - r, cy - r, cx + r, cy + r)
+    if tilt:
+        big = big.rotate(tilt, resample=Image.BICUBIC, center=(cx, cy))
     crop = big.crop(box).resize((S, S), Image.LANCZOS)
     ca = np.array(crop)
     h, s, v = hsv(ca)
@@ -103,7 +165,11 @@ for name, ((cx, cy, r), extras) in CFG.items():
     lo = tuple(int(x * 0.86) for x in med)
     canvas = body_disc(None, med, lo)
     canvas.alpha_composite(crop)
-    for (bx, mode, (u, vv, w), rot, flip) in extras:
+    for ex in extras:
+        if ex[0] == 'draw':
+            draw_extra(canvas, ex[1])
+            continue
+        (bx, mode, (u, vv, w), rot, flip) = ex
         p = piece(big, bx, mode)
         if flip:
             p = p.transpose(Image.FLIP_LEFT_RIGHT)
