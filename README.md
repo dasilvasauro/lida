@@ -57,7 +57,7 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | alfa 13 | **Status e horário da sincronização**, conflitos entre aparelhos, **backup .lida** cifrado, **foto de perfil** ou Lidinho, **atualização dentro do app** com changelog, Releases com link fixo do APK, fim do modo de desenvolvedor | Pronta |
 | alfa 14 | **Sincronização pela sua nuvem** (Dropbox, OneDrive, Nextcloud/WebDAV), **mover a sincronização** da conta Google para ela, **Lidinho redesenhado**, 12 títulos novos com presentes | Pronta |
 | alfa 15 | **Lida Libre** (sem Google nem Firebase, id próprio, APK na Release), receita do F-Droid e metadados, versionCode tirado da versão, licença **GPL-3.0**, correções no ícone do hábito e no Quadro | Pronta |
-| alfa 16 | **Conquistas** (58, com medalhas, ouro resgatável e revelação com suspense), **Lidinho na foto** (inteiro ou selfie, qualquer um já alcançado), **atualização dentro do app no Linux** | **Esta versão** |
+| alfa 16 | **Conquistas** (112, com medalhas, ouro resgatável e revelação com suspense), **Lidinho na foto** (inteiro ou selfie, qualquer um já alcançado), **atualização dentro do app no Linux** | **Esta versão** |
 | alfa 17 | O app inteiro em **inglês e espanhol**, com escolha do idioma em Ajustes | Próxima |
 
 ## Como o jogo funciona
@@ -101,16 +101,20 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
   redondo e lavanda), aparece no cartão de nível, no avatar (se você quiser) e no aviso de título novo, com um desenho
   para cada título (`icons/lidinho/`). Tocar nele abre a coleção: o título atual e os anteriores com um texto curto,
   e os próximos só na silhueta, sem o nome.
-- **Conquistas (aba Eu):** 58 metas em sete grupos: tarefas criadas e concluídas, IPL do mês, água, sequências
-  (hábitos, prêmio do dia, Desapego), hábitos, dias seguidos usando o Lida e atividade nos dias de folga. Cada uma tem
-  uma medalha (bronze, prata, ouro, platina ou diamante) e paga ouro pela dificuldade: 40, 120, 300, 700 ou 1.500.
-  O ouro é resgatado à mão (uma a uma ou todas de uma vez). Ao ganhar, a medalha aparece virada, treme e gira para
-  mostrar a conquista. O histórico conta: na primeira abertura com esta versão, o que você já tinha feito desbloqueia
+- **Conquistas (aba Eu):** 112 metas em oito grupos: tarefas (criadas, concluídas, P0, sprints, desafios, de
+  madrugada ou de noite, subtarefas, projetos, etiquetas), IPL (do mês e do dia), água, sequências (hábitos, prêmio do
+  dia, Desapego), hábitos, dias seguidos usando o Lida, atividade nos dias de folga e jornada (nível, horas de foco,
+  humor, reflexões, visão, Cartas da Sorte, ouro ganho). Cada uma tem o seu ícone numa medalha (bronze, prata, ouro,
+  platina ou diamante) e paga ouro pela dificuldade: 100, 250, 600, 1.400 ou 3.000. O ouro é resgatado à mão (uma a
+  uma ou todas de uma vez). Ao ganhar, a medalha aparece virada, treme e gira para mostrar a conquista; isso acontece
+  uma vez só, no aparelho que está com a tela aberta, que marca a conquista como vista (os outros aparelhos não
+  repetem a animação). O histórico conta: na primeira abertura com esta versão, o que você já tinha feito desbloqueia
   de uma vez, num aviso só. Uma vez desbloqueada, a conquista fica, mesmo que o número caia depois. Os textos
   existem em português, inglês e espanhol.
 - **Foto de perfil:** sua foto (reduzida e cifrada), a inicial, a da conta Google ou o Lidinho, inteiro (sem moldura)
-  ou em "selfie" no círculo (rosto e um detalhe da roupa do título, em `icons/lidinho/selfie/`, gerados por
-  `scripts/lidinho-selfie.py`). Dá para escolher qualquer Lidinho já alcançado ou deixar acompanhar o título.
+  ou em "selfie" (o rosto ocupa o círculo todo, sem fundo, com o detalhe do título por cima: broto, mochila, faixa,
+  cachecol, óculos, faixa de honra, boina e bigode, capelo, capa, telas e óculos escuros, coroa, auréola; em
+  `icons/lidinho/selfie/`, gerados por `scripts/lidinho-selfie.py`). Dá para escolher qualquer Lidinho já alcançado ou deixar acompanhar o título.
 - **Carta da Sorte:** quase sempre premia, quase sempre pouco: 30 a 60 de ouro (30%), 60 a 120 XP (25%), 100 de ouro (12%),
   200 XP (10%), 1 voucher (7%), um item (5%), a sorte grande de 300 de ouro ou 500 XP (3%) e nada (8%).
 

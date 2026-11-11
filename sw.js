@@ -87,6 +87,7 @@ const SHELL = [
   'js/native.js',
   'js/state.js',
   'js/sync-config.js',
+  'js/ui/achicons.js',
   'js/ui/chart.js',
   'js/ui/haptics.js',
   'js/ui/mascot.js',

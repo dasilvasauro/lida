@@ -1,12 +1,13 @@
 // Conquistas na aba Eu: o resumo (quantas, quanto ouro esperando), a lista completa por grupo, o
 // resgate do ouro (à mão) e a revelação com suspense quando uma conquista é desbloqueada.
 // Textos em português, inglês e espanhol (core/i18n.js).
-import { P, personal } from '../state.js';
+import { P, personal, app } from '../state.js';
 import { esc } from '../lib/util.js';
 import { icon, sheet, toast } from '../ui/ui.js';
 import { play } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
-import { ACHIEVEMENTS, CATS, TIER_NAME, achList, achName, achDesc, achById, achStats, checkAchievements, claimAchievement, toClaim } from '../core/achievements.js';
+import { ACHIEVEMENTS, CATS, TIER_NAME, achList, achName, achDesc, achById, achStats, checkAchievements, claimAchievement, toClaim, unseen, markShown } from '../core/achievements.js';
+import { achGlyph } from '../ui/achicons.js';
 import { tr, fill, num } from '../core/i18n.js';
 
 const L = (pt, en, es) => ({ pt, en, es });
@@ -32,7 +33,7 @@ const T = {
 
 /* ---------- Medalha ---------- */
 export function medal(a, { size = 48, locked = false } = {}) {
-  return `<span class="ach-medal t${a.tier}${locked ? ' locked' : ''}" style="--s:${size}px" aria-hidden="true"><i>${icon(locked ? 'lock' : a.icon)}</i></span>`;
+  return `<span class="ach-medal t${a.tier}${locked ? ' locked' : ''}" style="--s:${size}px" aria-hidden="true"><i>${locked ? icon('lock') : achGlyph(a.icon)}</i></span>`;
 }
 
 /* ---------- Bloco na aba Eu ---------- */
@@ -41,8 +42,9 @@ export function achSection(S = P()) {
   const got = list.filter((a) => a.unlocked);
   const pend = list.filter((a) => a.unlocked && !a.claimed);
   const gold = pend.reduce((s, a) => s + a.gold, 0);
+  // Até 8 medalhas: as últimas ganhas e as mais perto de sair. O que não couber na linha fica escondido.
   const recent = got.sort((a, b) => b.at - a.at).slice(0, 5);
-  const close = list.filter((a) => !a.unlocked).sort((a, b) => b.value / b.goal - a.value / a.goal).slice(0, Math.max(2, 6 - recent.length));
+  const close = list.filter((a) => !a.unlocked).sort((a, b) => b.value / b.goal - a.value / a.goal).slice(0, 8 - recent.length);
   return `<section class="block ach-block"><div class="block-head"><h2>${esc(tr(T.title))}<span class="count">${esc(fill(tr(T.of), { a: got.length, b: ACHIEVEMENTS.length }))}</span></h2><button type="button" class="link" data-ach-all>${esc(tr(T.all))}</button></div>
     <button type="button" class="ach-card" data-ach-all>
       <div class="ach-strip">${recent.map((a) => `<span class="ach-mini" title="${esc(achName(a))}">${medal(a, { size: 44 })}</span>`).join('')}${close
@@ -182,9 +184,13 @@ export function initAchievements() {
     running = true;
     try {
       const { fresh, first } = await checkAchievements(P());
-      if (!fresh.length) return;
       if (first && fresh.length > 1) retroNotice(fresh.length);
-      else revealAchievements(fresh);
+      // Anima só aqui, se a pessoa está usando este aparelho agora, e marca para os outros não animarem.
+      if (document.visibilityState !== 'visible') return;
+      const show = unseen(P()).filter((a) => !queue.includes(a));
+      if (!show.length) return;
+      await markShown(show.map((a) => a.id), app.device);
+      revealAchievements(show);
     } catch (e) {
       console.warn('Conquistas', e);
     } finally {
@@ -195,6 +201,7 @@ export function initAchievements() {
     clearTimeout(timer);
     timer = setTimeout(run, 2500);
   });
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && setTimeout(run, 1200));
   setTimeout(run, 4000);
 }
 

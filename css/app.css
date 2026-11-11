@@ -1877,9 +1877,10 @@ html.is-gray :is(.emoji, .mascot, img, .rvh-face, .hab-face, .lucky, .dot, .tagc
 
 .ach-block .block-head h2 .count { font-weight: 700; }
 .ach-card { display: grid; gap: .6667rem; width: 100%; padding: .9333rem; border: 1px solid var(--line); border-radius: 1.0667rem; background: var(--surface); color: inherit; font: inherit; text-align: left; cursor: pointer; }
-.ach-strip { display: flex; gap: .5333rem; overflow: hidden; }
-.ach-mini { position: relative; display: grid; place-items: center; }
-.ach-ring { position: absolute; inset: -3px; border-radius: 50%; background: conic-gradient(var(--accent) calc(var(--p) * 1%), transparent 0); -webkit-mask: radial-gradient(circle, transparent 62%, #000 64%); mask: radial-gradient(circle, transparent 62%, #000 64%); }
+/* Uma linha só: o que não cabe vai para uma segunda linha de altura zero (nunca aparece cortado). */
+.ach-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); grid-template-rows: 50px; grid-auto-rows: 50px; row-gap: 60px; column-gap: .4rem; height: 56px; overflow: hidden; padding: 3px; margin: -3px; }
+.ach-mini { position: relative; display: grid; place-items: center; width: 50px; height: 50px; justify-self: center; }
+.ach-ring { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(var(--accent) calc(var(--p) * 1%), transparent 0); -webkit-mask: radial-gradient(circle, transparent 62%, #000 64%); mask: radial-gradient(circle, transparent 62%, #000 64%); }
 .ach-pend { display: flex; align-items: center; gap: .4rem; font-size: .8667rem; font-weight: 600; color: var(--muted); }
 .ach-pend .ic { width: 1.0667rem; height: 1.0667rem; color: var(--gold, #f2c14e); }
 .ach-pend b { color: var(--text); }

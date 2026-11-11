@@ -22,7 +22,7 @@ const { key } = await createKey('senha-de-teste');
 await personal.init(await openDB('lida3-ach'), key);
 
 test('dezenas de conquistas, com nome e descrição em pt, en e es, e ouro pela dificuldade', () => {
-  assert.ok(A.ACHIEVEMENTS.length >= 40, `${A.ACHIEVEMENTS.length} conquistas`);
+  assert.ok(A.ACHIEVEMENTS.length >= 100, `${A.ACHIEVEMENTS.length} conquistas`);
   const ids = new Set();
   for (const a of A.ACHIEVEMENTS) {
     assert.ok(!ids.has(a.id), `id repetido ${a.id}`);
@@ -34,7 +34,9 @@ test('dezenas de conquistas, com nome e descrição em pt, en e es, e ouro pela 
     assert.ok(A.CATS[a.cat], `${a.id}: grupo`);
     assert.equal(a.gold, A.TIER_GOLD[a.tier]);
   }
-  for (const c of ['tasks', 'ipl', 'water', 'streak', 'habit', 'active', 'off']) assert.ok(A.ACHIEVEMENTS.some((a) => a.cat === c), c);
+  for (const c of ['tasks', 'ipl', 'water', 'streak', 'habit', 'active', 'off', 'journey']) assert.ok(A.ACHIEVEMENTS.some((a) => a.cat === c), c);
+  // Ícones variados: bem mais de um por grupo.
+  assert.ok(new Set(A.ACHIEVEMENTS.map((a) => a.icon)).size >= 50);
   setLang('en');
   assert.equal(A.achDesc(A.achById.get('t_c50')), 'Create 50 tasks: out of your head and into Lida.');
   setLang('es');
@@ -93,4 +95,19 @@ test('nova conquista depois do histórico não é retroativa; o ouro só vem ao 
   // Uma vez desbloqueada, fica (mesmo apagando tarefas).
   await personal.removeMany(items.map((x) => x.id));
   assert.ok(A.achList(P()).find((a) => a.id === 't_c50').unlocked);
+});
+
+test('a animação aparece num aparelho só: quem mostra marca, e os outros não mostram de novo', async () => {
+  await personal.saveMany(Array.from({ length: 100 }, (_, i) => ({ type: 'task', id: `tz${i}`, data: { title: `Z${i}`, priority: 'P4', kind: 'normal', createdDay: today() } })));
+  const r = await A.checkAchievements(P());
+  assert.deepEqual(r.fresh.map((a) => a.id), ['t_c100']);
+  assert.deepEqual(A.unseen(P()).map((a) => a.id), ['t_c50', 't_c100']);
+  await A.markShown(['t_c50', 't_c100'], 'celular');
+  assert.equal(A.unseen(P()).length, 0);
+  assert.equal(personal.get('ach_t_c100').shownOn, 'celular');
+  // As do histórico nunca animam.
+  assert.ok(!A.unseen(P()).some((a) => a.id === 't_c1'));
+  // Resgatar depois mantém a marca.
+  await A.claimAchievement('t_c100');
+  assert.ok(personal.get('ach_t_c100').shownAt);
 });
