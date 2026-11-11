@@ -114,7 +114,10 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 - **Foto de perfil:** sua foto (reduzida e cifrada), a inicial, a da conta Google ou o Lidinho, inteiro (sem moldura)
   ou em "selfie" (o rosto ocupa o círculo todo, sem fundo, com o detalhe do título por cima: broto, mochila, faixa,
   cachecol, óculos, faixa de honra, boina e bigode, capelo, capa, telas e óculos escuros, coroa, auréola; em
-  `icons/lidinho/selfie/`, gerados por `scripts/lidinho-selfie.py`). Dá para escolher qualquer Lidinho já alcançado ou deixar acompanhar o título.
+  `icons/lidinho/selfie/`, gerados por `scripts/lidinho-selfie.py`).
+  Além dos 12 títulos, três **fantasias** liberadas para todo mundo, em qualquer aparelho: Pinguim, Autômato e Kiko,
+  o Dragão Encantado (desenhadas por `scripts/lidinho-costumes.py` sobre o Lidinho Neófito; desenhos originais,
+  sem copiar mascote de ninguém). Dá para escolher qualquer Lidinho já alcançado ou deixar acompanhar o título.
 - **Carta da Sorte:** quase sempre premia, quase sempre pouco: 30 a 60 de ouro (30%), 60 a 120 XP (25%), 100 de ouro (12%),
   200 XP (10%), 1 voucher (7%), um item (5%), a sorte grande de 300 de ouro ou 500 XP (3%) e nada (8%).
 

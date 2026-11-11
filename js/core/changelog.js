@@ -10,6 +10,7 @@ export const CHANGELOG = [
       ['novo', 'Conquistas, na aba Eu: 112 metas em oito grupos (tarefas, IPL, água, sequências, hábitos, dias seguidos usando o Lida, dias de folga e jornada), cada uma com o seu ícone. Pagam ouro conforme a dificuldade (de 100 a 3.000), resgatado quando você quiser. O que você já tinha feito conta: as conquistas do seu histórico já aparecem desbloqueadas.'],
       ['novo', 'Ao ganhar uma conquista, a medalha aparece virada, treme e gira para mostrar qual foi. A animação aparece uma vez só, no aparelho que você está usando; os outros não repetem.'],
       ['novo', 'Lidinho na foto de perfil de dois jeitos: inteiro, sem moldura, ou em "selfie", com o rosto ocupando o círculo todo e o detalhe de cada título (broto, boina, capelo, coroa, auréola...). Escolha qualquer Lidinho que você já alcançou, ou deixe acompanhar o título.'],
+      ['novo', 'Três fantasias do Lidinho liberadas para todo mundo, com selfie: Pinguim, Autômato (não é androide, juramos) e Kiko, o Dragão Encantado. Dá para usar qualquer uma em qualquer aparelho.'],
       ['novo', 'App do Linux: procura versão nova sozinho (ou em Ajustes > Procurar atualização), mostra o que mudou, baixa, confere e instala, e abre de novo já atualizado. Quem instalou pelo git vê os comandos para atualizar.'],
       ['melhoria', 'As Conquistas já estão em português, inglês e espanhol. O resto do app ganha os dois idiomas na próxima versão.'],
     ],

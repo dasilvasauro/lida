@@ -5,13 +5,14 @@ import { nowMs } from '../lib/clock.js';
 import { levelTitle, LEVEL_TITLES } from '../core/model.js';
 import { boosts, levelProgress } from '../core/game.js';
 import { icon, bar, sheet } from '../ui/ui.js';
-import { mascotFor, mascotCollection, mascotSvg, selfieSrc, unlockedTitles } from '../ui/mascot.js';
+import { mascotFor, mascotCollection, mascotSvg, selfieSrc, unlockedTitles, COSTUMES, costumeKey } from '../ui/mascot.js';
 
 // Avatar: a escolha em Ajustes (foto enviada, Lidinho inteiro ou em "selfie", conta Google ou inicial);
 // sem nada, a foto da conta Google ou a inicial do nome. O Lidinho pode ser qualquer um já alcançado
 // (profileMeta.lidinho) ou acompanhar o título atual (sem escolha).
 export function avatarTitle(pr = P().profileMeta || {}) {
   const level = P().money.level;
+  if (pr.lidinho && COSTUMES.some((c) => costumeKey(c.id) === pr.lidinho)) return pr.lidinho;
   return pr.lidinho && unlockedTitles(level).includes(pr.lidinho) ? pr.lidinho : levelTitle(level);
 }
 export function avatar(size) {
@@ -102,14 +103,16 @@ export function openAvatar(onDone) {
   const lidis = () => {
     const p = P().profileMeta || {};
     const kind = p.avatar === 'mascot' ? 'mascot' : 'selfie';
-    const chosen = p.lidinho && unlockedTitles(level).includes(p.lidinho) ? p.lidinho : '';
+    const chosen = p.lidinho && (unlockedTitles(level).includes(p.lidinho) || COSTUMES.some((c) => costumeKey(c.id) === p.lidinho)) ? p.lidinho : '';
     const art = (title, locked) => (kind === 'selfie' ? `<img class="${locked ? 'mascot locked' : ''}" src="${selfieSrc(title)}" alt="">` : mascotSvg(title, { size: 52, locked }));
     return `<div class="av-lidis-head"><b>Qual Lidinho?</b><small>Os próximos aparecem quando você chegar ao título.</small></div>
       <div class="av-lidis"><button type="button" class="av-lidi${chosen ? '' : ' on'}" data-lidi=""><span class="av-lidi-art">${art(levelTitle(level), false)}</span><span>Sempre o do meu título</span></button>
       ${LEVEL_TITLES.map(([min, title]) => {
         const locked = level < min;
         return `<button type="button" class="av-lidi${chosen === title ? ' on' : ''}" data-lidi="${esc(title)}"${locked ? ' disabled' : ''} aria-label="${locked ? `Libera no nível ${min}` : esc(title)}"><span class="av-lidi-art">${art(title, locked)}</span><span>${locked ? `Nível ${min}` : esc(title)}</span></button>`;
-      }).join('')}</div>`;
+      }).join('')}</div>
+      <div class="av-lidis-head"><b>Fantasias</b><small>Liberadas para todo mundo.</small></div>
+      <div class="av-lidis">${COSTUMES.map((c) => `<button type="button" class="av-lidi${chosen === costumeKey(c.id) ? ' on' : ''}" data-lidi="${costumeKey(c.id)}"><span class="av-lidi-art">${art(costumeKey(c.id), false)}</span><span>${esc(c.name.split(',')[0])}</span></button>`).join('')}</div>`;
   };
   sheet({
     title: 'Foto de perfil',

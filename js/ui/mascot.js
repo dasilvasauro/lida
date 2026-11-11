@@ -12,16 +12,38 @@ export const slugOf = (title) =>
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-');
+// Fantasias: liberadas para todo mundo desde o começo (não dependem do nível). A chave é "c:<id>".
+export const COSTUMES = [
+  {
+    id: 'pinguim',
+    name: 'Pinguim',
+    text: 'Gosta de frio, de terminal e de código aberto. Dizem que compilou o próprio café antes de acordar. O Lidinho jura que é só uma fantasia de pinguim e que não está imitando nenhum pinguim famoso.',
+  },
+  {
+    id: 'robo',
+    name: 'Autômato',
+    text: 'Androide? Não, não: autômato. Qualquer semelhança com robozinhos verdes que moram no seu celular é pura coincidência. Este é prateado, tem viseira, não tem antena e ainda roda no Linux.',
+  },
+  {
+    id: 'dragao',
+    name: 'Kiko, o Dragão Encantado',
+    text: 'Repare nas iniciais: Kiko, Dragão Encantado. Mora numa área de trabalho cheia de widgets, cospe configurações em vez de fogo e jura que não é parente de nenhum dragão verde famoso. É laranja, viu?',
+  },
+];
+export const costumeKey = (id) => `c:${id}`;
+const costumeOf = (key) => (typeof key === 'string' && key.startsWith('c:') ? COSTUMES.find((c) => c.id === key.slice(2)) : null);
+export const lidiName = (key) => costumeOf(key)?.name || key;
 const known = new Set(LEVEL_TITLES.map(([, t]) => t));
-export const mascotSrc = (title) => `icons/lidinho/${slugOf(known.has(title) ? title : LEVEL_TITLES[0][1])}.webp`;
-// "Selfie": o rosto e o detalhe da roupa do título, já recortados num círculo (foto de perfil).
-export const selfieSrc = (title) => `icons/lidinho/selfie/${slugOf(known.has(title) ? title : LEVEL_TITLES[0][1])}.webp`;
+const fileOf = (key) => costumeOf(key)?.id || slugOf(known.has(key) ? key : LEVEL_TITLES[0][1]);
+export const mascotSrc = (key) => `icons/lidinho/${fileOf(key)}.webp`;
+// "Selfie": o rosto ocupando o círculo e o detalhe do título (ou da fantasia) — foto de perfil.
+export const selfieSrc = (key) => `icons/lidinho/selfie/${fileOf(key)}.webp`;
 // Títulos já alcançados no nível (para escolher o Lidinho da foto de perfil).
 export const unlockedTitles = (level) => LEVEL_TITLES.filter(([min]) => level >= min).map(([, t]) => t);
 
 // Mantém o nome antigo (era SVG desenhado no código): devolve a imagem do título.
 export function mascotSvg(title, { size = 56, cls = '', locked = false } = {}) {
-  const label = locked ? 'Lidinho escondido: título ainda não alcançado' : `Lidinho, ${title}`;
+  const label = locked ? 'Lidinho escondido: título ainda não alcançado' : `Lidinho, ${lidiName(title)}`;
   return `<img class="mascot${locked ? ' locked' : ''} ${cls}" src="${mascotSrc(title)}" width="${size}" height="${size}" alt="${esc(label)}" draggable="false" decoding="async">`;
 }
 export const mascotImg = mascotSvg;
@@ -65,5 +87,7 @@ export function mascotCollection(level) {
       <div class="mc-art">${mascotSvg(t, { size: 84, locked: !have })}</div>
       <div class="mc-txt">${have ? `<h3>${esc(t)}${now ? '<span class="mc-tag">Você está aqui</span>' : ''}</h3><small>A partir do nível ${min}</small><p>${esc(MASCOT_TEXT[t])}</p>` : `<h3 class="mc-hidden" aria-label="Título escondido">? ? ?</h3><small>Libera no nível ${min}</small>`}</div>
     </article>`;
-  }).join('')}</div>`;
+  }).join('')}
+    <h3 class="mc-sec">Fantasias <small>liberadas para todo mundo</small></h3>
+    ${COSTUMES.map((c) => `<article class="mc-item"><div class="mc-art">${mascotSvg(costumeKey(c.id), { size: 84 })}</div><div class="mc-txt"><h3>${esc(c.name)}</h3><small>Fantasia</small><p>${esc(c.text)}</p></div></article>`).join('')}</div>`;
 }

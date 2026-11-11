@@ -1693,6 +1693,8 @@ body.kb-dragging, body.kb-dragging * { cursor: grabbing !important; }
 .mascot.locked { filter: brightness(0) !important; opacity: 0.16; }
 :root[data-scheme='dark'] .mascot.locked { filter: brightness(0) invert(1) !important; opacity: 0.14; }
 .mascot-col { display: grid; gap: .5333rem; margin-top: .8rem; }
+.mc-sec { margin: .8rem 0 0; font-size: .9333rem; font-weight: 800; }
+.mc-sec small { color: var(--muted); font-weight: 600; font-size: .8rem; margin-left: .3rem; }
 .mc-item { display: flex; align-items: center; gap: .9333rem; padding: .6667rem .8rem; border-radius: 1.0667rem; background: var(--surface-2); border: 1.5px solid transparent; }
 .mc-item.now { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface-2)); }
 .mc-art { flex: none; width: 5.6rem; height: 5.6rem; display: grid; place-items: center; border-radius: .9333rem; background: var(--surface); }

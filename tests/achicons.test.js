@@ -11,3 +11,16 @@ test('ícones das conquistas existem', () => {
   assert.ok(names.length >= 100);
   for (const n of new Set(names)) assert.ok(new RegExp(`^\\s+${n}: '`, 'm').test(glyphs) || new RegExp(`^\\s+${n}: '`, 'm').test(ui), `ícone ${n}`);
 });
+
+test('cada título e cada fantasia tem o desenho inteiro e a selfie', async () => {
+  const { existsSync } = await import('node:fs');
+  globalThis.localStorage ??= { getItem: () => null, setItem() {} };
+  const { LEVEL_TITLES } = await import('../js/core/model.js');
+  const M = await import('../js/ui/mascot.js');
+  const keys = [...LEVEL_TITLES.map(([, t]) => t), ...M.COSTUMES.map((c) => M.costumeKey(c.id))];
+  for (const k of keys) {
+    for (const src of [M.mascotSrc(k), M.selfieSrc(k)]) assert.ok(existsSync(new URL(`../${src}`, import.meta.url)), src);
+  }
+  assert.equal(M.COSTUMES.length, 3);
+  assert.ok(M.mascotSrc('c:pinguim').endsWith('/pinguim.webp'));
+});

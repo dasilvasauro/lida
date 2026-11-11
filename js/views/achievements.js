@@ -6,7 +6,7 @@ import { esc } from '../lib/util.js';
 import { icon, sheet, toast } from '../ui/ui.js';
 import { play } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
-import { ACHIEVEMENTS, CATS, TIER_NAME, achList, achName, achDesc, achById, achStats, checkAchievements, claimAchievement, toClaim, unseen, markShown } from '../core/achievements.js';
+import { ACHIEVEMENTS, CATS, TIER_NAME, TIER_GOLD, achList, achName, achDesc, achById, achStats, checkAchievements, claimAchievement, toClaim, unseen, markShown } from '../core/achievements.js';
 import { achGlyph } from '../ui/achicons.js';
 import { tr, fill, num } from '../core/i18n.js';
 
@@ -26,6 +26,15 @@ const T = {
   later: L('Depois', 'Later', 'Después'),
   got: L('+{g} de ouro', '+{g} gold', '+{g} de oro'),
   retroTitle: L('Você já tinha conquistas!', 'You already had achievements!', '¡Ya tenías logros!'),
+  introTitle: L('Novidade: Conquistas', 'New: Achievements', 'Novedad: Logros'),
+  introText: L(
+    'São {t} metas de longo prazo, em oito grupos: tarefas, IPL, água, sequências, hábitos, dias seguidos usando o Lida, dias de folga e jornada. Cada uma tem a sua medalha e paga de {min} a {max} de ouro, conforme a dificuldade. Você resgata o ouro quando quiser, na aba Eu.',
+    'There are {t} long-term goals in eight groups: tasks, IPL, water, streaks, habits, days in a row using Lida, days off and journey. Each one has its own medal and pays from {min} to {max} gold, depending on how hard it is. You claim the gold whenever you want, on the Me tab.',
+    'Son {t} metas de largo plazo en ocho grupos: tareas, IPL, agua, rachas, hábitos, días seguidos usando Lida, días libres y trayectoria. Cada una tiene su medalla y paga de {min} a {max} de oro, según la dificultad. Reclamas el oro cuando quieras, en la pestaña Yo.',
+  ),
+  introRetro: L('E o que você já fez conta: {n} já estão desbloqueadas, esperando o resgate.', 'And what you have already done counts: {n} are already unlocked, waiting to be claimed.', 'Y lo que ya hiciste cuenta: {n} ya están desbloqueados, esperando el reclamo.'),
+  introNone: L('Quando você ganhar uma, a medalha aparece aqui, com suspense.', 'When you earn one, the medal shows up right here, with a bit of suspense.', 'Cuando ganes uno, la medalla aparece aquí, con suspenso.'),
+  introGo: L('Ver as conquistas', 'See achievements', 'Ver los logros'),
   retroText: L('Pelo que você já fez no Lida, {n} conquistas foram desbloqueadas. O ouro está esperando por você.', 'Based on what you have already done in Lida, {n} achievements were unlocked. The gold is waiting for you.', 'Por lo que ya hiciste en Lida, se desbloquearon {n} logros. El oro te está esperando.'),
   next: L('Mais perto', 'Closest', 'Más cerca'),
   none: L('Conclua tarefas, cumpra hábitos e beba água: as conquistas aparecem aqui.', 'Complete tasks, keep habits and drink water: achievements show up here.', 'Completa tareas, cumple hábitos y bebe agua: los logros aparecen aquí.'),
@@ -184,7 +193,13 @@ export function initAchievements() {
     running = true;
     try {
       const { fresh, first } = await checkAchievements(P());
-      if (first && fresh.length > 1) retroNotice(fresh.length);
+      // Aviso da novidade, uma vez (o registro sincroniza: não aparece de novo em outro aparelho).
+      if (!personal.get('ach__intro') && document.visibilityState === 'visible') {
+        await personal.save('ach', { aid: '_intro', at: Date.now() }, 'ach__intro');
+        introNotice(first ? fresh.length : toClaim(P()).length);
+        return;
+      }
+      if (first && fresh.length > 1 && personal.get('ach__intro')) retroNotice(fresh.length);
       // Anima só aqui, se a pessoa está usando este aparelho agora, e marca para os outros não animarem.
       if (document.visibilityState !== 'visible') return;
       const show = unseen(P()).filter((a) => !queue.includes(a));
@@ -203,6 +218,22 @@ export function initAchievements() {
   });
   document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && setTimeout(run, 1200));
   setTimeout(run, 4000);
+}
+
+function introNotice(n) {
+  const golds = Object.values(TIER_GOLD);
+  const sample = n ? toClaim(P()).slice(0, 6) : ACHIEVEMENTS.filter((a, i) => i % 19 === 0).slice(0, 6);
+  sheet({
+    title: tr(T.introTitle),
+    body: `<div class="ach-intro"><div class="ach-retro">${sample.map((a) => medal(a, { size: 46 })).join('')}</div>
+      <p class="sheet-text">${esc(fill(tr(T.introText), { t: ACHIEVEMENTS.length, min: num(Math.min(...golds)), max: num(Math.max(...golds)) }))}</p>
+      <p class="sheet-text"><b>${esc(n ? fill(tr(T.introRetro), { n }) : tr(T.introNone))}</b></p></div>
+      <div class="sheet-actions"><span></span><button type="button" class="btn primary" data-go>${icon('trophy')}${esc(tr(T.introGo))}</button></div>`,
+    onMount(el, close) {
+      play('levelup');
+      el.querySelector('[data-go]').onclick = () => (close(), openAchievements());
+    },
+  });
 }
 
 function retroNotice(n) {

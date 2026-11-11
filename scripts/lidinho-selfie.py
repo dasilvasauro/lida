@@ -21,14 +21,17 @@ CFG = {
     'neofito': ((330, 366, 140), [((222, 30, 432, 172), 'all', (0.31, -0.02, 0.4), -6, False)]),
     'iniciado': ((402, 362, 132), []),
     'diligente': ((372, 302, 134), [('draw', 'tails')]),
-    'perseverante': ((240, 334, 130, -7), [('draw', 'scarf')]),
+    'perseverante': ((240, 356, 132, -7), []),
     'erudito': ((322, 268, 165), []),
     'obstinado': ((265, 360, 135), []),
     'calejado': ((290, 335, 138), [((156, 32, 522, 192), 'dark', (0.06, -0.1, 0.88), 0, False)]),
-    'virtuoso': ((330, 345, 128), [((176, 84, 486, 248), 'dark', (0.06, -0.08, 0.86), 0, False)]),
+    'virtuoso': ((328, 352, 128, 8), [((176, 84, 486, 248), 'dark', (0.04, -0.14, 0.86), 10, False), ((466, 150, 634, 240), 'all', (0.56, 0.7, 0.4), 24, False)]),
     'mestre': ((372, 322, 140), [('draw', 'cape')]),
-    'lifehacker': ((315, 322, 128), [('draw', 'screen')]),
-    'ancestral': ((300, 392, 128), [((212, 100, 422, 252), 'color', (0.19, -0.17, 0.56), -6, False), ((520, 56, 604, 470), 'all', (0.71, 0.13, 0.15), -6, False)]),
+    'lifehacker': ((315, 330, 126), []),
+    'ancestral': ((300, 392, 128), [((212, 100, 422, 252), 'color', (0.19, -0.17, 0.56), -6, False), ((520, 56, 604, 440), 'all', (0.7, 0.12, 0.16), -6, False, 0.18)]),
+    'pinguim': ((335, 325, 158), []),
+    'robo': ((340, 345, 145), []),
+    'dragao': ((335, 300, 165), []),
     'soberano': ((322, 272, 120), [((190, 20, 446, 128), 'all', (0.1, -0.03, 0.8), 0, False)]),
 }
 
@@ -169,8 +172,14 @@ for name, (base, extras) in CFG.items():
         if ex[0] == 'draw':
             draw_extra(canvas, ex[1])
             continue
-        (bx, mode, (u, vv, w), rot, flip) = ex
+        (bx, mode, (u, vv, w), rot, flip) = ex[:5]
+        fade = ex[5] if len(ex) > 5 else 0  # some aos poucos embaixo (ponta que "entra" no corpo)
         p = piece(big, bx, mode)
+        if fade:
+            al = np.array(p.getchannel('A')).astype(np.float32)
+            hgt = al.shape[0]
+            ramp = np.clip((hgt - np.arange(hgt)) / (fade * hgt), 0, 1)[:, None]
+            p.putalpha(Image.fromarray((al * ramp).astype(np.uint8), 'L'))
         if flip:
             p = p.transpose(Image.FLIP_LEFT_RIGHT)
         tw = int(w * S)
