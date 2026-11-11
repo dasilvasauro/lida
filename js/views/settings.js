@@ -17,6 +17,8 @@ import { openSync, syncRowText } from './sync.js';
 import { connectFiles, reconnectFiles, disconnectFiles, anyFilesProvider } from './cloudfiles.js';
 import { providerName } from '../core/providers.js';
 import { checkUpdate, updaterAvailable } from './update.js';
+import { FLAVOR } from '../flavor.js';
+import { openExternal } from '../core/net.js';
 
 const toggle = (name, on, label) => `<span class="toggle"><input type="checkbox" data-${name}${on ? ' checked' : ''} aria-label="${esc(label)}"><i></i></span>`;
 // Para linhas que não são <label> (têm outro controle dentro): o próprio botão vira o rótulo.
@@ -130,7 +132,8 @@ export const settingsView = {
       <section class="set-group"><h2>Sobre</h2><div class="set-list">
         ${updaterAvailable() ? `<button type="button" class="set-row" data-checkupd>${icon('download')}<span class="grow">Procurar atualização<small>O Lida também procura sozinho, uma vez por dia</small></span>${icon('right', 'sm')}</button>` : ''}
         <button type="button" class="set-row" data-changelog>${icon('sparkles')}<span class="grow">Novidades e correções<small>O que mudou em cada versão</small></span>${icon('right', 'sm')}</button>
-        <div class="set-row"><span class="grow">Lida<small>Versão ${esc(app.version)}${isNative() ? ' · Android' : ''}</small></span><span class="val">${fmtInt(personal.stats().live)} registros</span></div>
+        <div class="set-row"><span class="grow">${FLAVOR === 'libre' ? 'Lida Libre' : 'Lida'}<small>Versão ${esc(app.version)}${isNative() ? ' · Android' : ''}</small></span><span class="val">${fmtInt(personal.stats().live)} registros</span></div>
+        <button type="button" class="set-row" data-source>${icon('open')}<span class="grow">Código-fonte<small>Software livre, licença GPL-3.0</small></span>${icon('right', 'sm')}</button>
         ${app.demo ? `<button type="button" class="set-row" data-demo>${icon('flask')}<span class="grow">Sair do modo demo<small>Volta para a tela inicial. Os dados de exemplo continuam guardados.</small></span></button>` : ''}
         ${!app.demo ? `<button type="button" class="set-row danger-text" data-exit>${icon(app.mode === 'cloud' ? 'logout' : 'lock')}<span class="grow">${app.mode === 'cloud' ? 'Sair da conta' : 'Bloquear agora'}</span></button>` : ''}
       </div></section>`;
@@ -308,6 +311,7 @@ function bind(el, S) {
     await personal.save('prefs', { ...(prefs ? stripView(prefs) : {}), name: v || undefined }, 'prefs');
   };
   el.querySelector('[data-connect]')?.addEventListener('click', () => app.actions.connectGoogle());
+  el.querySelector('[data-source]')?.addEventListener('click', () => openExternal('https://github.com/dasilvasauro/lida'));
   el.querySelector('[data-files-connect]')?.addEventListener('click', () => connectFiles());
   el.querySelector('[data-files-move]')?.addEventListener('click', () => connectFiles({ moving: true }));
   el.querySelector('[data-files-manage]')?.addEventListener('click', () => manageFiles());

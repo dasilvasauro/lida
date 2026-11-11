@@ -3,7 +3,7 @@
 Tarefas e hábitos num só lugar, com uma pequena recompensa a cada passo concluído.
 Funciona no navegador (celular e computador) e como app Android, offline, com os dados cifrados no aparelho.
 
-> **Lida 3 — alfa 13.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
+> **Lida 3 — alfa 15.** Esta é a reescrita completa do Lida, na mesma base do Pago e do Zelo.
 > A versão anterior (React) continua no ar na branch `main` até a nova alcançar o que ela fazia.
 
 ---
@@ -20,8 +20,9 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 8. [Trazer os dados do Lida anterior](#trazer-os-dados-do-lida-anterior)
 9. [Privacidade e sincronização](#privacidade-e-sincronização)
 10. [Sua parte: publicar](#sua-parte-publicar)
-11. [Desenvolvimento](#desenvolvimento)
-12. [Limites honestos](#limites-honestos)
+11. [Licença](#licença)
+12. [Desenvolvimento](#desenvolvimento)
+13. [Limites honestos](#limites-honestos)
 
 ---
 
@@ -54,8 +55,8 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | alfa 11 | Revisão de ontem com **hábitos e água**, **foco em rotinas**, power-ups no **cartão da tarefa**, **Live Update** com progresso e status em Ajustes, VT323 sem inflar a interface, textos novos do Lidinho | Pronta |
 | alfa 12 | Temas **Edna, Monocromo, Bumblebee e Tumbleweed**, subtarefas na tarefa em foco (cartão, widget e CLI), ofensiva da água, +30% de ouro nas tarefas, anéis e barras animados, **barra lateral translúcida** no Linux | Pronta |
 | alfa 13 | **Status e horário da sincronização**, conflitos entre aparelhos, **backup .lida** cifrado, **foto de perfil** ou Lidinho, **atualização dentro do app** com changelog, Releases com link fixo do APK, fim do modo de desenvolvedor | Pronta |
-| alfa 14 | **Sincronização pela sua nuvem** (Dropbox, OneDrive, Nextcloud/WebDAV), **mover a sincronização** da conta Google para ela, **Lidinho redesenhado**, 12 títulos novos com presentes | **Esta versão** |
-| próxima | Variante **Libre** (sem Google nem Firebase) para o F-Droid ou um repositório próprio, licença | Planejada |
+| alfa 14 | **Sincronização pela sua nuvem** (Dropbox, OneDrive, Nextcloud/WebDAV), **mover a sincronização** da conta Google para ela, **Lidinho redesenhado**, 12 títulos novos com presentes | Pronta |
+| alfa 15 | **Lida Libre** (sem Google nem Firebase, id próprio, APK na Release), receita do F-Droid e metadados, versionCode tirado da versão, licença **GPL-3.0**, correções no ícone do hábito e no Quadro | **Esta versão** |
 
 ## Como o jogo funciona
 
@@ -213,8 +214,11 @@ o ícone de instalar na barra de endereço.
 ## Usar no Android (APK)
 
 1. Baixe o APK da versão mais nova direto (sem zip):
-   **https://github.com/dasilvasauro/lida/releases/latest/download/lida.apk**
-   (builds de teste, sem tag, ficam em **Actions > Android > Artifacts**, dentro de um .zip).
+   - **https://github.com/dasilvasauro/lida/releases/latest/download/lida.apk** (com login Google)
+   - **https://github.com/dasilvasauro/lida/releases/latest/download/lida-libre.apk** (Lida Libre, sem nada do Google)
+
+   As duas podem ficar instaladas juntas (são apps diferentes, com dados separados). Builds de teste, sem tag,
+   ficam em **Actions > Android > Artifacts**, dentro de um .zip.
 2. No celular, abra o APK e permita a instalação de fontes desconhecidas quando o Android pedir.
 3. Em **Ajustes > Lembretes**, ligue os lembretes e aceite a permissão de notificações.
 4. No Android 12 ou mais novo, se aparecer "Horário aproximado", toque em **Permitir** e libere
@@ -231,11 +235,49 @@ terminar, o Lida reabre sozinho ou deixa uma notificação "toque para abrir". O
 ### Publicar uma versão (Release)
 
 1. Registre as novidades da versão em `js/core/changelog.js` (o topo da lista) e suba a versão em
-   `js/state.js` (`app.version`). O workflow recusa publicar uma versão que não esteja no changelog.
-2. Crie e envie a tag com o mesmo número: `git tag v3.0.0-alfa.13 && git push origin v3.0.0-alfa.13`.
-3. O GitHub Actions compila o APK assinado e cria a Release com `lida.apk` (nome fixo, para o link acima),
-   `latest.json` (lido pelo atualizador do app: versão, SHA-256 e novidades) e o texto da Release tirado do
-   changelog. O pacote do Linux é anexado à mesma Release.
+   `package.json`, `js/state.js` (`app.version`), `sw.js` e `desktop/lida_desktop/__init__.py`.
+2. Rode `node scripts/version.mjs`: grava `android/version.properties` (versionName e versionCode, que o
+   F-Droid lê) e o changelog do F-Droid em `fastlane/`. Faça commit. O workflow recusa publicar se esse
+   arquivo estiver desatualizado ou se a versão não estiver no changelog.
+3. Crie e envie a tag com o mesmo número: `git tag v3.0.0-alfa.15 && git push origin v3.0.0-alfa.15`.
+4. O GitHub Actions compila os dois APKs assinados (Google e Libre) e cria a Release com `lida.apk` e
+   `lida-libre.apk` (nomes fixos, para os links acima), `latest.json` (lido pelo atualizador do app: versão,
+   SHA-256 de cada APK e novidades) e o texto da Release tirado do changelog. O pacote do Linux é anexado à
+   mesma Release.
+
+O versionCode sai da versão: `3.0.0-alfa.15` vira `300000150` (maior, menor, correção, alfa/beta/rc e número).
+Ele é sempre maior que os números antigos (que vinham da contagem de builds do Actions), então quem tem uma
+versão antiga atualiza por cima normalmente.
+
+### Lida Libre e F-Droid
+
+A **Lida Libre** é o mesmo app sem nada do Google: sem login com Google, sem Firebase, sem o plugin
+google-services. Sincroniza pela nuvem da pessoa (Nextcloud/WebDAV, Dropbox ou OneDrive) e tem id próprio
+(`io.github.dasilvasauro.lida.libre`), então convive com a versão normal. Tudo sai da mesma branch: o
+`scripts/flavor.mjs` prepara a variante na hora de compilar (`libre` para o GitHub, `fdroid` para o F-Droid,
+que ainda tira o atualizador e a permissão de instalar apps).
+
+Toda funcionalidade nova entra nas duas automaticamente, porque o código é um só. A regra para o código novo:
+nada do Google fora de `js/core/cloud.js`, `js/firebase-config.js` e dos blocos marcados com `<google>` no Gradle.
+
+Onde publicar a Libre, do mais simples ao mais exigente:
+
+1. **Releases do GitHub** (já funciona a partir desta versão): link fixo `lida-libre.apk`, com o atualizador
+   dentro do app. Quem usa o [Obtainium](https://github.com/ImranR98/Obtainium) pode seguir o repositório e
+   receber as atualizações por ele.
+2. **IzzyOnDroid** (repositório que o F-Droid e o Droid-ify já listam): pega o APK das Releases do GitHub, sem
+   compilar. Abra um pedido em <https://gitlab.com/IzzyOnDroid/repo/-/issues> com o link do repositório e diga
+   que o APK é o `lida-libre.apk`. Costuma ser aceito em alguns dias.
+3. **F-Droid oficial**: compila a partir do código. A receita pronta está em
+   `docs/fdroid/io.github.dasilvasauro.lida.libre.yml`. Faça um fork de <https://gitlab.com/fdroid/fdroiddata>,
+   copie a receita para `metadata/`, rode `fdroid lint` e `fdroid build` se puder (opcional) e abra um merge
+   request. Os textos, o ícone, as capturas de tela e as novidades de cada versão vêm de `fastlane/` neste
+   repositório. Pontos que os revisores podem pedir para ajustar: a versão do Node no servidor de build
+   (o Capacitor 8 precisa do Node 20 ou mais novo) e o aviso **NonFreeNet** (Dropbox e OneDrive são opcionais).
+   O F-Droid assina o APK com a chave dele: quem instalou a Libre pelo GitHub precisa desinstalar antes de
+   instalar a do F-Droid (ou continuar pelo GitHub).
+
+**Custo:** nenhum dos três cobra nada.
 Se o APK for de **depuração** (sem a chave de assinatura configurada, veja abaixo), cada build sai com uma
 assinatura diferente e o Android só instala depois de desinstalar a versão anterior.
 
@@ -553,6 +595,11 @@ O Nextcloud/WebDAV funciona sem nada disso. Para o Dropbox e o OneDrive, o Lida 
 
 Abra **Actions > Android > Run workflow** (branch `v3`). Em uns 5 minutos o APK aparece em Artifacts.
 Para testar a versão web da `v3` sem tirar o Lida atual do ar, rode localmente (abaixo).
+
+## Licença
+
+O Lida é software livre, sob a **GNU GPL versão 3 ou posterior** (arquivo `LICENSE`). Você pode usar, estudar,
+mudar e redistribuir; quem distribuir uma versão modificada precisa publicar o código dela sob a mesma licença.
 
 ## Desenvolvimento
 

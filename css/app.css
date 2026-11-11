@@ -1611,9 +1611,10 @@ button.chip:hover { color: var(--text); border-color: color-mix(in srgb, var(--a
 .water-btn small { font-size: .7333rem; font-weight: 600; color: var(--muted); }
 /* Ícone livre do hábito */
 .icon-in { display: flex; align-items: center; gap: .6667rem; }
-.icon-in input { flex: none; width: 3.7333rem; height: 3.7333rem; padding: 0; border-radius: .9333rem; border: 1.5px solid var(--line); background: var(--surface-2); text-align: center; font-size: 1.8667rem; font-weight: 800; }
+/* O seletor tem peso maior que o da regra geral dos campos (.field input:not(...)), que vinha ganhando e esticava o campo do ícone até a largura toda. */
+.field .icon-in input:not([type='checkbox']):not([type='radio']):not([type='range']) { flex: none; width: 3.7333rem; height: 3.7333rem; min-height: 0; padding: 0; border-radius: .9333rem; border: 1.5px solid var(--line); background: var(--surface-2); text-align: center; font-size: 1.8667rem; font-weight: 800; }
 .icon-in input:focus { outline: none; border-color: var(--focus); }
-.icon-in small { font-size: .8333rem; color: var(--muted); font-weight: 500; }
+.icon-in small { flex: 1; min-width: 0; font-size: .8333rem; color: var(--muted); font-weight: 500; }
 .emoji-opt { display: grid; place-items: center; width: 2.5333rem; height: 2.5333rem; padding: 0; border-radius: .6667rem; border: 1.5px solid var(--line); background: var(--surface-2); font-size: 1.2667rem; font-weight: 800; }
 .emoji-opt:first-child { font-size: .8667rem; color: var(--muted); }
 .emoji-opt.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)); }
@@ -1633,6 +1634,8 @@ button.chip:hover { color: var(--text); border-color: color-mix(in srgb, var(--a
   display: flex; gap: .8rem; align-items: flex-start;
   overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: thin;
   margin: 0 calc(-1 * var(--gutter, 1.0667rem)); padding: .1333rem var(--gutter, 1.0667rem) 1.0667rem;
+  /* Sem isto, o encaixe da rolagem alinha a coluna na borda da tela, ignorando o recuo. */
+  scroll-padding-inline: var(--gutter, 1.0667rem);
 }
 .kb-col {
   --tc: var(--accent);

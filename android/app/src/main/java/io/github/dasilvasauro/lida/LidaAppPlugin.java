@@ -68,6 +68,7 @@ public class LidaAppPlugin extends Plugin {
         if (Build.VERSION.SDK_INT >= 26) canInstall = ctx.getPackageManager().canRequestPackageInstalls();
         r.put("canInstall", canInstall);
         r.put("updater", BuildConfig.LIDA_UPDATER);
+        r.put("flavor", BuildConfig.LIDA_FLAVOR);
         call.resolve(r);
     }
 

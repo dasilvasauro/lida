@@ -1,0 +1,40 @@
+# Receita para o fdroiddata (https://gitlab.com/fdroid/fdroiddata), arquivo metadata/io.github.dasilvasauro.lida.libre.yml.
+# Ver README > "Lida Libre e F-Droid". Os revisores do F-Droid podem pedir ajustes (principalmente a versão do Node).
+Categories:
+  - Productivity
+License: GPL-3.0-or-later
+AuthorName: dasilvasauro
+SourceCode: https://github.com/dasilvasauro/lida
+IssueTracker: https://github.com/dasilvasauro/lida/issues
+Changelog: https://github.com/dasilvasauro/lida/releases
+
+AutoName: Lida Libre
+
+RepoType: git
+Repo: https://github.com/dasilvasauro/lida.git
+
+AntiFeatures:
+  NonFreeNet:
+    en-US: Optional sync with Dropbox and OneDrive (Nextcloud/WebDAV is also available).
+    pt-BR: Sincronização opcional com Dropbox e OneDrive (também há Nextcloud/WebDAV).
+
+Builds:
+  - versionName: 3.0.0-alfa.15
+    versionCode: 300000150
+    commit: v3.0.0-alfa.15
+    subdir: android/app
+    sudo:
+      - apt-get update
+      - apt-get install -y -t trixie nodejs npm
+    init: cd ../.. && node scripts/flavor.mjs fdroid
+    gradle:
+      - yes
+    prebuild: cd ../.. && npm install --no-audit --no-fund && npm run android:sync
+    scandelete:
+      - node_modules
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^v3\.
+UpdateCheckData: android/version.properties|versionCode=(\d+)|.|versionName=(.+)
+CurrentVersion: 3.0.0-alfa.15
+CurrentVersionCode: 300000150

@@ -1,0 +1,6 @@
+Lida Libre e consertos
+
+• Novo: Lida Libre: uma versão do app sem nada do Google (nem login, nem Firebase), para o F-Droid e para quem prefere. Sincroniza pela sua nuvem (Dropbox, OneDrive ou Nextcloud) e pode ficar instalada junto com a outra.
+• Novo: O Lida agora é software livre (licença GPL-3.0). O link do código está em Ajustes > Sobre.
+• Correção: Na criação e na edição de hábito, o campo do ícone ocupava a largura toda e…
+Mais em Ajustes > Novidades e correções.

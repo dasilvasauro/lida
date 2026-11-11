@@ -1,0 +1,13 @@
+<p>Lida brings tasks and habits together and gives you a small reward for every step: XP, gold, levels, titles and Lidinho, the mascot that changes with each title. The app is in Brazilian Portuguese.</p>
+
+<ul>
+<li>Tasks with priorities, dates, times, subtasks, tags and projects; quick add in natural language (Portuguese); list or board (Kanban)</li>
+<li>Habits with daily goals, streaks and freezes; water tracking</li>
+<li>Pomodoro, focus timer in the notification, home screen widgets</li>
+<li>Daily productivity score (IPL) with monthly and yearly summaries</li>
+<li>Works offline; everything is encrypted on the device with your password</li>
+<li>Optional sync through your own cloud: Nextcloud/WebDAV, Dropbox or OneDrive (end-to-end encrypted)</li>
+<li>No ads, no tracking, no account required</li>
+</ul>
+
+<p>This is the Libre build: no Google code at all. Dropbox and OneDrive are third-party services, used only if you choose them.</p>

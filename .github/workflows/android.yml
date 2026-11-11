@@ -1,8 +1,12 @@
-# Gera o APK do Lida a cada push nas branches principais (e manualmente, em Actions > Android > Run workflow).
-# O APK fica em Actions > (execução) > Artifacts. Em tags "v*" (ex.: v3.0.0-alfa.13), vira também uma Release
-# com lida.apk + latest.json (o app usa para se atualizar sozinho; ver scripts/release.mjs).
-# Assinatura: com os segredos LIDA_KEYSTORE_* configurados, sai um APK de release assinado sempre com a
-# mesma chave (atualiza por cima da versão instalada). Sem eles, sai um APK de depuração.
+# Gera os APKs do Lida a cada push nas branches principais (e manualmente, em Actions > Android > Run workflow).
+# Duas variantes, lado a lado:
+#   google  lida.apk         login com Google + Firestore (e também a nuvem da pessoa)
+#   libre   lida-libre.apk   Lida Libre: sem nada do Google (id io.github.dasilvasauro.lida.libre)
+# Os APKs ficam em Actions > (execução) > Artifacts. Em tags "v*" (ex.: v3.0.0-alfa.15), viram também uma
+# Release com lida.apk, lida-libre.apk e latest.json (o app usa para se atualizar sozinho; ver scripts/release.mjs).
+# A versão (versionName/versionCode) vem de android/version.properties (scripts/version.mjs).
+# Assinatura: com os segredos LIDA_KEYSTORE_* configurados, saem APKs de release assinados sempre com a
+# mesma chave (atualizam por cima da versão instalada). Sem eles, saem APKs de depuração.
 name: Android
 
 on:
@@ -22,9 +26,13 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: true
+      matrix:
+        flavor: [google, libre]
     env:
-      LIDA_VERSION_CODE: ${{ github.run_number }}
-      LIDA_VERSION_NAME: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('3.0.0-dev.{0}', github.run_number) }}
+      # Fora de tag, o nome ganha "-dev.N" (compilação de teste); o versionCode é sempre o da versão.
+      LIDA_DEV_BUILD: ${{ !startsWith(github.ref, 'refs/tags/v') && github.run_number || '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -43,14 +51,32 @@ jobs:
         run: npm ci
 
       - name: Testes
+        if: matrix.flavor == 'google'
         run: npm test
+
+      - name: Versão confere com o package.json
+        run: |
+          node scripts/version.mjs
+          git diff --exit-code android/version.properties || (echo "::error::Rode node scripts/version.mjs e faça commit do android/version.properties." && exit 1)
+          V=$(sed -n 's/^versionName=//p' android/version.properties)
+          echo "LIDA_VERSION=$V${LIDA_DEV_BUILD:+-dev.$LIDA_DEV_BUILD}" >> "$GITHUB_ENV"
+
+      # Lida Libre: tira o login com Google, o google-services e o Firebase do www/ (scripts/flavor.mjs).
+      - name: Variante Libre
+        if: matrix.flavor == 'libre'
+        run: |
+          node scripts/flavor.mjs libre
+          npm uninstall --no-save @capacitor-firebase/authentication
+          if cat android/build.gradle android/app/build.gradle android/variables.gradle capacitor.config.json package.json | grep -vE '^\s*//' | grep -qiE "google-services|gms|firebase"; then echo "::error::Sobrou Google na Libre"; exit 1; fi
 
       # Login com Google no APK: precisa do google-services.json do Firebase (segredo GOOGLE_SERVICES_JSON).
       # Sem ele, o plugin de login sai do APK (senão o app fecharia ao abrir) e o login fica só na web.
       - name: Firebase (login com Google)
+        if: matrix.flavor == 'google'
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
+          node scripts/flavor.mjs google
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
             printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
             node -e "const j=require('./android/app/google-services.json'); const c=j.client.find(x=>x.client_info.android_client_info.package_name==='io.github.dasilvasauro.lida'); if(!c){console.error('google-services.json sem o app io.github.dasilvasauro.lida'); process.exit(1)} if(!(c.oauth_client||[]).some(o=>o.client_type===3)){console.error('google-services.json sem o cliente web (tipo 3): ative o login com Google no Firebase e baixe o arquivo de novo'); process.exit(1)} if(!(c.oauth_client||[]).some(o=>o.client_type===1)) console.log('::warning::Nenhuma impressão digital SHA-1 cadastrada no app Android do Firebase: o login com Google vai falhar.')"
@@ -85,33 +111,60 @@ jobs:
           LIDA_KEY_PASSWORD: ${{ secrets.LIDA_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
+          NAME="Lida-${{ matrix.flavor }}-$LIDA_VERSION"
           if [ "${{ steps.keystore.outputs.signed }}" = "true" ]; then
             ./gradlew --no-daemon assembleRelease
-            cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/Lida-$LIDA_VERSION_NAME.apk"
+            cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/$NAME.apk"
           else
             ./gradlew --no-daemon assembleDebug
-            cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/Lida-$LIDA_VERSION_NAME-debug.apk"
+            cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/$NAME-debug.apk"
           fi
+          echo "signed=${{ steps.keystore.outputs.signed }}" > "$RUNNER_TEMP/signed-${{ matrix.flavor }}.txt"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Lida-${{ env.LIDA_VERSION_NAME }}
-          path: ${{ runner.temp }}/Lida-*.apk
+          name: Lida-${{ matrix.flavor }}
+          path: |
+            ${{ runner.temp }}/Lida-*.apk
+            ${{ runner.temp }}/signed-*.txt
           if-no-files-found: error
 
-      # Tags v*: Release com nome de arquivo fixo (link .../releases/latest/download/lida.apk), o
-      # latest.json do atualizador do app (versão, SHA-256, novidades) e o texto tirado do changelog.
-      # Só com APK assinado: um APK de depuração não instalaria por cima da versão do usuário.
+  # Tags v*: Release com nomes de arquivo fixos (links .../releases/latest/download/lida.apk e
+  # lida-libre.apk), o latest.json do atualizador do app (versão, SHA-256, novidades) e o texto tirado do
+  # changelog. Só com APKs assinados: um APK de depuração não instalaria por cima da versão de ninguém.
+  release:
+    needs: apk
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/apks
+          merge-multiple: true
+
       - name: Arquivos da Release
-        if: startsWith(github.ref, 'refs/tags/v') && steps.keystore.outputs.signed == 'true'
-        run: node scripts/release.mjs "${GITHUB_REF_NAME#v}" "$LIDA_VERSION_CODE" "$RUNNER_TEMP/Lida-$LIDA_VERSION_NAME.apk" "$RUNNER_TEMP/release"
+        id: files
+        run: |
+          cd "$RUNNER_TEMP/apks"
+          if grep -q "signed=false" signed-*.txt; then echo "::warning::APKs de depuração: sem Release (configure os segredos LIDA_KEYSTORE_*)."; echo "ok=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          G=$(ls Lida-google-*.apk | head -1); L=$(ls Lida-libre-*.apk | head -1)
+          cd "$GITHUB_WORKSPACE"
+          node scripts/release.mjs "${GITHUB_REF_NAME#v}" "$RUNNER_TEMP/apks/$G" "$RUNNER_TEMP/apks/$L" "$RUNNER_TEMP/release"
+          echo "ok=true" >> "$GITHUB_OUTPUT"
 
       - name: Release
-        if: startsWith(github.ref, 'refs/tags/v') && steps.keystore.outputs.signed == 'true'
+        if: steps.files.outputs.ok == 'true'
         uses: softprops/action-gh-release@v2
         with:
           files: |
             ${{ runner.temp }}/release/lida.apk
+            ${{ runner.temp }}/release/lida-libre.apk
             ${{ runner.temp }}/release/latest.json
           body_path: ${{ runner.temp }}/release/release-notes.md
           make_latest: true

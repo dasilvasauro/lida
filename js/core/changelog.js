@@ -3,6 +3,17 @@
 // tipo: 'novo' | 'melhoria' | 'correcao'
 export const CHANGELOG = [
   {
+    v: '3.0.0-alfa.15',
+    date: '2026-11-11',
+    title: 'Lida Libre e consertos',
+    items: [
+      ['novo', 'Lida Libre: uma versão do app sem nada do Google (nem login, nem Firebase), para o F-Droid e para quem prefere. Sincroniza pela sua nuvem (Dropbox, OneDrive ou Nextcloud) e pode ficar instalada junto com a outra.'],
+      ['novo', 'O Lida agora é software livre (licença GPL-3.0). O link do código está em Ajustes > Sobre.'],
+      ['correcao', 'Na criação e na edição de hábito, o campo do ícone ocupava a largura toda e empurrava o texto de ajuda para fora da tela.'],
+      ['correcao', 'No Quadro, a primeira coluna ficava colada na borda esquerda da tela no celular.'],
+    ],
+  },
+  {
     v: '3.0.0-alfa.14',
     date: '2026-11-11',
     title: 'Sincronize pela sua nuvem e o Lidinho novo',

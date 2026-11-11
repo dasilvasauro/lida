@@ -49,6 +49,11 @@ export async function checkUpdate({ manual = false } = {}) {
     ls.set({ at: Date.now() });
     if (res.status >= 400) throw new Error(`HTTP ${res.status}`);
     const latest = JSON.parse(res.text);
+    // A Libre baixa o APK dela (outro id, sem nada do Google).
+    if (info.flavor === 'libre') {
+      if (!latest.apkLibre) return null;
+      Object.assign(latest, { apk: latest.apkLibre, sha256: latest.sha256Libre || '', size: latest.sizeLibre || 0 });
+    }
     const newer = Number(latest.versionCode) > Number(info.versionCode || 0);
     if (!newer) {
       if (manual) toast(`Você está na versão mais nova (${info.versionName || app.version}).`);

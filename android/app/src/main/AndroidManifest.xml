@@ -97,5 +97,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- Atualizar o Lida sem sair dele (pede, uma vez, "Instalar apps desconhecidos"). -->
+    <!-- <updater> (sai na variante do F-Droid: scripts/flavor.mjs) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- </updater> -->
 </manifest>

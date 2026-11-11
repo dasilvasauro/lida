@@ -1,0 +1,34 @@
+<p>O Lida junta tarefas e hábitos num só lugar e dá uma pequena recompensa a cada passo concluído: XP, ouro, níveis, títulos e o Lidinho, o mascote que muda a cada título.</p>
+
+<p><b>Tarefas</b></p>
+<ul>
+<li>Prioridades de P0 a P4, datas, horários, subtarefas, etiquetas e projetos</li>
+<li>Adição rápida em linguagem natural ("pagar luz amanhã 10h p1 #contas")</li>
+<li>Lista ou Quadro (Kanban), rotinas, sprints e desafios do dia</li>
+<li>Revisão de ontem: marque o que você fez e esqueceu antes do resumo do dia</li>
+</ul>
+
+<p><b>Hábitos</b></p>
+<ul>
+<li>Metas por dia, sequências, congelamentos e dias de folga</li>
+<li>Água com copo e garrafa, e um espaço para o que você quer largar</li>
+</ul>
+
+<p><b>Foco</b></p>
+<ul>
+<li>Pomodoro, tarefa em foco com cronômetro na notificação e relógio flutuante</li>
+<li>Widgets na tela inicial</li>
+</ul>
+
+<p><b>IPL</b>: uma nota de 0 a 100 para cada dia, com resumo do mês e do ano.</p>
+
+<p><b>Seus dados, só seus</b></p>
+<ul>
+<li>Funciona sem internet</li>
+<li>Tudo é cifrado no aparelho com a sua senha (AES-256-GCM)</li>
+<li>Sincronização opcional pela sua própria nuvem: Nextcloud (ou outro WebDAV), Dropbox ou OneDrive. Quem guarda os arquivos não consegue ler nada</li>
+<li>Backup em arquivo, cifrado com uma senha</li>
+<li>Sem anúncios, sem rastreamento, sem conta obrigatória</li>
+</ul>
+
+<p>Esta é a versão Libre: não tem nenhum código do Google. Dropbox e OneDrive são serviços de terceiros e só são usados se você escolher.</p>
