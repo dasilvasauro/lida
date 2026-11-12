@@ -3,7 +3,7 @@ import { openDB, deleteDB } from './lib/idb.js';
 import { initClock, today, shiftDays, resetClock, clockOffset } from './lib/clock.js';
 import { initHLC } from './lib/hlc.js';
 import { createKey, changePass } from './lib/crypto.js';
-import { uid, esc, $, debounce, addDays } from './lib/util.js';
+import { uid, esc, $, debounce, addDays, LOC } from './lib/util.js';
 import * as cloud from './core/cloud.js';
 import { createSync } from './core/sync.js';
 import * as legacy from './core/legacy.js';
@@ -18,6 +18,7 @@ import { initSyncPill } from './views/sync.js';
 import { initUpdates } from './views/update.js';
 import { initAchievements } from './views/achievements.js';
 import { initAlarms, alarmLink } from './views/alarm.js';
+import { loadDict, startDomTranslation, t } from './core/i18n.js';
 import { loadCreds, saveCreds, startFileSync } from './views/cloudfiles.js';
 import { initSound } from './core/sound.js';
 import { grantPastTitles, itemsGiftText } from './core/game.js';
@@ -93,6 +94,9 @@ matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', () => {
 });
 
 async function boot() {
+  // Idioma: o dicionário entra antes de qualquer tela (o tradutor reescreve o que aparecer).
+  await loadDict();
+  startDomTranslation();
   document.documentElement.classList.toggle('is-native', isNative()); // antes da aparência (tamanho padrão)
   appearance();
   initTips();
@@ -457,12 +461,15 @@ const updateWidget = debounce(() => {
   const B = buckets(S, d);
   const hs = S.habit.filter((h) => !h.archived && isScheduled(h, d));
   const hd = hs.filter((h) => isDone(S, h, d)).length;
-  const L = (ml) => (ml >= 1000 ? `${(ml / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L` : `${ml} ml`);
-  const footer = [hs.length ? `Hábitos ${hd}/${hs.length}` : '', `Água ${L(waterToday(S, d))} de ${L(waterGoal(S))}`].filter(Boolean).join('  ·  ');
+  const L = (ml) => (ml >= 1000 ? `${(ml / 1000).toLocaleString(LOC, { maximumFractionDigits: 2 })} L` : `${ml} ml`);
+  const footer = [hs.length ? t(`Hábitos ${hd}/${hs.length}`) : '', t(`Água ${L(waterToday(S, d))} de ${L(waterGoal(S))}`)].filter(Boolean).join('  ·  ');
   const tasks = [...B.overdue, ...B.today].slice(0, 4).map((t) => ({ t: t.title, time: t.time ? fmtTime(t.time) : '' }));
   const g = glance(S, d);
   const rings = { tasksDone: g.tasks.done, tasksTotal: g.tasks.total, habitsDone: g.habits.done, habitsTotal: g.habits.total, waterMl: g.water.ml, waterGoal: g.water.goal };
-  call('LidaWidget', 'update', { data: JSON.stringify({ date: d, title: 'Hoje', done: B.doneToday.length, total: B.today.length + B.doneToday.length, tasks, footer, rings }) });
+  const total = B.today.length + B.doneToday.length;
+  // os textos fixos do widget vão junto, no idioma do app
+  const txt = { today: t('Hoje'), tapDay: t('Toque para abrir o Lida e ver o seu dia.'), allDone: t('Tudo feito por hoje.'), freeDay: t('Dia livre. Toque para planejar.'), tasks: t('Tarefas'), habits: t('Hábitos'), water: t('Água'), locale: LOC };
+  call('LidaWidget', 'update', { data: JSON.stringify({ date: d, title: t('Hoje'), sub: t(`${B.doneToday.length} de ${total}`), done: B.doneToday.length, total, tasks, footer, rings, txt }) });
 }, 1500);
 
 // Links lida://secao (vindos do widget) abrem a seção certa.

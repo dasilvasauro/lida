@@ -5,7 +5,7 @@ import { levelTitle, nextTitle } from '../core/model.js';
 import { MILESTONES } from '../core/game.js';
 import { habitsOnDay, doneDay } from '../core/tasks.js';
 import { today } from '../lib/clock.js';
-import { esc, fmtInt, plural, addDays, sum, weekday, MSHORT, WD_SHORT, ymOf, fmtMonth, daysBetween, uid } from '../lib/util.js';
+import { esc, fmtInt, plural, addDays, sum, weekday, MSHORT, WD_SHORT, fmtDay, ymOf, fmtMonth, daysBetween, uid, LOC } from '../lib/util.js';
 import { icon, sheet, toast, confirmDialog, empty, COLORS, colorPicker, readForm } from '../ui/ui.js';
 import { columns, line, heat } from '../ui/chart.js';
 import { IPL_PARTS, dayIPL, grade, gradeLine, monthIPL } from '../core/ipl.js';
@@ -13,6 +13,7 @@ import { showDaySummary, showMonthSummary, showYearSummary, partsBars } from './
 import { haptic } from '../ui/haptics.js';
 import { avatar, levelCard, openMascot } from './common.js';
 import { achSection, bindAchSection } from './achievements.js';
+import { t as tt } from '../core/i18n.js';
 
 export const MOODS = [
   { id: 'radiant', emoji: '😄', name: 'Radiante' },
@@ -101,19 +102,19 @@ function stats(S, d) {
   const focus = sum(S.ev.filter((e) => e.kind === 'focus' && days.includes(e.date)), (e) => e.focusSec || 0);
   const gold = sum(days, (x) => goldOn(S, x));
   const lab = (x) => (n <= 7 ? WD_SHORT[weekday(x)] : `${Number(x.slice(8))}`);
-  const fmtD = (x) => `${Number(x.slice(8))} ${MSHORT[Number(x.slice(5, 7)) - 1]}`;
+  const fmtD = (x) => `${fmtDay(x)}`;
   return `<section class="block"><div class="block-head"><h2>Seus números</h2>
       <div class="seg small range" role="radiogroup" aria-label="Período">${[7, 30].map((r) => `<button type="button" role="radio" aria-checked="${n === r}" class="${n === r ? 'on' : ''}" data-range="${r}">${r} dias</button>`).join('')}</div></div>
     <div class="tiles">
       <div class="tile"><small>Tarefas concluídas</small><b>${fmtInt(sum(done))}</b></div>
       <div class="tile"><small>Hábitos em dia</small><b>${ht ? `${Math.round((hd / ht) * 100)}%` : '–'}</b></div>
       <div class="tile"><small>XP ganho</small><b>${fmtInt(sum(xp))}</b></div>
-      <div class="tile"><small>Foco</small><b>${focus >= 3600 ? `${(focus / 3600).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h` : `${Math.round(focus / 60)} min`}</b></div>
+      <div class="tile"><small>Foco</small><b>${focus >= 3600 ? `${(focus / 3600).toLocaleString(LOC, { maximumFractionDigits: 1 })} h` : `${Math.round(focus / 60)} min`}</b></div>
     </div>
     <div class="charts">
       <figure class="card chart-card"><figcaption><b>XP por dia</b><span>${fmtInt(gold)} de ouro no período</span></figcaption>
         ${columns(days.map((x, i) => ({ label: lab(x), value: xp[i], tip: `${fmtInt(xp[i])} XP|${fmtD(x)}` })), { every: n <= 7 ? 1 : 5, ariaLabel: `XP por dia nos últimos ${n} dias` })}</figure>
-      <figure class="card chart-card"><figcaption><b>Tarefas concluídas</b><span>média de ${(sum(done) / n).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} por dia</span></figcaption>
+      <figure class="card chart-card"><figcaption><b>Tarefas concluídas</b><span>média de ${(sum(done) / n).toLocaleString(LOC, { maximumFractionDigits: 1 })} por dia</span></figcaption>
         ${columns(days.map((x, i) => ({ label: lab(x), value: done[i], tip: `${plural(done[i], 'tarefa', 'tarefas')}|${fmtD(x)}` })), { every: n <= 7 ? 1 : 5, ariaLabel: `Tarefas concluídas por dia nos últimos ${n} dias` })}</figure>
     </div></section>`;
 }
@@ -130,7 +131,7 @@ function habitHeat(S, d) {
   for (let x = first; x <= end; x = addDays(x, 1)) {
     const h = habitsOnDay(S, x);
     const tot = h.done + h.missed;
-    cells.push({ date: x, v: tot ? h.done / tot : null, tip: tot ? `${h.done} de ${tot}|${Number(x.slice(8))} ${MSHORT[Number(x.slice(5, 7)) - 1]}` : `Sem hábitos|${Number(x.slice(8))} ${MSHORT[Number(x.slice(5, 7)) - 1]}` });
+    cells.push({ date: x, v: tot ? h.done / tot : null, tip: tot ? `${h.done} de ${tot}|${fmtDay(x)}` : `Sem hábitos|${fmtDay(x)}` });
   }
   return `<section class="block"><div class="block-head"><h2>Constância dos hábitos</h2><span class="hint">${weeks} semanas</span></div>
     <div class="card heat-card">${heat(cells, { ariaLabel: 'Hábitos cumpridos por dia nas últimas semanas' })}</div></section>`;
@@ -180,7 +181,7 @@ function moods(S, d) {
       <ol class="mood-strip" aria-label="Humor dos últimos 30 dias">${days
         .map((x) => {
           const mm = MOOD[S.moodByDate.get(x)];
-          return `<li class="mo-${mm?.id || 'none'}" tabindex="-1" data-tip="${esc(mm ? mm.name : 'Sem registro')}|${Number(x.slice(8))} ${MSHORT[Number(x.slice(5, 7)) - 1]}">${mm ? face(mm.id, 16) : ''}</li>`;
+          return `<li class="mo-${mm?.id || 'none'}" tabindex="-1" data-tip="${esc(mm ? mm.name : 'Sem registro')}|${fmtDay(x)}">${mm ? face(mm.id, 16) : ''}</li>`;
         })
         .join('')}</ol>
       <ul class="mood-count">${MOODS.map((mm) => `<li><span class="mo-${mm.id}">${face(mm.id, 22)}</span><b>${count[mm.id]}</b><small>${mm.name}</small></li>`).join('')}</ul>
@@ -201,7 +202,7 @@ function vision(S, d) {
   return `<section class="block"><div class="block-head"><h2>Visão</h2><button type="button" class="link" data-vision>Editar</button></div>
     <div class="card vision-card">
       ${due ? `<div class="review">${icon('bell')}<span class="grow">Hora de revisar seus objetivos</span><button type="button" class="btn small primary" data-review>Revisar</button></div>` : `<p class="hint">Próxima revisão em ${daysBetween(d, cp)} dias</p>`}
-      ${(v.goals || []).length ? `<ul class="goals">${v.goals.map((g) => `<li><span class="grow"><b>${esc(g.title)}</b><small>${GOAL_STATES[(g.state || 1) - 1][0]} · ${GOAL_STATES[(g.state || 1) - 1][1]}</small></span><span class="gsteps" aria-label="Nível ${g.state || 1} de 5">${[1, 2, 3, 4, 5].map((k) => `<i class="${k <= (g.state || 1) ? 'on' : ''}"></i>`).join('')}</span></li>`).join('')}</ul>` : ''}
+      ${(v.goals || []).length ? `<ul class="goals">${v.goals.map((g) => `<li><span class="grow"><b translate="no">${esc(g.title)}</b><small>${GOAL_STATES[(g.state || 1) - 1][0]} · ${GOAL_STATES[(g.state || 1) - 1][1]}</small></span><span class="gsteps" aria-label="Nível ${g.state || 1} de 5">${[1, 2, 3, 4, 5].map((k) => `<i class="${k <= (g.state || 1) ? 'on' : ''}"></i>`).join('')}</span></li>`).join('')}</ul>` : ''}
       ${v.develop?.length ? `<div class="traits"><small>Desenvolver</small><div class="chips">${v.develop.map((t) => `<span class="chip on">${esc(t)}</span>`).join('')}</div></div>` : ''}
       ${v.abandon?.length ? `<div class="traits"><small>Deixar para trás</small><div class="chips">${v.abandon.map((t) => `<span class="chip">${esc(t)}</span>`).join('')}</div></div>` : ''}
     </div></section>`;
@@ -281,7 +282,7 @@ function reflections(S) {
   return `<section class="block"><div class="block-head"><h2>Reflexões<span class="count">${list.length || ''}</span></h2><button type="button" class="btn small" data-refl-new>${icon('plus')}Nova</button></div>
     ${
       list.length
-        ? `<div class="refls">${list.map((r) => `<button type="button" class="refl" data-refl="${esc(r.id)}" style="--c:${esc(colorOf(r.color))}"><b>${esc(r.title)}</b><small>${plural((r.cards || []).length, 'cartão', 'cartões')}</small><p>${esc((r.cards || [])[0] || '')}</p></button>`).join('')}</div>`
+        ? `<div class="refls">${list.map((r) => `<button type="button" class="refl" data-refl="${esc(r.id)}" style="--c:${esc(colorOf(r.color))}"><b translate="no">${esc(r.title)}</b><small>${plural((r.cards || []).length, 'cartão', 'cartões')}</small><p>${esc((r.cards || [])[0] || '')}</p></button>`).join('')}</div>`
         : '<p class="hint pad">Guarde aprendizados em cartões curtos: frases para reler quando precisar. Ex.: "O que aprendi este mês".</p>'
     }</section>`;
 }
@@ -300,7 +301,7 @@ function viewRefl(id) {
   ov.setAttribute('aria-modal', 'true');
   ov.setAttribute('aria-label', r.title);
   ov.style.setProperty('--c', colorOf(r.color));
-  ov.innerHTML = `<header class="rf-head"><h2>${esc(r.title)}</h2><button type="button" class="icon-btn" data-x aria-label="Fechar">${icon('x')}</button></header>
+  ov.innerHTML = `<header class="rf-head"><h2 translate="no">${esc(r.title)}</h2><button type="button" class="icon-btn" data-x aria-label="Fechar">${icon('x')}</button></header>
     <ol class="rf-track">${cards.map((c, i) => `<li><div class="rf-card"><small>${i + 1} de ${cards.length}</small><p>${esc(c)}</p></div></li>`).join('')}</ol>
     <footer class="rf-foot">
       <button type="button" class="icon-btn" data-prev aria-label="Anterior">${icon('left')}</button>
@@ -393,7 +394,7 @@ function bind(el) {
 export function moodPicker(S, d) {
   const cur = S.moodByDate.get(d);
   const m = MOOD[cur];
-  return `<section class="mood-pick${cur ? ' set' : ''}" aria-label="Humor de hoje"><span class="mood-q">${m ? `Hoje você está: <b>${m.name.toLowerCase()}</b>` : 'Como você está hoje?'}</span>
+  return `<section class="mood-pick${cur ? ' set' : ''}" aria-label="Humor de hoje"><span class="mood-q">${m ? `Hoje você está: <b>${esc(tt(m.name).toLowerCase())}</b>` : 'Como você está hoje?'}</span>
     <div class="moods" role="radiogroup" aria-label="Humor">${MOODS.map((x) => `<button type="button" role="radio" aria-checked="${cur === x.id}" class="mood mo-${x.id}${cur === x.id ? ' on' : ''}" data-mood="${x.id}" title="${x.name}" aria-label="${x.name}">${face(x.id, 30)}</button>`).join('')}</div></section>`;
 }
 export function bindMood(el) {

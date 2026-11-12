@@ -17,7 +17,8 @@ import secrets
 import socket
 import sys
 
-from . import APP_ID, VERSION, paths
+from . import APP_ID, VERSION, i18n, paths
+from .i18n import tr
 from .server import Hub, make_http, make_socket, mark_stopped, serve
 from .updater import Updater, relaunch
 
@@ -101,6 +102,7 @@ class Window(QMainWindow):
         super().__init__()
         self.app = app
         self.settings = QSettings("Lida", "desktop")
+        i18n.set_lang(self.settings.value("lang", "") or i18n.system_lang())
         self.state = {}
         self.token = secrets.token_urlsafe(24)
         self.setWindowTitle("Lida")
@@ -164,7 +166,7 @@ class Window(QMainWindow):
             self.updater = Updater()
             self.http = make_http(self.hub, self.token, self._google_login, updater=self.updater, restart=lambda: self.bridge.restart.emit(), alarm=lambda on: self.bridge.alarm.emit(on))
         except OSError as e:
-            QMessageBox.critical(None, "Lida", f"A porta {paths.PORT} já está em uso ({e}). Feche o outro programa ou defina LIDA_PORT.")
+            QMessageBox.critical(None, "Lida", tr("A porta {0} já está em uso ({1}). Feche o outro programa ou defina LIDA_PORT.", paths.PORT, e))
             sys.exit(1)
         serve(self.http)
         self.sock = make_socket(self.hub)
@@ -233,7 +235,7 @@ class Window(QMainWindow):
 
         def done():
             if req.isFinished():
-                self.tray.showMessage("Lida", f"Arquivo salvo em {folder}/{name}", self.windowIcon(), 6000)
+                self.tray.showMessage("Lida", tr("Arquivo salvo em {0}", f"{folder}/{name}"), self.windowIcon(), 6000)
 
         req.isFinishedChanged.connect(done)
 
@@ -313,61 +315,61 @@ class Window(QMainWindow):
     def _build_menus(self):
         mb = self.menuBar()
         m = mb.addMenu("&Lida")
-        self._act(m, "Nova tarefa", lambda: self.ui("new-task"), "Ctrl+N")
-        self._act(m, "Buscar", lambda: self.ui("search"), "Ctrl+K")
-        self._act(m, "Esvaziar a mente", lambda: self.ui("tool", "brain"), "Ctrl+B")
+        self._act(m, tr("Nova tarefa"), lambda: self.ui("new-task"), "Ctrl+N")
+        self._act(m, tr("Buscar"), lambda: self.ui("search"), "Ctrl+K")
+        self._act(m, tr("Esvaziar a mente"), lambda: self.ui("tool", "brain"), "Ctrl+B")
         m.addSeparator()
-        self._act(m, "Ajustes", lambda: self.ui("nav", "ajustes"), "Ctrl+,")
+        self._act(m, tr("Ajustes"), lambda: self.ui("nav", "ajustes"), "Ctrl+,")
         m.addSeparator()
-        self._act(m, "Fechar janela", self.close, "Ctrl+W")
-        self._act(m, "Sair do Lida", self.quit, "Ctrl+Q")
+        self._act(m, tr("Fechar janela"), self.close, "Ctrl+W")
+        self._act(m, tr("Sair do Lida"), self.quit, "Ctrl+Q")
 
-        v = mb.addMenu("&Exibir")
+        v = mb.addMenu(tr("&Exibir"))
         for i, (route, label) in enumerate([("hoje", "Hoje / Painel"), ("planejar", "Planejar"), ("habitos", "Hábitos"), ("loja", "Loja"), ("eu", "Eu")], 1):
-            self._act(v, label, lambda _=False, r=route: self.ui("nav", r), f"Ctrl+{i}")
+            self._act(v, tr(label), lambda _=False, r=route: self.ui("nav", r), f"Ctrl+{i}")
         v.addSeparator()
-        self.m_theme = v.addMenu("Tema")
-        self.m_font = v.addMenu("Fonte")
-        self.m_size = v.addMenu("Tamanho")
+        self.m_theme = v.addMenu(tr("Tema"))
+        self.m_font = v.addMenu(tr("Fonte"))
+        self.m_size = v.addMenu(tr("Tamanho"))
         self.g_theme = QActionGroup(self)
         self.g_font = QActionGroup(self)
         self.g_size = QActionGroup(self)
-        self.a_showdone = self._act(v, "Mostrar concluídas em Hoje", lambda on: self.ui("showDone", on), checkable=True)
-        self.a_glass = self._act(v, "Barra lateral translúcida", lambda on: self.ui("glass", on), checkable=True)
+        self.a_showdone = self._act(v, tr("Mostrar concluídas em Hoje"), lambda on: self.ui("showDone", on), checkable=True)
+        self.a_glass = self._act(v, tr("Barra lateral translúcida"), lambda on: self.ui("glass", on), checkable=True)
         v.addSeparator()
-        self._act(v, "Tela cheia", lambda: self.showNormal() if self.isFullScreen() else self.showFullScreen(), "F11")
+        self._act(v, tr("Tela cheia"), lambda: self.showNormal() if self.isFullScreen() else self.showFullScreen(), "F11")
 
-        f = mb.addMenu("&Foco")
-        self.a_pick = self._act(f, "Focar numa tarefa…", lambda: (self.show_window(), self.ui("tool", "pick-focus")), "Ctrl+Shift+F")
-        self.a_stopfocus = self._act(f, "Parar foco", lambda: self._exec_js(0, "focus", json.dumps({"action": "stop"})))
-        self.a_donefocus = self._act(f, "Concluir a tarefa em foco", lambda: self._exec_js(0, "focus", json.dumps({"action": "done"})), "Ctrl+Shift+D")
+        f = mb.addMenu(tr("&Foco"))
+        self.a_pick = self._act(f, tr("Focar numa tarefa…"), lambda: (self.show_window(), self.ui("tool", "pick-focus")), "Ctrl+Shift+F")
+        self.a_stopfocus = self._act(f, tr("Parar foco"), lambda: self._exec_js(0, "focus", json.dumps({"action": "stop"})))
+        self.a_donefocus = self._act(f, tr("Concluir a tarefa em foco"), lambda: self._exec_js(0, "focus", json.dumps({"action": "done"})), "Ctrl+Shift+D")
         f.addSeparator()
-        self.a_pomo = self._act(f, "Iniciar Pomodoro", lambda: self._exec_js(0, "pomo", json.dumps({"action": "toggle"})), "Ctrl+P")
-        self._act(f, "Reiniciar Pomodoro", lambda: self._exec_js(0, "pomo", json.dumps({"action": "reset"})))
-        self._act(f, "Pular para a pausa / foco", lambda: self._exec_js(0, "pomo", json.dumps({"action": "skip"})))
-        self._act(f, "Abrir o Pomodoro", lambda: (self.show_window(), self.ui("tool", "focus")))
+        self.a_pomo = self._act(f, tr("Iniciar Pomodoro"), lambda: self._exec_js(0, "pomo", json.dumps({"action": "toggle"})), "Ctrl+P")
+        self._act(f, tr("Reiniciar Pomodoro"), lambda: self._exec_js(0, "pomo", json.dumps({"action": "reset"})))
+        self._act(f, tr("Pular para a pausa / foco"), lambda: self._exec_js(0, "pomo", json.dumps({"action": "skip"})))
+        self._act(f, tr("Abrir o Pomodoro"), lambda: (self.show_window(), self.ui("tool", "focus")))
 
-        s = mb.addMenu("&Ajustes")
-        self.a_sound = self._act(s, "Sons", lambda on: self.ui("sound", on), checkable=True)
-        self.a_punish = self._act(s, "Punições por tarefa vencida", lambda on: self.ui("punish", on), checkable=True)
-        n = s.addMenu("Lembretes")
+        s = mb.addMenu(tr("&Ajustes"))
+        self.a_sound = self._act(s, tr("Sons"), lambda on: self.ui("sound", on), checkable=True)
+        self.a_punish = self._act(s, tr("Punições por tarefa vencida"), lambda on: self.ui("punish", on), checkable=True)
+        n = s.addMenu(tr("Lembretes"))
         self.a_notify = {}
         for key, label in [("on", "Lembretes ligados"), ("tasks", "Tarefas com horário"), ("habits", "Hábitos pendentes"), ("morning", "Resumo da manhã"), ("daily", "Fechamento do dia"), ("water", "Água"), ("inApp", "Aviso com o app aberto")]:
-            self.a_notify[key] = self._act(n, label, lambda on, k=key: self.ui("notify", {k: on}), checkable=True)
+            self.a_notify[key] = self._act(n, tr(label), lambda on, k=key: self.ui("notify", {k: on}), checkable=True)
         s.addSeparator()
-        self.a_tray = self._act(s, "Fechar para a bandeja", lambda on: self.settings.setValue("closeToTray", on), checkable=True)
+        self.a_tray = self._act(s, tr("Fechar para a bandeja"), lambda on: self.settings.setValue("closeToTray", on), checkable=True)
         self.a_tray.setChecked(self.settings.value("closeToTray", True, type=bool))
-        self.a_autostart = self._act(s, "Abrir com o sistema (na bandeja)", self._set_autostart, checkable=True)
+        self.a_autostart = self._act(s, tr("Abrir com o sistema (na bandeja)"), self._set_autostart, checkable=True)
         self.a_autostart.setChecked(paths.AUTOSTART_FILE.exists())
 
-        h = mb.addMenu("Aj&uda")
-        self._act(h, "Comandos do terminal (lida --help)", self._cli_help)
-        self._act(h, "Sobre o Lida", lambda: QMessageBox.about(self, "Lida", f"<b>Lida {VERSION}</b><br>Tarefas e hábitos, com jogo.<br>App Linux em Qt/PySide6."))
+        h = mb.addMenu(tr("Aj&uda"))
+        self._act(h, tr("Comandos do terminal (lida --help)"), self._cli_help)
+        self._act(h, tr("Sobre o Lida"), lambda: QMessageBox.about(self, "Lida", f"<b>Lida {VERSION}</b><br>{tr('Tarefas e hábitos, com jogo.')}<br>{tr('App Linux em Qt/PySide6.')}"))
 
     def _cli_help(self):
         QMessageBox.information(
             self,
-            "Lida no terminal",
+            tr("Lida no terminal"),
             "lida                      resumo do dia e modo interativo\n"
             "lida ls [hoje|entrada|atrasadas|proximos|tudo]\n"
             "lida add \"comprar pão amanhã 8h p1 #casa\"\n"
@@ -375,7 +377,7 @@ class Window(QMainWindow):
             "lida foco \"relatório\"     põe em foco; lida foco abre a tela de foco\n"
             "lida pomo start|pause|reset|skip\n"
             "lida habito ler · lida agua copo · lida ipl\n\n"
-            "Tudo aceita --json. Veja lida --help.",
+            "Tudo aceita --json. Veja lida --help." + ("" if i18n.lang() == "pt" else "\n\n" + tr("(a CLI fala português)")),
         )
 
     def _set_autostart(self, on):
@@ -408,6 +410,14 @@ class Window(QMainWindow):
     def _on_state(self, raw):
         st = json.loads(raw)
         self.state = st
+        # o idioma escolhido no app: guarda e refaz menus e bandeja
+        if st.get("lang") in i18n.LANGS and st["lang"] != i18n.lang():
+            i18n.set_lang(st["lang"])
+            self.settings.setValue("lang", st["lang"])
+            self.menuBar().clear()
+            self._build_menus()
+            self.tray.setContextMenu(None)
+            self._build_tray_menu()
         ui = st.get("ui") or {}
         self._fill_group(self.m_theme, self.g_theme, ui.get("themes", []), ui.get("theme"), "theme")
         self._fill_group(self.m_font, self.g_font, ui.get("fonts", []), ui.get("font"), "font")
@@ -437,21 +447,24 @@ class Window(QMainWindow):
     def _build_tray(self):
         self.tray = QSystemTrayIcon(self._tray_icon(), self)
         self.tray.setToolTip("Lida")
-        menu = QMenu()
-        menu.addAction("Mostrar o Lida", self.show_window)
-        menu.addAction("Nova tarefa", lambda: (self.show_window(), self.ui("new-task")))
-        menu.addSeparator()
-        self.t_focus = menu.addAction("Focar numa tarefa…", lambda: (self.show_window(), self.ui("tool", "pick-focus")))
-        self.t_stop = menu.addAction("Parar foco", lambda: self._exec_js(0, "focus", json.dumps({"action": "stop"})))
-        self.t_pomo = menu.addAction("Iniciar Pomodoro", lambda: self._exec_js(0, "pomo", json.dumps({"action": "toggle"})))
-        menu.addSeparator()
-        menu.addAction("Sair do Lida", self.quit)
-        self.tray.setContextMenu(menu)
-        self._tray_menu = menu
+        self._build_tray_menu()
         self.tray.activated.connect(lambda r: self.toggle_window() if r == QSystemTrayIcon.ActivationReason.Trigger else None)
         self.tray.messageClicked.connect(self.show_window)
         if QSystemTrayIcon.isSystemTrayAvailable():
             self.tray.show()
+
+    def _build_tray_menu(self):
+        menu = QMenu()
+        menu.addAction(tr("Mostrar o Lida"), self.show_window)
+        menu.addAction(tr("Nova tarefa"), lambda: (self.show_window(), self.ui("new-task")))
+        menu.addSeparator()
+        self.t_focus = menu.addAction(tr("Focar numa tarefa…"), lambda: (self.show_window(), self.ui("tool", "pick-focus")))
+        self.t_stop = menu.addAction(tr("Parar foco"), lambda: self._exec_js(0, "focus", json.dumps({"action": "stop"})))
+        self.t_pomo = menu.addAction(tr("Iniciar Pomodoro"), lambda: self._exec_js(0, "pomo", json.dumps({"action": "toggle"})))
+        menu.addSeparator()
+        menu.addAction(tr("Sair do Lida"), self.quit)
+        self.tray.setContextMenu(menu)
+        self._tray_menu = menu
 
     def _tick(self):
         """Uma vez por segundo: tempo do foco/Pomodoro na bandeja e nos itens do menu."""
@@ -467,23 +480,23 @@ class Window(QMainWindow):
         timer = f.get("timer")
         parts = []
         if task:
-            parts.append(f"Em foco: {task['title']}")
+            parts.append(tr("Em foco: {0}", task["title"]))
         if timer:
             tl = (timer["endsAt"] - now) / 1000 if timer.get("running") and timer.get("endsAt") else timer.get("leftSec", 0)
-            parts.append(f"Modo foco {fmt_left(tl)}")
+            parts.append(tr("Modo foco {0}", fmt_left(tl)))
         elif running or pomo.get("active"):
-            parts.append(f"Pomodoro {'· ' if running else '(parado) · '}{fmt_left(left)}")
+            parts.append(tr("Pomodoro · {0}" if running else "Pomodoro (parado) · {0}", fmt_left(left)))
         g = st.get("glance") or {}
         t = g.get("tasks") or {}
         if t:
-            parts.append(f"Hoje: {t.get('done', 0)} de {t.get('total', 0)} tarefas")
+            parts.append(tr("Hoje: {0} de {1} tarefas", t.get("done", 0), t.get("total", 0)))
         tip = "\n".join(parts) or "Lida"
         self.tray.setToolTip(tip)
         title = "Lida"
         if running:
             title = f"{fmt_left(left)} · Lida"
         self.setWindowTitle(title)
-        label = "Pausar Pomodoro" if running else ("Continuar Pomodoro" if pomo.get("active") else "Iniciar Pomodoro")
+        label = tr("Pausar Pomodoro" if running else ("Continuar Pomodoro" if pomo.get("active") else "Iniciar Pomodoro"))
         self.a_pomo.setText(label)
         self.t_pomo.setText(label)
         self.a_stopfocus.setEnabled(bool(task))

@@ -8,7 +8,7 @@ import { app } from '../state.js';
 import { hasPlugin, plugin } from '../native.js';
 import { http } from '../core/net.js';
 import { versionCode } from '../lib/version.js';
-import { esc } from '../lib/util.js';
+import { esc, LOC } from '../lib/util.js';
 import { icon, sheet, toast } from '../ui/ui.js';
 import { KIND_LABEL } from '../core/changelog.js';
 import { play } from '../core/sound.js';
@@ -96,7 +96,7 @@ export async function checkUpdate({ manual = false } = {}) {
   }
 }
 
-const fmtSize = (b) => (b ? `${(b / 1048576).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB` : '');
+const fmtSize = (b) => (b ? `${(b / 1048576).toLocaleString(LOC, { maximumFractionDigits: 1 })} MB` : '');
 const fmtDate = (iso) => (iso ? iso.split('-').reverse().join('/') : '');
 
 function showUpdate(latest, info) {

@@ -9,6 +9,7 @@
 //
 // Uso: reconcile(lista) com tudo o que DEVERIA estar agendado. O módulo compara com o que já está
 // e só agenda/cancela a diferença. Cada lembrete tem uma chave estável (ex.: "task:<id>").
+import { t as tt } from './i18n.js';
 import { isNative, plugin, hasPlugin } from '../native.js';
 import { hash32 } from '../lib/util.js';
 import { nowMs } from '../lib/clock.js';
@@ -150,8 +151,8 @@ export async function initNotify(onRoute, onAction, onInApp) {
   if (isNative()) {
     const ln = LN();
     for (const id of OLD_CHANNELS) await ln?.deleteChannel?.({ id }).catch(() => {});
-    await ln?.createChannel?.({ id: CHANNEL, name: 'Lembretes', description: 'Prazos de tarefas, resumo do dia, água e Pomodoro', importance: 4, visibility: 1, vibration: true, lights: true, lightColor: COLOR, sound: SOUND }).catch(() => {});
-    await ln?.registerActionTypes?.({ types: ACTIONS }).catch(() => {});
+    await ln?.createChannel?.({ id: CHANNEL, name: tt('Lembretes'), description: tt('Prazos de tarefas, resumo do dia, água e Pomodoro'), importance: 4, visibility: 1, vibration: true, lights: true, lightColor: COLOR, sound: SOUND }).catch(() => {});
+    await ln?.registerActionTypes?.({ types: ACTIONS.map((a) => ({ ...a, actions: a.actions.map((b) => ({ ...b, title: tt(b.title) })) })) }).catch(() => {});
     // Com o app em primeiro plano o Android mostra a notificação e avisa aqui: o Lida mostra
     // também um aviso no topo, com os mesmos botões (sem tocar o som de novo).
     ln?.addListener?.('localNotificationReceived', (n) => {
@@ -250,7 +251,7 @@ async function showWeb(w) {
   play('bike');
   try {
     const reg = await navigator.serviceWorker?.getRegistration();
-    const actions = w.actions === 'TASK' ? [{ action: 'done', title: 'Concluir' }, { action: 'snooze', title: 'Lembrar em 1 h' }] : w.actions === 'WATER' ? [{ action: 'water', title: 'Bebi um copo' }] : [];
+    const actions = w.actions === 'TASK' ? [{ action: 'done', title: tt('Concluir') }, { action: 'snooze', title: tt('Lembrar em 1 h') }] : w.actions === 'WATER' ? [{ action: 'water', title: tt('Bebi um copo') }] : [];
     const opts = { body: w.long || w.body, tag: `lida-${w.id}`, icon: 'icons/pwa-192x192.png', badge: 'icons/pwa-192x192.png', data: { route: w.route || '', extra: w.extra || {} }, actions, renotify: true };
     if (reg) await reg.showNotification(w.title, opts);
     else new Notification(w.title, opts);
@@ -269,7 +270,7 @@ export async function scheduleOne(item) {
 
 // Notificação de teste, em 5 segundos (para conferir permissão, som e botões).
 export async function testNotification() {
-  await scheduleOne({ key: 'test', at: Date.now() + 5000, title: 'Lida está pronto', body: 'É assim que os lembretes chegam: com o sino e um botão para concluir.', long: 'É assim que os lembretes chegam: com o sino de bicicleta, um resumo e botões para agir sem abrir o app.', summary: 'Teste', route: '' });
+  await scheduleOne({ key: 'test', at: Date.now() + 5000, title: tt('Lida está pronto'), body: tt('É assim que os lembretes chegam: com o sino e um botão para concluir.'), long: tt('É assim que os lembretes chegam: com o sino de bicicleta, um resumo e botões para agir sem abrir o app.'), summary: tt('Teste'), route: '' });
 }
 
 // Aviso avulso de um cronômetro (Pomodoro, modo foco). at = null cancela.
@@ -280,7 +281,7 @@ export async function timerAlert(key, at, title = 'Lida', body = '') {
     const ln = LN();
     if (!ln) return;
     await ln.cancel({ notifications: [{ id }] }).catch(() => {});
-    if (at && notifyPrefs().on) await ln.schedule({ notifications: [nativeOf({ id, at, title, body, summary: 'Foco', route: '' })] }).catch(() => {});
+    if (at && notifyPrefs().on) await ln.schedule({ notifications: [nativeOf({ id, at, title, body, summary: tt('Foco'), route: '' })] }).catch(() => {});
     return;
   }
   clearTimeout(webTimers.get(id));

@@ -103,8 +103,8 @@ public class FocusService extends Service {
     static NotificationManager manager(Context ctx) {
         NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel(CHANNEL) == null) {
-            NotificationChannel ch = new NotificationChannel(CHANNEL, "Foco e cronômetros", NotificationManager.IMPORTANCE_DEFAULT);
-            ch.setDescription("Tarefa em foco, Pomodoro e modo foco enquanto estão rodando");
+            NotificationChannel ch = new NotificationChannel(CHANNEL, ctx.getString(R.string.ch_focus), NotificationManager.IMPORTANCE_DEFAULT);
+            ch.setDescription(ctx.getString(R.string.ch_focus_desc));
             ch.setSound(null, null);
             ch.enableVibration(false);
             ch.setShowBadge(false);
@@ -143,7 +143,7 @@ public class FocusService extends Service {
         b.setSmallIcon(icon != 0 ? icon : ctx.getApplicationInfo().icon)
             .setContentTitle(title)
             .setContentText(body)
-            .setSubText(focus ? "Em foco" : "Cronômetro")
+            .setSubText(ctx.getString(focus ? R.string.focus_sub_focus : R.string.focus_sub_timer))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setAutoCancel(false)

@@ -6,7 +6,7 @@ import * as H from '../core/habits.js';
 import { glance } from '../core/glance.js';
 import { dayIPL, grade } from '../core/ipl.js';
 import { today } from '../lib/clock.js';
-import { esc, fmtDayLong, plural } from '../lib/util.js';
+import { esc, fmtDayLong, plural, LOC } from '../lib/util.js';
 import { icon, toast } from '../ui/ui.js';
 import { play } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
@@ -37,7 +37,7 @@ export function ringsSvg(g, size = 132) {
   return `<svg class="rings" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="Tarefas ${g.tasks.done} de ${g.tasks.total}, hábitos ${g.habits.done} de ${g.habits.total}, água ${g.water.ml} de ${g.water.goal} ml">${arcs}</svg>`;
 }
 
-const L = (ml) => (ml >= 1000 ? `${(ml / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L` : `${ml} ml`);
+const L = (ml) => (ml >= 1000 ? `${(ml / 1000).toLocaleString(LOC, { maximumFractionDigits: 2 })} L` : `${ml} ml`);
 
 function side(S) {
   const d = today();

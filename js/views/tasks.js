@@ -15,6 +15,7 @@ import { celebrate } from './celebrate.js';
 import { focusTask, focusOn } from './focus.js';
 import { focusOf } from '../core/focus.js';
 import { REMIND_BEFORE, notifyPrefs } from '../core/notify.js';
+import { lowerFirst } from '../core/i18n.js';
 
 // Etiqueta nova tem id derivado do nome: a mesma "@contas" criada em dois aparelhos é um registro só.
 export const tagId = (name) =>
@@ -54,14 +55,14 @@ export function taskRow(t, { showDue = false, S = P(), i = 0 } = {}) {
     <button type="button" class="task-check" data-p="${esc(kind === 'routine' ? 'R' : t.priority || 'P4')}" data-check aria-label="${label}: ${esc(t.title)}">${icon('check')}</button>
     <div class="task-body">
       <div class="task-open" data-open role="button" tabindex="0" aria-label="${esc(t.title)}. Segure para editar.">
-        <span class="task-title">${kind === 'routine' ? `<span class="routine-tag">${icon('repeat')}</span>` : ''}${esc(t.title)}</span>
-        ${t.notes && !t.done ? `<p class="task-desc">${esc(plainPreview(t.notes))}</p>` : ''}
+        <span class="task-title" translate="no">${kind === 'routine' ? `<span class="routine-tag">${icon('repeat')}</span>` : ''}${esc(t.title)}</span>
+        ${t.notes && !t.done ? `<p class="task-desc" translate="no">${esc(plainPreview(t.notes))}</p>` : ''}
         ${meta.length ? `<div class="task-meta">${meta.join('')}</div>` : ''}
       </div>
       ${
         hasSubs
           ? `<div class="sub-items"${folded ? ' hidden' : ''}>${kind === 'routine' ? bar(doneN / subs.length, { cls: 'thin', label: 'Itens da rotina' }) : ''}
-          <ul>${subs.map((s) => `<li><label class="check mini${s.done ? ' on' : ''}"><input type="checkbox" data-sub="${esc(s.id)}"${s.done ? ' checked' : ''}><span>${esc(s.title)}</span></label></li>`).join('')}</ul></div>`
+          <ul>${subs.map((s) => `<li><label class="check mini${s.done ? ' on' : ''}"><input type="checkbox" data-sub="${esc(s.id)}"${s.done ? ' checked' : ''}><span translate="no">${esc(s.title)}</span></label></li>`).join('')}</ul></div>`
           : ''
       }
     </div>
@@ -232,13 +233,13 @@ export function sprintCard(t) {
   return `<section class="sprint card${isFolded(t.id) ? ' folded' : ''}" data-sprint="${esc(t.id)}">
     <div class="sprint-head">
       <span class="sprint-ic">${icon('flag')}</span>
-      <div class="grow"><small>Sprint · ${s.left ? `${plural(s.left, 'dia restante', 'dias restantes')}` : 'termina hoje'}</small><b data-open-sprint role="button" tabindex="0">${esc(t.title)}</b></div>
+      <div class="grow"><small>Sprint · ${s.left ? `${plural(s.left, 'dia restante', 'dias restantes')}` : 'termina hoje'}</small><b data-open-sprint role="button" tabindex="0" translate="no">${esc(t.title)}</b></div>
       <span class="sprint-pct">${Math.round(s.steps * 100)}%</span>
       <button type="button" class="icon-btn fold-btn" data-sfold aria-expanded="${!isFolded(t.id)}" aria-label="${isFolded(t.id) ? 'Mostrar' : 'Esconder'} etapas">${icon('down', 'sm')}</button>
     </div>
     ${bar(s.steps, { label: 'Etapas concluídas' })}
     <div class="sprint-time"><span>Dia ${s.elapsed} de ${s.total}</span>${bar(s.time, { cls: 'thin time', label: 'Tempo do sprint' })}</div>
-    <ul class="sprint-steps">${subs.map((x) => `<li><label class="check mini${x.done ? ' on' : ''}"><input type="checkbox" data-sub="${esc(x.id)}"${x.done ? ' checked' : ''}><span>${esc(x.title)}</span></label></li>`).join('')}</ul>
+    <ul class="sprint-steps">${subs.map((x) => `<li><label class="check mini${x.done ? ' on' : ''}"><input type="checkbox" data-sub="${esc(x.id)}"${x.done ? ' checked' : ''}><span translate="no">${esc(x.title)}</span></label></li>`).join('')}</ul>
     ${s.steps >= 1 ? `<button type="button" class="btn primary wide" data-finish>${icon('trophy')}Concluir sprint</button>` : ''}
   </section>`;
 }
@@ -401,7 +402,7 @@ export function openTask(id) {
       <div class="td-head">
         <button type="button" class="task-check${t.done ? ' on' : ''}" data-p="${esc(isRoutine ? 'R' : t.priority || 'P4')}" data-tdcheck aria-label="${t.done ? 'Reabrir' : 'Concluir'}">${icon('check')}</button>
         <div class="grow">
-          <h3 class="td-title${t.done ? ' done' : ''}">${esc(t.title)}</h3>
+          <h3 class="td-title${t.done ? ' done' : ''}" translate="no">${esc(t.title)}</h3>
           <div class="td-badges">
             ${!isRoutine && pr && pr.id !== 'P4' ? `<span class="badge prio" style="--tone:var(--${pr.tone})">${pr.short} · ${pr.name}</span>` : ''}
             ${kind !== 'normal' ? `<span class="badge acc">${icon(TASK_KINDS[kind].icon)}${TASK_KINDS[kind].label}</span>` : ''}
@@ -412,7 +413,7 @@ export function openTask(id) {
       </div>
       ${rows.length ? `<dl class="td-rows">${rows.map(([ic, k, v]) => `<div><dt>${ic}<span>${k}</span></dt><dd>${v}</dd></div>`).join('')}</dl>` : ''}
       ${sprint}
-      ${t.notes ? `<div class="td-sec"><h4>Descrição<button type="button" class="td-copy" data-tdcopy aria-label="Copiar a descrição">${icon('copy', 'sm')}<span>Copiar</span></button></h4><div class="rich td-notes" data-tdnotes>${renderRich(t.notes)}</div></div>` : ''}
+      ${t.notes ? `<div class="td-sec"><h4>Descrição<button type="button" class="td-copy" data-tdcopy aria-label="Copiar a descrição">${icon('copy', 'sm')}<span>Copiar</span></button></h4><div translate="no" class="rich td-notes" data-tdnotes>${renderRich(t.notes)}</div></div>` : ''}
       ${
         powers.length
           ? `<div class="td-sec"><h4>Power-ups</h4><div class="td-powers">${powers
@@ -426,7 +427,7 @@ export function openTask(id) {
       ${
         subs.length
           ? `<div class="td-sec"><h4>${kind === 'sprint' ? 'Etapas' : isRoutine ? 'Itens' : 'Subtarefas'} <span class="count">${doneN}/${subs.length}</span></h4>${bar(doneN / subs.length, { cls: 'thin', label: 'Progresso' })}
-        <ul class="td-subs">${subs.map((x) => `<li><label class="check${x.done ? ' on' : ''}"><input type="checkbox" data-tdsub="${esc(x.id)}"${x.done ? ' checked' : ''}><span>${esc(x.title)}</span></label></li>`).join('')}</ul></div>`
+        <ul class="td-subs">${subs.map((x) => `<li><label class="check${x.done ? ' on' : ''}"><input type="checkbox" data-tdsub="${esc(x.id)}"${x.done ? ' checked' : ''}><span translate="no">${esc(x.title)}</span></label></li>`).join('')}</ul></div>`
           : ''
       }
       <div class="td-actions">
@@ -474,7 +475,7 @@ export function openTask(id) {
             play('powerup');
             haptic('start');
             const n = P().byId.get(id);
-            toast(k === 'respite' ? `Respiro usado: novo horário ${fmtTime(n.time)}.` : `Alívio usado: novo prazo ${fmtDateHuman(n.due).toLowerCase()}.`);
+            toast(k === 'respite' ? `Respiro usado: novo horário ${fmtTime(n.time)}.` : `Alívio usado: novo prazo ${lowerFirst(fmtDateHuman(n.due))}.`);
           }
           draw(el);
         }),
@@ -564,7 +565,7 @@ export function editTask(id, defaults = {}) {
   const subHtml = () =>
     subs
       .map(
-        (s, i) => `<li class="subtask${s.done ? ' done' : ''}"><label class="check"><input type="checkbox" data-sub="${i}"${s.done ? ' checked' : ''}><span>${esc(s.title)}</span></label>
+        (s, i) => `<li class="subtask${s.done ? ' done' : ''}"><label class="check"><input type="checkbox" data-sub="${i}"${s.done ? ' checked' : ''}><span translate="no">${esc(s.title)}</span></label>
         <button type="button" class="icon-btn" data-subdel="${i}" aria-label="Remover ${esc(s.title)}">${icon('x', 'sm')}</button></li>`,
       )
       .join('');
@@ -580,7 +581,7 @@ export function editTask(id, defaults = {}) {
       <p class="form-meta kind-hint" data-hint>${esc(TASK_KINDS[kind].hint)}</p>
       <label class="field"><span>Título</span><input name="title" value="${esc(t.title || '')}" required autocomplete="off" ${id ? '' : 'autofocus'}></label>
       <div class="field"><span>Descrição</span>${richToolbar()}<textarea name="notes" rows="3" placeholder="Detalhes, links, listas. Aceita **negrito**, *itálico* e [links](https://…)">${esc(t.notes || '')}</textarea>
-        <div class="rich rich-preview" data-rich${t.notes ? '' : ' hidden'}>${renderRich(t.notes || '')}</div></div>
+        <div class="rich rich-preview" translate="no" data-rich${t.notes ? '' : ' hidden'}>${renderRich(t.notes || '')}</div></div>
       <div class="grid2 only-not-challenge">
         <label class="field only-sprint"><span>Início</span><input type="date" name="start" value="${esc(t.start || t.createdDay || today())}"></label>
         <label class="field"><span data-duelabel>${kind === 'sprint' ? 'Fim' : 'Data'}</span><input type="date" name="due" value="${esc(t.due || (kind === 'sprint' ? addDays(today(), 7) : ''))}"></label>

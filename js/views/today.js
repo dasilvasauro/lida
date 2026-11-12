@@ -13,12 +13,13 @@ import { moodPicker, bindMood } from './me.js';
 import { focusCard, bindFocusCard } from './focus.js';
 import { focusedTask } from '../core/focus.js';
 import { viewBar, bindViewBar, isBoardMode, kanban, bindKanban } from './kanban.js';
+import { t } from '../core/i18n.js';
 
 function greeting() {
   const h = now().getHours();
   const name = displayName();
   const g = h < 5 ? 'Boa noite' : h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
-  return name ? `${g}, ${name}` : g;
+  return name ? `${t(g)}, ${name}` : t(g);
 }
 
 export const todayView = {
@@ -142,7 +143,7 @@ export const planView = {
         const undated = open.filter((t) => !t.due);
         el.innerHTML = `${head}<section class="proj-head" style="--c:${esc(p.color || 'var(--accent)')}">
             <button type="button" class="icon-btn" data-back aria-label="Voltar aos projetos">${icon('back')}</button>
-            <i class="dot big"></i><div class="grow"><h2>${esc(p.name)}</h2><small>${plural(open.length, 'tarefa aberta', 'tarefas abertas')}${done.length ? ` · ${done.length} concluídas` : ''}</small></div>
+            <i class="dot big"></i><div class="grow"><h2 translate="no">${esc(p.name)}</h2><small>${plural(open.length, 'tarefa aberta', 'tarefas abertas')}${done.length ? ` · ${done.length} concluídas` : ''}</small></div>
             <button type="button" class="btn small" data-pedit>${icon('edit')}Editar</button></section>
           ${all.length ? bar(all.length ? done.length / all.length : 0, { label: 'Progresso do projeto' }) : ''}
           ${viewBar('projeto')}
@@ -192,7 +193,7 @@ function projectList(S) {
     const all = S.task.filter((t) => t.projectId === p.id && !t.archived);
     const open = all.filter((t) => !t.done && !t.failed).length;
     const done = all.filter((t) => t.done).length;
-    return `<li><button type="button" class="proj-row" data-pid="${esc(p.id)}" style="--c:${esc(p.color || 'var(--accent)')}"><i class="dot big"></i><span class="grow"><b>${esc(p.name)}</b><small>${plural(open, 'aberta', 'abertas')}${done ? ` · ${done} concluídas` : ''}</small>${all.length ? bar(done / all.length, { cls: 'thin' }) : ''}</span>${icon('right', 'sm')}</button></li>`;
+    return `<li><button type="button" class="proj-row" data-pid="${esc(p.id)}" style="--c:${esc(p.color || 'var(--accent)')}"><i class="dot big"></i><span class="grow"><b translate="no">${esc(p.name)}</b><small>${plural(open, 'aberta', 'abertas')}${done ? ` · ${done} concluídas` : ''}</small>${all.length ? bar(done / all.length, { cls: 'thin' }) : ''}</span>${icon('right', 'sm')}</button></li>`;
   });
   return `<section class="block"><div class="block-head"><h2>Projetos<span class="count">${S.project.length || ''}</span></h2><button type="button" class="btn small" data-pnew>${icon('plus')}Novo projeto</button></div>
     ${rows.length ? `<ul class="projects">${rows.join('')}</ul>` : empty({ ic: 'folder', title: 'Nenhum projeto ainda', text: 'Projetos agrupam tarefas de um mesmo assunto, como "Casa" ou "Trabalho". Na adição rápida, use #Nome para mandar a tarefa direto para um projeto.' })}</section>`;

@@ -63,7 +63,7 @@ export function openSearch() {
         if (tasks.length) parts.push(`<section class="block"><div class="block-head"><h2>Tarefas<span class="count">${tasks.length}</span></h2></div>${taskList(tasks, { S, showDue: true })}</section>`);
         if (projects.length) parts.push(`<section class="block"><div class="block-head"><h2>Projetos</h2></div><div class="chips">${projects.map((p) => `<button type="button" class="chip" data-proj="${esc(p.id)}" style="--c:${esc(p.color || 'var(--accent)')}"><i class="dot"></i>${esc(p.name)}</button>`).join('')}</div></section>`);
         if (habits.length) parts.push(`<section class="block"><div class="block-head"><h2>Hábitos</h2></div><div class="chips">${habits.map((h) => `<button type="button" class="chip" data-habits>${esc(h.icon || '')} ${esc(h.title)}</button>`).join('')}</div></section>`);
-        if (brain.length) parts.push(`<section class="block"><div class="block-head"><h2>Na mente</h2></div><div class="chips">${brain.map((b) => `<span class="chip">${esc(b.text)}</span>`).join('')}</div></section>`);
+        if (brain.length) parts.push(`<section class="block"><div class="block-head"><h2>Na mente</h2></div><div class="chips">${brain.map((b) => `<span class="chip" translate="no">${esc(b.text)}</span>`).join('')}</div></section>`);
         res.innerHTML = parts.join('') || `<p class="hint search-hint">Nada encontrado${onlyOpen ? '. Experimente desligar "Só abertas".' : '.'}</p>`;
         bindTasks(res);
         res.querySelectorAll('[data-proj]').forEach((b) => (b.onclick = () => (closeSheet(), app.nav(`projeto-${b.dataset.proj}`))));

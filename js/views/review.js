@@ -33,7 +33,7 @@ export function reviewYesterday(y, left) {
           `<ul class="tasks rv-list">${left.tasks
             .map(
               (t) => `<li class="task rv-item" data-rtask="${esc(t.id)}"><button type="button" class="task-check" data-p="${esc(t.kind === 'routine' ? 'R' : t.priority || 'P4')}" aria-label="Fiz: ${esc(t.title)}" aria-pressed="false">${icon('check')}</button>
-                <div class="task-body"><span class="task-title">${esc(t.title)}</span>${taskMeta(S, t)}</div></li>`,
+                <div class="task-body"><span class="task-title" translate="no">${esc(t.title)}</span>${taskMeta(S, t)}</div></li>`,
             )
             .join('')}</ul>`,
         )

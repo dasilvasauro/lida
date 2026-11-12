@@ -55,7 +55,7 @@ public class UpdateReceiver extends BroadcastReceiver {
         NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
         if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel(CHANNEL) == null) {
-            NotificationChannel ch = new NotificationChannel(CHANNEL, "Atualizações do Lida", NotificationManager.IMPORTANCE_DEFAULT);
+            NotificationChannel ch = new NotificationChannel(CHANNEL, ctx.getString(R.string.ch_update), NotificationManager.IMPORTANCE_DEFAULT);
             ch.setSound(null, null);
             nm.createNotificationChannel(ch);
         }
@@ -63,8 +63,8 @@ public class UpdateReceiver extends BroadcastReceiver {
         int icon = ctx.getResources().getIdentifier("ic_stat_lida", "drawable", ctx.getPackageName());
         Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(ctx, CHANNEL) : new Notification.Builder(ctx);
         b.setSmallIcon(icon != 0 ? icon : ctx.getApplicationInfo().icon)
-            .setContentTitle("Lida atualizado")
-            .setContentText("Toque para abrir a versão nova.")
+            .setContentTitle(ctx.getString(R.string.updated_title))
+            .setContentText(ctx.getString(R.string.updated_text))
             .setContentIntent(pi)
             .setAutoCancel(true);
         if (Build.VERSION.SDK_INT >= 26) b.setTimeoutAfter(10 * 60 * 1000);

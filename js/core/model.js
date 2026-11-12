@@ -12,7 +12,8 @@
 // - economia:         um evento por acontecimento { kind, xp, gold, vouchers, items, date, ref }
 //                     O saldo é a soma dos eventos. Eventos com id derivado do motivo
 //                     (ex.: ev_fail_<tarefa>) não contam em dobro se dois aparelhos os gerarem.
-import { sum, ymOf } from '../lib/util.js';
+import { sum, ymOf, LOC, WD_SHORT } from '../lib/util.js';
+import { tr, fill } from './i18n.js';
 
 export const PERSONAL_TYPES = ['task', 'project', 'tag', 'routine', 'habit', 'hlog', 'quit', 'water', 'ev', 'wallet', 'score', 'month', 'hist', 'mood', 'vision', 'refl', 'brain', 'prefs', 'dayp', 'focus', 'year', 'profile', 'ach'];
 
@@ -103,8 +104,8 @@ export function buildPersonal(list) {
   S.vision = S.vision[0] || null;
   S.focus = S.focus.find((x) => x.id === 'focus') || null; // foco global (ver core/focus.js)
   S.money = wallet(S.ev);
-  S.project.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.name || '').localeCompare(b.name || '', 'pt-BR'));
-  S.tag.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt-BR'));
+  S.project.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.name || '').localeCompare(b.name || '', LOC));
+  S.tag.sort((a, b) => (a.name || '').localeCompare(b.name || '', LOC));
   S.habit.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a._ca || 0) - (b._ca || 0));
   S.routine.sort((a, b) => (a._ca || 0) - (b._ca || 0));
   S.quit.sort((a, b) => (a._ca || 0) - (b._ca || 0));
@@ -179,19 +180,21 @@ export function nextOccurrence(from, rec) {
   return null;
 }
 
-const WDS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const L = (pt, en, es) => ({ pt, en, es });
 export function recurrenceLabel(rec) {
   if (!rec || !rec.type || rec.type === 'none') return '';
   const n = rec.every > 1 ? rec.every : 1;
-  if (rec.type === 'daily') return n > 1 ? `A cada ${n} dias` : 'Todo dia';
+  const f = (o, v = {}) => fill(tr(o), { n, ...v });
+  if (rec.type === 'daily') return n > 1 ? f(L('A cada {n} dias', 'Every {n} days', 'Cada {n} días')) : f(L('Todo dia', 'Every day', 'Todos los días'));
   if (rec.type === 'weekly') {
     const d = [...(rec.weekdays || [])].sort((a, b) => a - b);
-    if (d.length === 5 && d.join() === '1,2,3,4,5') return 'Dias úteis';
-    if (d.length === 7) return 'Todo dia';
-    if (n === 1 && d.length > 1) return `Toda ${d.map((x) => WDS[x]).join(', ').replace(/, ([^,]*)$/, ' e $1')}`;
-    return `${n > 1 ? `A cada ${n} semanas` : 'Toda semana'}${d.length ? ` (${d.map((x) => WDS[x]).join(', ')})` : ''}`;
+    if (d.length === 5 && d.join() === '1,2,3,4,5') return f(L('Dias úteis', 'Weekdays', 'Días laborables'));
+    if (d.length === 7) return f(L('Todo dia', 'Every day', 'Todos los días'));
+    const names = d.map((x) => WD_SHORT[x]);
+    if (n === 1 && d.length > 1) return f(L('Toda {d}', 'Every {d}', 'Cada {d}'), { d: names.join(', ').replace(/, ([^,]*)$/, `${tr(L(' e ', ' and ', ' y '))}$1`) });
+    return `${n > 1 ? f(L('A cada {n} semanas', 'Every {n} weeks', 'Cada {n} semanas')) : f(L('Toda semana', 'Every week', 'Cada semana'))}${d.length ? ` (${names.join(', ')})` : ''}`;
   }
-  if (rec.type === 'monthly') return `${n > 1 ? `A cada ${n} meses` : 'Todo mês'}${rec.dayOfMonth ? `, dia ${rec.dayOfMonth}` : ''}`;
-  if (rec.type === 'yearly') return 'Todo ano';
+  if (rec.type === 'monthly') return `${n > 1 ? f(L('A cada {n} meses', 'Every {n} months', 'Cada {n} meses')) : f(L('Todo mês', 'Every month', 'Cada mes'))}${rec.dayOfMonth ? f(L(', dia {d}', ', day {d}', ', día {d}'), { d: rec.dayOfMonth }) : ''}`;
+  if (rec.type === 'yearly') return f(L('Todo ano', 'Every year', 'Cada año'));
   return '';
 }

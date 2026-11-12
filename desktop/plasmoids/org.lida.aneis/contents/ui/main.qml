@@ -27,10 +27,16 @@ PlasmoidItem {
     readonly property color cWater: "#5aa9ff"
 
     Plasmoid.icon: "io.github.dasilvasauro.lida"
-    toolTipMainText: "Lida · Anéis"
-    toolTipSubText: "Tarefas " + (g.tasks.done || 0) + "/" + (g.tasks.total || 0) + " · Hábitos " + (g.habits.done || 0) + "/" + (g.habits.total || 0) + " · Água " + ml(g.water.ml || 0)
+    toolTipMainText: root.tx("Lida · Anéis")
+    toolTipSubText: root.tx("Tarefas") + " " + (g.tasks.done || 0) + "/" + (g.tasks.total || 0) + " · " + root.tx("Hábitos") + " " + (g.habits.done || 0) + "/" + (g.habits.total || 0) + " · " + root.tx("Água") + " " + ml(g.water.ml || 0)
 
-    function ml(v) { return v >= 1000 ? (v / 1000).toFixed(2).replace(/\.?0+$/, "").replace(".", ",") + " L" : v + " ml" }
+    // Textos no idioma do app: o estado traz a tradução de cada texto em português (st.txt)
+    function tx(s) {
+        var out = (st && st.txt && st.txt[s]) || s
+        for (var i = 1; i < arguments.length; i++) out = out.split("{" + (i - 1) + "}").join(arguments[i])
+        return out
+    }
+    function ml(v) { return v >= 1000 ? (v / 1000).toFixed(2).replace(/\.?0+$/, "").replace(".", String(st.locale || "pt-BR").indexOf("en") === 0 ? "." : ",") + " L" : v + " ml" }
     function shq(s) { return "'" + String(s).replace(/'/g, "'\\''") + "'" }
     function bin() { return shq(Plasmoid.configuration.binaryPath || "lida") }
 
@@ -141,9 +147,9 @@ PlasmoidItem {
                 rowSpacing: Kirigami.Units.smallSpacing
                 Repeater {
                     model: [
-                        { c: root.cTasks, l: "Tarefas", v: (root.g.tasks.done || 0) + "/" + (root.g.tasks.total || 0) },
-                        { c: root.cHabits, l: "Hábitos", v: (root.g.habits.done || 0) + "/" + (root.g.habits.total || 0) },
-                        { c: root.cWater, l: "Água", v: root.ml(root.g.water.ml || 0) }
+                        { c: root.cTasks, l: root.tx("Tarefas"), v: (root.g.tasks.done || 0) + "/" + (root.g.tasks.total || 0) },
+                        { c: root.cHabits, l: root.tx("Hábitos"), v: (root.g.habits.done || 0) + "/" + (root.g.habits.total || 0) },
+                        { c: root.cWater, l: root.tx("Água"), v: root.ml(root.g.water.ml || 0) }
                     ]
                     delegate: Item {
                         required property var modelData
@@ -155,7 +161,7 @@ PlasmoidItem {
                     }
                 }
                 Repeater {
-                    model: ["Tarefas", "Hábitos", "Água"]
+                    model: [root.tx("Tarefas"), root.tx("Hábitos"), root.tx("Água")]
                     delegate: PlasmaComponents.Label {
                         required property var modelData
                         required property int index
@@ -179,11 +185,11 @@ PlasmoidItem {
                 PlasmaComponents.Label {
                     Layout.row: 3; Layout.column: 0; Layout.columnSpan: 3
                     visible: root.st.ipl !== null && root.st.ipl !== undefined
-                    text: "IPL de hoje: " + root.st.ipl
+                    text: root.tx("IPL de hoje: {0}", root.st.ipl)
                     opacity: 0.7
                     font.pixelSize: Kirigami.Theme.smallFont.pixelSize
                 }
-                PlasmaComponents.Label { Layout.row: 4; Layout.column: 0; Layout.columnSpan: 3; visible: !root.running; text: "O Lida está fechado."; opacity: 0.7 }
+                PlasmaComponents.Label { Layout.row: 4; Layout.column: 0; Layout.columnSpan: 3; visible: !root.running; text: root.tx("O Lida está fechado."); opacity: 0.7 }
             }
         }
         RowLayout {
@@ -191,13 +197,13 @@ PlasmoidItem {
             visible: root.running
             PlasmaComponents.Button {
                 Layout.fillWidth: true
-                text: "Copo · " + root.ml((root.st.water && root.st.water.glass) || 250)
+                text: root.tx("Copo") + " · " + root.ml((root.st.water && root.st.water.glass) || 250)
                 icon.name: "list-add"
                 onClicked: root.lida("agua copo")
             }
             PlasmaComponents.Button {
                 Layout.fillWidth: true
-                text: "Garrafa · " + root.ml((root.st.water && root.st.water.bottle) || 500)
+                text: root.tx("Garrafa") + " · " + root.ml((root.st.water && root.st.water.bottle) || 500)
                 icon.name: "list-add"
                 onClicked: root.lida("agua garrafa")
             }

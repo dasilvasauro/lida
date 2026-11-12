@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- Textos do Android em espanhol (canais de notificação e widgets; o resto do app vem de js/i18n). -->
+<resources>
+    <string name="ch_focus">Enfoque y temporizadores</string>
+    <string name="ch_focus_desc">La tarea en foco, el Pomodoro y el modo enfoque mientras están en marcha</string>
+    <string name="focus_sub_focus">En foco</string>
+    <string name="focus_sub_timer">Temporizador</string>
+    <string name="ch_alarm">Alarma · %1$s</string>
+    <string name="ch_alarm_desc">Alarmas a pantalla completa de Lida</string>
+    <string name="tone_classico">Despertador clásico</string>
+    <string name="tone_digital">Reloj digital</string>
+    <string name="tone_sinos">Campanas tranquilas</string>
+    <string name="tone_marimba">Marimba</string>
+    <string name="tone_amanhecer">Amanecer</string>
+    <string name="tone_passaros">Pajaritos</string>
+    <string name="ch_update">Actualizaciones de Lida</string>
+    <string name="updated_title">Lida actualizado</string>
+    <string name="updated_text">Toca para abrir la versión nueva.</string>
+    <string name="widget_name">Lida · Hoy</string>
+    <string name="widget_desc">Progreso del día, próximas tareas y hábitos</string>
+    <string name="widget_rings_name">Lida · Anillos</string>
+    <string name="widget_rings_desc">Anillos del día: tareas, hábitos y agua</string>
+    <string name="widget_today">Hoy</string>
+    <string name="widget_tap">Toca para abrir Lida.</string>
+</resources>

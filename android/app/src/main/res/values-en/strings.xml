@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- Textos do Android em inglês (canais de notificação e widgets; o resto do app vem de js/i18n). -->
+<resources>
+    <string name="ch_focus">Focus and timers</string>
+    <string name="ch_focus_desc">The task in focus, Pomodoro and focus mode while they\'re running</string>
+    <string name="focus_sub_focus">In focus</string>
+    <string name="focus_sub_timer">Timer</string>
+    <string name="ch_alarm">Alarm · %1$s</string>
+    <string name="ch_alarm_desc">Lida\'s full-screen alarms</string>
+    <string name="tone_classico">Classic alarm clock</string>
+    <string name="tone_digital">Digital clock</string>
+    <string name="tone_sinos">Calm bells</string>
+    <string name="tone_marimba">Marimba</string>
+    <string name="tone_amanhecer">Sunrise</string>
+    <string name="tone_passaros">Birdsong</string>
+    <string name="ch_update">Lida updates</string>
+    <string name="updated_title">Lida updated</string>
+    <string name="updated_text">Tap to open the new version.</string>
+    <string name="widget_name">Lida · Today</string>
+    <string name="widget_desc">The day\'s progress, upcoming tasks and habits</string>
+    <string name="widget_rings_name">Lida · Rings</string>
+    <string name="widget_rings_desc">Rings of the day: tasks, habits and water</string>
+    <string name="widget_today">Today</string>
+    <string name="widget_tap">Tap to open Lida.</string>
+</resources>

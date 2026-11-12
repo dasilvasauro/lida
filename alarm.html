@@ -25,6 +25,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); -web
 .top { display: grid; justify-items: center; gap: 1vh; text-align: center; }
 .kind { display: inline-flex; align-items: center; gap: .5em; padding: .35em .9em; border-radius: 99px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font-size: clamp(14px, 2.2vh, 20px); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 .clock { font-size: clamp(64px, min(24vw, 19vh), 240px); font-weight: 800; line-height: .95; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.clock small { font-size: .28em; font-weight: 700; letter-spacing: 0; margin-left: .25em; vertical-align: .9em; }
 .date { color: var(--muted); font-size: clamp(15px, 2.4vh, 22px); font-weight: 600; }
 .mid { display: grid; align-content: center; gap: 2vh; min-height: 0; text-align: center; }
 .title { font-size: clamp(28px, min(8.5vw, 6.5vh), 72px); font-weight: 800; line-height: 1.12; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
@@ -80,7 +81,13 @@ body.amoled .led { width: clamp(22px, 4vh, 38px); height: clamp(22px, 4vh, 38px)
   var loc = p.locale || 'pt-BR';
   function tick() {
     var d = new Date();
-    document.getElementById('clock').textContent = d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
+    // AM/PM (inglês) menor, ao lado: o relógio grande fica só com os números
+    var parts = new Intl.DateTimeFormat(loc, { hour: '2-digit', minute: '2-digit' }).formatToParts(d);
+    var main = '', ap = '';
+    parts.forEach(function (x) { if (x.type === 'dayPeriod') ap = x.value; else main += x.value; });
+    var clock = document.getElementById('clock');
+    clock.textContent = main.trim();
+    if (ap) { var sm = document.createElement('small'); sm.textContent = ap; clock.appendChild(sm); }
     var s = d.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long' });
     document.getElementById('date').textContent = s.charAt(0).toUpperCase() + s.slice(1);
   }

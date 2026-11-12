@@ -8,6 +8,7 @@
 // Funções puras: recebem a fotografia (P()) e um dia, devolvem o índice e as partes.
 import { HABIT_DAYS_ALL } from './model.js';
 import { addDays, daysBetween, weekday, sum, isoOfMs, ymOf } from '../lib/util.js';
+import { t as tt } from './i18n.js';
 
 export const IPL_PARTS = [
   { k: 'exec', name: 'Execução', w: 30, how: 'Tarefas com prazo no dia que você concluiu a tempo, com peso pela prioridade (P0 vale 5×, P4 vale 1×). O que você adianta ou recupera de outros dias soma um pouco a mais.' },
@@ -233,10 +234,11 @@ export function monthIPL(S, ym) {
 
 // Parte mais fraca e mais forte, para uma dica curta.
 export function partsTip(parts) {
+  const lc = (s) => tt(s).toLowerCase(); // nome da parte já no idioma do app
   const list = IPL_PARTS.filter((p) => parts?.[p.k] != null).map((p) => ({ ...p, v: parts[p.k] }));
   if (list.length < 2) return '';
   const lo = list.reduce((a, b) => (b.v < a.v ? b : a));
   const hi = list.reduce((a, b) => (b.v > a.v ? b : a));
   if (hi.v - lo.v < 0.15) return 'Dia equilibrado entre as partes.';
-  return `Ponto forte: ${hi.name.toLowerCase()}. Onde dá para ganhar mais: ${lo.name.toLowerCase()}.`;
+  return `Ponto forte: ${lc(hi.name)}. Onde dá para ganhar mais: ${lc(lo.name)}.`;
 }

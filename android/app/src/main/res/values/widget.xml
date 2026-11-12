@@ -27,4 +27,6 @@
         <item name="android:textSize">13.5sp</item>
         <item name="android:visibility">gone</item>
     </style>
+    <string name="widget_today">Hoje</string>
+    <string name="widget_tap">Toque para abrir o Lida.</string>
 </resources>

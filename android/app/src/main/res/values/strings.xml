@@ -3,4 +3,19 @@
     <!-- app_name e title_activity_main vêm do build.gradle (resValue): "Lida" ou "Lida Libre". -->
     <string name="package_name">io.github.dasilvasauro.lida</string>
     <string name="custom_url_scheme">io.github.dasilvasauro.lida</string>
+    <string name="ch_focus">Foco e cronômetros</string>
+    <string name="ch_focus_desc">Tarefa em foco, Pomodoro e modo foco enquanto estão rodando</string>
+    <string name="focus_sub_focus">Em foco</string>
+    <string name="focus_sub_timer">Cronômetro</string>
+    <string name="ch_alarm">Alarme · %1$s</string>
+    <string name="ch_alarm_desc">Alarmes de tela cheia do Lida</string>
+    <string name="tone_classico">Despertador clássico</string>
+    <string name="tone_digital">Relógio digital</string>
+    <string name="tone_sinos">Sinos calmos</string>
+    <string name="tone_marimba">Marimba</string>
+    <string name="tone_amanhecer">Amanhecer</string>
+    <string name="tone_passaros">Passarinhos</string>
+    <string name="ch_update">Atualizações do Lida</string>
+    <string name="updated_title">Lida atualizado</string>
+    <string name="updated_text">Toque para abrir a versão nova.</string>
 </resources>

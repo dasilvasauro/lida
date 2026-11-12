@@ -13,6 +13,7 @@ import { haptic } from '../ui/haptics.js';
 import { play } from '../core/sound.js';
 import { focusOf } from '../core/focus.js';
 import { onCheck, openTask, editTask, quickAdd, bindQuick } from './tasks.js';
+import { lowerFirst } from '../core/i18n.js';
 
 /* ---------- Preferências (por tela, neste aparelho) ---------- */
 const KEY = 'lida.views';
@@ -92,7 +93,7 @@ function columns(S, scope, by) {
     cols.push({ key: 'today', title: 'Hoje', tone: 'acc', drop: { due: day }, tasks: pool.filter((t) => t.due === day) });
     cols.push({ key: 'tomorrow', title: 'Amanhã', drop: { due: d1 }, tasks: pool.filter((t) => t.due === d1) });
     if (scope.screen !== 'hoje') {
-      cols.push({ key: 'week', title: 'Esta semana', sub: `até ${relDay(d6, day).toLowerCase()}`, drop: { due: addDays(day, 2) }, tasks: pool.filter((t) => t.due > d1 && t.due <= d6).sort(byDue) });
+      cols.push({ key: 'week', title: 'Esta semana', sub: `até ${lowerFirst(relDay(d6, day))}`, drop: { due: addDays(day, 2) }, tasks: pool.filter((t) => t.due > d1 && t.due <= d6).sort(byDue) });
       cols.push({ key: 'later', title: 'Depois', drop: { due: addDays(day, 7) }, tasks: pool.filter((t) => t.due > d6).sort(byDue) });
       cols.push({ key: 'nodate', title: 'Sem data', tone: 'dim', drop: { due: null }, tasks: pool.filter((t) => !t.due) });
     }
@@ -134,7 +135,7 @@ function card(t, by, S, screen) {
   return `<li class="task kb-card kind-${kind}" data-id="${esc(t.id)}" data-p="${esc(p)}">
     <button type="button" class="task-check" data-p="${esc(p)}" data-check aria-label="Concluir tarefa: ${esc(t.title)}">${icon('check')}</button>
     <div class="kb-body" data-open role="button" tabindex="0" aria-label="${esc(t.title)}. Toque para ver, segure para arrastar.">
-      <span class="task-title">${esc(t.title)}</span>
+      <span class="task-title" translate="no">${esc(t.title)}</span>
       ${t.notes ? `<p class="task-desc">${esc(plainPreview(t.notes))}</p>` : ''}
       ${meta.length ? `<div class="task-meta">${meta.join('')}</div>` : ''}
     </div>
@@ -341,7 +342,7 @@ export async function moveTask(id, patch, colName = '') {
   await saveTask(id, data, c.consume);
   play('tick');
   haptic('done');
-  const what = 'due' in patch ? (patch.due ? `para ${relDay(patch.due).toLowerCase()}` : 'para Sem data') : `para ${colName}`;
+  const what = 'due' in patch ? (patch.due ? `para ${lowerFirst(relDay(patch.due))}` : 'para Sem data') : `para ${colName}`;
   toast(`“${t.title}” movida ${what}.`, { action: 'Desfazer', onAction: () => saveTask(id, strip(t)) });
   return true;
 }

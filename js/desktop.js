@@ -21,6 +21,7 @@ import { soundPrefs, setSoundPrefs } from './core/sound.js';
 import * as notify from './core/notify.js';
 import { today } from './lib/clock.js';
 import { addDays, norm, ymOf, debounce } from './lib/util.js';
+import { lang, locale, t as tt } from './core/i18n.js';
 
 const D = () => window.__LIDA_DESKTOP__ || null;
 export const isDesktop = () => !!D();
@@ -111,6 +112,47 @@ function taskList(S, view, project) {
 }
 
 /* ---------- Estado para o app (menu, bandeja, widgets) ---------- */
+// Textos dos widgets do Plasma (vão traduzidos no estado, em txt; o widget usa o português se faltar).
+const PLASMA_TEXTS = [
+  'Em foco: {0}',
+  'O Lida está fechado',
+  'O Lida está fechado.',
+  '{0} de {1} tarefas · hábitos {2}/{3} · água: {4}',
+  'faltam {0}',
+  'meta batida',
+  'Modo foco',
+  'Modo foco · pausado',
+  'Pausa',
+  'Pomodoro · parado',
+  'Em foco há',
+  'Não consegui falar com o Lida.',
+  'Abra para ver o foco e as tarefas de hoje.',
+  'Abrir o Lida',
+  'Hoje',
+  'Nova tarefa: pagar a luz amanhã 10h p1 #casa',
+  'Datas, horário, p0–p4, #projeto, @etiqueta e "toda segunda" são entendidos.',
+  'Concluir',
+  'Nada em foco. Passe o mouse numa tarefa e toque no alvo.',
+  'Atrasadas',
+  'Entrada',
+  'atrasada',
+  '{0}/{1} subtarefas',
+  'Parar foco',
+  'Focar nesta tarefa',
+  'Faltam {0} de água',
+  'Meta de água batida',
+  'Copo',
+  'Garrafa',
+  'Concluindo…',
+  'Adicionando…',
+  'Lida · Anéis',
+  'Tarefas',
+  'Hábitos',
+  'Água',
+  'IPL de hoje: {0}',
+];
+const plasmaTexts = () => (lang() === 'pt' ? {} : Object.fromEntries(PLASMA_TEXTS.map((k) => [k, tt(k)])));
+
 function stateNow() {
   const S = P();
   const d = today();
@@ -123,6 +165,9 @@ function stateNow() {
     v: 1,
     at: Date.now(),
     date: d,
+    lang: lang(),
+    locale: locale(),
+    txt: plasmaTexts(),
     user: app.user ? { name: app.user.displayName || '', email: app.user.email || '' } : null,
     mode: app.mode,
     glance: g,
@@ -139,9 +184,9 @@ function stateNow() {
       theme: a.theme,
       font: a.font,
       size: a.size,
-      themes: THEME_ORDER.map((id) => ({ id, name: themeName(id), locked: !!THEMES[id]?.unlock && !(S.walletMeta.themes || []).includes(id) && !(THEMES[id].unlock.level && S.money.level >= THEMES[id].unlock.level) })),
-      fonts: FONT_ORDER.map((id) => ({ id, name: FONTS[id].name })),
-      sizes: Object.entries(SIZES).map(([id, s]) => ({ id, name: s.name })),
+      themes: THEME_ORDER.map((id) => ({ id, name: tt(themeName(id)), locked: !!THEMES[id]?.unlock && !(S.walletMeta.themes || []).includes(id) && !(THEMES[id].unlock.level && S.money.level >= THEMES[id].unlock.level) })),
+      fonts: FONT_ORDER.map((id) => ({ id, name: tt(FONTS[id].name) })),
+      sizes: Object.entries(SIZES).map(([id, s]) => ({ id, name: tt(s.name) })),
       sound: soundPrefs().on,
       notify: { on: np.on, tasks: np.tasks, habits: np.habits, morning: np.morning, daily: np.daily, water: np.water, inApp: np.inApp !== false },
       punish: S.prefs.punishments !== false,

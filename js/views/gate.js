@@ -7,6 +7,7 @@ import { uid, esc, fmtInt } from '../lib/util.js';
 import { icon } from '../ui/ui.js';
 import { isNative } from '../native.js';
 import { enterWithFiles, anyFilesProvider } from './cloudfiles.js';
+import { LANGS, lang, setLang } from '../core/i18n.js';
 
 let host;
 function screen(html) {
@@ -136,7 +137,12 @@ export function welcome() {
       ${isNative() && cloud.cloudConfigured() && !cloud.googleAvailable() ? `<p class="gate-note">Este APK foi gerado sem a configuração do Firebase, então o login com Google não está disponível nele. Os dados ficam neste aparelho.</p>` : ''}
       <p class="gate-err"${cloud.getConfigError() ? '' : ' hidden'}>${esc(cloud.getConfigError())}</p>
       ${anyFilesProvider() ? `<button type="button" class="gate-link" data-files>${icon('cloud')}Já uso o Lida com Dropbox, OneDrive ou Nextcloud</button>` : ''}
-      <button type="button" class="gate-link" data-demo>${icon('flask')}Explorar com dados de exemplo</button>`);
+      <button type="button" class="gate-link" data-demo>${icon('flask')}Explorar com dados de exemplo</button>
+      <label class="gate-lang" translate="no">${icon('globe')}<select data-lang aria-label="Language · Idioma">${Object.entries(LANGS).map(([k, v]) => `<option value="${k}"${lang() === k ? ' selected' : ''}>${v}</option>`).join('')}</select></label>`);
+    h.querySelector('[data-lang]').onchange = (e) => {
+      setLang(e.target.value);
+      location.reload();
+    };
     h.querySelector('[data-files]')?.addEventListener('click', async () => {
       busy(true);
       const r = await enterWithFiles().catch((e) => (err(e.message), null));

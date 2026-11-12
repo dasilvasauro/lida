@@ -519,6 +519,9 @@ body.has-sheet { overflow: hidden; }
 .gate-note { font-size: .8667rem; color: var(--muted); }
 .gate-link { display: inline-flex; align-items: center; gap: .4rem; justify-self: center; border: 0; background: none; color: var(--muted); font-size: .9rem; font-weight: 600; padding: .5333rem; }
 .gate-link:hover { color: var(--text); }
+.gate-lang { display: inline-flex; align-items: center; gap: .4rem; justify-self: center; color: var(--muted); font-size: .9rem; }
+.gate-lang select { border: 0; background: none; color: inherit; font: inherit; font-weight: 600; padding: .3rem .2rem; cursor: pointer; }
+.gate-lang .ic { width: 1.05rem; height: 1.05rem; }
 .gate-facts { display: grid; gap: .4rem; padding: .9333rem 1.0667rem; border-radius: var(--r); background: var(--surface-2); font-size: .9333rem; }
 .gate-facts div { display: flex; justify-content: space-between; gap: .8rem; }
 .gate-facts span { color: var(--muted); }

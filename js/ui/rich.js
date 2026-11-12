@@ -4,6 +4,9 @@
 // O texto é escapado antes de qualquer marcação, então nada do usuário vira HTML.
 import { esc } from '../lib/util.js';
 import { copyText } from './ui.js';
+import { tr } from '../core/i18n.js';
+
+const L = (pt, en, es) => ({ pt, en, es });
 
 function inline(s) {
   let h = esc(s);
@@ -83,13 +86,13 @@ export function toggleCheckLine(text, i) {
 // Barra de formatação para um <textarea>.
 export function richToolbar() {
   return `<div class="rich-bar" role="toolbar" aria-label="Formatação">
-    <button type="button" data-fmt="b" aria-label="Negrito"><b>N</b></button>
+    <button type="button" data-fmt="b" aria-label="Negrito"><b>${tr(L('N', 'B', 'N'))}</b></button>
     <button type="button" data-fmt="i" aria-label="Itálico"><i>I</i></button>
     <button type="button" data-fmt="s" aria-label="Riscado"><s>S</s></button>
     <button type="button" data-fmt="code" aria-label="Código"><code>{ }</code></button>
     <button type="button" data-fmt="link" aria-label="Link">Link</button>
-    <button type="button" data-fmt="list" aria-label="Lista">• Lista</button>
-    <button type="button" data-fmt="check" aria-label="Lista de verificação">☐ Itens</button>
+    <button type="button" data-fmt="list" aria-label="Lista">• <span>Lista</span></button>
+    <button type="button" data-fmt="check" aria-label="Lista de verificação">☐ <span>Itens</span></button>
     <button type="button" data-fmt="copy" class="rb-copy" aria-label="Copiar a descrição">Copiar</button>
   </div>`;
 }

@@ -14,6 +14,7 @@ import { icon, sheet, toast, bar } from '../ui/ui.js';
 import { play } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
 import { celebrate } from './celebrate.js';
+import { t as tx } from '../core/i18n.js';
 
 const fmt = (sec) => {
   const s = Math.max(0, Math.round(sec));
@@ -58,7 +59,7 @@ function setPomo(next) {
 export function pomoStart() {
   const endsAt = nowMs() + pomo.left * 1000;
   setPomo({ running: true, endsAt });
-  timerAlert('pomodoro', endsAt, pomo.mode === 'focus' ? 'Fim do foco' : 'Fim da pausa', pomo.mode === 'focus' ? 'Hora de uma pausa curta.' : 'Pronto para mais um ciclo?');
+  timerAlert('pomodoro', endsAt, tx(pomo.mode === 'focus' ? 'Fim do foco' : 'Fim da pausa'), tx(pomo.mode === 'focus' ? 'Hora de uma pausa curta.' : 'Pronto para mais um ciclo?'));
   haptic('start');
 }
 export function pomoPause() {
@@ -144,9 +145,9 @@ function adopt(force = false) {
   pomo = { ...POMO_DEF, ...(f.pomo || {}) };
   task = f.task?.taskId ? { ...f.task } : { taskId: null };
   // Avisos locais de fim acompanham o estado novo.
-  if (pomo.running && pomo.endsAt !== prevPomo.endsAt) timerAlert('pomodoro', pomo.endsAt, pomo.mode === 'focus' ? 'Fim do foco' : 'Fim da pausa', pomo.mode === 'focus' ? 'Hora de uma pausa curta.' : 'Pronto para mais um ciclo?');
+  if (pomo.running && pomo.endsAt !== prevPomo.endsAt) timerAlert('pomodoro', pomo.endsAt, tx(pomo.mode === 'focus' ? 'Fim do foco' : 'Fim da pausa'), tx(pomo.mode === 'focus' ? 'Hora de uma pausa curta.' : 'Pronto para mais um ciclo?'));
   else if (!pomo.running) timerAlert('pomodoro', null);
-  if (task.running && task.left > 0) timerAlert('focus', task.endsAt, 'Tempo esgotado', P().byId.get(task.taskId)?.title || 'Modo foco');
+  if (task.running && task.left > 0) timerAlert('focus', task.endsAt, tx('Tempo esgotado'), P().byId.get(task.taskId)?.title || tx('Modo foco'));
   else timerAlert('focus', null);
   if (!task.taskId && overlay) overlay.querySelector('[data-min]')?.click();
   emit();
@@ -287,12 +288,18 @@ function setTask(next) {
 }
 
 // Notificação fixa com a contagem (APK): o modo foco tem prioridade sobre o Pomodoro.
+// A notificação do foco no idioma do app (o título, quando é o nome da tarefa, fica como está).
+function live(st) {
+  const own = st.title === P().byId.get(task.taskId)?.title || st.title === focusedTask()?.title;
+  return liveTimer({ ...st, title: own ? st.title : tx(st.title), body: tx(st.body), chip: tx(st.chip) });
+}
+
 function syncLive() {
   const mm = (sec) => fmt(Math.max(0, Math.round(sec)));
   if (task.taskId) {
     const t = P().byId.get(task.taskId);
     if (!t) return liveTimer(null);
-    return liveTimer(
+    return live(
       task.running
         ? { title: t.title, body: 'Modo foco · tempo restante', endsAt: task.endsAt, totalMs: (task.total || 0) * 1000, chip: 'Foco', focus: true }
         : { title: t.title, body: `Modo foco pausado · ${mm(task.left)} restantes`, paused: true, leftMs: Math.max(0, Math.round(task.left * 1000)), chip: 'Pausa', focus: true },
@@ -301,10 +308,10 @@ function syncLive() {
   const label = pomo.mode === 'focus' ? 'Foco' : 'Pausa';
   const ft = focusedTask();
   const since = focusOf()?.since;
-  if (pomo.running) return liveTimer({ title: ft ? ft.title : `Pomodoro · ${label}`, body: ft ? `Pomodoro · ${label} · ciclo de ${pomo.mode === 'focus' ? pomo.focusMin : pomo.breakMin} min` : pomo.mode === 'focus' ? `Ciclo de ${pomo.focusMin} min` : `Pausa de ${pomo.breakMin} min`, endsAt: pomo.endsAt, totalMs: (pomo.mode === 'focus' ? pomo.focusMin : pomo.breakMin) * 60000, chip: label, focus: !!ft, ...(ft ? {} : { timeoutMs: Math.max(1000, pomo.endsAt - nowMs()) }) });
-  if (pomo.left !== dur()) return liveTimer({ title: ft ? ft.title : `Pomodoro · ${label} parado`, body: ft ? `Pomodoro parado · ${mm(pomo.left)} restantes` : `${mm(pomo.left)} restantes`, paused: true, leftMs: pomo.left * 1000, chip: 'Pausa', focus: !!ft });
+  if (pomo.running) return live({ title: ft ? ft.title : `Pomodoro · ${label}`, body: ft ? `Pomodoro · ${label} · ciclo de ${pomo.mode === 'focus' ? pomo.focusMin : pomo.breakMin} min` : pomo.mode === 'focus' ? `Ciclo de ${pomo.focusMin} min` : `Pausa de ${pomo.breakMin} min`, endsAt: pomo.endsAt, totalMs: (pomo.mode === 'focus' ? pomo.focusMin : pomo.breakMin) * 60000, chip: label, focus: !!ft, ...(ft ? {} : { timeoutMs: Math.max(1000, pomo.endsAt - nowMs()) }) });
+  if (pomo.left !== dur()) return live({ title: ft ? ft.title : `Pomodoro · ${label} parado`, body: ft ? `Pomodoro parado · ${mm(pomo.left)} restantes` : `${mm(pomo.left)} restantes`, paused: true, leftMs: pomo.left * 1000, chip: 'Pausa', focus: !!ft });
   // Só a tarefa em foco: contagem para cima desde que o foco começou.
-  if (ft) return liveTimer({ title: ft.title, body: 'Em foco', startedAt: since || nowMs(), chip: 'Foco', focus: true });
+  if (ft) return live({ title: ft.title, body: 'Em foco', startedAt: since || nowMs(), chip: 'Foco', focus: true });
   return liveTimer(null);
 }
 
@@ -319,7 +326,7 @@ export function focusTask(id) {
   if (task.taskId !== id) {
     const total = (t.duration || 30) * 60;
     setTask({ taskId: id, total, running: true, endsAt: nowMs() + total * 1000, left: total, rang: false });
-    timerAlert('focus', task.endsAt, 'Tempo esgotado', t.title);
+    timerAlert('focus', task.endsAt, tx('Tempo esgotado'), t.title);
     play('powerup');
     haptic('start');
   }
@@ -346,7 +353,7 @@ export function openTaskFocus() {
   overlay.innerHTML = `<div class="focus-inner">
     <button type="button" class="icon-btn focus-min" data-min aria-label="Minimizar">${icon('down')}</button>
     <small>Modo foco</small>
-    <h2>${esc(t.title)}</h2>
+    <h2 translate="no">${esc(t.title)}</h2>
     <div class="pomo-dial big"><svg viewBox="0 0 280 280" aria-hidden="true"><circle cx="140" cy="140" r="130" class="pomo-track"/><circle cx="140" cy="140" r="130" class="pomo-arc" stroke-dasharray="${C}" transform="rotate(-90 140 140)"/></svg>
       <div class="pomo-time"><b data-time></b><small data-label></small></div></div>
     <div class="pomo-actions">
@@ -386,7 +393,7 @@ export function openTaskFocus() {
       timerAlert('focus', null);
     } else {
       setTask({ running: true, endsAt: nowMs() + task.left * 1000 });
-      if (task.left > 0) timerAlert('focus', task.endsAt, 'Tempo esgotado', t.title);
+      if (task.left > 0) timerAlert('focus', task.endsAt, tx('Tempo esgotado'), t.title);
     }
     paint();
   };
@@ -424,7 +431,7 @@ export function focusCard(S = P()) {
   const pomoOn = pomo.running || pomo.left !== dur();
   return `<section class="focus-card" data-focuscard data-id="${esc(t.id)}">
     <div class="fc-top"><span class="fc-rec"><i></i>Em foco</span><span class="fc-time" data-fc-time>${f?.since ? ago(f.since) : ''}</span></div>
-    <h3>${esc(t.title)}</h3>
+    <h3 translate="no">${esc(t.title)}</h3>
     <p class="fc-meta" data-fc-meta>${timed ? 'Modo foco com tempo' : pomoOn ? `Pomodoro · ${fmt(leftNow())}` : 'Sincronizado com seus outros aparelhos'}</p>
     ${fcSubs(t)}
     <div class="fc-acts">
@@ -441,7 +448,7 @@ function fcSubs(t) {
   if (!subs.length) return '';
   const n = subs.filter((x) => x.done).length;
   return `<div class="fc-subs"><div class="fc-subs-head"><span>${t.kind === 'routine' ? 'Itens da rotina' : 'Subtarefas'}</span><b>${n}/${subs.length}</b></div>${bar(n / subs.length, { cls: 'thin', label: 'Progresso' })}
-    <ul>${subs.map((x) => `<li><label class="check mini${x.done ? ' on' : ''}"><input type="checkbox" data-fcsub="${esc(x.id)}"${x.done ? ' checked' : ''}><span>${esc(x.title)}</span></label></li>`).join('')}</ul></div>`;
+    <ul>${subs.map((x) => `<li><label class="check mini${x.done ? ' on' : ''}"><input type="checkbox" data-fcsub="${esc(x.id)}"${x.done ? ' checked' : ''}><span translate="no">${esc(x.title)}</span></label></li>`).join('')}</ul></div>`;
 }
 
 export function bindFocusCard(el) {
@@ -515,7 +522,7 @@ export function pickFocus() {
     title: 'Focar em uma tarefa',
     body: groups.length
       ? `<p class="hint">A tarefa em foco aparece em todos os seus aparelhos, na notificação e no widget.</p>${groups
-          .map(([g, l]) => `<div class="pick-group"><div class="pick-glabel">${g}</div>${l.map((t) => `<button type="button" class="pick-opt" data-fid="${esc(t.id)}"><span>${esc(t.title)}</span>${t.kind === 'routine' ? `<small>${icon('repeat', 'sm')}${(t.subtasks || []).length} itens</small>` : `<small class="prio-${esc((t.priority || 'P4').toLowerCase())}">${esc(t.priority || '')}</small>`}</button>`).join('')}</div>`)
+          .map(([g, l]) => `<div class="pick-group"><div class="pick-glabel">${g}</div>${l.map((t) => `<button type="button" class="pick-opt" data-fid="${esc(t.id)}"><span translate="no">${esc(t.title)}</span>${t.kind === 'routine' ? `<small>${icon('repeat', 'sm')}${(t.subtasks || []).length} itens</small>` : `<small class="prio-${esc((t.priority || 'P4').toLowerCase())}">${esc(t.priority || '')}</small>`}</button>`).join('')}</div>`)
           .join('')}`
       : '<p class="hint">Nenhuma tarefa aberta. Crie uma primeiro.</p>',
     onMount(el, close) {

@@ -89,8 +89,8 @@ PlasmoidItem {
     Plasmoid.icon: "io.github.dasilvasauro.lida"
     switchWidth: Kirigami.Units.gridUnit * 12
     switchHeight: Kirigami.Units.gridUnit * 12
-    toolTipMainText: fTask ? "Em foco: " + fTask.title : "Lida"
-    toolTipSubText: !appOn ? "O Lida está fechado" : tasksDone + " de " + tasksTotal + " tarefas · hábitos " + habitsDone + "/" + habitsTotal + " · água: " + (waterLeft > 0 ? "faltam " + ml(waterLeft) : "meta batida") + (timerText() !== "" ? "\n" + timerLabel() + " " + timerText() : "")
+    toolTipMainText: fTask ? root.tx("Em foco: {0}", fTask.title) : "Lida"
+    toolTipSubText: !appOn ? root.tx("O Lida está fechado") : root.tx("{0} de {1} tarefas · hábitos {2}/{3} · água: {4}", tasksDone, tasksTotal, habitsDone, habitsTotal, waterLeft > 0 ? root.tx("faltam {0}", ml(waterLeft)) : root.tx("meta batida")) + (timerText() !== "" ? "\n" + timerLabel() + " " + timerText() : "")
 
     // ---------------------------------------------------------------- utilidades
     function shq(s) { return "'" + String(s).replace(/'/g, "'\\''") + "'" }
@@ -101,10 +101,17 @@ PlasmoidItem {
         var h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60
         return (neg ? "-" : "") + (h ? h + ":" + pad(m) : pad(m)) + ":" + pad(s)
     }
-    function ml(v) { return v >= 1000 ? (v / 1000).toFixed(2).replace(/\.?0+$/, "").replace(".", ",") + " L" : v + " ml" }
+    // Textos no idioma do app: o estado traz a tradução de cada texto em português (st.txt)
+    function tx(s) {
+        var out = (st && st.txt && st.txt[s]) || s
+        for (var i = 1; i < arguments.length; i++) out = out.split("{" + (i - 1) + "}").join(arguments[i])
+        return out
+    }
+    function ml(v) { return v >= 1000 ? (v / 1000).toFixed(2).replace(/\.?0+$/, "").replace(".", String(st.locale || "pt-BR").indexOf("en") === 0 ? "." : ",") + " L" : v + " ml" }
     function todayStr() { var d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) }
     function dateLabel() {
         var d = new Date()
+        if (st.locale && st.locale !== "pt-BR") return d.toLocaleDateString(Qt.locale(st.locale), "dddd, d MMM")
         var wd = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"][d.getDay()]
         var mo = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"][d.getMonth()]
         return wd + ", " + d.getDate() + " " + mo
@@ -118,10 +125,10 @@ PlasmoidItem {
     }
     function timerText() { var s = timerSeconds(); return (s === null || s === undefined) ? "" : fmt(s) }
     function timerLabel() {
-        if (tmr) return tmr.running ? "Modo foco" : "Modo foco · pausado"
-        if (pomo.running) return pomo.mode === "focus" ? "Pomodoro" : "Pausa"
-        if (pomo.active) return "Pomodoro · parado"
-        if (fTask) return "Em foco há"
+        if (tmr) return tmr.running ? root.tx("Modo foco") : root.tx("Modo foco · pausado")
+        if (pomo.running) return pomo.mode === "focus" ? "Pomodoro" : root.tx("Pausa")
+        if (pomo.active) return root.tx("Pomodoro · parado")
+        if (fTask) return root.tx("Em foco há")
         return ""
     }
     function pomoFraction() {
@@ -174,7 +181,7 @@ PlasmoidItem {
         sh.run(bin() + " --json " + args, function (out, err, code) {
             busyMsg = ""
             lastError = ""
-            try { var r = JSON.parse(out); if (r && r.error) lastError = r.error } catch (e) { if (code) lastError = (err || "Não consegui falar com o Lida.").split("\n")[0] }
+            try { var r = JSON.parse(out); if (r && r.error) lastError = r.error } catch (e) { if (code) lastError = (err || root.tx("Não consegui falar com o Lida.")).split("\n")[0] }
             refresh()
         })
     }
@@ -465,9 +472,9 @@ PlasmoidItem {
             visible: !root.appOn
             spacing: 12
             Kirigami.Icon { Layout.alignment: Qt.AlignHCenter; source: "io.github.dasilvasauro.lida"; implicitWidth: 48; implicitHeight: 48 }
-            Text { Layout.alignment: Qt.AlignHCenter; text: "O Lida está fechado"; color: root.cText; font.pixelSize: 15; font.bold: true }
-            Text { Layout.alignment: Qt.AlignHCenter; text: "Abra para ver o foco e as tarefas de hoje."; color: root.cMuted; font.pixelSize: 12 }
-            Pill { Layout.alignment: Qt.AlignHCenter; kind: "primary"; icon: "out"; text: "Abrir o Lida"; onClicked: root.startApp() }
+            Text { Layout.alignment: Qt.AlignHCenter; text: root.tx("O Lida está fechado"); color: root.cText; font.pixelSize: 15; font.bold: true }
+            Text { Layout.alignment: Qt.AlignHCenter; text: root.tx("Abra para ver o foco e as tarefas de hoje."); color: root.cMuted; font.pixelSize: 12 }
+            Pill { Layout.alignment: Qt.AlignHCenter; kind: "primary"; icon: "out"; text: root.tx("Abrir o Lida"); onClicked: root.startApp() }
         }
 
         ColumnLayout {
@@ -484,7 +491,7 @@ PlasmoidItem {
                 ColumnLayout {
                     spacing: 0
                     Layout.fillWidth: true
-                    Text { Layout.fillWidth: true; text: "Hoje"; color: root.cText; font.pixelSize: 15; font.bold: true }
+                    Text { Layout.fillWidth: true; text: root.tx("Hoje"); color: root.cText; font.pixelSize: 15; font.bold: true }
                     Text { Layout.fillWidth: true; elide: Text.ElideRight; text: root.dateLabel() + (root.st.ipl !== null && root.st.ipl !== undefined ? "  ·  IPL " + root.st.ipl : ""); color: root.cMuted; font.pixelSize: 12 }
                 }
                 Item {
@@ -514,7 +521,7 @@ PlasmoidItem {
                         Layout.fillWidth: true
                         background: null
                         color: root.cText
-                        placeholderText: "Nova tarefa: pagar a luz amanhã 10h p1 #casa"
+                        placeholderText: root.tx("Nova tarefa: pagar a luz amanhã 10h p1 #casa")
                         placeholderTextColor: root.cDim
                         font.pixelSize: 13
                         leftPadding: 0
@@ -522,7 +529,7 @@ PlasmoidItem {
                             var t = text.trim()
                             if (!t) return
                             text = ""
-                            root.lida("add " + root.shq(t), "Adicionando…")
+                            root.lida("add " + root.shq(t), root.tx("Adicionando…"))
                         }
                     }
                     IconBtn { visible: quick.text.length > 0; icon: "right"; iconColor: root.cAccent; size: 26; tip: "Adicionar"; onClicked: quick.accepted() }
@@ -531,7 +538,7 @@ PlasmoidItem {
             Text {
                 Layout.fillWidth: true
                 visible: root.lastError !== "" || root.busyMsg !== "" || quick.activeFocus
-                text: root.lastError !== "" ? root.lastError : (root.busyMsg !== "" ? root.busyMsg : "Datas, horário, p0–p4, #etiqueta, @projeto e \"toda segunda\" são entendidos.")
+                text: root.lastError !== "" ? root.lastError : (root.busyMsg !== "" ? root.busyMsg : root.tx("Datas, horário, p0–p4, #projeto, @etiqueta e \"toda segunda\" são entendidos."))
                 color: root.lastError !== "" ? root.cNeg : root.cDim
                 wrapMode: Text.Wrap
                 font.pixelSize: 11
@@ -658,7 +665,7 @@ PlasmoidItem {
                         Layout.fillWidth: true
                         Layout.topMargin: 2
                         spacing: 6
-                        Pill { visible: !!root.fTask; kind: "primary"; icon: "check"; text: "Concluir"; onClicked: root.lida("foco concluir", "Concluindo…") }
+                        Pill { visible: !!root.fTask; kind: "primary"; icon: "check"; text: root.tx("Concluir"); onClicked: root.lida("foco concluir", root.tx("Concluindo…")) }
                         Pill { visible: !root.tmr; icon: root.pomo.running ? "pause" : "play"; text: root.pomo.running ? "Pausar" : (root.pomo.active ? "Continuar" : "Pomodoro"); onClicked: root.lida("pomo toggle") }
                         IconBtn { visible: !!root.pomo.active && !root.tmr; icon: "refresh"; tip: "Reiniciar o Pomodoro"; onClicked: root.lida("pomo reset") }
                         Item { Layout.fillWidth: true }
@@ -672,7 +679,7 @@ PlasmoidItem {
                 visible: !root.fTask && !root.pomoOn
                 spacing: 8
                 LIcon { name: "target"; size: 16; color: root.cDim }
-                Text { Layout.fillWidth: true; text: "Nada em foco. Passe o mouse numa tarefa e toque no alvo."; color: root.cMuted; font.pixelSize: 12; wrapMode: Text.Wrap }
+                Text { Layout.fillWidth: true; text: root.tx("Nada em foco. Passe o mouse numa tarefa e toque no alvo."); color: root.cMuted; font.pixelSize: 12; wrapMode: Text.Wrap }
                 Pill { small: true; icon: "play"; text: "Pomodoro"; onClicked: root.lida("pomo start") }
             }
 
@@ -688,9 +695,9 @@ PlasmoidItem {
                     spacing: 3
                     Repeater {
                         model: [
-                            { n: "Hoje", i: "today", c: root.todayList.length },
-                            { n: "Atrasadas", i: "alert", c: root.overdue },
-                            { n: "Entrada", i: "inbox", c: root.st.inbox || 0 }
+                            { n: root.tx("Hoje"), i: "today", c: root.todayList.length },
+                            { n: root.tx("Atrasadas"), i: "alert", c: root.overdue },
+                            { n: root.tx("Entrada"), i: "inbox", c: root.st.inbox || 0 }
                         ]
                         delegate: Rectangle {
                             required property var modelData
@@ -734,9 +741,9 @@ PlasmoidItem {
                     readonly property bool inFocus: !!root.fTask && root.fTask.id === modelData.id
                     readonly property color pc: root.prioColor(modelData.priority)
                     readonly property string meta: [
-                        late ? "atrasada" : "",
+                        late ? root.tx("atrasada") : "",
                         modelData.time || "",
-                        modelData.subtasks && modelData.subtasks.length ? modelData.subtasks.filter(function (s) { return s.done }).length + "/" + modelData.subtasks.length + " subtarefas" : "",
+                        modelData.subtasks && modelData.subtasks.length ? root.tx("{0}/{1} subtarefas", modelData.subtasks.filter(function (s) { return s.done }).length, modelData.subtasks.length) : "",
                         modelData.project || ""
                     ].filter(function (s) { return s }).join("  ·  ")
                     color: inFocus ? root.tint(root.cRec, 0.1) : (rowHover.hovered ? root.tint(root.cText, 0.05) : "transparent")
@@ -754,9 +761,9 @@ PlasmoidItem {
                             border.color: del.modelData.kind === "sprint" ? root.cAccent : del.pc
                             color: chk.containsMouse ? del.pc : root.tint(del.pc, 0.12)
                             LIcon { anchors.centerIn: parent; name: "check"; size: 13; stroke: 2.8; color: root.cOnAccent; opacity: chk.containsMouse ? 1 : 0 }
-                            MouseArea { id: chk; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.lida("done " + root.shq(del.modelData.id), "Concluindo…") }
+                            MouseArea { id: chk; anchors.fill: parent; anchors.margins: -4; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.lida("done " + root.shq(del.modelData.id), root.tx("Concluindo…")) }
                             QQC2.ToolTip.visible: chk.containsMouse
-                            QQC2.ToolTip.text: "Concluir"
+                            QQC2.ToolTip.text: root.tx("Concluir")
                             QQC2.ToolTip.delay: 700
                         }
                         ColumnLayout {
@@ -784,7 +791,7 @@ PlasmoidItem {
                             icon: "target"
                             size: 26
                             iconColor: del.inFocus ? root.cRec : root.cMuted
-                            tip: del.inFocus ? "Parar foco" : "Focar nesta tarefa"
+                            tip: del.inFocus ? root.tx("Parar foco") : root.tx("Focar nesta tarefa")
                             onClicked: del.inFocus ? root.lida("foco parar") : root.lida("foco " + root.shq(del.modelData.id) + " --sem-tela")
                         }
                     }
@@ -842,7 +849,7 @@ PlasmoidItem {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 4
-                    Text { Layout.fillWidth: true; text: root.waterLeft > 0 ? "Faltam " + root.ml(root.waterLeft) + " de água" : "Meta de água batida"; color: root.cText; font.pixelSize: 12; font.weight: Font.DemiBold }
+                    Text { Layout.fillWidth: true; text: root.waterLeft > 0 ? root.tx("Faltam {0} de água", root.ml(root.waterLeft)) : root.tx("Meta de água batida"); color: root.cText; font.pixelSize: 12; font.weight: Font.DemiBold }
                     Rectangle {
                         Layout.fillWidth: true
                         implicitHeight: 4
@@ -851,8 +858,8 @@ PlasmoidItem {
                         Rectangle { width: parent.width * Math.min(1, (root.water.ml || 0) / root.waterGoal); height: parent.height; radius: 2; color: root.cWater }
                     }
                 }
-                Pill { small: true; icon: "plus"; text: "Copo"; onClicked: root.lida("agua copo") }
-                Pill { small: true; icon: "plus"; text: "Garrafa"; onClicked: root.lida("agua garrafa") }
+                Pill { small: true; icon: "plus"; text: root.tx("Copo"); onClicked: root.lida("agua copo") }
+                Pill { small: true; icon: "plus"; text: root.tx("Garrafa"); onClicked: root.lida("agua garrafa") }
             }
         }
     }

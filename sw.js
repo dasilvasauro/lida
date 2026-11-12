@@ -85,6 +85,8 @@ const SHELL = [
   'js/desktop.js',
   'js/firebase-config.js',
   'js/flavor.js',
+  'js/i18n/en.js',
+  'js/i18n/es.js',
   'js/lib/clock.js',
   'js/lib/crypto.js',
   'js/lib/hlc.js',

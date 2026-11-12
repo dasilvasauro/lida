@@ -4,7 +4,7 @@ import { P } from '../state.js';
 import { IPL_PARTS, dayIPL, grade, gradeLine, partsTip } from '../core/ipl.js';
 import { monthRecord, yearRecord, doneDay, habitsOnDay } from '../core/tasks.js';
 import { today } from '../lib/clock.js';
-import { esc, fmtInt, fmtSigned, plural, sum, addDays, fmtDayLong, fmtMonth, fmtMl, ymOf, addMonths, cap, MSHORT, MONTHS } from '../lib/util.js';
+import { esc, fmtInt, fmtSigned, plural, sum, addDays, fmtDayLong, fmtMonth, fmtMl, ymOf, addMonths, cap, MSHORT, MONTHS, LOC } from '../lib/util.js';
 import { sheet, icon } from '../ui/ui.js';
 import { line, columns } from '../ui/chart.js';
 import { face, MOODS } from './me.js';
@@ -36,7 +36,7 @@ export function partsBars(parts, { compact = false } = {}) {
     .join('')}</ul>`;
 }
 
-const fmtFocus = (sec) => (sec >= 3600 ? `${(sec / 3600).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h` : `${Math.round(sec / 60)} min`);
+const fmtFocus = (sec) => (sec >= 3600 ? `${(sec / 3600).toLocaleString(LOC, { maximumFractionDigits: 1 })} h` : `${Math.round(sec / 60)} min`);
 const money = (evs, k) => [sum(evs, (e) => Math.max(0, e[k] || 0)), sum(evs, (e) => Math.min(0, e[k] || 0))];
 const tile = (label, value, sub = '') => `<div class="tile"><small>${esc(label)}</small><b>${value}</b>${sub ? `<span class="tile-sub">${sub}</span>` : ''}</div>`;
 
@@ -77,8 +77,8 @@ export function showDaySummary(day = addDays(today(), -1)) {
         ${tile('Foco', focusSec ? fmtFocus(focusSec) : '–')}
       </div>
       ${mood ? `<p class="sum-mood"><span class="mood-strip"><span class="mo-${mood.id}">${face(mood.id, 22)}</span></span> Humor: <b>${esc(mood.name)}</b></p>` : ''}
-      ${best.length ? `<div class="sum-list"><h3>Concluídas</h3><ul>${best.map((t) => `<li>${icon('check', 'sm')}<span>${esc(t.title)}</span></li>`).join('')}${done.length > best.length ? `<li class="more">e mais ${done.length - best.length}</li>` : ''}</ul></div>` : ''}
-      ${failed.length ? `<div class="sum-list neg"><h3>Venceram</h3><ul>${failed.slice(0, 4).map((t) => `<li>${icon('x', 'sm')}<span>${esc(t.title)}</span></li>`).join('')}${failed.length > 4 ? `<li class="more">e mais ${failed.length - 4}</li>` : ''}</ul></div>` : ''}
+      ${best.length ? `<div class="sum-list"><h3>Concluídas</h3><ul>${best.map((t) => `<li>${icon('check', 'sm')}<span translate="no">${esc(t.title)}</span></li>`).join('')}${done.length > best.length ? `<li class="more">e mais ${done.length - best.length}</li>` : ''}</ul></div>` : ''}
+      ${failed.length ? `<div class="sum-list neg"><h3>Venceram</h3><ul>${failed.slice(0, 4).map((t) => `<li>${icon('x', 'sm')}<span translate="no">${esc(t.title)}</span></li>`).join('')}${failed.length > 4 ? `<li class="more">e mais ${failed.length - 4}</li>` : ''}</ul></div>` : ''}
       <div class="sheet-actions"><button type="button" class="btn primary" data-close-sum>${live ? 'Fechar' : 'Bora para hoje'}</button></div>
     </div>`,
     onMount(el, close) {
@@ -103,7 +103,7 @@ export function showMonthSummary(ym) {
   }
   const name = fmtMonth(ym);
   sheet({
-    title: `Seu ${name.split(' de ')[0].toLowerCase()}`,
+    title: `Seu ${MONTHS[Number(ym.slice(5, 7)) - 1]}`,
     wide: true,
     body: `<div class="summary">
       <p class="sum-date">${esc(cap(name))} · ${plural(rec.days || 0, 'dia avaliado', 'dias avaliados')}</p>
@@ -150,7 +150,7 @@ function yearHighlights(S, y) {
   const mood = MOODS.find((m) => m.id === mid);
   if (mood) out.push(['mood', 'Humor mais comum', esc(mood.name), plural(mn, 'dia', 'dias')]);
   const ml = sum(S.water.filter((w) => inY(w.date)), (w) => w.ml || 0);
-  if (ml) out.push(['water', 'Água no ano', fmtMl(ml), `${Math.round(ml / 250).toLocaleString('pt-BR')} copos`]);
+  if (ml) out.push(['water', 'Água no ano', fmtMl(ml), `${Math.round(ml / 250).toLocaleString(LOC)} copos`]);
   return out;
 }
 

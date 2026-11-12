@@ -132,6 +132,12 @@ final class AlarmScheduler {
         return after + 86400000L;
     }
 
+    // Nome do toque no idioma do sistema (res/values*/strings.xml), para o nome do canal.
+    static String toneName(Context ctx, String tone) {
+        int id = ctx.getResources().getIdentifier("tone_" + tone, "string", ctx.getPackageName());
+        return id != 0 ? ctx.getString(id) : tone;
+    }
+
     static String channelFor(Context ctx, String tone) {
         boolean known = false;
         for (String x : TONES) if (x.equals(tone)) known = true;
@@ -139,7 +145,7 @@ final class AlarmScheduler {
         String id = "lida_alarm_" + tone;
         NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel(id) == null) {
-            NotificationChannel ch = new NotificationChannel(id, "Alarme · " + tone, NotificationManager.IMPORTANCE_HIGH);
+            NotificationChannel ch = new NotificationChannel(id, ctx.getString(R.string.ch_alarm, toneName(ctx, tone)), NotificationManager.IMPORTANCE_HIGH);
             int res = ctx.getResources().getIdentifier("alarm_" + tone, "raw", ctx.getPackageName());
             Uri snd = Uri.parse("android.resource://" + ctx.getPackageName() + "/" + res);
             AudioAttributes aa = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
@@ -147,7 +153,7 @@ final class AlarmScheduler {
             ch.enableVibration(true);
             ch.setVibrationPattern(new long[] { 0, 700, 500, 700, 500, 700 });
             ch.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-            ch.setDescription("Alarmes de tela cheia do Lida");
+            ch.setDescription(ctx.getString(R.string.ch_alarm_desc));
             nm.createNotificationChannel(ch);
         }
         return id;

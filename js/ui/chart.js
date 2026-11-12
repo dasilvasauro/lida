@@ -2,7 +2,7 @@
 // Regras (mesmas em todos): barras finas (até 24 px) com ponta arredondada e base reta,
 // linha de 2 px, grade em fio fino e discreta, um rótulo só no que importa, texto sempre
 // nas cores de texto (nunca na cor da série) e dica ao passar o dedo/mouse ou focar.
-import { esc } from '../lib/util.js';
+import { esc, LOC } from '../lib/util.js';
 
 /* ---------- Dica flutuante (uma para todos os gráficos) ---------- */
 let tipEl = null;
@@ -53,7 +53,7 @@ const niceMax = (v) => {
   for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p;
   return 10 * p;
 };
-const tick = (n) => (n >= 10000 ? `${Math.round(n / 1000)} mil` : n.toLocaleString('pt-BR'));
+const tick = (n) => (n >= 10000 ? (LOC === 'pt-BR' ? `${Math.round(n / 1000)} mil` : `${Math.round(n / 1000)}k`) : n.toLocaleString(LOC));
 
 /* ---------- Colunas ---------- */
 // data: [{ label, value, tip }] — label curto para o eixo (só alguns aparecem).

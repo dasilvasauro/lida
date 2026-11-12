@@ -6,7 +6,7 @@ import { hapticsOn, setHaptics, hapticsSupported, haptic } from '../ui/haptics.j
 import * as notify from '../core/notify.js';
 import { isNative, hasPlugin, plugin } from '../native.js';
 import { googleAvailable } from '../core/cloud.js';
-import { esc, fmtInt } from '../lib/util.js';
+import { esc, fmtInt, fmtDate, plural, LOC } from '../lib/util.js';
 import { icon, toast, confirmDialog, promptDialog, sheet } from '../ui/ui.js';
 import { avatar, openAvatar } from './common.js';
 import { MODUS, useItemEvent, THEME_PRICES, ownsPack } from '../core/game.js';
@@ -21,7 +21,7 @@ import { FLAVOR } from '../flavor.js';
 import { openExternal } from '../core/net.js';
 import { TONES, TONE_ORDER, MAX_ALARMS, alarmCount, alarmStyle, defaultTone } from '../core/alarms.js';
 import { testAlarm, nativeAlarms } from './alarm.js';
-import { tr } from '../core/i18n.js';
+import { tr, lang, setLang, LANGS } from '../core/i18n.js';
 
 const toggle = (name, on, label) => `<span class="toggle"><input type="checkbox" data-${name}${on ? ' checked' : ''} aria-label="${esc(label)}"><i></i></span>`;
 // Para linhas que não são <label> (têm outro controle dentro): o próprio botão vira o rótulo.
@@ -62,6 +62,10 @@ export const settingsView = {
         ${!app.demo && app.mode === 'files' ? `<button type="button" class="set-row" data-files-manage>${icon('cloud')}<span class="grow">${esc(providerName(app.syncKind))}<small>${app.sync ? `${esc(app.syncAccount || 'Conectado')}${app.sync.getStatus() === 'denied' ? ' · precisa conectar de novo' : ''}` : 'Desconectado neste aparelho: toque para conectar'}</small></span>${icon('right', 'sm')}</button>` : ''}
         ${!app.demo ? `<label class="set-row">${icon('lock')}<span class="grow">Pedir senha ao abrir<small>Mais privacidade em aparelhos compartilhados</small></span>${toggle('reqpass', requirePass, 'Pedir senha ao abrir')}</label>
         <button type="button" class="set-row" data-pass>${icon('edit')}<span class="grow">Alterar senha</span>${icon('right', 'sm')}</button>` : ''}
+      </div></section>
+
+      <section class="set-group"><h2>Idioma</h2><div class="set-list">
+        <label class="set-row">${icon('globe')}<span class="grow">Idioma do app<small>Language · Idioma</small></span><select data-lang aria-label="Idioma do app" translate="no">${Object.entries(LANGS).map(([k, v]) => `<option value="${k}"${lang() === k ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
       </div></section>
 
       <section class="set-group"><h2>Tema</h2>
@@ -144,7 +148,7 @@ export const settingsView = {
       <section class="set-group"><h2>Sobre</h2><div class="set-list">
         ${updaterAvailable() ? `<button type="button" class="set-row" data-checkupd>${icon('download')}<span class="grow">Procurar atualização<small>O Lida também procura sozinho, uma vez por dia</small></span>${icon('right', 'sm')}</button>` : ''}
         <button type="button" class="set-row" data-changelog>${icon('sparkles')}<span class="grow">Novidades e correções<small>O que mudou em cada versão</small></span>${icon('right', 'sm')}</button>
-        <div class="set-row"><span class="grow">${FLAVOR === 'libre' ? 'Lida Libre' : 'Lida'}<small>Versão ${esc(app.version)}${isNative() ? ' · Android' : ''}</small></span><span class="val">${fmtInt(personal.stats().live)} registros</span></div>
+        <div class="set-row"><span class="grow">${FLAVOR === 'libre' ? 'Lida Libre' : 'Lida'}<small>Versão ${esc(app.version)}${isNative() ? ' · Android' : ''}</small></span><span class="val">${plural(personal.stats().live, 'registro', 'registros')}</span></div>
         <button type="button" class="set-row" data-source>${icon('open')}<span class="grow">Código-fonte<small>Software livre, licença GPL-3.0</small></span>${icon('right', 'sm')}</button>
         ${app.demo ? `<button type="button" class="set-row" data-demo>${icon('flask')}<span class="grow">Sair do modo demo<small>Volta para a tela inicial. Os dados de exemplo continuam guardados.</small></span></button>` : ''}
         ${!app.demo ? `<button type="button" class="set-row danger-text" data-exit>${icon(app.mode === 'cloud' ? 'logout' : 'lock')}<span class="grow">${app.mode === 'cloud' ? 'Sair da conta' : 'Bloquear agora'}</span></button>` : ''}
@@ -325,6 +329,10 @@ function bind(el, S) {
   el.querySelector('[data-connect]')?.addEventListener('click', () => app.actions.connectGoogle());
   el.querySelectorAll('[data-astyle]').forEach((b) => (b.onclick = () => (setPref('alarmStyle', b.dataset.astyle), settingsView.render(el))));
   el.querySelector('[data-atone]')?.addEventListener('change', (e) => setPref('alarmTone', e.target.value));
+  el.querySelector('[data-lang]')?.addEventListener('change', (e) => {
+    setLang(e.target.value);
+    location.reload(); // os textos e datas são montados no idioma ao abrir
+  });
   el.querySelector('[data-atest]')?.addEventListener('click', () => testAlarm(defaultTone()));
   if (nativeAlarms())
     plugin('LidaAlarm')
@@ -371,12 +379,13 @@ async function permRow(el) {
 
 // Novidades e correções (js/core/changelog.js), da versão mais nova para a mais antiga.
 export function openChangelog() {
-  const fmt = (iso) => iso.split('-').reverse().join('/');
+  // As versões novas trazem o texto em inglês e espanhol (r.en, r.es); as antigas ficam em português.
+  const loc = (r) => r[lang()] || r;
   sheet({
     title: 'Novidades e correções',
     body: `<div class="changelog">${CHANGELOG.map(
-      (r, i) => `<section class="cl-ver${i === 0 ? ' latest' : ''}"><header><b>${esc(r.title)}</b><small>${esc(r.v)} · ${fmt(r.date)}${r.v === app.version ? ' · esta versão' : ''}</small></header>
-        <ul>${r.items.map(([k, t]) => `<li class="cl-${k}"><span class="cl-kind">${KIND_LABEL[k]}</span><p>${esc(t)}</p></li>`).join('')}</ul></section>`,
+      (r, i) => `<section class="cl-ver${i === 0 ? ' latest' : ''}"><header><b translate="no">${esc(loc(r).title)}</b><small>${esc(r.v)} · ${fmtDate(r.date)}${r.v === app.version ? ' · esta versão' : ''}</small></header>
+        <ul>${r.items.map(([k, t], j) => `<li class="cl-${k}"><span class="cl-kind">${KIND_LABEL[k]}</span><p translate="no">${esc(r[lang()]?.items[j] || t)}</p></li>`).join('')}</ul></section>`,
     ).join('')}</div>`,
   });
 }
@@ -406,7 +415,7 @@ async function backupImport(file) {
   } catch (e) {
     return toast(e.message);
   }
-  const when = head.at ? new Date(head.at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+  const when = head.at ? new Date(head.at).toLocaleString(LOC, { dateStyle: 'short', timeStyle: 'short' }) : '';
   const pass = await promptDialog('Importar backup', { label: `Backup de ${when} (${head.count || '?'} registros, versão ${head.app || '?'}). Digite a senha dele.`, type: 'password', ok: 'Importar' });
   if (pass == null) return;
   try {

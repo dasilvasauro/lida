@@ -4,7 +4,7 @@ import { alarmFields, readAlarm } from './alarm.js';
 import { P, personal, app } from '../state.js';
 import { HABIT_DAYS_ALL } from '../core/model.js';
 import * as H from '../core/habits.js';
-import { esc, fmtInt, plural, WD_LETTER, WD_SHORT } from '../lib/util.js';
+import { esc, fmtInt, plural, WD_LETTER, WD_SHORT, LOC } from '../lib/util.js';
 import { today } from '../lib/clock.js';
 import { icon, sheet, toast, confirmDialog, ring, empty, COLORS, colorPicker, readForm } from '../ui/ui.js';
 import { popover } from '../ui/pickers.js';
@@ -83,7 +83,7 @@ function waterCard(total, goal, S) {
   const left = Math.max(0, goal - total);
   const glass = H.waterGlass(S);
   const bottle = H.waterBottle(S);
-  const L = (ml) => (ml >= 1000 ? `${(ml / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L` : `${ml} ml`);
+  const L = (ml) => (ml >= 1000 ? `${(ml / 1000).toLocaleString(LOC, { maximumFractionDigits: 2 })} L` : `${ml} ml`);
   const streak = H.waterStreak(S);
   const wk = H.waterWeek(S);
   const hits = wk.filter((w) => w.st === 'done').length;
@@ -141,7 +141,7 @@ function habitCard(S, h, d, i) {
       <span class="hab-face">${done ? icon('check') : h.icon ? `<span class="emoji">${esc(h.icon)}</span>` : goal > 1 ? `<b>${count}</b>` : `<b>${esc((h.title || '?').trim()[0].toUpperCase())}</b>`}</span>
     </button>
     <div class="hab-body" data-edit role="button" tabindex="0">
-      <b>${esc(h.title)}</b>
+      <b translate="no">${esc(h.title)}</b>
       <small>${sub}</small>
       <ol class="hab-week" aria-label="Últimos 7 dias">${wk.map((w) => `<li class="${w.st}" title="${esc(w.date)}"><i></i><span>${WD_LETTER[new Date(`${w.date}T12:00`).getDay()]}</span></li>`).join('')}</ol>
     </div>
@@ -158,7 +158,7 @@ const wdText = (days) => {
   return d.map((x) => WD_SHORT[x]).join(', ');
 };
 const routineRow = (r) => `<li><button type="button" class="routine-row" data-r="${esc(r.id)}" style="--c:${esc(r.color || 'var(--accent)')}">
-  <span class="r-ic">${icon('repeat')}</span><span class="grow"><b>${esc(r.title)}</b><small>${wdText(r.weekdays)} · ${plural((r.items || []).length, 'item', 'itens')}</small></span>${icon('right', 'sm')}</button></li>`;
+  <span class="r-ic">${icon('repeat')}</span><span class="grow"><b translate="no">${esc(r.title)}</b><small>${wdText(r.weekdays)} · ${plural((r.items || []).length, 'item', 'itens')}</small></span>${icon('right', 'sm')}</button></li>`;
 
 /* ---------- Desapego ---------- */
 function quitCard(q, d) {
@@ -168,7 +168,7 @@ function quitCard(q, d) {
   const cyc = q.rewardCycle || 0;
   return `<article class="quit card" data-q="${esc(q.id)}">
     <div class="quit-days"><b>${days}</b><small>${days === 1 ? 'dia livre' : 'dias livre'}</small></div>
-    <div class="grow"><b>${esc(q.title)}</b>
+    <div class="grow"><b translate="no">${esc(q.title)}</b>
       <ol class="cycle" aria-label="Ciclo de check-ins: ${cyc} de 7">${[1, 2, 3, 4, 5, 6, 7].map((n) => `<li class="${n <= cyc ? 'on' : ''}${n === 7 ? ' big' : ''}"></li>`).join('')}</ol>
       <small>${doneToday ? 'Check-in de hoje feito. Até amanhã!' : `Hoje: +${next.xp} XP, +${next.gold} de ouro${next.card ? ' e uma Carta da Sorte' : ''}`}</small>
       <button type="button" class="btn small ${doneToday ? 'ghost' : 'primary'} quit-btn" data-checkin${doneToday ? ' disabled' : ''}>${doneToday ? icon('check') + 'Feito hoje' : 'Fazer check-in'}</button></div>
@@ -277,7 +277,7 @@ async function onWater(ml) {
     card.querySelector('.drop-fill').style.transform = `translateY(${(1 - f) * 76}px)`;
     card.classList.toggle('full', f >= 1);
     const b = card.querySelector('.water-n b');
-    if (b) b.textContent = r.total >= 1000 ? `${(r.total / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L` : `${r.total} ml`;
+    if (b) b.textContent = r.total >= 1000 ? `${(r.total / 1000).toLocaleString(LOC, { maximumFractionDigits: 2 })} L` : `${r.total} ml`;
   }
   play('water');
   haptic('tick');
@@ -383,7 +383,7 @@ export function editHabit(h, preset = {}) {
         const t = String(str || '').trim();
         if (!t) return '';
         try {
-          return [...new Intl.Segmenter('pt-BR', { granularity: 'grapheme' }).segment(t)][0].segment;
+          return [...new Intl.Segmenter(LOC, { granularity: 'grapheme' }).segment(t)][0].segment;
         } catch {
           return [...t][0];
         }

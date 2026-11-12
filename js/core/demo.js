@@ -2,6 +2,69 @@
 import { personal } from '../state.js';
 import { today, nowMs } from '../lib/clock.js';
 import { addDays, weekday, addMonths } from '../lib/util.js';
+import { lang } from './i18n.js';
+
+// Os dados de exemplo no idioma do app (o que não está aqui fica como está).
+const DEMO = {
+  Trabalho: ['Work', 'Trabajo'],
+  Casa: ['Home', 'Casa'],
+  contas: ['bills', 'cuentas'],
+  rápido: ['quick', 'rápido'],
+  'Revisar a proposta do cliente': ["Review the client's proposal", 'Revisar la propuesta del cliente'],
+  'Conferir prazos e **valores** antes de enviar.\n- [x] Planilha de custos\n- [ ] Revisar o contrato\nModelo: https://exemplo.com/proposta': ['Check deadlines and **amounts** before sending.\n- [x] Cost spreadsheet\n- [ ] Review the contract\nTemplate: https://example.com/proposal', 'Revisar plazos y **montos** antes de enviar.\n- [x] Hoja de costos\n- [ ] Revisar el contrato\nModelo: https://ejemplo.com/propuesta'],
+  'Responder e-mails pendentes': ['Answer pending emails', 'Responder correos pendientes'],
+  'Escrever o relatório do mês': ["Write the month's report", 'Escribir el informe del mes'],
+  'Arrumar a mesa antes das 18h': ['Tidy the desk before 6 pm', 'Ordenar el escritorio antes de las 18 h'],
+  'Caminhada de 30 minutos': ['30-minute walk', 'Caminata de 30 minutos'],
+  'Organizar a despensa': ['Organize the pantry', 'Organizar la despensa'],
+  'Separar o que venceu': ["Sort out what's expired", 'Separar lo que caducó'],
+  'Limpar as prateleiras': ['Clean the shelves', 'Limpiar los estantes'],
+  'Anotar o que falta': ["Write down what's missing", 'Anotar lo que falta'],
+  'Lançar o site novo': ['Launch the new website', 'Lanzar el sitio nuevo'],
+  'Definir o conteúdo': ['Define the content', 'Definir el contenido'],
+  'Aprovar o layout': ['Approve the layout', 'Aprobar el diseño'],
+  'Escrever os textos': ['Write the copy', 'Escribir los textos'],
+  Publicar: ['Publish', 'Publicar'],
+  'Pagar a conta de luz': ['Pay the electricity bill', 'Pagar la factura de la luz'],
+  'Preparar a apresentação de segunda': ["Prepare Monday's presentation", 'Preparar la presentación del lunes'],
+  'Ligar para o dentista': ['Call the dentist', 'Llamar al dentista'],
+  'Revisão semanal': ['Weekly review', 'Revisión semanal'],
+  'Ideias para as férias': ['Vacation ideas', 'Ideas para las vacaciones'],
+  'Trocar a lâmpada do corredor': ['Change the hallway light bulb', 'Cambiar la bombilla del pasillo'],
+  'Ler um capítulo do livro': ['Read a chapter of the book', 'Leer un capítulo del libro'],
+  Manhã: ['Morning', 'Mañana'],
+  'Copo de água': ['Glass of water', 'Vaso de agua'],
+  'Alongar 5 minutos': ['Stretch for 5 minutes', 'Estirarse 5 minutos'],
+  'Ver a agenda do dia': ["Check the day's schedule", 'Ver la agenda del día'],
+  Ler: ['Read', 'Leer'],
+  páginas: ['pages', 'páginas'],
+  Meditar: ['Meditate', 'Meditar'],
+  Treinar: ['Work out', 'Entrenar'],
+  Refrigerante: ['Soda', 'Refrescos'],
+  'Marcar o check-up anual': ['Book the annual check-up', 'Pedir el chequeo anual'],
+  'Pesquisar curso de fotografia': ['Look up a photography course', 'Buscar un curso de fotografía'],
+  'Responder a mensagem da Bia': ["Reply to Bia's message", 'Responder el mensaje de Bia'],
+  'Correr 10 km': ['Run 10 km', 'Correr 10 km'],
+  'Ler 12 livros no ano': ['Read 12 books this year', 'Leer 12 libros en el año'],
+  'Aprender violão': ['Learn guitar', 'Aprender guitarra'],
+  Paciência: ['Patience', 'Paciencia'],
+  Constância: ['Consistency', 'Constancia'],
+  Procrastinar: ['Procrastinating', 'Procrastinar'],
+  'O que aprendi este mês': ['What I learned this month', 'Lo que aprendí este mes'],
+  'Feito é melhor que perfeito.': ['Done is better than perfect.', 'Hecho es mejor que perfecto.'],
+  'Descansar também é produtivo.': ['Resting is productive too.', 'Descansar también es productivo.'],
+  'Uma tarefa por vez.': ['One task at a time.', 'Una tarea a la vez.'],
+};
+function localize(v, i) {
+  if (typeof v === 'string') {
+    if (DEMO[v]) return DEMO[v][i];
+    const old = /^Tarefa antiga (.+)$/.exec(v);
+    return old ? `${['Old task', 'Tarea antigua'][i]} ${old[1]}` : v;
+  }
+  if (Array.isArray(v)) return v.map((x) => localize(x, i));
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, ['note', 'kind', 'quadrant', 'mood', 'priority', 'grade'].includes(k) ? x : localize(x, i)]));
+  return v;
+}
 
 export async function seedDemo() {
   const d = today();
@@ -100,5 +163,6 @@ export async function seedDemo() {
   items.push({ type: 'refl', id: 'demo_refl', data: { title: 'O que aprendi este mês', color: '#C08CF5', cards: ['Feito é melhor que perfeito.', 'Descansar também é produtivo.', 'Uma tarefa por vez.'] } });
   items.push({ type: 'hlog', id: `hl_demo_ler_${d}`, data: { habitId: 'demo_ler', date: d, count: 4 } });
   items.push({ type: 'water', id: 'wa_demo1', data: { date: d, ml: 250, at: nowMs() - 7200000 } }, { type: 'water', id: 'wa_demo2', data: { date: d, ml: 500, at: nowMs() - 3600000 } });
-  await personal.saveMany(items);
+  const i = { en: 0, es: 1 }[lang()];
+  await personal.saveMany(i == null ? items : items.map((r) => ({ ...r, data: localize(r.data, i) })));
 }

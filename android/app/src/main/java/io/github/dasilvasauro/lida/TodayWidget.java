@@ -57,14 +57,17 @@ public class TodayWidget extends AppWidgetProvider {
         String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
         try {
             JSONObject d = raw == null ? null : new JSONObject(raw);
+            // Textos no idioma do app (o app manda junto com os dados; sem eles, português)
+            JSONObject tx = d == null ? null : d.optJSONObject("txt");
+            if (tx == null) tx = new JSONObject();
             if (d == null || !today.equals(d.optString("date"))) {
-                v.setTextViewText(R.id.w_title, "Hoje");
+                v.setTextViewText(R.id.w_title, tx.optString("today", "Hoje"));
                 v.setTextViewText(R.id.w_sub, "");
                 v.setProgressBar(R.id.w_bar, 1, 0, false);
                 for (int r : ROWS) {
                     v.setViewVisibility(r, View.GONE);
                 }
-                v.setTextViewText(R.id.w_empty, "Toque para abrir o Lida e ver o seu dia.");
+                v.setTextViewText(R.id.w_empty, tx.optString("tapDay", "Toque para abrir o Lida e ver o seu dia."));
                 v.setViewVisibility(R.id.w_empty, View.VISIBLE);
                 v.setTextViewText(R.id.w_footer, "");
                 return v;
@@ -72,7 +75,7 @@ public class TodayWidget extends AppWidgetProvider {
             int done = d.optInt("done");
             int total = d.optInt("total");
             v.setTextViewText(R.id.w_title, d.optString("title", "Hoje"));
-            v.setTextViewText(R.id.w_sub, total == 0 ? "" : done + " de " + total);
+            v.setTextViewText(R.id.w_sub, total == 0 ? "" : d.optString("sub", done + " de " + total));
             v.setProgressBar(R.id.w_bar, Math.max(1, total), done, false);
             JSONArray tasks = d.optJSONArray("tasks");
             int n = tasks == null ? 0 : tasks.length();
@@ -86,7 +89,7 @@ public class TodayWidget extends AppWidgetProvider {
                     v.setViewVisibility(ROWS[i], View.GONE);
                 }
             }
-            v.setTextViewText(R.id.w_empty, total > 0 && n == 0 ? "Tudo feito por hoje." : "Dia livre. Toque para planejar.");
+            v.setTextViewText(R.id.w_empty, total > 0 && n == 0 ? tx.optString("allDone", "Tudo feito por hoje.") : tx.optString("freeDay", "Dia livre. Toque para planejar."));
             v.setViewVisibility(R.id.w_empty, n == 0 ? View.VISIBLE : View.GONE);
             v.setTextViewText(R.id.w_footer, d.optString("footer", ""));
         } catch (Exception e) {

@@ -5,17 +5,31 @@ import { taskOpen, PRIORITIES } from './model.js';
 import { buckets, byPriority } from './tasks.js';
 import { waterToday, waterGoal, isScheduled, isDone } from './habits.js';
 import { today, nowMs } from '../lib/clock.js';
-import { addDays, fmtTime, relDay, plural } from '../lib/util.js';
+import { addDays, fmtTime, relDay, plural, LOC } from '../lib/util.js';
+import { t as tt } from './i18n.js';
 
 const at = (day, hhmm) => {
   const [y, m, d] = day.split('-').map(Number);
   const [hh, mm] = (hhmm || '00:00').split(':').map(Number);
   return new Date(y, m - 1, d, hh, mm).getTime();
 };
-const L = (ml) => (ml >= 1000 ? `${(ml / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L` : `${ml} ml`);
+const L = (ml) => (ml >= 1000 ? `${(ml / 1000).toLocaleString(LOC, { maximumFractionDigits: 2 })} L` : `${ml} ml`);
 const PNAME = Object.fromEntries(PRIORITIES.map((p) => [p.id, p.name]));
 
+// No idioma do app (os nomes de tarefas e hábitos ficam como estão: linhas "• ..." e títulos próprios).
+const localize = (x) => ({
+  ...x,
+  own: undefined,
+  title: x.own ? x.title : tt(x.title),
+  body: tt(x.body),
+  long: x.long && x.long.split('\n').map((l) => (l.startsWith('• ') ? l : tt(l))).join('\n'),
+  summary: tt(x.summary),
+});
+
 export function reminders(S, prefs) {
+  return remindersPt(S, prefs).map(localize);
+}
+function remindersPt(S, prefs) {
   const out = [];
   const d0 = today();
   const projects = new Map(S.project.map((p) => [p.id, p.name]));
@@ -35,6 +49,7 @@ export function reminders(S, prefs) {
         key: `task:${t.id}`,
         at: at(t.due, t.time) - b * 60000,
         title: t.title,
+        own: true, // o título é o da tarefa: não passa pelo dicionário
         body,
         long: [body, ...extra].join('\n'),
         summary: 'Tarefas',

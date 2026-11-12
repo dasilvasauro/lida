@@ -87,8 +87,10 @@ public class RingsWidget extends AppWidgetProvider {
         String raw = sp.getString("data", null);
         String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
         int td = 0, tt = 0, hd = 0, ht = 0, wml = 0, wgoal = 2000;
+        JSONObject tx = new JSONObject();
         try {
             JSONObject d = raw == null ? null : new JSONObject(raw);
+            if (d != null && d.optJSONObject("txt") != null) tx = d.optJSONObject("txt");
             JSONObject r = d == null ? null : d.optJSONObject("rings");
             if (r != null && today.equals(d.optString("date"))) {
                 td = r.optInt("tasksDone");
@@ -102,10 +104,10 @@ public class RingsWidget extends AppWidgetProvider {
             // dados inválidos: anéis vazios
         }
         v.setImageViewBitmap(R.id.r_rings, rings(ctx, frac(td, tt), frac(hd, ht), frac(wml, wgoal)));
-        v.setTextViewText(R.id.r_tasks, label("●", C_TASKS, tt == 0 ? "Tarefas –" : "Tarefas " + td + "/" + tt));
-        v.setTextViewText(R.id.r_habits, label("●", C_HABITS, ht == 0 ? "Hábitos –" : "Hábitos " + hd + "/" + ht));
-        String water = wml >= 1000 ? String.format(Locale.forLanguageTag("pt-BR"), "%.1f L", wml / 1000f) : wml + " ml";
-        v.setTextViewText(R.id.r_water, label("●", C_WATER, "Água " + water));
+        v.setTextViewText(R.id.r_tasks, label("●", C_TASKS, tx.optString("tasks", "Tarefas") + (tt == 0 ? " –" : " " + td + "/" + tt)));
+        v.setTextViewText(R.id.r_habits, label("●", C_HABITS, tx.optString("habits", "Hábitos") + (ht == 0 ? " –" : " " + hd + "/" + ht)));
+        String water = wml >= 1000 ? String.format(Locale.forLanguageTag(tx.optString("locale", "pt-BR")), "%.1f L", wml / 1000f) : wml + " ml";
+        v.setTextViewText(R.id.r_water, label("●", C_WATER, tx.optString("water", "Água") + " " + water));
         return v;
     }
 }
