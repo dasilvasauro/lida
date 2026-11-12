@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alarme · Lida</title>
+<!-- Tela do alarme. Usada pelo app Android (atividade de tela cheia, mesmo com o celular bloqueado),
+     pelo app do Linux e pela web (por cima do app, num iframe). Recebe tudo pelo #fragmento (JSON):
+     { title, desc, kind, tone, sound, style: 'theme'|'amoled', vars: {...cores do tema}, font, lang, t: {textos} }
+     Respostas: LidaAlarmNative.done()/ignore() no Android; postMessage({ lidaAlarm: 'done'|'ignore' }) no resto. -->
+<style>
+@font-face { font-family: 'Manrope'; src: url('fonts/manrope.woff2') format('woff2'); font-weight: 200 800; }
+@font-face { font-family: 'Inter'; src: url('fonts/inter.woff2') format('woff2'); font-weight: 100 900; }
+@font-face { font-family: 'Nunito'; src: url('fonts/nunito.woff2') format('woff2'); font-weight: 200 1000; }
+@font-face { font-family: 'Lexend'; src: url('fonts/lexend.woff2') format('woff2'); font-weight: 100 900; }
+@font-face { font-family: 'VT323'; src: url('fonts/vt323.woff2') format('woff2'); font-weight: 400; size-adjust: 128%; }
+@font-face { font-family: 'Lora'; src: url('fonts/lora.woff2') format('woff2'); font-weight: 400 700; }
+@font-face { font-family: 'Atkinson Hyperlegible'; src: url('fonts/atkinson-400.woff2') format('woff2'); font-weight: 400; }
+@font-face { font-family: 'Atkinson Hyperlegible'; src: url('fonts/atkinson-700.woff2') format('woff2'); font-weight: 700; }
+:root { --bg: #0f1217; --surface: #171b22; --surface-2: #1f242d; --text: #f2f4f8; --muted: #a3abba; --accent: #8c97ff; --on-accent: #0f1217; --line: #2a303b; --font: 'Manrope', system-ui, sans-serif; }
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--text); font-family: var(--font); -webkit-font-smoothing: antialiased; overflow: hidden; user-select: none; -webkit-user-select: none; }
+.wrap { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr auto; padding: max(4vh, env(safe-area-inset-top)) 6vw max(4vh, env(safe-area-inset-bottom)); gap: 2.5vh; }
+.top { display: grid; justify-items: center; gap: 1vh; text-align: center; }
+.kind { display: inline-flex; align-items: center; gap: .5em; padding: .35em .9em; border-radius: 99px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font-size: clamp(14px, 2.2vh, 20px); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.clock { font-size: clamp(64px, min(24vw, 19vh), 240px); font-weight: 800; line-height: .95; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.date { color: var(--muted); font-size: clamp(15px, 2.4vh, 22px); font-weight: 600; }
+.mid { display: grid; align-content: center; gap: 2vh; min-height: 0; text-align: center; }
+.title { font-size: clamp(28px, min(8.5vw, 6.5vh), 72px); font-weight: 800; line-height: 1.12; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.desc { color: var(--muted); font-size: clamp(16px, min(4.4vw, 2.8vh), 26px); line-height: 1.45; max-height: 30vh; overflow-y: auto; white-space: pre-line; overflow-wrap: anywhere; }
+.desc:empty { display: none; }
+.btns { display: grid; grid-template-columns: 1fr; gap: 1.6vh; }
+button { appearance: none; border: 0; border-radius: clamp(18px, 3vh, 30px); min-height: clamp(64px, 11vh, 120px); font: inherit; font-size: clamp(20px, min(6vw, 3.6vh), 36px); font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: .5em; }
+button svg { width: 1.1em; height: 1.1em; }
+.done { background: var(--accent); color: var(--on-accent); }
+.ignore { background: transparent; color: var(--text); box-shadow: inset 0 0 0 2px var(--line); }
+@media (min-aspect-ratio: 4/3) { .btns { grid-template-columns: 1fr 1fr; } }
+.pulse { animation: pulse 1.6s ease-in-out infinite; }
+/* "LED": um círculo vermelho vivo piscando, como a luz de aviso de um aparelho */
+.led { position: fixed; top: max(3.2vh, calc(env(safe-area-inset-top) + 8px)); right: 6vw; width: clamp(18px, 3.2vh, 30px); height: clamp(18px, 3.2vh, 30px); border-radius: 50%; background: #ff1f3d; box-shadow: 0 0 10px 3px rgba(255, 31, 61, .85), 0 0 34px 12px rgba(255, 31, 61, .45); animation: led 1s steps(1, end) infinite; }
+@keyframes led { 50% { opacity: .08; box-shadow: none; } }
+@keyframes pulse { 50% { transform: scale(1.03); } }
+/* AMOLED: preto puro, só branco e cinza, sem enfeite */
+body.amoled { --bg: #000; --text: #fff; --muted: #8a8a8a; --accent: #fff; --on-accent: #000; --line: #3a3a3a; }
+body.amoled .kind { background: none; color: #8a8a8a; padding: 0; }
+body.amoled .clock { font-weight: 300; }
+body.amoled .pulse { animation: none; }
+body.amoled .led { width: clamp(22px, 4vh, 38px); height: clamp(22px, 4vh, 38px); }
+@media (prefers-reduced-motion: reduce) { .pulse { animation: none; } .led { animation-duration: 2s; } }
+</style>
+</head>
+<body>
+<i class="led" aria-hidden="true"></i>
+<div class="wrap">
+  <div class="top"><span class="kind" id="kind"></span><div class="clock" id="clock">00:00</div><div class="date" id="date"></div></div>
+  <div class="mid"><h1 class="title" id="title"></h1><p class="desc" id="desc"></p></div>
+  <div class="btns">
+    <button class="done pulse" id="done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span id="doneTxt"></span></button>
+    <button class="ignore" id="ignore"><span id="ignoreTxt"></span></button>
+  </div>
+</div>
+<audio id="snd" loop></audio>
+<script>
+(function () {
+  var p = {};
+  try { p = JSON.parse(decodeURIComponent(location.hash.slice(1)) || '{}'); } catch (e) {}
+  var T = p.t || {};
+  var root = document.documentElement;
+  if (p.style === 'amoled') document.body.classList.add('amoled');
+  else for (var k in (p.vars || {})) root.style.setProperty(k, p.vars[k]);
+  if (p.font) root.style.setProperty('--font', p.font);
+  if (p.lang) root.lang = p.lang;
+  document.getElementById('kind').textContent = T.kind || 'Alarme';
+  document.getElementById('title').textContent = p.title || '';
+  document.getElementById('desc').textContent = p.desc || '';
+  document.getElementById('doneTxt').textContent = T.done || 'Concluir';
+  document.getElementById('ignoreTxt').textContent = T.ignore || 'Ignorar';
+  document.title = (p.title || 'Alarme') + ' · Lida';
+  var loc = p.locale || 'pt-BR';
+  function tick() {
+    var d = new Date();
+    document.getElementById('clock').textContent = d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
+    var s = d.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long' });
+    document.getElementById('date').textContent = s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  tick();
+  setInterval(tick, 1000);
+  var snd = document.getElementById('snd');
+  if (p.sound) {
+    snd.src = p.sound;
+    snd.volume = 1;
+    var play = function () { snd.play().catch(function () {}); };
+    play();
+    document.addEventListener('pointerdown', play, { once: true });
+  }
+  function send(a) {
+    try { snd.pause(); } catch (e) {}
+    if (window.LidaAlarmNative) { a === 'done' ? window.LidaAlarmNative.done() : window.LidaAlarmNative.ignore(); return; }
+    try { parent.postMessage({ lidaAlarm: a, key: p.key }, '*'); } catch (e) {}
+  }
+  document.getElementById('done').onclick = function () { send('done'); };
+  document.getElementById('ignore').onclick = function () { send('ignore'); };
+  if (navigator.vibrate && p.vibrate) { navigator.vibrate([600, 400, 600, 400, 600]); }
+})();
+</script>
+</body>
+</html>

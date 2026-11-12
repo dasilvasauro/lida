@@ -37,6 +37,7 @@
   --p0: #ff5c7a;
   --p1: #ff9f43;
   --p2: #5aa9ff;
+  --water: #3d9bff; /* água: sempre azul, em todos os temas */
   --p3: #8b93a1;
   --p4: #5d6573;
   --focus: var(--accent);
@@ -177,7 +178,7 @@ html.board-wide .nav [data-nav='planejar'] { display: none; }
 .sh-tap.done { background: var(--c); color: var(--on-accent); }
 .side-water { display: grid; gap: .6667rem; }
 .sw-bar { display: block; height: .5333rem; border-radius: .2667rem; background: var(--surface-2); overflow: hidden; }
-.sw-bar i { display: block; height: 100%; background: var(--p2); border-radius: .2667rem; transition: width 0.5s var(--ease); }
+.sw-bar i { display: block; height: 100%; background: var(--water); border-radius: .2667rem; transition: width 0.5s var(--ease); }
 .sw-btns { display: flex; gap: .4rem; }
 .sw-btns .btn { flex: 1; display: grid; gap: 0; line-height: 1.15; padding: .4rem; }
 .sw-btns small { font-size: .7333rem; color: var(--muted); font-weight: 600; }
@@ -1056,13 +1057,13 @@ button.chip:hover { color: var(--text); border-color: color-mix(in srgb, var(--a
 .water { position: relative; display: flex; align-items: center; gap: 1.0667rem; }
 .water-top { position: absolute; top: .5333rem; right: .5333rem; display: flex; align-items: center; gap: .2667rem; }
 .water-week { display: flex; align-items: center; gap: .6667rem; margin-top: .6667rem; flex-wrap: wrap; }
-.water-week .hab-week { --c: var(--p2); margin: 0; }
+.water-week .hab-week { --c: var(--water); margin: 0; }
 .water-week small { font-size: .8rem; }
 .drop { flex: none; width: 4.2667rem; height: 5.3333rem; }
 .drop svg { width: 100%; height: 100%; overflow: visible; }
-.drop-bg { fill: color-mix(in srgb, var(--p2) 12%, var(--surface-2)); stroke: color-mix(in srgb, var(--p2) 45%, transparent); stroke-width: 2; }
+.drop-bg { fill: color-mix(in srgb, var(--water) 12%, var(--surface-2)); stroke: color-mix(in srgb, var(--water) 45%, transparent); stroke-width: 2; }
 .drop-fill { transition: transform 0.8s var(--spring); }
-.wave { fill: var(--p2); opacity: 0.85; animation: wave 2.6s linear infinite; }
+.wave { fill: var(--water); opacity: 0.85; animation: wave 2.6s linear infinite; }
 @keyframes wave { to { transform: translateX(2.1333rem); } }
 .water.full .wave { fill: var(--pos); }
 .water .grow { display: grid; gap: 2px; min-width: 0; padding-right: 1.7333rem; }
@@ -1608,7 +1609,7 @@ button.chip:hover { color: var(--text); border-color: color-mix(in srgb, var(--a
 
 /* Água: copo e garrafa */
 .water-btn { gap: .4rem; padding: 0 .8rem 0 .6667rem; min-height: 2.6667rem; }
-.water-btn .ic { width: 1.3333rem; height: 1.3333rem; color: var(--p2); }
+.water-btn .ic { width: 1.3333rem; height: 1.3333rem; color: var(--water); }
 .water-btn span { display: grid; text-align: left; line-height: 1.1; font-size: .8667rem; }
 .water-btn small { font-size: .7333rem; font-weight: 600; color: var(--muted); }
 /* Ícone livre do hábito */
@@ -1760,7 +1761,7 @@ body.kb-dragging, body.kb-dragging * { cursor: grabbing !important; }
 .rv-water .rvw-top b { font-size: 1.2rem; }
 .rv-water .rvw-top span { color: var(--muted); font-size: .8667rem; }
 .rvw-bar { display: block; height: .6rem; border-radius: 99px; background: var(--surface-3, var(--line)); overflow: hidden; }
-.rvw-bar i { display: block; height: 100%; border-radius: inherit; background: var(--p2); transition: width 0.35s var(--ease); }
+.rvw-bar i { display: block; height: 100%; border-radius: inherit; background: var(--water); transition: width 0.35s var(--ease); }
 .rv-water-sec.hit .rvw-bar i { background: var(--pos); }
 .rvw-btns { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6667rem; }
 .rvw-btns .btn small { margin-left: .2667rem; color: var(--muted); font-weight: 600; }
@@ -1930,3 +1931,6 @@ html.is-gray :is(.emoji, .mascot, img, .rvh-face, .hab-face, .lucky, .dot, .tagc
 @keyframes achSpin { to { transform: rotate(360deg); } }
 @keyframes achPulse { 50% { opacity: .45; } }
 @media (prefers-reduced-motion: reduce) { .ach-coin, .ach-wrap.shown .ach-coin, .ach-rays, .ach-kicker { animation: none; } .ach-wrap.shown .ach-coin { transform: rotateY(180deg); } }
+
+/* Alarme por cima do app (Linux e web) */
+.alarm-frame { position: fixed; inset: 0; z-index: 900; width: 100%; height: 100%; border: 0; background: #000; }

@@ -1,5 +1,5 @@
 // Ajustes: conta, aparência, sons, vibração, lembretes e sobre.
-import { app, P, personal, displayName } from '../state.js';
+import { app, P, personal, displayName, setPref } from '../state.js';
 import { THEMES, THEME_ORDER, themeName, isFreeTheme, FONTS, FONT_ORDER, SIZES, applyAppearance, storedAppearance, swatch } from '../ui/theme.js';
 import { soundPrefs, setSoundPrefs, play, preview, PACKS, PACK_ORDER } from '../core/sound.js';
 import { hapticsOn, setHaptics, hapticsSupported, haptic } from '../ui/haptics.js';
@@ -19,6 +19,9 @@ import { providerName } from '../core/providers.js';
 import { checkUpdate, updaterAvailable } from './update.js';
 import { FLAVOR } from '../flavor.js';
 import { openExternal } from '../core/net.js';
+import { TONES, TONE_ORDER, MAX_ALARMS, alarmCount, alarmStyle, defaultTone } from '../core/alarms.js';
+import { testAlarm, nativeAlarms } from './alarm.js';
+import { tr } from '../core/i18n.js';
 
 const toggle = (name, on, label) => `<span class="toggle"><input type="checkbox" data-${name}${on ? ' checked' : ''} aria-label="${esc(label)}"><i></i></span>`;
 // Para linhas que não são <label> (têm outro controle dentro): o próprio botão vira o rótulo.
@@ -122,6 +125,15 @@ export const settingsView = {
       </div></section>`
           : ''
       }
+
+      <section class="set-group"><h2>Alarmes</h2><div class="set-list" data-alarmset>
+        <div class="set-row col"><span class="grow">Aparência do alarme<small>A tela do alarme usa a fonte escolhida. Escolha as cores do tema ou um visual AMOLED, preto e minimalista</small></span>
+          <div class="seg small" role="radiogroup">${[['theme', 'Cores do tema'], ['amoled', 'AMOLED']].map(([k, l]) => `<button type="button" role="radio" aria-checked="${alarmStyle(S) === k}" class="${alarmStyle(S) === k ? 'on' : ''}" data-astyle="${k}">${l}</button>`).join('')}</div></div>
+        <label class="set-row">${icon('bell')}<span class="grow">Toque padrão<small>Para alarmes novos. Cada alarme pode ter o seu</small></span><select data-atone>${TONE_ORDER.map((k) => `<option value="${k}"${defaultTone(S) === k ? ' selected' : ''}>${esc(tr(TONES[k].name))}</option>`).join('')}</select></label>
+        <button type="button" class="set-row" data-atest>${icon('timer')}<span class="grow">Testar o alarme<small>${nativeAlarms() ? 'Toca em 3 segundos (bloqueie a tela para ver por cima do bloqueio)' : 'Mostra a tela do alarme agora'}</small></span></button>
+        <div class="set-row"><span class="grow">Alarmes ligados<small>Em tarefas com horário, rotinas e hábitos (no editor de cada um)</small></span><span class="val">${alarmCount(S)} de ${MAX_ALARMS}</span></div>
+        <button type="button" class="set-row" data-afull hidden>${icon('info')}<span class="grow">Liberar a tela cheia<small>Sem isto, o Android mostra o alarme só como notificação</small></span>${icon('right', 'sm')}</button>
+      </div></section>
 
       <section class="set-group"><h2>Backup</h2><div class="set-list">
         <button type="button" class="set-row" data-bkexp>${icon('download')}<span class="grow">Exportar backup<small>Um arquivo .lida com todos os seus dados, cifrado com uma senha que você escolhe</small></span>${icon('right', 'sm')}</button>
@@ -311,6 +323,20 @@ function bind(el, S) {
     await personal.save('prefs', { ...(prefs ? stripView(prefs) : {}), name: v || undefined }, 'prefs');
   };
   el.querySelector('[data-connect]')?.addEventListener('click', () => app.actions.connectGoogle());
+  el.querySelectorAll('[data-astyle]').forEach((b) => (b.onclick = () => (setPref('alarmStyle', b.dataset.astyle), settingsView.render(el))));
+  el.querySelector('[data-atone]')?.addEventListener('change', (e) => setPref('alarmTone', e.target.value));
+  el.querySelector('[data-atest]')?.addEventListener('click', () => testAlarm(defaultTone()));
+  if (nativeAlarms())
+    plugin('LidaAlarm')
+      .status()
+      .then((r) => {
+        const b = el.querySelector('[data-afull]');
+        if (b && !r.fullScreen) {
+          b.hidden = false;
+          b.onclick = () => plugin('LidaAlarm').openFullScreenSettings();
+        }
+      })
+      .catch(() => {});
   el.querySelector('[data-source]')?.addEventListener('click', () => openExternal('https://github.com/dasilvasauro/lida'));
   el.querySelector('[data-files-connect]')?.addEventListener('click', () => connectFiles());
   el.querySelector('[data-files-move]')?.addEventListener('click', () => connectFiles({ moving: true }));

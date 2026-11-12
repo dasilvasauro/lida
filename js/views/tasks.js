@@ -1,4 +1,5 @@
 // Peças das listas de tarefas: linha (por tipo), cartão do sprint, adicionar rápido e o painel de edição.
+import { alarmFields, readAlarm } from './alarm.js';
 import { P, app, prefs, personal } from '../state.js';
 import { PRIORITIES, TASK_KINDS, recurrenceLabel } from '../core/model.js';
 import { toggleTask, toggleSub, addTask, saveTask, removeTask, strip, checkTask, sprintInfo } from '../core/tasks.js';
@@ -585,6 +586,7 @@ export function editTask(id, defaults = {}) {
         <label class="field"><span data-duelabel>${kind === 'sprint' ? 'Fim' : 'Data'}</span><input type="date" name="due" value="${esc(t.due || (kind === 'sprint' ? addDays(today(), 7) : ''))}"></label>
         <label class="field not-sprint"><span>Horário</span><input type="time" name="time" value="${esc(t.time || '')}"></label>
       </div>
+      ${alarmFields({ tone: t.alarm || '', hidden: !t.time })}
       <label class="field not-sprint" data-remind${t.time ? '' : ' hidden'}><span>Lembrar</span><select name="remindBefore">${opt('', `Padrão (${(REMIND_BEFORE.find(([m]) => m === Number(notifyPrefs().before || 0)) || REMIND_BEFORE[0])[1].toLowerCase()})`, t.remindBefore == null)}${REMIND_BEFORE.map(([m, l]) => opt(String(m), l, t.remindBefore === m)).join('')}</select></label>
       <label class="field only-timed"><span>Duração: <b data-dur>${t.duration || 30} min</b></span><input type="range" name="duration" min="5" max="120" step="5" value="${t.duration || 30}"></label>
       <div class="grid2">
@@ -632,7 +634,10 @@ export function editTask(id, defaults = {}) {
         await focusOn(focusOf()?.taskId === id ? null : id);
       });
       // "Lembrar" só aparece quando há horário.
-      f.time.addEventListener('change', () => (el.querySelector('[data-remind]').hidden = !f.time.value));
+      f.time.addEventListener('change', () => {
+        el.querySelector('[data-remind]').hidden = !f.time.value;
+        el.querySelector('[data-alarmrow]').hidden = !f.time.value;
+      });
       // Etiquetas: tocar alterna; "+ Nova" cria.
       const tagsBox = el.querySelector('[data-tags]');
       const bindTags = () => {
@@ -737,6 +742,8 @@ export function editTask(id, defaults = {}) {
         const isChallenge = kind === 'challenge';
         const rdays = [...f.querySelectorAll('input[name=rdays]:checked')].map((x) => Number(x.value)).sort();
         if (v.repeat === 'custom' && (kind === 'normal' || kind === 'timed') && !rdays.length) return toast('Escolha os dias da semana.');
+        const alarmTone = readAlarm(f, t);
+        if (alarmTone === null) return;
         let due = isChallenge ? today() : v.due || undefined;
         // Repetição em dias escolhidos: a primeira data cai no próximo desses dias.
         if (v.repeat === 'custom' && rdays.length && (kind === 'normal' || kind === 'timed')) {
@@ -753,6 +760,7 @@ export function editTask(id, defaults = {}) {
           due,
           time: due && v.time && kind !== 'sprint' ? v.time : undefined,
           remindBefore: due && v.time && kind !== 'sprint' && v.remindBefore !== '' && v.remindBefore != null ? Number(v.remindBefore) : undefined,
+          alarm: due && v.time && kind !== 'sprint' ? alarmTone : undefined,
           start: kind === 'sprint' ? v.start || today() : undefined,
           duration: kind === 'timed' ? Number(v.duration) || 30 : undefined,
           priority: v.priority || 'P4',

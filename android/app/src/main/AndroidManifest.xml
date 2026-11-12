@@ -67,6 +67,26 @@
                 android:resource="@xml/widget_rings_info" />
         </receiver>
 
+        <!-- Alarme de tela cheia: a tela (por cima da tela de bloqueio) e quem toca na hora / depois de reiniciar. -->
+        <activity
+            android:name=".AlarmActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+        <receiver
+            android:name=".AlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <!-- Atualização dentro do app: resultado da instalação e reabertura depois de atualizar. -->
         <receiver
             android:name=".UpdateReceiver"
@@ -96,6 +116,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Alarmes: hora exata, tela cheia por cima do bloqueio e voltar depois de reiniciar o celular. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Atualizar o Lida sem sair dele (pede, uma vez, "Instalar apps desconhecidos"). -->
     <!-- <updater> (sai na variante do F-Droid: scripts/flavor.mjs) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />

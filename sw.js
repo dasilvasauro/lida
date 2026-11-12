@@ -6,6 +6,7 @@ const VERSION = 'lida-v3.0.0-alfa.16';
 const SHELL = [
   './',
   'index.html',
+  'alarm.html',
   'manifest.webmanifest',
   'css/app.css',
   'fonts/atkinson-400.woff2',
@@ -57,6 +58,7 @@ const SHELL = [
   'icons/tray-64.png',
   'icons/tray.svg',
   'js/core/achievements.js',
+  'js/core/alarms.js',
   'js/core/backup.js',
   'js/core/changelog.js',
   'js/core/cloud.js',
@@ -107,6 +109,7 @@ const SHELL = [
   'js/vendor/jsqr.js',
   'js/vendor/qrcode.js',
   'js/views/achievements.js',
+  'js/views/alarm.js',
   'js/views/board.js',
   'js/views/brain.js',
   'js/views/celebrate.js',
@@ -126,6 +129,12 @@ const SHELL = [
   'js/views/tasks.js',
   'js/views/today.js',
   'js/views/update.js',
+  'sounds/alarms/amanhecer.ogg',
+  'sounds/alarms/classico.ogg',
+  'sounds/alarms/digital.ogg',
+  'sounds/alarms/marimba.ogg',
+  'sounds/alarms/passaros.ogg',
+  'sounds/alarms/sinos.ogg',
   'sounds/sino_bicicleta.wav',
 ];
 const RUNTIME = 'lida-runtime';

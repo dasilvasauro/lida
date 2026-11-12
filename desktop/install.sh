@@ -104,7 +104,7 @@ ok "Qt: $("$APP_PY" -c 'import PySide6; print("PySide6", PySide6.__version__)')"
 say "Copiando o Lida…"
 mkdir -p "$LIDA/app" "$LIDA/desktop" "$BIN"
 rm -rf "$LIDA/app"/* "$LIDA/desktop/lida_desktop"
-for it in index.html manifest.webmanifest css js fonts icons sounds; do
+for it in index.html alarm.html manifest.webmanifest css js fonts icons sounds; do
   cp -r "$REPO/$it" "$LIDA/app/"
 done
 cp -r "$HERE/lida_desktop" "$LIDA/desktop/"

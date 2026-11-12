@@ -157,7 +157,7 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           # Pacote do Linux (o app do Linux se atualiza com ele; o latest.json leva o SHA-256).
           mkdir -p "$RUNNER_TEMP/dist/lida"
-          cp -r index.html manifest.webmanifest css js fonts icons sounds desktop LICENSE "$RUNNER_TEMP/dist/lida/"
+          cp -r index.html alarm.html manifest.webmanifest css js fonts icons sounds desktop LICENSE "$RUNNER_TEMP/dist/lida/"
           find "$RUNNER_TEMP/dist" -name '__pycache__' -prune -exec rm -rf {} +
           tar -C "$RUNNER_TEMP/dist" -czf "$RUNNER_TEMP/lida-linux.tar.gz" lida
           node scripts/release.mjs "${GITHUB_REF_NAME#v}" "$RUNNER_TEMP/apks/$G" "$RUNNER_TEMP/apks/$L" "$RUNNER_TEMP/release" "$RUNNER_TEMP/lida-linux.tar.gz"

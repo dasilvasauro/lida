@@ -139,7 +139,7 @@ def proxy_http(req):
         return {"error": f"Sem conexão: {e}"}
 
 
-def make_http(hub, token, google_login, updater=None, restart=None):
+def make_http(hub, token, google_login, updater=None, restart=None, alarm=None):
     web = paths.WEB_DIR.resolve()
 
     class Handler(BaseHTTPRequestHandler):
@@ -206,6 +206,8 @@ def make_http(hub, token, google_login, updater=None, restart=None):
                 out = updater.status()
             elif route == "update-restart" and restart:
                 restart()
+            elif route == "alarm" and alarm:
+                alarm(bool(data.get("on")))
             elif route == "google":
                 try:
                     out = {"idToken": google_login()}

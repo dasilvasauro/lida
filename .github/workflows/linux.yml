@@ -35,7 +35,7 @@ jobs:
       - name: Montar o pacote
         run: |
           mkdir -p dist/lida
-          cp -r index.html manifest.webmanifest css js fonts icons sounds desktop dist/lida/
+          cp -r index.html alarm.html manifest.webmanifest css js fonts icons sounds desktop dist/lida/
           tar -C dist -czf lida-linux.tar.gz lida
       - uses: actions/upload-artifact@v4
         with:

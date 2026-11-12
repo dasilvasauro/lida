@@ -17,6 +17,7 @@ import { reviewYesterday, leftovers } from './views/review.js';
 import { initSyncPill } from './views/sync.js';
 import { initUpdates } from './views/update.js';
 import { initAchievements } from './views/achievements.js';
+import { initAlarms, alarmLink } from './views/alarm.js';
 import { loadCreds, saveCreds, startFileSync } from './views/cloudfiles.js';
 import { initSound } from './core/sound.js';
 import { grantPastTitles, itemsGiftText } from './core/game.js';
@@ -469,6 +470,7 @@ function deepLinks() {
   const A = plugin('App');
   if (!A) return;
   const go = (url) => {
+    if (alarmLink(url)) return; // "Concluir" no alarme nativo
     const m = String(url || '').match(/^lida:\/\/([a-z-]+)/);
     if (m) location.hash = m[1];
   };
@@ -501,6 +503,7 @@ function start() {
   initDesktop();
   initUpdates();
   initAchievements();
+  initAlarms();
   // Ao voltar para o app (ex.: depois de trocar o tema do sistema), reaplica as cores das barras.
   plugin('App')?.addListener?.('resume', () => appearance());
   runDay();

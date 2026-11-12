@@ -38,6 +38,15 @@ const T = {
     pos: '#62e8bb', neg: '#ff7b74', warn: '#f5c84f',
     p0: '#ff5c7a', p1: '#ffa24a', p2: '#62aeff', p3: '#8e8e98', p4: '#5c5c66',
   },
+  // AMOLED com azul bem vivo: preto puro e destaque azul elétrico.
+  eletrico: {
+    name: 'AMOLED Azul', scheme: 'dark', unlock: { level: 1 },
+    bg: '#000000', surface: '#06080c', surface2: '#0d1118', surface3: '#151b26', line: '#172030',
+    text: '#f2f6ff', muted: '#9aa7c0', dim: '#56627a',
+    accent: '#1f8bff', onAccent: '#000000', g1: '#0066ff', g2: '#00d2ff',
+    pos: '#00e0a4', neg: '#ff4d6a', warn: '#ffc233',
+    p0: '#ff4d6a', p1: '#ff9a3c', p2: '#2ea8ff', p3: '#8a94a8', p4: '#56627a',
+  },
   suave: {
     name: 'Suave', scheme: 'dark', unlock: { level: 10 },
     bg: '#18181b', surface: '#202024', surface2: '#27272b', surface3: '#313136', line: '#323238',
@@ -155,7 +164,7 @@ const T = {
 };
 
 export const THEMES = T;
-export const THEME_ORDER = ['sistema', 'grafite', 'claro', 'amoled', 'suave', 'manteiga', 'marinho', 'darcula', 'cinza', 'aqua', 'rosa', 'laranja', 'tomate', 'matrix', 'edna', 'monocromo', 'bumblebee', 'tumbleweed'];
+export const THEME_ORDER = ['sistema', 'grafite', 'claro', 'amoled', 'eletrico', 'suave', 'manteiga', 'marinho', 'darcula', 'cinza', 'aqua', 'rosa', 'laranja', 'tomate', 'matrix', 'edna', 'monocromo', 'bumblebee', 'tumbleweed'];
 export const themeName = (id) => (id === 'sistema' ? 'Automático' : T[id]?.name || id);
 export const isFreeTheme = (id) => id === 'sistema' || id === 'grafite' || id === 'claro';
 

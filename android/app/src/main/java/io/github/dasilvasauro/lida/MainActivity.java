@@ -10,6 +10,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(LidaWidgetPlugin.class);
         registerPlugin(LidaTimerPlugin.class);
         registerPlugin(LidaAppPlugin.class);
+        registerPlugin(LidaAlarmPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

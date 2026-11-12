@@ -1,5 +1,6 @@
 // Tela de Hábitos: o dia em um olhar, água, hábitos com sequência, rotinas e desapego.
 // Tom: leve e incentivador. Nada de vermelho por dia perdido; o foco é no que já foi feito.
+import { alarmFields, readAlarm } from './alarm.js';
 import { P, personal, app } from '../state.js';
 import { HABIT_DAYS_ALL } from '../core/model.js';
 import * as H from '../core/habits.js';
@@ -370,6 +371,7 @@ export function editHabit(h, preset = {}) {
         <div class="icon-in"><input name="icon" value="${esc(v.icon || '')}" maxlength="16" autocomplete="off" inputmode="text" placeholder="☺" aria-label="Ícone: qualquer emoji ou caractere"><small>Toque e escolha qualquer emoji do teclado, ou uma letra. Ou use uma sugestão:</small></div>
         <div class="emojis">${['', ...EMOJI].map((e) => `<button type="button" class="emoji-opt${(v.icon || '') === e ? ' on' : ''}" data-emoji="${e}" aria-label="${e || 'Sem ícone'}">${e || 'Aa'}</button>`).join('')}</div></div>
       <div class="field"><span>Cor</span>${colorPicker('color', v.color || COLORS[0])}</div>
+      ${alarmFields({ tone: v.alarm || '', time: v.alarmTime || '', withTime: true })}
       <label class="field"><span>Por que este hábito? (opcional)</span><textarea name="notes" rows="2" placeholder="Um lembrete para os dias difíceis">${esc(v.notes || '')}</textarea></label>
       <p class="form-meta">Bater a meta do dia rende progresso de voucher: a cada 3, um voucher.</p>
       <div class="sheet-actions"><span></span><button class="btn primary">${h ? 'Salvar' : 'Criar hábito'}</button></div>
@@ -399,7 +401,10 @@ export function editHabit(h, preset = {}) {
         const days = readDays(f, 'days');
         if (!days.length) return toast('Escolha pelo menos um dia.');
         const base = h ? Object.fromEntries(Object.entries(h).filter(([k]) => k !== 'id' && !k.startsWith('_'))) : {};
-        await H.saveHabit(h?.id, { ...base, title: r.title.trim(), goal: r.goal || 1, unit: r.unit.trim() || undefined, days: days.length === 7 ? undefined : days, icon: r.icon || undefined, color: r.color, notes: r.notes.trim() || undefined });
+        const tone = readAlarm(f, h);
+        if (tone === null) return;
+        if (tone && !r.alarmTime) return toast('Escolha o horário do alarme.');
+        await H.saveHabit(h?.id, { ...base, title: r.title.trim(), goal: r.goal || 1, unit: r.unit.trim() || undefined, days: days.length === 7 ? undefined : days, icon: r.icon || undefined, color: r.color, notes: r.notes.trim() || undefined, alarm: tone || undefined, alarmTime: tone ? r.alarmTime : undefined });
         close();
         if (!h) {
           play('tick');
@@ -425,6 +430,7 @@ export function editRoutine(id, { fromTask } = {}) {
         <div class="sub-add"><input data-new placeholder="Adicionar item" autocomplete="off" aria-label="Novo item"><button type="button" class="btn small" data-add>${icon('plus')}Adicionar</button></div></div>
       <div class="field"><span>Dias</span>${wdPicker('days', r?.weekdays)}</div>
       <div class="field"><span>Cor</span>${colorPicker('color', r?.color || COLORS[1])}</div>
+      ${alarmFields({ tone: r?.alarm || '', time: r?.time || '', withTime: true })}
       <p class="form-meta">A rotina aparece em Hoje nos dias escolhidos. Rende de 50 a 200 de XP e ouro, conforme o número de itens. Rotina não concluída não pune.</p>
       <div class="sheet-actions">${r ? `<button type="button" class="btn ghost danger-text" data-remove>${icon('trash')}Excluir</button>` : '<span></span>'}<button class="btn primary">${r ? 'Salvar' : 'Criar rotina'}</button></div>
     </form>`,
@@ -458,7 +464,10 @@ export function editRoutine(id, { fromTask } = {}) {
         if (!items.length) return toast('Adicione pelo menos um item.');
         const days = readDays(f, 'days');
         if (!days.length) return toast('Escolha pelo menos um dia.');
-        await H.saveRoutine(r?.id, { title: f.title.value.trim(), items, weekdays: days, color: readForm(f).color });
+        const tone = readAlarm(f, r);
+        if (tone === null) return;
+        if (tone && !f.alarmTime.value) return toast('Escolha o horário do alarme.');
+        await H.saveRoutine(r?.id, { title: f.title.value.trim(), items, weekdays: days, color: readForm(f).color, alarm: tone || undefined, time: f.alarmTime.value || undefined });
         close();
         toast(r ? 'Rotina salva.' : 'Rotina criada. Ela aparece em Hoje nos dias escolhidos.');
       };

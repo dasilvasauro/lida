@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const walk = (d) => readdirSync(d).flatMap((f) => (statSync(join(d, f)).isDirectory() ? walk(join(d, f)) : [join(d, f)]));
 const files = ['css', 'fonts', 'icons', 'js', 'sounds'].flatMap((d) => walk(join(ROOT, d))).map((f) => relative(ROOT, f)).sort();
-const list = ['./', 'index.html', 'manifest.webmanifest', ...files].map((f) => `  '${f}',`).join('\n');
+const list = ['./', 'index.html', 'alarm.html', 'manifest.webmanifest', ...files].map((f) => `  '${f}',`).join('\n');
 const sw = readFileSync(join(ROOT, 'sw.js'), 'utf8').replace(/const SHELL = \[[\s\S]*?\n\];/, `const SHELL = [\n${list}\n];`);
 writeFileSync(join(ROOT, 'sw.js'), sw);
 console.log(`sw.js: ${files.length + 3} arquivos na lista`);

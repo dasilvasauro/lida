@@ -68,6 +68,7 @@ class Bridge(QObject):
     show = Signal(str)
     quit = Signal()
     restart = Signal()
+    alarm = Signal(bool)
 
 
 class Page(QWebEnginePage):
@@ -115,6 +116,7 @@ class Window(QMainWindow):
         self.bridge.show.connect(self.show_window)
         self.bridge.quit.connect(self.quit)
         self.bridge.restart.connect(self.restart)
+        self.bridge.alarm.connect(self.set_alarm)
 
         # Perfil persistente: os dados do Lida (IndexedDB, sessão do Firebase) ficam em ~/.local/share/lida.
         self.profile = QWebEngineProfile("lida", self)
@@ -160,7 +162,7 @@ class Window(QMainWindow):
         )
         try:
             self.updater = Updater()
-            self.http = make_http(self.hub, self.token, self._google_login, updater=self.updater, restart=lambda: self.bridge.restart.emit())
+            self.http = make_http(self.hub, self.token, self._google_login, updater=self.updater, restart=lambda: self.bridge.restart.emit(), alarm=lambda on: self.bridge.alarm.emit(on))
         except OSError as e:
             QMessageBox.critical(None, "Lida", f"A porta {paths.PORT} já está em uso ({e}). Feche o outro programa ou defina LIDA_PORT.")
             sys.exit(1)
@@ -264,6 +266,20 @@ class Window(QMainWindow):
         else:
             event.accept()
             self.quit()
+
+    def set_alarm(self, on):
+        """Alarme tocando: janela na frente, em tela cheia, por cima das outras; depois volta ao normal."""
+        if on:
+            self._was_visible = self.isVisible()
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+            self.showFullScreen()
+            self.raise_()
+            self.activateWindow()
+        else:
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, False)
+            self.showNormal()
+            if not getattr(self, "_was_visible", True):
+                self.hide()
 
     def restart(self):
         """Depois de atualizar: abre a versão nova e fecha esta."""

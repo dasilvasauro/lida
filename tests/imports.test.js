@@ -39,6 +39,6 @@ test('o service worker guarda todos os arquivos do app', () => {
   const shell = new Set([...sw.matchAll(/^\s*'([^']+)',$/gm)].map((m) => m[1]));
   const need = ['js', 'css', 'fonts', 'icons', 'sounds'].flatMap((d) => walk(join(ROOT, d))).map((f) => relative(ROOT, f));
   const missing = need.filter((f) => !shell.has(f));
-  const extra = [...shell].filter((f) => f !== './' && !need.includes(f) && !['index.html', 'manifest.webmanifest'].includes(f));
+  const extra = [...shell].filter((f) => f !== './' && !need.includes(f) && !['index.html', 'alarm.html', 'manifest.webmanifest'].includes(f));
   assert.deepEqual({ missing, extra }, { missing: [], extra: [] });
 });
