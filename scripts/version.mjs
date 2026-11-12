@@ -23,12 +23,17 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const { CHANGELOG, KIND_LABEL } = await import('../js/core/changelog.js');
   const entry = CHANGELOG.find((r) => r.v === v);
   if (entry) {
-    // O F-Droid corta em 500 caracteres.
-    let txt = `${entry.title}\n\n${entry.items.map(([k, t]) => `• ${KIND_LABEL[k] || k}: ${t}`).join('\n')}`;
-    if (txt.length > 500) txt = `${txt.slice(0, 440).replace(/\s+\S*$/, '')}…\nMais em Ajustes > Novidades e correções.`;
-    const dir = join(ROOT, 'fastlane/metadata/android/pt-BR/changelogs');
-    mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, `${code}.txt`), `${txt}\n`);
+    // O F-Droid corta em 500 caracteres. Português sempre; inglês quando a versão traz (entry.en).
+    const KIND_EN = { novo: 'New', melhoria: 'Improvement', correcao: 'Fix' };
+    const write = (folder, title, items, label, more) => {
+      let txt = `${title}\n\n${items.map((t, i) => `• ${label[entry.items[i][0]] || entry.items[i][0]}: ${t}`).join('\n')}`;
+      if (txt.length > 500) txt = `${txt.slice(0, 440).replace(/\s+\S*$/, '')}…\n${more}`;
+      const dir = join(ROOT, `fastlane/metadata/android/${folder}/changelogs`);
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, `${code}.txt`), `${txt}\n`);
+    };
+    write('pt-BR', entry.title, entry.items.map(([, t]) => t), KIND_LABEL, 'Mais em Ajustes > Novidades e correções.');
+    if (entry.en) write('en-US', entry.en.title, entry.en.items, KIND_EN, "More in Settings > What's new and fixes.");
   } else console.warn(`Aviso: ${v} ainda não está em js/core/changelog.js`);
   console.log(`versão ${v} · versionCode ${code}`);
 }

@@ -15,14 +15,16 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 3. [Usar na web](#usar-na-web)
 4. [Usar no Android (APK)](#usar-no-android-apk)
 5. [Lida para Linux](#lida-para-linux) (app, CLI `lida` e widgets do Plasma)
-6. [Lembretes](#lembretes)
-7. [Foco](#foco)
-8. [Trazer os dados do Lida anterior](#trazer-os-dados-do-lida-anterior)
-9. [Privacidade e sincronização](#privacidade-e-sincronização)
-10. [Sua parte: publicar](#sua-parte-publicar)
-11. [Licença](#licença)
-12. [Desenvolvimento](#desenvolvimento)
-13. [Limites honestos](#limites-honestos)
+6. [Idiomas](#idiomas)
+7. [Lembretes](#lembretes)
+8. [Alarmes](#alarmes)
+9. [Foco](#foco)
+10. [Trazer os dados do Lida anterior](#trazer-os-dados-do-lida-anterior)
+11. [Privacidade e sincronização](#privacidade-e-sincronização)
+12. [Sua parte: publicar](#sua-parte-publicar)
+13. [Licença](#licença)
+14. [Desenvolvimento](#desenvolvimento)
+15. [Limites honestos](#limites-honestos)
 
 ---
 
@@ -33,7 +35,7 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
   separado, sincronização campo a campo (duas edições no mesmo minuto não se apagam).
 - **App Android de verdade.** O APK é gerado automaticamente pelo GitHub Actions, sem Android Studio.
   Lembretes são agendados no próprio celular: chegam sem internet e com o app fechado.
-- **Aparência.** 14 temas com paleta por função (fundo, superfícies, texto, destaque, progresso,
+- **Aparência.** 18 temas (e o automático, que segue o aparelho) com paleta por função (fundo, superfícies, texto, destaque, progresso,
   prioridades), 8 fontes embutidas (funcionam offline), incluindo a retrô VT323, e 4 tamanhos de interface.
 - **Sons.** Sintetizados no aparelho (nenhum arquivo para baixar): concluir, XP, subir de nível,
   progresso. Volume ajustável, podem ser desligados, e mais 4 conjuntos de timbres na Loja.
@@ -57,8 +59,8 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | alfa 13 | **Status e horário da sincronização**, conflitos entre aparelhos, **backup .lida** cifrado, **foto de perfil** ou Lidinho, **atualização dentro do app** com changelog, Releases com link fixo do APK, fim do modo de desenvolvedor | Pronta |
 | alfa 14 | **Sincronização pela sua nuvem** (Dropbox, OneDrive, Nextcloud/WebDAV), **mover a sincronização** da conta Google para ela, **Lidinho redesenhado**, 12 títulos novos com presentes | Pronta |
 | alfa 15 | **Lida Libre** (sem Google nem Firebase, id próprio, APK na Release), receita do F-Droid e metadados, versionCode tirado da versão, licença **GPL-3.0**, correções no ícone do hábito e no Quadro | Pronta |
-| alfa 16 | **Conquistas** (112, com medalhas, ouro resgatável e revelação com suspense), **Lidinho na foto** (inteiro ou selfie, qualquer um já alcançado), **atualização dentro do app no Linux** | **Esta versão** |
-| alfa 17 | O app inteiro em **inglês e espanhol**, com escolha do idioma em Ajustes | Próxima |
+| alfa 16 | **Conquistas** (112, com medalhas, ouro resgatável e revelação com suspense), **Lidinho na foto** (inteiro ou selfie, qualquer um já alcançado), **atualização dentro do app no Linux** | Pronta |
+| alfa 17 | O app inteiro em **inglês e espanhol** (Ajustes > Idioma), **alarmes de tela cheia** com 6 toques, tema **AMOLED Azul**, água sempre azul | **Esta versão** |
 
 ## Como o jogo funciona
 
@@ -429,6 +431,17 @@ O app serve os arquivos em `http://localhost:47390` (só para o próprio computa
 do navegador embutido ficam guardados por endereço; para mudar, use a variável `LIDA_PORT` (os dados não vêm junto).
 Modo demo: `lida-desktop --demo` (dados de exemplo, separados da sua conta). O app não tem ferramentas de desenvolvedor.
 
+## Idiomas
+
+O Lida fala **português, inglês e espanhol**. Na primeira abertura ele segue o idioma do aparelho; depois, troque em
+**Ajustes > Idioma** (ou no seletor da tela de entrada). Vale para tudo: telas, datas e números, notificações, a tela
+do alarme, os widgets do Android e do Plasma e os menus e a bandeja do app do Linux. A adição rápida entende o idioma
+escolhido ("Pay bills tomorrow 9am p1 #home", "Pagar la luz mañana a las 9 p1 #casa"; no inglês, datas como 1/20 são
+mês/dia). Nomes de tarefas, hábitos e projetos ficam como você escreveu.
+
+Fica em português: a CLI `lida` (comandos e respostas), as notas das versões antigas em Novidades e correções e os
+nomes dos canais de notificação no Android, que seguem o idioma do sistema.
+
 ## Lembretes
 
 Tudo em **Ajustes > Lembretes**, cada tipo com seu interruptor e horário:
@@ -450,6 +463,25 @@ Tudo em **Ajustes > Lembretes**, cada tipo com seu interruptor e horário:
 - No APK: agendados no sistema, funcionam com o app fechado, sem internet e depois de reiniciar.
 - Na web: o navegador não agenda notificações sem um servidor. Chegam enquanto o Lida estiver aberto
   (mesmo em outra aba ou minimizado), com o mesmo som.
+
+## Alarmes
+
+Para o que não pode passar: **alarme de tela cheia** em tarefas com horário (repetidas ou não), rotinas e hábitos.
+No editor de cada um, escolha um toque em **Alarme de tela cheia** (rotinas e hábitos escolhem também o horário).
+
+- A tela mostra o **tipo** (tarefa, rotina, hábito), a **hora atual**, a data, o **nome** e a **descrição**, ocupando a
+  tela toda, com uma **luz vermelha piscando** no canto, como o LED de um aparelho.
+- Em vez de só desligar: **Concluir** (conclui a tarefa ou a rotina do dia, ou marca o hábito, com a recompensa
+  normal) ou **Ignorar**.
+- **Aparência** (Ajustes > Alarmes): com as cores do tema ou **AMOLED**, preto e minimalista. Sempre na fonte escolhida.
+- **6 toques** (cada volta dura de 4 a 18 segundos e se repete até você responder): despertador clássico (bipes), relógio
+  digital, sinos calmos, marimba, amanhecer e passarinhos (`scripts/alarm-tones.py` gera os arquivos).
+- **Limite de 10 alarmes ligados** ao mesmo tempo: alarme demais vira barulho e se aprende a ignorar.
+- **Android**: agendado no sistema como despertador (toca com o app fechado, o celular bloqueado e depois de
+  reiniciar), no canal de alarme, com o brilho no máximo enquanto toca. No Android 14+, libere **Notificações em tela
+  cheia** em Ajustes > Alarmes (sem isso, chega como notificação com os mesmos botões).
+- **Linux**: com o app aberto ou na bandeja, a janela vem para a frente em tela cheia. **Web**: só com o Lida aberto.
+- **Testar o alarme** em Ajustes mostra a tela na hora (no Android, em 3 segundos: bloqueie o celular para ver).
 
 ## Foco
 
@@ -662,7 +694,20 @@ android/                                  projeto Android (Capacitor); compilado
 
 Ao publicar uma versão nova: aumente `VERSION` em `sw.js` e `app.version` em `js/state.js`.
 
+**Traduções:** o app é escrito em português e `js/core/i18n.js` traduz a tela com os dicionários `js/i18n/en.js` e
+`js/i18n/es.js` ("texto em português" → tradução; `{0}`, `{1}` são lacunas que podem mudar de lugar). Conteúdo da
+pessoa vai em elementos com `translate="no"`. Texto novo: `node scripts/i18n-extract.mjs` lista o que falta traduzir
+(o teste falha enquanto faltar), `--stale` lista chaves que o código não usa mais, e o que não é para traduzir (nomes
+de fonte, teclas) entra em `scripts/i18n-ignore.json`. Textos que nascem com as três versões usam `tr({ pt, en, es })`.
+
 ## Limites honestos
+
+- **Traduções**: conferidas por testes (toda frase da interface tem chave em inglês e espanhol) e por capturas das
+  telas principais nos três idiomas, não por falantes nativos. Uma frase montada de um jeito novo no código pode
+  aparecer em português até ganhar a sua chave; o teste avisa quando é texto literal.
+- **Alarmes no Android**: o código nativo (AlarmManager, tela sobre o bloqueio, brilho máximo, canais por toque) teve a
+  sintaxe conferida aqui e compila no Actions; não foi testado num celular. Fabricantes com economia de bateria agressiva podem
+  exigir liberar o Lida em "sem restrições".
 
 - **Virada sem conexão**: na conta Google, se o aparelho não falar com o servidor, os dias anteriores ficam sem fechar
   (sem falhas, sem nota) até conectar. É de propósito: fechar com dados velhos era o que fazia tarefas sumirem.

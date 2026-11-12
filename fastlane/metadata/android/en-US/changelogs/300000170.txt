@@ -1,0 +1,5 @@
+Lida in English and Spanish, and full-screen alarms
+
+• New: The whole app in English and Spanish, besides Portuguese: screens, messages, notifications, Android and Plasma widgets, Linux app menus, dates and numbers. Pick it in Settings > Language (or on the welcome screen); at first it follows the device language. Quick add understands each language ("tomorrow 9am", "mañana a las 9").
+• New: Full-screen alarms for timed tasks, routines…
+More in Settings > What's new and fixes.

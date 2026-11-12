@@ -584,7 +584,7 @@ export default {
   "Aparência do alarme": "Apariencia de la alarma",
   "A tela do alarme usa a fonte escolhida. Escolha as cores do tema ou um visual AMOLED, preto e minimalista": "La pantalla de la alarma usa la fuente elegida. Elige los colores del tema o un estilo AMOLED, negro y minimalista",
   "Toque padrão": "Tono predeterminado",
-  "Para alarmes novos. Cada alarme pode ter o seu": "Para alarmas nuevas. Cada alarma puede tener el suyo",
+  "Para alarmes novos. Cada alarme pode ter o seu": "Para alarmas nuevas. Cada alarma puede tener su propio tono",
   "Testar o alarme": "Probar la alarma",
   "Alarmes ligados": "Alarmas activadas",
   "Em tarefas com horário, rotinas e hábitos (no editor de cada um)": "En tareas con hora, rutinas y hábitos (en el editor de cada uno)",

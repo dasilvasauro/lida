@@ -1,7 +1,40 @@
 // Novidades e correções, da mais nova para a mais antiga (aparece em Ajustes > Novidades e correções).
 // Regra: toda versão nova entra aqui, com o que mudou para quem usa (não detalhes de código).
 // tipo: 'novo' | 'melhoria' | 'correcao'
+// en/es (opcional): { title, items: [textos na mesma ordem] } para quem usa o app em inglês ou espanhol.
 export const CHANGELOG = [
+  {
+    v: '3.0.0-alfa.17',
+    date: '2026-11-12',
+    title: 'Lida em inglês e espanhol, e alarmes de tela cheia',
+    items: [
+      ['novo', 'O app inteiro em inglês e espanhol, além do português: telas, avisos, notificações, widgets do Android e do Plasma, menus do app do Linux, datas e números. Escolha em Ajustes > Idioma (ou na tela de entrada); de início, segue o idioma do aparelho. A adição rápida entende cada idioma ("tomorrow 9am", "mañana a las 9").'],
+      ['novo', 'Alarmes de tela cheia para tarefas com horário, rotinas e hábitos: mostram o nome, a descrição e a hora atual, com botões para concluir ou ignorar, e uma luz vermelha piscando como a de um aparelho. Usam a fonte escolhida, com as cores do tema ou um visual AMOLED preto e minimalista. No Android, tocam com o app fechado e o celular bloqueado, no brilho máximo.'],
+      ['novo', 'Seis toques de alarme mais longos: despertador clássico com bipes, relógio digital, sinos calmos, marimba, amanhecer e passarinhos. Até 10 alarmes ligados ao mesmo tempo.'],
+      ['novo', 'Tema AMOLED Azul: preto puro com um azul bem vivo.'],
+      ['correcao', 'A água agora é sempre azul, em qualquer tema (no Bumblebee ela ficava amarela).'],
+    ],
+    en: {
+      title: 'Lida in English and Spanish, and full-screen alarms',
+      items: [
+        'The whole app in English and Spanish, besides Portuguese: screens, messages, notifications, Android and Plasma widgets, Linux app menus, dates and numbers. Pick it in Settings > Language (or on the welcome screen); at first it follows the device language. Quick add understands each language ("tomorrow 9am", "mañana a las 9").',
+        'Full-screen alarms for timed tasks, routines and habits: they show the name, the description and the current time, with buttons to complete or dismiss, and a blinking red light like a device LED. They use your chosen font, with the theme colors or a black, minimalist AMOLED look. On Android they ring with the app closed and the phone locked, at full brightness.',
+        'Six longer alarm tones: classic beeping alarm clock, digital clock, calm bells, marimba, sunrise and birdsong. Up to 10 alarms on at the same time.',
+        'AMOLED Blue theme: pure black with a vivid blue.',
+        'Water is now always blue, in every theme (in Bumblebee it turned yellow).',
+      ],
+    },
+    es: {
+      title: 'Lida en inglés y español, y alarmas a pantalla completa',
+      items: [
+        'Toda la app en inglés y español, además de portugués: pantallas, avisos, notificaciones, widgets de Android y de Plasma, menús de la app de Linux, fechas y números. Elígelo en Ajustes > Idioma (o en la pantalla de entrada); al principio sigue el idioma del dispositivo. La adición rápida entiende cada idioma ("tomorrow 9am", "mañana a las 9").',
+        'Alarmas a pantalla completa para tareas con hora, rutinas y hábitos: muestran el nombre, la descripción y la hora actual, con botones para completar o ignorar, y una luz roja parpadeante como la de un aparato. Usan la fuente elegida, con los colores del tema o un estilo AMOLED negro y minimalista. En Android suenan con la app cerrada y el teléfono bloqueado, con el brillo al máximo.',
+        'Seis tonos de alarma más largos: despertador clásico con pitidos, reloj digital, campanas tranquilas, marimba, amanecer y pajaritos. Hasta 10 alarmas activadas a la vez.',
+        'Tema AMOLED Azul: negro puro con un azul muy vivo.',
+        'El agua ahora es siempre azul, en cualquier tema (en Bumblebee se veía amarilla).',
+      ],
+    },
+  },
   {
     v: '3.0.0-alfa.16',
     date: '2026-11-11',

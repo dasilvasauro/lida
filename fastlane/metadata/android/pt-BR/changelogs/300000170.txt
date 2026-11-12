@@ -1,0 +1,5 @@
+Lida em inglês e espanhol, e alarmes de tela cheia
+
+• Novo: O app inteiro em inglês e espanhol, além do português: telas, avisos, notificações, widgets do Android e do Plasma, menus do app do Linux, datas e números. Escolha em Ajustes > Idioma (ou na tela de entrada); de início, segue o idioma do aparelho. A adição rápida entende cada idioma ("tomorrow 9am", "mañana a las 9").
+• Novo: Alarmes de tela cheia para tarefas com horário,…
+Mais em Ajustes > Novidades e correções.
