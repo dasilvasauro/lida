@@ -22,4 +22,5 @@
     <string name="widget_rings_desc">Rings of the day: tasks, habits and water</string>
     <string name="widget_today">Today</string>
     <string name="widget_tap">Tap to open Lida.</string>
+    <string name="ch_alarm_quiet">Alarm ringing (silent)</string>
 </resources>

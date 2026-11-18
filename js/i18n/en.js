@@ -1307,6 +1307,8 @@ export default {
   "Adicionando…": "Adding…",
   "Lida · Anéis": "Lida · Rings",
   "IPL de hoje: {0}": "Today's IPL: {0}",
+  "Abrir por cima de tudo": "Open over everything",
+  "Libere \"Sobrepor a outros apps\": sem isto, com o celular em uso o alarme aparece só no topo da tela": "Allow \"Display over other apps\": without it, while you're using the phone the alarm only shows at the top of the screen",
   // linhas soltas (placeholder de várias linhas, textos montados em partes)
   "Feito é melhor que perfeito.": "Done is better than perfect.",
   "Descansar também é produtivo.": "Resting is productive too.",

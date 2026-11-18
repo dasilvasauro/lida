@@ -22,4 +22,5 @@
     <string name="widget_rings_desc">Anillos del día: tareas, hábitos y agua</string>
     <string name="widget_today">Hoy</string>
     <string name="widget_tap">Toca para abrir Lida.</string>
+    <string name="ch_alarm_quiet">Alarma sonando (sin sonido)</string>
 </resources>

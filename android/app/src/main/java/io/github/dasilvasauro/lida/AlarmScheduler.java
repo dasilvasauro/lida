@@ -191,6 +191,7 @@ final class AlarmScheduler {
             .putExtra("payload", payload(ctx, alarm))
             .putExtra("kind", alarm.optString("kind"))
             .putExtra("ref", alarm.optString("ref"));
+        full.putExtra("tone", alarm.optString("tone", "classico"));
         PendingIntent fullPi = PendingIntent.getActivity(ctx, id, full, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         PendingIntent donePi = PendingIntent.getActivity(ctx, id + 1, doneIntent(ctx, alarm), PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Intent ign = new Intent(ctx, AlarmReceiver.class).setAction(ACTION_IGNORE).putExtra("id", id);
@@ -221,10 +222,40 @@ final class AlarmScheduler {
         Notification n = b.build();
         n.flags |= Notification.FLAG_INSISTENT;
         NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+        last.put(id, b);
         try {
             nm.notify(id, n);
         } catch (SecurityException ignored) {
-            // sem permissão de notificações: ao menos tenta abrir a tela
+            // sem permissão de notificações: a tela abre mesmo assim (abaixo)
+        }
+        // A notificação de tela cheia só abre a tela com o celular bloqueado ou apagado; em uso, o Android
+        // mostra só o aviso no topo. Abre direto: vale com o Lida aberto e com "Sobrepor a outros apps".
+        try {
+            ctx.startActivity(full);
+        } catch (Exception ignored) {
+            // fica a notificação (toque nela abre a tela)
+        }
+    }
+
+    // Notificação do alarme que está tocando: a tela atualiza para uma versão sem som (a tela toca o seu).
+    private static final java.util.HashMap<Integer, Notification.Builder> last = new java.util.HashMap<>();
+
+    static void quiet(Context ctx, int id) {
+        Notification.Builder b = last.get(id);
+        if (b == null || Build.VERSION.SDK_INT < 26) return;
+        NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+        String ch = "lida_alarm_quiet";
+        if (nm.getNotificationChannel(ch) == null) {
+            NotificationChannel c = new NotificationChannel(ch, ctx.getString(R.string.ch_alarm_quiet), NotificationManager.IMPORTANCE_LOW);
+            c.setSound(null, null);
+            c.enableVibration(false);
+            nm.createNotificationChannel(c);
+        }
+        try {
+            b.setChannelId(ch).setFullScreenIntent(null, false);
+            nm.notify(id, b.build());
+        } catch (Exception ignored) {
+            // segue com a notificação que tocava
         }
     }
 
@@ -235,6 +266,7 @@ final class AlarmScheduler {
     }
 
     static void stop(Context ctx, int id) {
+        last.remove(id);
         NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
         nm.cancel(id);
     }

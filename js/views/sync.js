@@ -131,7 +131,7 @@ export function openSync() {
           draw();
         });
         body.querySelector('[data-reconn]')?.addEventListener('click', () => (close(), reconnectFiles()));
-        body.querySelector('[data-goset]')?.addEventListener('click', () => (close(), app.nav('ajustes')));
+        body.querySelector('[data-goset]')?.addEventListener('click', () => (close(), app.nav('ajustes-conta')));
         body.querySelectorAll('[data-cid]').forEach((li) =>
           li.querySelectorAll('[data-keep]').forEach(
             (b) =>

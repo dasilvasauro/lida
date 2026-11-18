@@ -5,8 +5,8 @@
 //   Linux/web  o próprio app (aberto ou na bandeja), numa tela por cima de tudo (views/alarm.js)
 import { P, prefs } from '../state.js';
 import { taskOpen, HABIT_DAYS_ALL } from './model.js';
-import { addDays, weekday, hash32 } from '../lib/util.js';
-import { today, nowMs } from '../lib/clock.js';
+import { addDays, weekday, hash32, isoOfMs } from '../lib/util.js';
+import { nowMs } from '../lib/clock.js';
 
 export const MAX_ALARMS = 10; // alarme é para o que não pode passar; mais que isso vira barulho
 
@@ -48,7 +48,7 @@ export const alarmId = (key) => (hash32(`alarm:${key}`) & 0x7fffffff) || 1;
 // Próximos toques (até `days` dias). Rotina e hábito repetem nos dias deles (repeat = dias da semana).
 export function upcoming(S = P(), { days = 7, from = nowMs() } = {}) {
   const out = [];
-  const d0 = today();
+  const d0 = isoOfMs(from); // o dia de "from" (com o relógio do app, é hoje)
   const push = (key, when, kind, ref, title, desc, tone, repeat, time) => {
     if (when <= from - 30000) return;
     out.push({ id: alarmId(key), key, at: when, kind, ref, title, desc: desc || '', tone: TONES[tone] ? tone : defaultTone(), repeat, time });

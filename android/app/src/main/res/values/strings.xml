@@ -18,4 +18,5 @@
     <string name="ch_update">Atualizações do Lida</string>
     <string name="updated_title">Lida atualizado</string>
     <string name="updated_text">Toque para abrir a versão nova.</string>
+    <string name="ch_alarm_quiet">Alarme tocando (sem som)</string>
 </resources>

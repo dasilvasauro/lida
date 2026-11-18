@@ -204,7 +204,7 @@ async function onUse(k) {
 async function onTheme(id) {
   const S = P();
   const u = THEMES[id].unlock;
-  if ((S.walletMeta.themes || []).includes(id) || (u.level && S.money.level >= u.level)) return toast('Este tema já é seu. Escolha em Ajustes.', { action: 'Ajustes', onAction: () => app.nav('ajustes') });
+  if ((S.walletMeta.themes || []).includes(id) || (u.level && S.money.level >= u.level)) return toast('Este tema já é seu. Escolha em Ajustes.', { action: 'Ajustes', onAction: () => app.nav('ajustes-aparencia') });
   if (u.level) return toast(`Liberado ao chegar no nível ${u.level}.`);
   const price = G.THEME_PRICES[id];
   if (S.money.gold < price) return toast(`Faltam ${fmtInt(price - S.money.gold)} de ouro para este tema.`);

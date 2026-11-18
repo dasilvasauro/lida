@@ -40,8 +40,24 @@ function lockLabel(id) {
   return '';
 }
 
+// Seções dos Ajustes (cada uma é uma página: #ajustes-<chave>).
+const CATS = {
+  conta: { name: 'Conta e sincronização', icon: 'user', sub: () => (app.demo ? 'Modo demo' : app.mode === 'cloud' ? 'Conta Google' : app.mode === 'files' ? providerName(app.syncKind) : 'Somente neste aparelho') },
+  aparencia: { name: 'Aparência e idioma', icon: 'palette', sub: () => `${themeName(storedAppearance().theme)} · ${FONTS[storedAppearance().font]?.name || ''} · ${LANGS[lang()]}` },
+  jogo: { name: 'Jogo', icon: 'trophy', sub: () => 'Estilo de jogo, punições e dias de folga' },
+  sons: { name: 'Sons e vibração', icon: 'volume', sub: () => (soundPrefs().on ? 'Sons ligados' : 'Sons desligados') },
+  lembretes: { name: 'Lembretes', icon: 'bell', sub: () => (notify.notifyPrefs().on ? 'Ligados' : 'Desligados') },
+  alarmes: { name: 'Alarmes', icon: 'timer', sub: (S) => `${alarmCount(S)} de ${MAX_ALARMS} ligados` },
+  foco: { name: 'Foco', icon: 'target', sub: () => 'Notificação do foco e relógio flutuante' },
+  dados: { name: 'Backup', icon: 'download', sub: () => 'Exportar e importar um arquivo .lida' },
+  sobre: { name: 'Sobre o Lida', icon: 'info', sub: () => `Versão ${app.version}` },
+};
+
 export const settingsView = {
-  title: 'Ajustes',
+  cat: '',
+  get title() {
+    return CATS[this.cat]?.name || 'Ajustes';
+  },
   sub: () => '',
   render(el) {
     const S = P();
@@ -52,9 +68,22 @@ export const settingsView = {
     const sub = app.demo ? 'Modo demo: dados de exemplo, só neste navegador' : app.mode === 'cloud' ? app.user?.email || 'Conta Google' : app.mode === 'files' ? `${providerName(app.syncKind)}${app.syncAccount ? ` · ${app.syncAccount}` : ''}` : 'Somente neste aparelho';
     const requirePass = localStorage.getItem('lida.requirePass') === '1';
 
+    const cat = CATS[settingsView.cat] ? settingsView.cat : '';
+    // Índice: o perfil, as seções (cada uma abre a sua página) e sair/bloquear.
+    const rows = Object.entries(CATS)
+      .filter(([k]) => k !== 'foco' || isNative())
+      .map(([k, c]) => `<a class="set-row" href="#ajustes-${k}">${icon(c.icon)}<span class="grow">${c.name}<small>${esc(c.sub(S))}</small></span>${icon('right', 'sm')}</a>`)
+      .join('');
     el.innerHTML = `
-      <section class="set-group"><h2>Conta</h2><div class="set-list">
-        <div class="set-user"><button type="button" class="av-edit" data-avatar aria-label="Trocar a foto de perfil">${avatar(52)}<i>${icon('edit', 'sm')}</i></button><div class="grow"><b>${esc(name)}</b><span>${esc(sub)}</span></div><button type="button" class="btn small" data-name>${icon('edit')}Nome</button></div>
+      <div class="set-index" data-setindex${cat ? ' hidden' : ''}>
+        <div class="set-list"><div class="set-user"><button type="button" class="av-edit" data-avatar aria-label="Trocar a foto de perfil">${avatar(52)}<i>${icon('edit', 'sm')}</i></button><div class="grow"><b>${esc(name)}</b><span>${esc(sub)}</span></div><button type="button" class="btn small" data-name>${icon('edit')}Nome</button></div></div>
+        <div class="set-list">${rows}</div>
+        <div class="set-list">
+        ${app.demo ? `<button type="button" class="set-row" data-demo>${icon('flask')}<span class="grow">Sair do modo demo<small>Volta para a tela inicial. Os dados de exemplo continuam guardados.</small></span></button>` : ''}
+        ${!app.demo ? `<button type="button" class="set-row danger-text" data-exit>${icon(app.mode === 'cloud' ? 'logout' : 'lock')}<span class="grow">${app.mode === 'cloud' ? 'Sair da conta' : 'Bloquear agora'}</span></button>` : ''}
+        </div>
+      </div>
+      <section class="set-group" data-cat="conta"><h2>Conta</h2><div class="set-list">
         ${app.sync ? `<button type="button" class="set-row" data-syncrow>${icon('cloud')}<span class="grow">Sincronização<small>${esc(syncRowText() || '')}</small></span>${icon('right', 'sm')}</button>` : ''}
         ${!app.demo && app.mode === 'local' && googleAvailable() ? `<button type="button" class="set-row" data-connect>${icon('cloud')}<span class="grow">Conectar conta Google<small>Sincronize entre aparelhos. Os dados continuam cifrados com a sua senha.</small></span>${icon('right', 'sm')}</button>` : ''}
         ${!app.demo && app.mode === 'local' && anyFilesProvider() ? `<button type="button" class="set-row" data-files-connect>${icon('cloud')}<span class="grow">Sincronizar pela sua nuvem<small>Dropbox, OneDrive ou Nextcloud/WebDAV. Os arquivos vão cifrados com a sua senha.</small></span>${icon('right', 'sm')}</button>` : ''}
@@ -64,11 +93,11 @@ export const settingsView = {
         <button type="button" class="set-row" data-pass>${icon('edit')}<span class="grow">Alterar senha</span>${icon('right', 'sm')}</button>` : ''}
       </div></section>
 
-      <section class="set-group"><h2>Idioma</h2><div class="set-list">
+      <section class="set-group" data-cat="aparencia"><h2>Idioma</h2><div class="set-list">
         <label class="set-row">${icon('globe')}<span class="grow">Idioma do app<small>Language · Idioma</small></span><select data-lang aria-label="Idioma do app" translate="no">${Object.entries(LANGS).map(([k, v]) => `<option value="${k}"${lang() === k ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
       </div></section>
 
-      <section class="set-group"><h2>Tema</h2>
+      <section class="set-group" data-cat="aparencia"><h2>Tema</h2>
         <div class="themes">${THEME_ORDER.map((id) => {
           const owned = themeOwned(id, S);
           const on = ap.theme === id;
@@ -77,7 +106,7 @@ export const settingsView = {
         ${isDesktop() ? `<div class="set-list set-after"><label class="set-row">${icon('sparkles')}<span class="grow">Barra lateral translúcida<small>O fundo da barra fica transparente e o KDE desfoca o que está atrás (veja no README como ligar o desfoque no KWin)</small></span>${toggle('glass', glassOn(), 'Barra lateral translúcida')}</label></div>` : ''}
       </section>
 
-      <section class="set-group"><h2>Fonte</h2>
+      <section class="set-group" data-cat="aparencia"><h2>Fonte</h2>
         <div class="fonts">${FONT_ORDER.map((id) => {
           const f = FONTS[id];
           const on = ap.font === id;
@@ -87,7 +116,7 @@ export const settingsView = {
           <div class="seg small" role="radiogroup" aria-label="Tamanho do texto">${Object.entries(SIZES).map(([k, v]) => `<button type="button" role="radio" aria-checked="${ap.size === k}" class="${ap.size === k ? 'on' : ''}" data-size="${k}">${v.name}</button>`).join('')}</div></div>
       </section>
 
-      <section class="set-group"><h2>Jogo</h2><div class="set-list">
+      <section class="set-group" data-cat="jogo"><h2>Jogo</h2><div class="set-list">
         <div class="set-row col"><span class="grow">Estilo de jogo (Modus Operandi)<small>${S.prefs.modus ? (S.money.items.changeModus > 0 ? 'Você tem um "Novo estilo de jogo": pode trocar uma vez.' : 'Para trocar, compre "Novo estilo de jogo" na Loja.') : 'Escolha uma vez. Trocar depois custa um item da Loja.'}</small></span>
           <div class="modus">${Object.entries(MODUS).map(([k, m]) => `<button type="button" class="modus-opt${S.prefs.modus === k ? ' on' : ''}" data-modus="${k}" aria-pressed="${S.prefs.modus === k}">${icon(m.icon)}<b>${m.name}</b><small>${m.desc}</small></button>`).join('')}</div></div>
         <label class="set-row">${icon('flag')}<span class="grow">Punições<small>Tarefa que vence tira XP e ouro (sem nunca baixar de nível)</small></span>${toggle('punish', S.prefs.punishments !== false, 'Punições')}</label>
@@ -95,14 +124,14 @@ export const settingsView = {
           <div class="wdays small">${[1, 2, 3, 4, 5, 6, 0].map((d) => `<label><input type="checkbox" data-dayoff value="${d}"${(S.prefs.daysOff || []).includes(d) ? ' checked' : ''}><span title="${WD_SHORT[d]}">${WD_LETTER[d]}</span></label>`).join('')}</div></div>
       </div></section>
 
-      <section class="set-group"><h2>Sons e vibração</h2><div class="set-list">
+      <section class="set-group" data-cat="sons"><h2>Sons e vibração</h2><div class="set-list">
         <label class="set-row">${icon(sp.on ? 'volume' : 'mute')}<span class="grow">Sons<small>Ao concluir tarefas, ganhar XP e subir de nível</small></span>${toggle('sound', sp.on, 'Sons')}</label>
         <div class="set-row"${sp.on ? '' : ' hidden'}><span class="grow">Volume<input type="range" min="0.1" max="1" step="0.05" value="${sp.volume}" data-volume aria-label="Volume dos sons"></span><button type="button" class="btn small" data-hear>Ouvir</button></div>
         <div class="set-row"${sp.on ? '' : ' hidden'}><span class="grow">Conjunto de sons<small>Mais conjuntos na Loja</small></span><select data-pack aria-label="Conjunto de sons">${PACK_ORDER.filter((k) => ownsPack(k, S)).map((k) => `<option value="${k}"${(sp.pack || 'classic') === k ? ' selected' : ''}>${esc(PACKS[k].name)}</option>`).join('')}</select></div>
         ${hapticsSupported() || isNative() ? `<label class="set-row">${icon('phone')}<span class="grow">Vibração<small>Um toque leve ao marcar e concluir</small></span>${toggle('haptics', hapticsOn(), 'Vibração')}</label>` : ''}
       </div></section>
 
-      <section class="set-group"><h2>Lembretes</h2><div class="set-list" data-notify>
+      <section class="set-group" data-cat="lembretes"><h2>Lembretes</h2><div class="set-list" data-notify>
         <label class="set-row">${icon('bell')}<span class="grow">Lembretes<small>${isNative() ? 'Agendados no próprio celular: funcionam sem internet e com o app fechado' : 'No navegador, chegam enquanto o Lida estiver aberto (mesmo em outra aba)'}</small></span>${toggle('notify', np.on, 'Lembretes')}</label>
         <div data-notify-more${np.on ? '' : ' hidden'}>
           <label class="set-row"><span class="grow">Tarefas com horário<small>Com botões Concluir e Lembrar em 1 h</small></span>${toggle('ntasks', np.tasks, 'Lembretes de tarefas')}</label>
@@ -122,7 +151,7 @@ export const settingsView = {
 
       ${
         isNative()
-          ? `<section class="set-group"><h2>Foco</h2><div class="set-list" data-focusset>
+          ? `<section class="set-group" data-cat="foco"><h2>Foco</h2><div class="set-list" data-focusset>
         <label class="set-row">${icon('target')}<span class="grow">Notificação do foco<small>Tarefa em foco, Pomodoro e modo foco ficam numa notificação fixa com a contagem. No Android 16, também como chip na barra de status</small></span>${toggle('nlive', np.live !== false, 'Notificação do foco')}</label>
         <button type="button" class="set-row" data-liverow hidden>${icon('bolt')}<span class="grow">Live Update<small data-livenote>Verificando…</small></span>${icon('right', 'sm')}</button>
         <label class="set-row">${icon('timer')}<span class="grow">Relógio flutuante<small data-ovnote>Ao minimizar o Lida com um cronômetro rodando, um relógio fica por cima dos outros apps. Arraste para mover; toque para voltar</small></span>${toggle('noverlay', false, 'Relógio flutuante')}</label>
@@ -130,30 +159,35 @@ export const settingsView = {
           : ''
       }
 
-      <section class="set-group"><h2>Alarmes</h2><div class="set-list" data-alarmset>
+      <section class="set-group" data-cat="alarmes"><h2>Alarmes</h2><div class="set-list" data-alarmset>
         <div class="set-row col"><span class="grow">Aparência do alarme<small>A tela do alarme usa a fonte escolhida. Escolha as cores do tema ou um visual AMOLED, preto e minimalista</small></span>
           <div class="seg small" role="radiogroup">${[['theme', 'Cores do tema'], ['amoled', 'AMOLED']].map(([k, l]) => `<button type="button" role="radio" aria-checked="${alarmStyle(S) === k}" class="${alarmStyle(S) === k ? 'on' : ''}" data-astyle="${k}">${l}</button>`).join('')}</div></div>
         <label class="set-row">${icon('bell')}<span class="grow">Toque padrão<small>Para alarmes novos. Cada alarme pode ter o seu</small></span><select data-atone>${TONE_ORDER.map((k) => `<option value="${k}"${defaultTone(S) === k ? ' selected' : ''}>${esc(tr(TONES[k].name))}</option>`).join('')}</select></label>
         <button type="button" class="set-row" data-atest>${icon('timer')}<span class="grow">Testar o alarme<small>${nativeAlarms() ? 'Toca em 3 segundos (bloqueie a tela para ver por cima do bloqueio)' : 'Mostra a tela do alarme agora'}</small></span></button>
         <div class="set-row"><span class="grow">Alarmes ligados<small>Em tarefas com horário, rotinas e hábitos (no editor de cada um)</small></span><span class="val">${alarmCount(S)} de ${MAX_ALARMS}</span></div>
         <button type="button" class="set-row" data-afull hidden>${icon('info')}<span class="grow">Liberar a tela cheia<small>Sem isto, o Android mostra o alarme só como notificação</small></span>${icon('right', 'sm')}</button>
+        <button type="button" class="set-row" data-aover hidden>${icon('info')}<span class="grow">Abrir por cima de tudo<small>Libere "Sobrepor a outros apps": sem isto, com o celular em uso o alarme aparece só no topo da tela</small></span>${icon('right', 'sm')}</button>
       </div></section>
 
-      <section class="set-group"><h2>Backup</h2><div class="set-list">
+      <section class="set-group" data-cat="dados"><h2>Backup</h2><div class="set-list">
         <button type="button" class="set-row" data-bkexp>${icon('download')}<span class="grow">Exportar backup<small>Um arquivo .lida com todos os seus dados, cifrado com uma senha que você escolhe</small></span>${icon('right', 'sm')}</button>
         <button type="button" class="set-row" data-bkimp>${icon('upload')}<span class="grow">Importar backup<small>Junta com o que já está aqui: serve para restaurar e para trocar de aparelho ou de versão do Lida</small></span>${icon('right', 'sm')}</button>
         <input type="file" accept=".lida,application/octet-stream,application/json" data-bkfile hidden>
       </div></section>
 
-      <section class="set-group"><h2>Sobre</h2><div class="set-list">
+      <section class="set-group" data-cat="sobre"><h2>Sobre</h2><div class="set-list">
         ${updaterAvailable() ? `<button type="button" class="set-row" data-checkupd>${icon('download')}<span class="grow">Procurar atualização<small>O Lida também procura sozinho, uma vez por dia</small></span>${icon('right', 'sm')}</button>` : ''}
         <button type="button" class="set-row" data-changelog>${icon('sparkles')}<span class="grow">Novidades e correções<small>O que mudou em cada versão</small></span>${icon('right', 'sm')}</button>
         <div class="set-row"><span class="grow">${FLAVOR === 'libre' ? 'Lida Libre' : 'Lida'}<small>Versão ${esc(app.version)}${isNative() ? ' · Android' : ''}</small></span><span class="val">${plural(personal.stats().live, 'registro', 'registros')}</span></div>
         <button type="button" class="set-row" data-source>${icon('open')}<span class="grow">Código-fonte<small>Software livre, licença GPL-3.0</small></span>${icon('right', 'sm')}</button>
-        ${app.demo ? `<button type="button" class="set-row" data-demo>${icon('flask')}<span class="grow">Sair do modo demo<small>Volta para a tela inicial. Os dados de exemplo continuam guardados.</small></span></button>` : ''}
-        ${!app.demo ? `<button type="button" class="set-row danger-text" data-exit>${icon(app.mode === 'cloud' ? 'logout' : 'lock')}<span class="grow">${app.mode === 'cloud' ? 'Sair da conta' : 'Bloquear agora'}</span></button>` : ''}
       </div></section>`;
 
+    const groups = [...el.querySelectorAll('.set-group[data-cat]')];
+    const solo = groups.filter((g) => g.dataset.cat === cat).length === 1; // seção única: o título da página basta
+    groups.forEach((g) => {
+      g.hidden = g.dataset.cat !== cat;
+      g.classList.toggle('solo', solo);
+    });
     bind(el, S);
     permRow(el);
   },
@@ -342,6 +376,11 @@ function bind(el, S) {
         if (b && !r.fullScreen) {
           b.hidden = false;
           b.onclick = () => plugin('LidaAlarm').openFullScreenSettings();
+        }
+        const o = el.querySelector('[data-aover]');
+        if (o && r.overlay === false) {
+          o.hidden = false;
+          o.onclick = () => plugin('LidaAlarm').openOverlaySettings();
         }
       })
       .catch(() => {});

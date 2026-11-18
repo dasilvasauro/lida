@@ -66,9 +66,23 @@ public class LidaAlarmPlugin extends Plugin {
         boolean exact = true;
         if (Build.VERSION.SDK_INT >= 31) exact = ((AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE)).canScheduleExactAlarms();
         r.put("fullScreen", full);
+        // "Sobrepor a outros apps": deixa a tela do alarme abrir mesmo com o celular em uso
+        r.put("overlay", Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(ctx));
         r.put("exact", exact);
         r.put("count", AlarmScheduler.stored(ctx).length());
         return r;
+    }
+
+    @PluginMethod
+    public void openOverlaySettings(PluginCall call) {
+        Context ctx = getContext();
+        Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + ctx.getPackageName())).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            ctx.startActivity(i);
+        } catch (Exception e) {
+            // aparelho sem essa tela
+        }
+        call.resolve();
     }
 
     // Android 14+: "Notificações em tela cheia" para o Lida (sem isso, o alarme vira só notificação).

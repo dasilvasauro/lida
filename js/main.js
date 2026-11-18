@@ -296,7 +296,7 @@ function shell() {
   document.querySelectorAll('[data-new]').forEach((b) => b.addEventListener('click', newTask));
   document.querySelectorAll('[data-rail-tool]').forEach((b) => b.addEventListener('click', () => app.actions.tool(b.dataset.railTool)));
   $('[data-search]').onclick = () => openSearch();
-  $('[data-me]').onclick = () => (location.hash = current === 'eu' ? 'ajustes' : 'eu');
+  $('[data-me]').onclick = () => (location.hash = current === 'eu' || (current === 'ajustes' && settingsView.cat) ? 'ajustes' : 'eu');
   initSyncPill();
   if (app.demo) demobar();
 }
@@ -317,6 +317,13 @@ function route() {
     h = 'hoje';
   }
   let changedTab = false;
+  // Ajustes em seções: #ajustes (índice) e #ajustes-<seção>
+  const sm = h.match(/^ajustes(?:-([a-z]+))?$/);
+  if (sm) {
+    changedTab = (settingsView.cat || '') !== (sm[1] || '');
+    settingsView.cat = sm[1] || '';
+    h = 'ajustes';
+  }
   const pm = h.match(/^projeto-(.+)$/);
   if (h === 'entrada' || h === 'em-breve' || h === 'projetos' || pm) {
     const tab = pm ? 'projeto' : h;
@@ -344,11 +351,11 @@ function route() {
   const me = $('[data-me]');
   me.classList.toggle('as-icon', current === 'eu' || current === 'ajustes');
   me.innerHTML = current === 'eu' ? icon('settings') : current === 'ajustes' ? icon('back') : avatar(30);
-  me.setAttribute('aria-label', current === 'eu' ? 'Ajustes' : current === 'ajustes' ? 'Voltar para Eu' : 'Abrir a aba Eu');
+  me.setAttribute('aria-label', current === 'eu' ? 'Ajustes' : current === 'ajustes' ? (settingsView.cat ? 'Voltar para Ajustes' : 'Voltar para Eu') : 'Abrir a aba Eu');
   document.querySelector('.fab').hidden = !['hoje', 'planejar'].includes(current) || (current === 'planejar' && planView.tab === 'projetos');
   document.title = current === 'hoje' ? 'Lida' : `${v.title} · Lida`;
   const TABS = ['em-breve', 'entrada', 'projetos', 'projeto'];
-  const dir = !prev ? 'up' : changedTab && !changed ? (TABS.indexOf(planView.tab) >= TABS.indexOf(lastTab) ? 'left' : 'right') : ORDER.indexOf(next) >= ORDER.indexOf(prev) ? 'left' : 'right';
+  const dir = !prev ? 'up' : changedTab && !changed && current === 'ajustes' ? (settingsView.cat ? 'left' : 'right') : changedTab && !changed ? (TABS.indexOf(planView.tab) >= TABS.indexOf(lastTab) ? 'left' : 'right') : ORDER.indexOf(next) >= ORDER.indexOf(prev) ? 'left' : 'right';
   lastTab = planView.tab;
   render(changed || changedTab ? dir : false);
   if (changed) window.scrollTo(0, 0);
@@ -632,6 +639,7 @@ function nativeBack() {
   A.addListener('backButton', () => {
     const open = document.querySelector('.sheet-wrap.open, .pop-wrap.open, .reward-wrap.open, .focus-overlay.open');
     if (open) return document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    if (current === 'ajustes' && settingsView.cat) return (location.hash = 'ajustes');
     if (current !== 'hoje') return (location.hash = 'hoje');
     A.exitApp();
   });

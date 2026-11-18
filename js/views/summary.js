@@ -1,8 +1,8 @@
 // Resumos: do dia anterior (aparece na primeira abertura do dia) e do mês que fechou.
 // Também abrem a partir da aba Eu.
-import { P } from '../state.js';
+import { P, personal } from '../state.js';
 import { IPL_PARTS, dayIPL, grade, gradeLine, partsTip } from '../core/ipl.js';
-import { monthRecord, yearRecord, doneDay, habitsOnDay } from '../core/tasks.js';
+import { monthRecord, yearRecord, doneDay, habitsOnDay, strip } from '../core/tasks.js';
 import { today } from '../lib/clock.js';
 import { esc, fmtInt, fmtSigned, plural, sum, addDays, fmtDayLong, fmtMonth, fmtMl, ymOf, addMonths, cap, MSHORT, MONTHS, LOC } from '../lib/util.js';
 import { sheet, icon } from '../ui/ui.js';
@@ -10,20 +10,41 @@ import { line, columns } from '../ui/chart.js';
 import { face, MOODS } from './me.js';
 
 const SEEN = 'lida.summarySeen';
-const seen = () => {
+// Qual resumo já foi visto: guardado na conta (prefs: sumDay, sumMonth, sumYear), para aparecer uma vez só,
+// no primeiro aparelho que abrir no dia, e não de novo nos outros. A cópia local cobre o modo sem conta.
+const FIELD = { day: 'sumDay', month: 'sumMonth', year: 'sumYear' };
+const localSeen = () => {
   try {
     return JSON.parse(localStorage.getItem(SEEN) || '{}');
   } catch {
     return {};
   }
 };
+const later = (a, b) => (a == null ? b : b == null ? a : String(a) > String(b) ? a : b);
+const seen = () => {
+  const loc = localSeen();
+  const pr = P().prefs || {};
+  return Object.fromEntries(Object.entries(FIELD).map(([k, f]) => [k, later(loc[k], pr[f])]));
+};
 const markSeen = (k, v) => {
   try {
-    localStorage.setItem(SEEN, JSON.stringify({ ...seen(), [k]: v }));
+    localStorage.setItem(SEEN, JSON.stringify({ ...localSeen(), [k]: v }));
   } catch {
     /* sem armazenamento */
   }
+  pending[FIELD[k]] = v;
+  clearTimeout(flushT);
+  flushT = setTimeout(flush, 0); // uma gravação só para dia, mês e ano
 };
+const pending = {};
+let flushT = 0;
+function flush() {
+  const prev = personal.get('prefs');
+  const patch = {};
+  for (const [f, v] of Object.entries(pending)) if (String(later(prev?.[f], v)) !== String(prev?.[f])) patch[f] = v;
+  for (const f of Object.keys(pending)) delete pending[f];
+  if (Object.keys(patch).length) personal.save('prefs', { ...(prev ? strip(prev) : {}), ...patch }, 'prefs').catch(() => {});
+}
 
 export function partsBars(parts, { compact = false } = {}) {
   const rows = IPL_PARTS.filter((p) => parts?.[p.k] != null);

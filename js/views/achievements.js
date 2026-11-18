@@ -138,7 +138,9 @@ function next() {
     return;
   }
   showing = true;
-  reveal(a).then(() => setTimeout(next, 250));
+  // Espera a revisão de ontem, os resumos e outras janelas fecharem: a medalha não cobre o que a pessoa faz.
+  const go = () => (document.querySelector('.sheet-wrap') ? setTimeout(go, 700) : reveal(a).then(() => setTimeout(next, 250)));
+  go();
 }
 
 export function reveal(a) {
