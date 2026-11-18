@@ -4,6 +4,7 @@
 import { P, personal, app } from '../state.js';
 import { esc } from '../lib/util.js';
 import { icon, sheet, toast } from '../ui/ui.js';
+import { helpQ } from '../ui/help.js';
 import { play } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
 import { ACHIEVEMENTS, CATS, TIER_NAME, TIER_GOLD, achList, achName, achDesc, achById, achStats, checkAchievements, claimAchievement, toClaim, unseen, markShown } from '../core/achievements.js';
@@ -54,7 +55,7 @@ export function achSection(S = P()) {
   // Até 8 medalhas: as últimas ganhas e as mais perto de sair. O que não couber na linha fica escondido.
   const recent = got.sort((a, b) => b.at - a.at).slice(0, 5);
   const close = list.filter((a) => !a.unlocked).sort((a, b) => b.value / b.goal - a.value / a.goal).slice(0, 8 - recent.length);
-  return `<section class="block ach-block"><div class="block-head"><h2>${esc(tr(T.title))}<span class="count">${esc(fill(tr(T.of), { a: got.length, b: ACHIEVEMENTS.length }))}</span></h2><button type="button" class="link" data-ach-all>${esc(tr(T.all))}</button></div>
+  return `<section class="block ach-block"><div class="block-head"><h2>${esc(tr(T.title))}<span class="count">${esc(fill(tr(T.of), { a: got.length, b: ACHIEVEMENTS.length }))}</span>${helpQ('conquistas')}</h2><button type="button" class="link" data-ach-all>${esc(tr(T.all))}</button></div>
     <button type="button" class="ach-card" data-ach-all>
       <div class="ach-strip">${recent.map((a) => `<span class="ach-mini" title="${esc(achName(a))}">${medal(a, { size: 44 })}</span>`).join('')}${close
         .map((a) => `<span class="ach-mini dim" title="${esc(achName(a))}">${medal(a, { size: 44, locked: true })}<i class="ach-ring" style="--p:${Math.round((a.value / a.goal) * 100)}"></i></span>`)
@@ -198,7 +199,8 @@ export function initAchievements() {
       // Aviso da novidade, uma vez (o registro sincroniza: não aparece de novo em outro aparelho).
       if (!personal.get('ach__intro') && document.visibilityState === 'visible') {
         await personal.save('ach', { aid: '_intro', at: Date.now() }, 'ach__intro');
-        introNotice(first ? fresh.length : toClaim(P()).length);
+        // conta nova: não é "novidade" (o tour e o manual já apresentam as conquistas)
+        if (!app.firstRun) introNotice(first ? fresh.length : toClaim(P()).length);
         return;
       }
       if (first && fresh.length > 1 && personal.get('ach__intro')) retroNotice(fresh.length);

@@ -12,6 +12,7 @@ import { PROVIDERS, makeProvider, dropboxStart, dropboxFinish, onedriveStart, pr
 import { createFileSync, readSpace, spaceDoc } from '../core/filesync.js';
 import { openExternal, nativeHttp } from '../core/net.js';
 import { seal, unseal, unlockKey } from '../lib/crypto.js';
+import { recoverFields, useCode } from './recovery.js';
 import { icon, sheet, toast } from '../ui/ui.js';
 import { esc } from '../lib/util.js';
 
@@ -195,29 +196,50 @@ function webdavFlow(prev = {}) {
 }
 
 /* ---------- Senha de um espaço que já está na pasta ---------- */
-async function unlockSpace(kind, wrap, lead) {
+// sp: { sid, wrap, rwrap } lido do space.json. "Esqueci a senha" usa o código de recuperação, cria uma
+// senha nova e grava o space.json com ela (sp.wrap passa a ser o embrulho novo).
+async function unlockSpace(kind, sp, lead, provider) {
   return new Promise((resolve) => {
     let out = null;
     sheet({
       title: `Lida no ${providerName(kind)}`,
-      body: `<form class="form" data-f><p class="sheet-text">${lead}</p>
-        <label class="field"><span>Senha do Lida usada lá</span><input name="p" type="password" autocomplete="current-password" required></label>
+      body: `<form class="form" data-f><p class="sheet-text" data-lead>${lead}</p>
+        <div data-fields><label class="field"><span>Senha do Lida usada lá</span><input name="p" type="password" autocomplete="current-password" required></label></div>
         <p class="cf-err" hidden></p>
+        <button type="button" class="gate-link" data-forgot>${icon('lock')}Esqueci a senha</button>
         <div class="sheet-actions"><button type="button" class="btn ghost" data-no>Cancelar</button><button class="btn primary">Continuar</button></div></form>`,
       onMount(el, close) {
         top(el);
+        let mode = 'pass';
+        const fail = (msg) => {
+          const x = el.querySelector('.cf-err');
+          x.hidden = false;
+          x.textContent = msg;
+        };
         el.querySelector('[data-no]').onclick = close;
+        el.querySelector('[data-forgot]').onclick = (e) => {
+          mode = 'code';
+          e.target.hidden = true;
+          el.querySelector('[data-lead]').textContent = 'Digite o código de recuperação e escolha uma senha nova. Use a senha nova nos outros aparelhos também.';
+          el.querySelector('[data-fields]').innerHTML = recoverFields();
+          el.querySelector('.cf-err').hidden = true;
+        };
         el.querySelector('[data-f]').onsubmit = async (e) => {
           e.preventDefault();
-          const btn = e.target.querySelector('.btn.primary');
+          const f = e.target;
+          const btn = f.querySelector('.btn.primary');
           btn.disabled = true;
           try {
-            out = await unlockKey(e.target.p.value, wrap);
+            if (mode === 'pass') out = await unlockKey(f.p.value, sp.wrap);
+            else {
+              const r = await useCode(f, sp.rwrap);
+              await provider.put('space.json', spaceDoc(sp.sid, r.wrap, sp.rwrap));
+              sp.wrap = r.wrap;
+              out = r.key;
+            }
             close();
-          } catch {
-            const x = el.querySelector('.cf-err');
-            x.hidden = false;
-            x.textContent = 'Senha incorreta.';
+          } catch (ex) {
+            fail(mode === 'pass' ? 'Senha incorreta.' : ex.message || 'Não consegui falar com a nuvem.');
             btn.disabled = false;
           }
         };
@@ -231,7 +253,7 @@ async function unlockSpace(kind, wrap, lead) {
 export async function startFileSync(idb, creds) {
   const provider = makeProvider(creds, (c) => saveCreds(idb, app.key, c));
   app.sync?.stop?.();
-  app.sync = createFileSync(personal, { idb, provider, device: app.device, sid: app.sid, wrap: app.wrap });
+  app.sync = createFileSync(personal, { idb, provider, device: app.device, sid: app.sid, wrap: app.wrap, rwrap: app.rwrap || null });
   app.syncKind = creds.kind;
   app.syncAccount = creds.account || '';
   await app.sync.start();
@@ -239,7 +261,7 @@ export async function startFileSync(idb, creds) {
 }
 
 // Junta os dados deste aparelho a outro espaço (o que já está na pasta): re-cifra tudo com a chave de lá.
-async function rekey(sid, wrap, key) {
+async function rekey(sid, wrap, key, rwrap = null) {
   const plain = personal.allRecords().map((r) => ({ id: r.id, type: r.type, u: r.u, by: r.by, del: !!r.del, ...(r.del ? {} : { data: r.data, fv: r.fv, fb: r.fb, fp: r.fp, fd: r.fd, cb: r.cb, ca: r.ca }) }));
   const idb = app.idb;
   await idb.clear('records');
@@ -248,7 +270,9 @@ async function rekey(sid, wrap, key) {
   await idb.put('meta', sid, 'sid');
   await idb.put('meta', wrap, 'wrap');
   if (localStorage.getItem('lida.requirePass') !== '1') await idb.put('meta', key, 'key');
-  Object.assign(app, { sid, wrap, key });
+  if (rwrap) await idb.put('meta', rwrap, 'rwrap');
+  else await idb.del('meta', 'rwrap');
+  Object.assign(app, { sid, wrap, key, rwrap });
   await personal.init(idb, key);
   await personal.importPlain(plain);
 }
@@ -267,11 +291,11 @@ export async function connectFiles({ moving = false } = {}) {
     creds.account = await provider.account();
     const sp = await readSpace(provider);
     if (sp && sp.sid !== app.sid) {
-      const key = await unlockSpace(kind, sp.wrap, `Já existe um Lida nesta pasta (de outro aparelho). Digite a senha usada lá: os dados deste aparelho vão ser juntados aos de lá, sem perder nada.`);
+      const key = await unlockSpace(kind, sp, `Já existe um Lida nesta pasta (de outro aparelho). Digite a senha usada lá: os dados deste aparelho vão ser juntados aos de lá, sem perder nada.`, provider);
       if (!key) return false;
-      await rekey(sp.sid, sp.wrap, key);
+      await rekey(sp.sid, sp.wrap, key, sp.rwrap);
     } else if (!sp) {
-      await provider.put('space.json', spaceDoc(app.sid, app.wrap));
+      await provider.put('space.json', spaceDoc(app.sid, app.wrap, app.rwrap));
     }
   } catch (e) {
     toast(e.message || 'Não consegui falar com a nuvem.', { ms: 6000 });
@@ -355,7 +379,7 @@ export async function enterWithFiles() {
     toast(`Ainda não há Lida nesta pasta do ${providerName(kind)}. Comece com "Usar só neste aparelho" e conecte a nuvem em Ajustes.`, { ms: 7000 });
     return null;
   }
-  const key = await unlockSpace(kind, sp.wrap, 'Digite a senha do Lida (a mesma dos outros aparelhos).');
+  const key = await unlockSpace(kind, sp, 'Digite a senha do Lida (a mesma dos outros aparelhos).', provider);
   if (!key) return null;
-  return { sid: sp.sid, key, wrap: sp.wrap, mode: 'files', uid: 'local', user: null, files: creds };
+  return { sid: sp.sid, key, wrap: sp.wrap, rwrap: sp.rwrap, mode: 'files', uid: 'local', user: null, files: creds };
 }

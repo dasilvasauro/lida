@@ -135,14 +135,14 @@ export async function getSpace(sid) {
   const s = await F.getDoc(F.doc(db, 'spaces', sid));
   if (!s.exists()) return null;
   const d = s.data();
-  return { sid, owner: d.owner, kind: d.kind, name: d.name || '', joinCode: d.joinCode || null, wrap: wrapIn(d.wrap) };
+  return { sid, owner: d.owner, kind: d.kind, name: d.name || '', joinCode: d.joinCode || null, wrap: wrapIn(d.wrap), rwrap: d.rwrap ? wrapIn(d.rwrap) : null };
 }
 
 // Espaço pessoal: só o dono participa, não tem código de convite.
-export async function createSpace(sid, wrap, uid, { kind = 'personal', name = '' } = {}) {
+export async function createSpace(sid, wrap, uid, { kind = 'personal', name = '', rwrap = null } = {}) {
   const { db, F } = await loadFirebase();
   const joinCode = code();
-  await F.setDoc(F.doc(db, 'spaces', sid), { owner: uid, kind, name, joinCode: kind === 'shared' ? joinCode : null, wrap: wrapOut(wrap), createdAt: F.serverTimestamp() });
+  await F.setDoc(F.doc(db, 'spaces', sid), { owner: uid, kind, name, joinCode: kind === 'shared' ? joinCode : null, wrap: wrapOut(wrap), ...(rwrap ? { rwrap: wrapOut(rwrap) } : {}), createdAt: F.serverTimestamp() });
   await F.setDoc(F.doc(db, 'spaces', sid, 'members', uid), { code: kind === 'shared' ? joinCode : 'owner', joinedAt: F.serverTimestamp(), lastSync: F.serverTimestamp() });
   await setProfile(uid, { [kind]: sid });
   return { sid, joinCode: kind === 'shared' ? joinCode : null };
@@ -172,6 +172,11 @@ export async function rotateInvite(sid) {
 export async function updateWrap(sid, wrap) {
   const { db, F } = await loadFirebase();
   await F.updateDoc(F.doc(db, 'spaces', sid), { wrap: wrapOut(wrap) });
+}
+// Chave de recuperação (a chave do espaço embrulhada pelo código de recuperação).
+export async function updateRecovery(sid, rwrap) {
+  const { db, F } = await loadFirebase();
+  await F.updateDoc(F.doc(db, 'spaces', sid), { rwrap: wrapOut(rwrap) });
 }
 
 export async function renameSpace(sid, name) {

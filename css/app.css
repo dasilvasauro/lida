@@ -717,6 +717,18 @@ img.mascot { display: block; object-fit: contain; user-select: none; -webkit-use
 
 /* ---------- Ajustes ---------- */
 .set-group { margin-top: 1.4667rem; }
+.set-row.attn > .ic:first-child { color: var(--warn, #f2a33a); }
+.set-row.attn small { color: var(--warn, #f2a33a); }
+/* Chave de recuperação */
+.rc { display: grid; gap: .8rem; text-align: left; }
+.rc-lead { margin: 0; color: var(--muted); line-height: 1.45; }
+.rc-code { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem; padding: .8rem; border-radius: 1.0667rem; background: var(--surface-2); border: 1px dashed var(--line); }
+.rc-code span { text-align: center; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 1.2rem; font-weight: 700; letter-spacing: .12em; padding: .3333rem 0; }
+.rc-actions { display: flex; gap: .5333rem; flex-wrap: wrap; }
+.rc-actions .chip { display: inline-flex; align-items: center; gap: .3333rem; }
+.rc-warn { margin: 0; display: flex; gap: .4rem; align-items: flex-start; font-size: .8667rem; color: var(--muted); }
+.rc-ok { display: flex; gap: .5333rem; align-items: center; font-weight: 700; }
+.rc-ok input { width: 1.2rem; height: 1.2rem; accent-color: var(--accent); }
 .set-index { display: grid; gap: .9333rem; margin-top: .5333rem; }
 a.set-row { color: inherit; text-decoration: none; }
 .set-index a.set-row > .ic:first-child { width: 2.2667rem; height: 2.2667rem; padding: .4667rem; border-radius: .7333rem; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
@@ -2011,3 +2023,42 @@ html.is-gray :is(.emoji, .mascot, img, .rvh-face, .hab-face, .lucky, .dot, .tagc
 
 /* Alarme por cima do app (Linux e web) */
 .alarm-frame { position: fixed; inset: 0; z-index: 900; width: 100%; height: 100%; border: 0; background: #000; }
+
+.form input[name=rc] { text-transform: uppercase; font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+
+/* ---------- Ajuda: "?" ao lado dos títulos, balão e manual ---------- */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.help-q { display: inline-grid; place-items: center; width: 1.2rem; height: 1.2rem; margin: 0 0 0 .4rem; padding: 0; border: 1.5px solid currentColor; border-radius: 50%; background: none; color: var(--dim, var(--muted)); font: 700 .7333rem/1 inherit; font-family: inherit; vertical-align: .12em; opacity: .75; cursor: help; flex: none; }
+.help-q::before { content: ''; position: absolute; inset: -.6rem; }
+.help-q { position: relative; }
+.help-q:hover, .help-q:focus-visible { opacity: 1; color: var(--accent); }
+small .help-q, b .help-q { width: 1.0667rem; height: 1.0667rem; font-size: .6667rem; }
+.water-top .help-q { margin: 0 auto 0 0; }
+.help-pop { position: fixed; z-index: 210; padding: .8rem .9333rem; border-radius: .8rem; background: var(--surface-3); color: var(--text); font-size: .8667rem; line-height: 1.5; box-shadow: var(--shadow); animation: pop 0.14s var(--ease); display: grid; gap: .3333rem; }
+.help-pop b { font-size: .9333rem; }
+.help-pop p { margin: 0; color: var(--muted); }
+.help-pop .link { justify-self: start; display: inline-flex; align-items: center; gap: .2rem; padding: .2rem 0 0; }
+.manual { display: grid; gap: 1.0667rem; }
+.manual-top { display: flex; gap: .6667rem; align-items: center; flex-wrap: wrap; position: sticky; top: 0; z-index: 1; padding-bottom: .4rem; background: inherit; }
+.manual-search { flex: 1 1 12rem; margin: 0; }
+.manual-ch h3 { margin: 0 0 .4rem; font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.manual-tp { border: 1px solid var(--line); border-radius: var(--r-m, .8rem); background: var(--surface); margin-bottom: .4rem; }
+.manual-tp summary { padding: .7333rem .9333rem; font-weight: 600; cursor: pointer; list-style: none; display: flex; align-items: center; gap: .5rem; }
+.manual-tp summary::-webkit-details-marker { display: none; }
+.manual-tp summary::after { content: ''; margin-left: auto; width: .45rem; height: .45rem; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .2s var(--ease); }
+.manual-tp[open] summary::after { transform: rotate(-135deg); }
+.manual-tp p { margin: 0 .9333rem .7333rem; line-height: 1.55; color: var(--text); }
+.manual-tp .manual-short { color: var(--muted); font-style: italic; }
+
+/* ---------- Tour de boas-vindas ---------- */
+.tour { position: fixed; inset: 0; z-index: 300; opacity: 0; transition: opacity .25s var(--ease); }
+.tour.open { opacity: 1; }
+.tour-hole { position: fixed; border-radius: 1rem; box-shadow: 0 0 0 200vmax rgb(0 0 0 / .72), 0 0 0 3px var(--accent); transition: left .35s var(--ease), top .35s var(--ease), width .35s var(--ease), height .35s var(--ease); pointer-events: none; }
+.tour.center .tour-hole { box-shadow: 0 0 0 200vmax rgb(0 0 0 / .72); }
+.tour-card { position: fixed; width: min(22rem, calc(100vw - 24px)); padding: 1.0667rem 1.0667rem .8rem; border-radius: 1.0667rem; background: var(--surface-2); color: var(--text); box-shadow: var(--shadow); transition: left .35s var(--ease), top .35s var(--ease); }
+.tour-card h3 { margin: .1333rem 0 .4rem; font-size: 1.0667rem; }
+.tour-card p { margin: 0 0 .8rem; color: var(--muted); line-height: 1.5; font-size: .9333rem; }
+.tour-n { color: var(--accent); font-weight: 700; font-size: .7333rem; letter-spacing: .05em; }
+.tour-btns { display: flex; align-items: center; gap: .5333rem; }
+.tour-btns .grow { flex: 1; }
+@media (prefers-reduced-motion: reduce) { .tour-hole, .tour-card { transition: none; } }

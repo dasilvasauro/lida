@@ -21,6 +21,9 @@ import { initAlarms, alarmLink } from './views/alarm.js';
 import { loadDict, startDomTranslation, t } from './core/i18n.js';
 import { openStreak, streakData, streakTexts, iplWeekData } from './views/streak.js';
 import { loadCreds, saveCreds, startFileSync } from './views/cloudfiles.js';
+import { refreshRecovery, createRecovery } from './views/recovery.js';
+import { initHelp } from './ui/help.js';
+import { startTour, tourSeen } from './ui/tour.js';
 import { initSound } from './core/sound.js';
 import { grantPastTitles, itemsGiftText } from './core/game.js';
 import { app, personal, P, setPref } from './state.js';
@@ -101,6 +104,7 @@ async function boot() {
   document.documentElement.classList.toggle('is-native', isNative()); // antes da aparência (tamanho padrão)
   appearance();
   initTips();
+  initHelp();
   initSound();
   const inv = location.hash.match(/^#convite=([^&]+)/);
   if (inv) {
@@ -139,13 +143,27 @@ async function boot() {
     if (!res && ls.get('lida.intro') !== '1') await gate.intro();
     res ||= await gate.welcome();
     ({ sid, key } = res);
-    Object.assign(app, { sid, wrap: res.wrap, mode: res.mode, me: res.uid, user: res.user || null });
+    Object.assign(app, { sid, wrap: res.wrap, rwrap: res.rwrap || null, mode: res.mode, me: res.uid, user: res.user || null });
     for (const [k, v] of Object.entries({ sid, wrap: res.wrap, mode: res.mode, uid: res.uid })) await idb.put('meta', v, k);
+    if (res.rwrap) await idb.put('meta', res.rwrap, 'rwrap');
+    app.firstRun = !!res.isNew; // conta nova (quem entra numa conta que já existe não vê o tour)
     if (ls.get('lida.requirePass') !== '1') await idb.put('meta', key, 'key');
   } else {
-    Object.assign(app, { sid, wrap: await idb.get('meta', 'wrap'), mode: await idb.get('meta', 'mode'), me: await idb.get('meta', 'uid') });
+    Object.assign(app, { sid, wrap: await idb.get('meta', 'wrap'), rwrap: (await idb.get('meta', 'rwrap')) || null, mode: await idb.get('meta', 'mode'), me: await idb.get('meta', 'uid') });
     if (ls.get('lida.requirePass') !== '1') key = await idb.get('meta', 'key');
-    if (!key) key = await gate.unlock(app.wrap);
+    if (!key) {
+      // "Esqueci a senha": a chave de recuperação está aqui ou (conta Google) na nuvem
+      const getRwrap = async () => app.rwrap || (app.mode === 'cloud' ? ((await cloud.getSpace(app.sid).catch(() => null))?.rwrap ?? null) : null);
+      key = await gate.unlock(app.wrap, getRwrap);
+      const rec = gate.takeRecovered();
+      if (rec) {
+        // senha nova: grava aqui e, ao conectar, na nuvem (a conta Google ou a pasta)
+        app.wrap = rec.wrap;
+        await idb.put('meta', rec.wrap, 'wrap');
+        if (app.mode !== 'local') await idb.put('meta', true, 'wrapDirty');
+        setTimeout(() => toast('Senha nova criada. Use-a nos outros aparelhos também.', { ms: 6000 }), 1200);
+      }
+    }
   }
   app.key = key;
   personal.setMe(app.me);
@@ -182,6 +200,11 @@ async function startCloud(idb) {
     app.user = user;
     app.sync = createSync(personal, { sid: app.sid, uid: app.me, idb });
     await app.sync.start();
+    if (await idb.get('meta', 'wrapDirty')) {
+      await cloud.updateWrap(app.sid, app.wrap);
+      await idb.del('meta', 'wrapDirty');
+    }
+    refreshRecovery();
   } catch {
     // Sem rede ou SDK indisponível: segue offline com os dados do aparelho.
   }
@@ -193,6 +216,11 @@ async function startFiles(idb) {
   if (!creds) return toast('A conexão com a sua nuvem se perdeu neste aparelho. Conecte de novo em Ajustes.', { ms: 6000 });
   try {
     await startFileSync(idb, creds);
+    if (await idb.get('meta', 'wrapDirty')) {
+      await app.sync.putSpace(app.wrap);
+      await idb.del('meta', 'wrapDirty');
+    }
+    refreshRecovery();
   } catch (e) {
     console.warn('Sincronização por arquivos', e);
   }
@@ -252,6 +280,16 @@ async function closeDay() {
   const n = r.failed.length;
   const lost = r.penalty.xp || r.penalty.gold ? ` (${fmtInt(r.penalty.xp)} XP, ${fmtInt(r.penalty.gold)} de ouro)` : '';
   setTimeout(() => toast(`${n === 1 ? 'Uma tarefa venceu' : `${n} tarefas venceram`} desde a última visita${lost}.`, { ms: 6000 }), 900);
+}
+
+// Contas de antes da chave de recuperação: um aviso, uma vez por aparelho, para criar a chave.
+function nudgeRecovery() {
+  if (app.demo || app.rwrap || ls.get('lida.rcNag') === '1') return;
+  setTimeout(async () => {
+    if (await refreshRecovery()) return; // já criada em outro aparelho
+    ls.set('lida.rcNag', '1');
+    toast('Novo: crie a chave de recuperação. Ela devolve o acesso aos seus dados se você esquecer a senha.', { action: 'Criar', onAction: () => createRecovery(), ms: 12000 });
+  }, 9000);
 }
 
 async function bootDemo(idb) {
@@ -520,6 +558,8 @@ function start() {
   initUpdates();
   initAchievements();
   initAlarms();
+  if (app.firstRun && !tourSeen()) setTimeout(() => startTour(app.nav), 700);
+  else nudgeRecovery();
   // Ao voltar para o app (ex.: depois de trocar o tema do sistema), reaplica as cores das barras.
   plugin('App')?.addListener?.('resume', () => appearance());
   runDay();
@@ -818,6 +858,7 @@ Object.assign(app.actions, {
           try {
             const wrap = await changePass(f.a.value, f.b.value, app.wrap);
             if (app.mode === 'cloud') await cloud.updateWrap(app.sid, wrap);
+            else if (app.mode === 'files') await app.sync?.putSpace?.(wrap); // a pasta guarda a senha embrulhada para os aparelhos novos
             app.wrap = wrap;
             await app.idb.put('meta', wrap, 'wrap');
             close();

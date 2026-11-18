@@ -23,6 +23,11 @@ import { TONES, TONE_ORDER, MAX_ALARMS, alarmCount, alarmStyle, defaultTone } fr
 import { testAlarm, nativeAlarms } from './alarm.js';
 import { tr, lang, setLang, LANGS } from '../core/i18n.js';
 import { STREAK_GOALS, streakGoal } from '../core/streak.js';
+import { createRecovery } from './recovery.js';
+import { today } from '../lib/clock.js';
+import { b64big } from '../lib/crypto.js';
+import { helpQ, openManual } from '../ui/help.js';
+import { startTour } from '../ui/tour.js';
 
 const toggle = (name, on, label) => `<span class="toggle"><input type="checkbox" data-${name}${on ? ' checked' : ''} aria-label="${esc(label)}"><i></i></span>`;
 // Para linhas que não são <label> (têm outro controle dentro): o próprio botão vira o rótulo.
@@ -43,14 +48,14 @@ function lockLabel(id) {
 
 // Seções dos Ajustes (cada uma é uma página: #ajustes-<chave>).
 const CATS = {
-  conta: { name: 'Conta e sincronização', icon: 'user', sub: () => (app.demo ? 'Modo demo' : app.mode === 'cloud' ? 'Conta Google' : app.mode === 'files' ? providerName(app.syncKind) : 'Somente neste aparelho') },
+  conta: { name: 'Conta e sincronização', icon: 'user', sub: () => (app.demo ? 'Modo demo' : `${app.mode === 'cloud' ? 'Conta Google' : app.mode === 'files' ? providerName(app.syncKind) : 'Somente neste aparelho'}${app.rwrap ? '' : ' · falta a chave de recuperação'}`) },
   aparencia: { name: 'Aparência e idioma', icon: 'palette', sub: () => `${themeName(storedAppearance().theme)} · ${FONTS[storedAppearance().font]?.name || ''} · ${LANGS[lang()]}` },
   jogo: { name: 'Jogo', icon: 'trophy', sub: () => 'Estilo de jogo, punições, dias de folga e meta da ofensiva' },
   sons: { name: 'Sons e vibração', icon: 'volume', sub: () => (soundPrefs().on ? 'Sons ligados' : 'Sons desligados') },
   lembretes: { name: 'Lembretes', icon: 'bell', sub: () => (notify.notifyPrefs().on ? 'Ligados' : 'Desligados') },
   alarmes: { name: 'Alarmes', icon: 'timer', sub: (S) => `${alarmCount(S)} de ${MAX_ALARMS} ligados` },
   foco: { name: 'Foco', icon: 'target', sub: () => 'Notificação do foco e relógio flutuante' },
-  dados: { name: 'Backup', icon: 'download', sub: () => 'Exportar e importar um arquivo .lida' },
+  dados: { name: 'Backup e exportação', icon: 'download', sub: () => 'Backup .lida, planilha (CSV) e JSON' },
   sobre: { name: 'Sobre o Lida', icon: 'info', sub: () => `Versão ${app.version}` },
 };
 
@@ -79,6 +84,7 @@ export const settingsView = {
       <div class="set-index" data-setindex${cat ? ' hidden' : ''}>
         <div class="set-list"><div class="set-user"><button type="button" class="av-edit" data-avatar aria-label="Trocar a foto de perfil">${avatar(52)}<i>${icon('edit', 'sm')}</i></button><div class="grow"><b>${esc(name)}</b><span>${esc(sub)}</span></div><button type="button" class="btn small" data-name>${icon('edit')}Nome</button></div></div>
         <div class="set-list">${rows}</div>
+        <div class="set-list"><button type="button" class="set-row" data-manual>${icon('help')}<span class="grow">Ajuda e manual<small>Como funciona cada parte do Lida, e o tour de boas-vindas</small></span>${icon('right', 'sm')}</button></div>
         <div class="set-list">
         ${app.demo ? `<button type="button" class="set-row" data-demo>${icon('flask')}<span class="grow">Sair do modo demo<small>Volta para a tela inicial. Os dados de exemplo continuam guardados.</small></span></button>` : ''}
         ${!app.demo ? `<button type="button" class="set-row danger-text" data-exit>${icon(app.mode === 'cloud' ? 'logout' : 'lock')}<span class="grow">${app.mode === 'cloud' ? 'Sair da conta' : 'Bloquear agora'}</span></button>` : ''}
@@ -91,7 +97,8 @@ export const settingsView = {
         ${!app.demo && app.mode === 'cloud' && anyFilesProvider() ? `<button type="button" class="set-row" data-files-move>${icon('swap')}<span class="grow">Mover a sincronização para a sua nuvem<small>Sai do servidor do Lida e passa para o seu Dropbox, OneDrive ou Nextcloud.</small></span>${icon('right', 'sm')}</button>` : ''}
         ${!app.demo && app.mode === 'files' ? `<button type="button" class="set-row" data-files-manage>${icon('cloud')}<span class="grow">${esc(providerName(app.syncKind))}<small>${app.sync ? `${esc(app.syncAccount || 'Conectado')}${app.sync.getStatus() === 'denied' ? ' · precisa conectar de novo' : ''}` : 'Desconectado neste aparelho: toque para conectar'}</small></span>${icon('right', 'sm')}</button>` : ''}
         ${!app.demo ? `<label class="set-row">${icon('lock')}<span class="grow">Pedir senha ao abrir<small>Mais privacidade em aparelhos compartilhados</small></span>${toggle('reqpass', requirePass, 'Pedir senha ao abrir')}</label>
-        <button type="button" class="set-row" data-pass>${icon('edit')}<span class="grow">Alterar senha</span>${icon('right', 'sm')}</button>` : ''}
+        <button type="button" class="set-row" data-pass>${icon('edit')}<span class="grow">Alterar senha</span>${icon('right', 'sm')}</button>
+        <button type="button" class="set-row${app.rwrap ? '' : ' attn'}" data-recovery>${icon('shield')}<span class="grow">Chave de recuperação<small>${app.rwrap ? 'Criada. Se perdeu o código, gere outro (o anterior deixa de valer)' : 'Ainda não criada: sem ela, esquecer a senha significa perder os dados'}</small></span>${icon('right', 'sm')}</button>` : ''}
       </div></section>
 
       <section class="set-group" data-cat="aparencia"><h2>Idioma</h2><div class="set-list">
@@ -118,12 +125,12 @@ export const settingsView = {
       </section>
 
       <section class="set-group" data-cat="jogo"><h2>Jogo</h2><div class="set-list">
-        <div class="set-row col"><span class="grow">Estilo de jogo (Modus Operandi)<small>${S.prefs.modus ? (S.money.items.changeModus > 0 ? 'Você tem um "Novo estilo de jogo": pode trocar uma vez.' : 'Para trocar, compre "Novo estilo de jogo" na Loja.') : 'Escolha uma vez. Trocar depois custa um item da Loja.'}</small></span>
+        <div class="set-row col"><span class="grow">Estilo de jogo (Modus Operandi) ${helpQ('modus')}<small>${S.prefs.modus ? (S.money.items.changeModus > 0 ? 'Você tem um "Novo estilo de jogo": pode trocar uma vez.' : 'Para trocar, compre "Novo estilo de jogo" na Loja.') : 'Escolha uma vez. Trocar depois custa um item da Loja.'}</small></span>
           <div class="modus">${Object.entries(MODUS).map(([k, m]) => `<button type="button" class="modus-opt${S.prefs.modus === k ? ' on' : ''}" data-modus="${k}" aria-pressed="${S.prefs.modus === k}">${icon(m.icon)}<b>${m.name}</b><small>${m.desc}</small></button>`).join('')}</div></div>
         <label class="set-row">${icon('flag')}<span class="grow">Punições<small>Tarefa que vence tira XP e ouro (sem nunca baixar de nível)</small></span>${toggle('punish', S.prefs.punishments !== false, 'Punições')}</label>
         <div class="set-row col"><span class="grow">Dias de folga<small>Dias de folga não são cobrados no IPL; o que você fizer neles conta a favor</small></span>
           <div class="wdays small">${[1, 2, 3, 4, 5, 6, 0].map((d) => `<label><input type="checkbox" data-dayoff value="${d}"${(S.prefs.daysOff || []).includes(d) ? ' checked' : ''}><span title="${WD_SHORT[d]}">${WD_LETTER[d]}</span></label>`).join('')}</div></div>
-        <div class="set-row col"><span class="grow">Meta da ofensiva<small>Quanto do que estava programado no dia (tarefas e hábitos) precisa ser feito para o dia contar na ofensiva</small></span>
+        <div class="set-row col"><span class="grow">Meta da ofensiva ${helpQ('ofensiva')}<small>Quanto do que estava programado no dia (tarefas e hábitos) precisa ser feito para o dia contar na ofensiva</small></span>
           <div class="seg small" role="radiogroup" aria-label="Meta da ofensiva">${STREAK_GOALS.map((g) => `<button type="button" role="radio" aria-checked="${streakGoal(S) === g}" class="${streakGoal(S) === g ? 'on' : ''}" data-sgoal="${g}">${g}%</button>`).join('')}</div></div>
       </div></section>
 
@@ -176,6 +183,11 @@ export const settingsView = {
         <button type="button" class="set-row" data-bkexp>${icon('download')}<span class="grow">Exportar backup<small>Um arquivo .lida com todos os seus dados, cifrado com uma senha que você escolhe</small></span>${icon('right', 'sm')}</button>
         <button type="button" class="set-row" data-bkimp>${icon('upload')}<span class="grow">Importar backup<small>Junta com o que já está aqui: serve para restaurar e para trocar de aparelho ou de versão do Lida</small></span>${icon('right', 'sm')}</button>
         <input type="file" accept=".lida,application/octet-stream,application/json" data-bkfile hidden>
+      </div></section>
+      <section class="set-group" data-cat="dados"><h2>Exportar para outros apps</h2><div class="set-list">
+        <button type="button" class="set-row" data-exp="tasks">${icon('list')}<span class="grow">Tarefas em planilha (CSV)<small>Abre no Excel, LibreOffice ou Planilhas Google: título, data, horário, prioridade, projeto, etiquetas e descrição</small></span>${icon('download', 'sm')}</button>
+        <button type="button" class="set-row" data-exp="habits">${icon('repeat')}<span class="grow">Hábitos dia a dia (CSV)<small>Cada registro de hábito, com a quantidade e a meta</small></span>${icon('download', 'sm')}</button>
+        <button type="button" class="set-row" data-exp="json">${icon('box')}<span class="grow">Tudo (JSON)<small>Todos os seus dados em texto aberto, para guardar ou levar para outro programa. Sem cifra: guarde com cuidado</small></span>${icon('download', 'sm')}</button>
       </div></section>
 
       <section class="set-group" data-cat="sobre"><h2>Sobre</h2><div class="set-list">
@@ -394,6 +406,9 @@ function bind(el, S) {
   el.querySelector('[data-files-manage]')?.addEventListener('click', () => manageFiles());
   el.querySelector('[data-reqpass]')?.addEventListener('change', (e) => app.actions.setRequirePass(e.target.checked));
   el.querySelector('[data-pass]')?.addEventListener('click', () => app.actions.changePass());
+  el.querySelectorAll('[data-exp]').forEach((b) => (b.onclick = () => exportOpen(b.dataset.exp)));
+  el.querySelector('[data-recovery]')?.addEventListener('click', () => createRecovery());
+  el.querySelector('[data-manual]')?.addEventListener('click', () => openManual(null, { onTour: () => startTour(app.nav) }));
   el.querySelector('[data-demo]')?.addEventListener('click', () => app.actions.toggleDemo());
   el.querySelector('[data-exit]')?.addEventListener('click', async () => {
     if (app.mode !== 'cloud') return app.actions.lock();
@@ -449,6 +464,20 @@ async function backupExport() {
   }
 }
 
+async function exportOpen(kind) {
+  const E = await import('../core/export.js');
+  const S = P();
+  const d = today();
+  const [name, text, mime] =
+    kind === 'tasks' ? [`lida-tarefas-${d}.csv`, E.tasksCsv(S), 'text/csv'] : kind === 'habits' ? [`lida-habitos-${d}.csv`, E.habitsCsv(S), 'text/csv'] : [`lida-dados-${d}.json`, E.allJson(personal.allRecords(), { version: app.version }), 'application/json'];
+  try {
+    const where = await saveFile(name, text, mime);
+    toast(where ? `Arquivo salvo em ${where}.` : 'Arquivo pronto.', { ms: 6000 });
+  } catch (e) {
+    toast(e?.message || 'Não consegui salvar o arquivo.');
+  }
+}
+
 async function backupImport(file) {
   const text = await file.text();
   const B = await import('../core/backup.js');
@@ -471,12 +500,13 @@ async function backupImport(file) {
 }
 
 // Salva um arquivo de texto: no Android, em Downloads; no computador e na web, pelo navegador.
-async function saveFile(name, text) {
+async function saveFile(name, text, mime = 'application/octet-stream') {
   if (hasPlugin('LidaApp')) {
-    const r = await plugin('LidaApp').saveFile({ name, mime: 'application/octet-stream', data: btoa(text) });
+    // base64 do texto em UTF-8 (acentos)
+    const r = await plugin('LidaApp').saveFile({ name, mime, data: b64big(new TextEncoder().encode(text)) });
     return r?.where || null;
   }
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/octet-stream' }));
+  const url = URL.createObjectURL(new Blob([text], { type: `${mime};charset=utf-8` }));
   const a = Object.assign(document.createElement('a'), { href: url, download: name });
   document.body.appendChild(a);
   a.click();

@@ -7,6 +7,7 @@ import * as H from '../core/habits.js';
 import { esc, fmtInt, plural, WD_LETTER, WD_SHORT, LOC } from '../lib/util.js';
 import { today } from '../lib/clock.js';
 import { icon, sheet, toast, confirmDialog, ring, empty, COLORS, colorPicker, readForm } from '../ui/ui.js';
+import { helpQ } from '../ui/help.js';
 import { popover } from '../ui/pickers.js';
 import { play } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
@@ -50,7 +51,7 @@ export const habitsView = {
 
       ${waterCard(wt, wg, S)}
 
-      <section class="block" style="--i:2"><div class="block-head"><h2>Hábitos<span class="count">${list.length || ''}</span></h2><button type="button" class="btn small" data-hnew>${icon('plus')}Novo hábito</button></div>
+      <section class="block" style="--i:2"><div class="block-head"><h2>Hábitos<span class="count">${list.length || ''}</span>${helpQ('habitos')}</h2><button type="button" class="btn small" data-hnew>${icon('plus')}Novo hábito</button></div>
         ${
           list.length
             ? `<div class="habits">${list.map((h, i) => habitCard(S, h, d, i)).join('')}</div>`
@@ -60,7 +61,7 @@ export const habitsView = {
         ${S.money.items.dayOff > 0 && todays.length && doneN < todays.length ? `<button type="button" class="btn ghost small dayoff" data-dayoff>${icon('coffee')}Usar Folga dos hábitos hoje (${S.money.items.dayOff})</button>` : ''}
       </section>
 
-      <section class="block" style="--i:3"><div class="block-head"><h2>Rotinas<span class="count">${S.routine.length || ''}</span></h2>${S.routine.length < H.MAX_ROUTINES ? `<button type="button" class="btn small" data-routine>${icon('plus')}Nova rotina</button>` : ''}</div>
+      <section class="block" style="--i:3"><div class="block-head"><h2>Rotinas<span class="count">${S.routine.length || ''}</span>${helpQ('rotinas')}</h2>${S.routine.length < H.MAX_ROUTINES ? `<button type="button" class="btn small" data-routine>${icon('plus')}Nova rotina</button>` : ''}</div>
         ${
           S.routine.length
             ? `<ul class="routines">${S.routine.map(routineRow).join('')}</ul>`
@@ -68,7 +69,7 @@ export const habitsView = {
         }
       </section>
 
-      <section class="block" style="--i:4"><div class="block-head"><h2>Desapego<span class="count">${S.quit.length ? `${S.quit.length}/${H.quitSlots(S)}` : ''}</span></h2>${S.quit.length < H.quitSlots(S) ? `<button type="button" class="btn small" data-quit>${icon('plus')}Largar um hábito</button>` : ''}</div>
+      <section class="block" style="--i:4"><div class="block-head"><h2>Desapego<span class="count">${S.quit.length ? `${S.quit.length}/${H.quitSlots(S)}` : ''}</span>${helpQ('desapego')}</h2>${S.quit.length < H.quitSlots(S) ? `<button type="button" class="btn small" data-quit>${icon('plus')}Largar um hábito</button>` : ''}</div>
         ${S.quit.length ? `<div class="quits">${S.quit.map((q) => quitCard(q, d)).join('')}</div>` : `<p class="hint pad">Para o que você quer deixar de fazer. Cada dia sem recair rende um check-in, e as recompensas crescem ao longo da semana.</p>`}
       </section>`;
     bind(el);
@@ -91,7 +92,7 @@ function waterCard(total, goal, S) {
     <div class="drop" aria-hidden="true"><svg viewBox="0 0 64 80"><defs><clipPath id="dropclip"><path d="M32 4C32 4 8 32 8 50a24 24 0 0 0 48 0C56 32 32 4 32 4z"/></clipPath></defs>
       <path class="drop-bg" d="M32 4C32 4 8 32 8 50a24 24 0 0 0 48 0C56 32 32 4 32 4z"/>
       <g clip-path="url(#dropclip)"><g class="drop-fill" style="transform:translateY(${(1 - f) * 76}px)"><path class="wave" d="M-64 6 Q-48 0 -32 6 T0 6 T32 6 T64 6 T96 6 V90 H-64Z"/></g></g></svg></div>
-    <div class="water-top">${streak ? `<span class="streak${streak >= 3 ? ' hot' : ''}" title="Dias seguidos batendo a meta">${icon('flame')}${streak}</span>` : ''}<button type="button" class="icon-btn" data-water-set aria-label="Ajustar meta de água">${icon('settings')}</button></div>
+    <div class="water-top">${helpQ('agua')}${streak ? `<span class="streak${streak >= 3 ? ' hot' : ''}" title="Dias seguidos batendo a meta">${icon('flame')}${streak}</span>` : ''}<button type="button" class="icon-btn" data-water-set aria-label="Ajustar meta de água">${icon('settings')}</button></div>
     <div class="grow">
       <div class="water-n"><b>${L(total)}</b><span>de ${L(goal)}</span></div>
       <small>${f >= 1 ? 'Meta de hoje batida. Ótimo!' : `Faltam ${L(left)} · ao bater a meta, +20 XP`}</small>

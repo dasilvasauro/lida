@@ -5,6 +5,7 @@ import { THEMES, swatch, themeName } from '../ui/theme.js';
 import { esc, fmtInt } from '../lib/util.js';
 import { nowMs } from '../lib/clock.js';
 import { icon, toast, confirmDialog } from '../ui/ui.js';
+import { helpQ } from '../ui/help.js';
 import { play, preview, PACKS, PACK_ORDER, soundPrefs, setSoundPrefs } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
 import { levelUp } from '../ui/reward.js';
@@ -24,14 +25,14 @@ export const shopView = {
     const hrs = (u) => Math.max(1, Math.round((u - nowMs()) / 3600000));
     el.innerHTML = `
       <div class="wallet-bar" style="--i:0">
-        <div><small>Ouro</small><b>${icon('coin')}${fmtInt(m.gold)}</b></div>
+        <div><small>Ouro ${helpQ('ouro')}</small><b>${icon('coin')}${fmtInt(m.gold)}</b></div>
         <div><small>Vouchers</small><b>${icon('card')}${fmtInt(m.vouchers)}</b><i class="vdots" aria-label="${m.voucherProgress} de 3 para o próximo voucher">${[0, 1, 2].map((k) => `<i class="${k < m.voucherProgress ? 'on' : ''}"></i>`).join('')}</i></div>
         <div><small>Nível</small><b>${m.level}</b></div>
       </div>
       ${b.xp || b.gold ? `<div class="boost-bar" style="--i:1">${icon('sparkles')}${[b.xp ? `Impulso de XP ativo por mais ${hrs(b.xpUntil)} h` : '', b.gold ? `Impulso de ouro ativo por mais ${hrs(b.goldUntil)} h` : ''].filter(Boolean).join(' · ')}</div>` : ''}
       ${
         inv.length
-          ? `<section class="block" style="--i:1"><div class="block-head"><h2>Seus itens</h2></div><div class="inv">${inv.map(([k, n]) => invTile(k, n)).join('')}</div></section>`
+          ? `<section class="block" style="--i:1"><div class="block-head"><h2>Seus itens${helpQ('itens')}</h2></div><div class="inv">${inv.map(([k, n]) => invTile(k, n)).join('')}</div></section>`
           : ''
       }
       <div class="seg small shop-tabs" role="tablist" style="--i:2">

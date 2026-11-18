@@ -31,7 +31,7 @@ const dec = (r) => ({ id: r.id, u: r.u, by: r.by, del: !!r.del, iv: unb64(r.iv),
 
 export const wrapOut = (w) => ({ v: w.v, iter: w.iter, salt: b64(w.salt), iv: b64(w.iv), ct: b64(w.ct) });
 export const wrapIn = (w) => ({ v: w.v, iter: w.iter, salt: unb64(w.salt), iv: unb64(w.iv), ct: unb64(w.ct) });
-export const spaceDoc = (sid, wrap) => JSON.stringify({ app: 'lida', v: 1, sid, wrap: wrapOut(wrap), at: Date.now() });
+export const spaceDoc = (sid, wrap, rwrap = null) => JSON.stringify({ app: 'lida', v: 1, sid, wrap: wrapOut(wrap), ...(rwrap ? { rwrap: wrapOut(rwrap) } : {}), at: Date.now() });
 export async function readSpace(provider) {
   const t = await provider.get(SPACE);
   if (t == null) return null;
@@ -46,10 +46,10 @@ export async function readSpace(provider) {
     e.code = 'config';
     throw e;
   }
-  return { sid: x.sid, wrap: wrapIn(x.wrap) };
+  return { sid: x.sid, wrap: wrapIn(x.wrap), rwrap: x.rwrap ? wrapIn(x.rwrap) : null };
 }
 
-export function createFileSync(store, { idb, provider, device, sid, wrap, onLost = () => {} }) {
+export function createFileSync(store, { idb, provider, device, sid, wrap, rwrap = null, onLost = () => {} }) {
   let status = 'local';
   let timer = null;
   let poll = null;
@@ -85,7 +85,7 @@ export function createFileSync(store, { idb, provider, device, sid, wrap, onLost
     const sp = await readSpace(provider);
     if (!sp) {
       // Pasta vazia (apagada?): escreve de novo e manda tudo.
-      await provider.put(SPACE, spaceDoc(sid, wrap));
+      await provider.put(SPACE, spaceDoc(sid, wrap, rwrap));
       await store.queue(store.allRecords().map((r) => r.id));
       await idb.put('meta', {}, 'fcur');
     } else if (sp.sid !== sid) {
@@ -214,6 +214,18 @@ export function createFileSync(store, { idb, provider, device, sid, wrap, onLost
     syncNow: () => schedule(0),
     lastSync: () => lastOk,
     pending: async () => (await idb.keys('outbox')).length,
+    // Senha trocada ou chave de recuperação nova: atualiza o space.json (o que um aparelho novo lê para entrar).
+    async putSpace(nextWrap, nextRwrap = rwrap) {
+      const sp = await readSpace(provider);
+      if (sp && sp.sid !== sid) throw new Error('A pasta na nuvem agora tem outro Lida.');
+      wrap = nextWrap;
+      rwrap = nextRwrap ?? sp?.rwrap ?? null;
+      await provider.put(SPACE, spaceDoc(sid, wrap, rwrap));
+    },
+    // A chave de recuperação guardada na pasta (criada em outro aparelho, talvez).
+    async getRecovery() {
+      return (await readSpace(provider))?.rwrap || null;
+    },
 
     // Envia e recebe agora e espera terminar (a virada do dia depende disso). false sem conexão.
     async pullNow(ms = 15000) {

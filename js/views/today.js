@@ -4,6 +4,7 @@ import { buckets, updateTask } from '../core/tasks.js';
 import { today, now } from '../lib/clock.js';
 import { esc, fmtInt, fmtDayLong, relDay, addDays, plural, daysBetween, cap, WD, weekday } from '../lib/util.js';
 import { icon, ring, empty, toast, bar, sheet, confirmDialog, colorPicker, readForm, COLORS } from '../ui/ui.js';
+import { helpQ } from '../ui/help.js';
 import { checkinState, claimCheckin, CHECKIN } from '../core/game.js';
 import { celebrate } from './celebrate.js';
 import { play } from '../core/sound.js';
@@ -241,7 +242,7 @@ function checkinCard(S, day) {
   if (st.claimed)
     return `<section class="ci done" aria-label="Prêmio do dia"><span class="ci-mini">${icon('gift')}</span><span class="grow">Prêmio do dia resgatado. Amanhã: <b>${esc(prizeText(st.next))}</b></span><ol class="ci-dots" aria-hidden="true">${CHECKIN.map((_, i) => `<i class="${i < st.n ? 'on' : ''}"></i>`).join('')}</ol></section>`;
   return `<section class="ci card" aria-label="Prêmio do dia">
-    <div class="ci-head"><div class="grow"><b>Prêmio do dia</b><small>${st.reset ? 'A sequência recomeçou: hoje é o dia 1.' : `Dia ${st.n} de 7. Volte todo dia: o prêmio cresce e o maior vem no 7º.`}</small></div></div>
+    <div class="ci-head"><div class="grow"><b>Prêmio do dia ${helpQ('premio')}</b><small>${st.reset ? 'A sequência recomeçou: hoje é o dia 1.' : `Dia ${st.n} de 7. Volte todo dia: o prêmio cresce e o maior vem no 7º.`}</small></div></div>
     <ol class="ci-days">${slots}</ol>
     <button type="button" class="btn primary wide ci-claim" data-claim>${icon('gift')}Resgatar ${esc(prizeText(st.prize))}</button>
   </section>`;

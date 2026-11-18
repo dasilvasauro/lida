@@ -7,6 +7,7 @@ import { habitsOnDay, doneDay } from '../core/tasks.js';
 import { today } from '../lib/clock.js';
 import { esc, fmtInt, plural, addDays, sum, weekday, MSHORT, WD_SHORT, fmtDay, ymOf, fmtMonth, daysBetween, uid, LOC } from '../lib/util.js';
 import { icon, sheet, toast, confirmDialog, empty, COLORS, colorPicker, readForm } from '../ui/ui.js';
+import { helpQ } from '../ui/help.js';
 import { columns, line, heat } from '../ui/chart.js';
 import { IPL_PARTS, dayIPL, grade, gradeLine, monthIPL } from '../core/ipl.js';
 import { showDaySummary, showMonthSummary, showYearSummary, partsBars } from './summary.js';
@@ -77,7 +78,7 @@ export const meView = {
 /* ---------- Marcos ---------- */
 function milestones(level) {
   const next = MILESTONES.find((x) => x.level > level);
-  return `<section class="block"><div class="block-head"><h2>Marcos</h2>${next ? `<span class="hint">Próximo: nível ${next.level}</span>` : ''}</div>
+  return `<section class="block"><div class="block-head"><h2>Marcos${helpQ('xp')}</h2>${next ? `<span class="hint">Próximo: nível ${next.level}</span>` : ''}</div>
     <ol class="miles">${MILESTONES.map((x) => `<li class="${x.level <= level ? 'got' : x === next ? 'next' : ''}"><span class="mile-ic">${icon(x.level <= level ? 'check' : x.icon)}</span><b>Nível ${x.level}</b><small>${esc(x.text)}</small></li>`).join('')}</ol></section>`;
 }
 
@@ -148,7 +149,7 @@ function iplSection(S, d) {
   const lbl = (x) => `${Number(x.slice(8))}/${x.slice(5, 7)}`;
   const y = addDays(d, -1);
   const hasY = S.scoreByDate.has(y);
-  return `<section class="block" id="ipl"><div class="block-head"><h2>IPL <small class="h-sub">Índice de Produtividade do Lida</small></h2>${hasY ? '<button type="button" class="link" data-sum-day>Resumo de ontem</button>' : ''}</div>
+  return `<section class="block" id="ipl"><div class="block-head"><h2>IPL ${helpQ('ipl')}<small class="h-sub">Índice de Produtividade do Lida</small></h2>${hasY ? '<button type="button" class="link" data-sum-day>Resumo de ontem</button>' : ''}</div>
     <div class="card score-card">
       <div class="ipl-top">
         ${g ? `<div class="grade"><b>${g}</b><span>${mo.score} de média em ${esc(fmtMonth(ym).split(' de ')[0])}</span></div>` : `<div class="grade"><b>–</b><span>A média do mês aparece depois do primeiro dia fechado.</span></div>`}
@@ -176,7 +177,7 @@ function moods(S, d) {
   if (!marked.length) return '';
   const count = Object.fromEntries(MOODS.map((m) => [m.id, 0]));
   for (const x of marked) count[S.moodByDate.get(x)] = (count[S.moodByDate.get(x)] || 0) + 1;
-  return `<section class="block"><div class="block-head"><h2>Humor</h2><span class="hint">30 dias</span></div>
+  return `<section class="block"><div class="block-head"><h2>Humor${helpQ('visao')}</h2><span class="hint">30 dias</span></div>
     <div class="card mood-card">
       <ol class="mood-strip" aria-label="Humor dos últimos 30 dias">${days
         .map((x) => {
@@ -195,11 +196,11 @@ function nextCheckpoint(v, d) {
 function vision(S, d) {
   const v = S.vision;
   if (!v || (!v.goals?.length && !v.develop?.length && !v.abandon?.length))
-    return `<section class="block"><div class="block-head"><h2>Visão</h2></div>
+    return `<section class="block"><div class="block-head"><h2>Visão${helpQ('visao')}</h2></div>
       <div class="card">${empty({ ic: 'target', title: 'Para onde você está indo?', text: 'Escreva seus objetivos e o que quer desenvolver ou deixar para trás. A cada poucos semanas, o Lida lembra você de revisar.', action: `<button type="button" class="btn primary" data-vision>${icon('plus')}Criar minha visão</button>` })}</div></section>`;
   const cp = nextCheckpoint(v, d);
   const due = !cp || cp <= d;
-  return `<section class="block"><div class="block-head"><h2>Visão</h2><button type="button" class="link" data-vision>Editar</button></div>
+  return `<section class="block"><div class="block-head"><h2>Visão${helpQ('visao')}</h2><button type="button" class="link" data-vision>Editar</button></div>
     <div class="card vision-card">
       ${due ? `<div class="review">${icon('bell')}<span class="grow">Hora de revisar seus objetivos</span><button type="button" class="btn small primary" data-review>Revisar</button></div>` : `<p class="hint">Próxima revisão em ${daysBetween(d, cp)} dias</p>`}
       ${(v.goals || []).length ? `<ul class="goals">${v.goals.map((g) => `<li><span class="grow"><b translate="no">${esc(g.title)}</b><small>${GOAL_STATES[(g.state || 1) - 1][0]} · ${GOAL_STATES[(g.state || 1) - 1][1]}</small></span><span class="gsteps" aria-label="Nível ${g.state || 1} de 5">${[1, 2, 3, 4, 5].map((k) => `<i class="${k <= (g.state || 1) ? 'on' : ''}"></i>`).join('')}</span></li>`).join('')}</ul>` : ''}
@@ -279,7 +280,7 @@ function editVision(review = false) {
 /* ---------- Reflexões ---------- */
 function reflections(S) {
   const list = [...S.refl].sort((a, b) => (b._ca || 0) - (a._ca || 0));
-  return `<section class="block"><div class="block-head"><h2>Reflexões<span class="count">${list.length || ''}</span></h2><button type="button" class="btn small" data-refl-new>${icon('plus')}Nova</button></div>
+  return `<section class="block"><div class="block-head"><h2>Reflexões<span class="count">${list.length || ''}</span>${helpQ('visao')}</h2><button type="button" class="btn small" data-refl-new>${icon('plus')}Nova</button></div>
     ${
       list.length
         ? `<div class="refls">${list.map((r) => `<button type="button" class="refl" data-refl="${esc(r.id)}" style="--c:${esc(colorOf(r.color))}"><b translate="no">${esc(r.title)}</b><small>${plural((r.cards || []).length, 'cartão', 'cartões')}</small><p>${esc((r.cards || [])[0] || '')}</p></button>`).join('')}</div>`

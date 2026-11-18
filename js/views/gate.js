@@ -2,7 +2,8 @@
 // e trazer os dados do Lida anterior.
 import * as cloud from '../core/cloud.js';
 import * as legacy from '../core/legacy.js';
-import { createKey, unlockKey } from '../lib/crypto.js';
+import { createKeyWithRecovery, unlockKey } from '../lib/crypto.js';
+import { codeHtml, bindCode, recoverFields, useCode } from './recovery.js';
 import { uid, esc, fmtInt } from '../lib/util.js';
 import { icon } from '../ui/ui.js';
 import { isNative } from '../native.js';
@@ -187,11 +188,12 @@ export async function afterGoogle(user) {
   return createCloud(user, L);
 }
 
-function formScreen(lead, fields, submitLabel, onSubmit, { back, extra = '' } = {}) {
+function formScreen(lead, fields, submitLabel, onSubmit, { back, extra = '', forgot } = {}) {
   return new Promise((resolve) => {
     const h = screen(`<p class="gate-lead">${lead}</p><form class="form" data-f>${fields}<p class="gate-err" hidden></p>
-      <button class="btn primary wide">${submitLabel}</button>${extra}${back ? `<button type="button" class="gate-link" data-back>Voltar</button>` : ''}</form>`);
+      <button class="btn primary wide">${submitLabel}</button>${extra}${forgot ? `<button type="button" class="gate-link" data-forgot>${icon('lock')}Esqueci a senha</button>` : ''}${back ? `<button type="button" class="gate-link" data-back>Voltar</button>` : ''}</form>`);
     h.querySelector('[data-back]')?.addEventListener('click', () => back().then(resolve));
+    h.querySelector('[data-forgot]')?.addEventListener('click', () => forgot().then(resolve));
     h.querySelector('[data-skip]')?.addEventListener('click', () => resolve(null));
     h.querySelector('[data-f]').onsubmit = async (e) => {
       e.preventDefault();
@@ -210,35 +212,81 @@ function formScreen(lead, fields, submitLabel, onSubmit, { back, extra = '' } = 
 }
 
 const NEW_PASS = 'Crie a senha do Lida. Ela cifra suas tarefas e hábitos neste aparelho e antes de qualquer envio para a nuvem.';
-const PASS_NOTE = '<p class="gate-note">Guarde bem esta senha: ela não pode ser recuperada. Você vai usá-la ao entrar num aparelho novo.</p>';
+const PASS_NOTE = '<p class="gate-note">Você vai usar esta senha ao entrar num aparelho novo. Em seguida o Lida mostra uma chave de recuperação, para o caso de esquecê-la.</p>';
+
+// Depois de criar a senha: a chave de recuperação, para guardar (só segue depois de confirmar).
+function codeScreen(code) {
+  return new Promise((resolve) => {
+    const h = screen(`<p class="gate-lead"><b>Sua chave de recuperação</b></p>${codeHtml(code)}<button type="button" class="btn primary wide" data-rcgo>Continuar</button>`);
+    bindCode(h, code, () => resolve());
+  });
+}
+
+// Esqueci a senha: o código de recuperação + uma senha nova. getRwrap busca a chave de recuperação
+// (no aparelho ou na nuvem); saveWrap grava a senha nova embrulhada. Devolve a chave dos dados.
+function forgotScreen(getRwrap, saveWrap, back) {
+  return formScreen(
+    'Digite o código de recuperação que o Lida mostrou ao criar a conta (ou em Ajustes) e escolha uma senha nova.',
+    recoverFields(),
+    'Criar senha nova',
+    async (f) => {
+      const rwrap = await getRwrap();
+      const { key, wrap } = await useCode(f, rwrap);
+      await saveWrap(wrap);
+      return key;
+    },
+    { back },
+  );
+}
+// Guardada aqui até o app abrir: a senha nova (embrulho novo) para gravar no aparelho e na nuvem.
+let recovered = null;
+export const takeRecovered = () => {
+  const r = recovered;
+  recovered = null;
+  return r;
+};
 
 async function createLocal() {
   const r = await formScreen(NEW_PASS, passFields(true) + PASS_NOTE, 'Criar senha', async (f) => {
-    const { key, wrap } = await createKey(f.p1.value);
-    return { sid: uid(20), key, wrap, mode: 'local', uid: 'local', user: null };
+    const { key, wrap, rwrap, code } = await createKeyWithRecovery(f.p1.value);
+    return { sid: uid(20), key, wrap, rwrap, code, mode: 'local', uid: 'local', user: null };
   }, { back: welcome });
   if ('legacy' in r) return r; // voltou à tela inicial e concluiu por outro caminho
+  await codeScreen(r.code);
+  delete r.code;
+  r.isNew = true; // conta nova: o app mostra o tour
   r.legacy = await offerLocal();
   return r;
 }
 
 async function createCloud(user, L) {
   const lead = L ? 'Agora crie a senha do Lida 3. Pode ser a mesma Chave Mestra, se preferir guardar uma senha só.' : NEW_PASS;
-  return formScreen(lead, passFields(true) + PASS_NOTE, 'Criar senha', async (f) => {
-    const { key, wrap } = await createKey(f.p1.value);
+  const r = await formScreen(lead, passFields(true) + PASS_NOTE, 'Criar senha', async (f) => {
+    const { key, wrap, rwrap, code } = await createKeyWithRecovery(f.p1.value);
     const sid = uid(20);
-    await cloud.createSpace(sid, wrap, user.uid, { kind: 'personal' });
-    return { sid, key, wrap, mode: 'cloud', uid: user.uid, user, legacy: L };
+    await cloud.createSpace(sid, wrap, user.uid, { kind: 'personal', rwrap });
+    return { sid, key, wrap, rwrap, code, mode: 'cloud', uid: user.uid, user, legacy: L };
   });
+  await codeScreen(r.code);
+  delete r.code;
+  r.isNew = true; // conta nova: o app mostra o tour
+  return r;
 }
 
 async function unlockCloud(user, sid) {
   const sp = await cloud.getSpace(sid);
   if (!sp) throw new Error('Não foi possível abrir o seu espaço na nuvem.');
-  return formScreen(`Que bom ter você de volta${user.displayName ? `, ${esc(user.displayName.split(' ')[0])}` : ''}. Digite a senha do Lida para abrir seus dados neste aparelho.`, passFields(false), 'Desbloquear', async (f) => {
-    const key = await unlockKey(f.p1.value, sp.wrap);
-    return { sid, key, wrap: sp.wrap, mode: 'cloud', uid: user.uid, user, legacy: null };
-  });
+  const ask = () =>
+    formScreen(`Que bom ter você de volta${user.displayName ? `, ${esc(user.displayName.split(' ')[0])}` : ''}. Digite a senha do Lida para abrir seus dados neste aparelho.`, passFields(false), 'Desbloquear', async (f) => {
+      const key = await unlockKey(f.p1.value, sp.wrap);
+      return { sid, key, wrap: sp.wrap, rwrap: sp.rwrap, mode: 'cloud', uid: user.uid, user, legacy: null };
+    }, {
+      forgot: () =>
+        forgotScreen(async () => sp.rwrap, (wrap) => cloud.updateWrap(sid, wrap).then(() => (sp.wrap = wrap)), ask).then((key) =>
+          typeof key === 'object' && key?.sid ? key : { sid, key, wrap: sp.wrap, rwrap: sp.rwrap, mode: 'cloud', uid: user.uid, user, legacy: null },
+        ),
+    });
+  return ask();
 }
 
 /* ---------- Dados do Lida anterior ---------- */
@@ -282,8 +330,16 @@ function confirmImport(L) {
 }
 
 /* ---------- Abrir de novo ---------- */
-export function unlock(wrap) {
-  return formScreen('Digite a senha do Lida para abrir.', passFields(false), 'Desbloquear', async (f) => unlockKey(f.p1.value, wrap));
+// getRwrap: busca a chave de recuperação (no aparelho ou na nuvem) só se a pessoa tocar em "Esqueci a senha".
+export function unlock(wrap, getRwrap = async () => null) {
+  const ask = () =>
+    formScreen('Digite a senha do Lida para abrir.', passFields(false), 'Desbloquear', async (f) => unlockKey(f.p1.value, wrap), {
+      forgot: () =>
+        forgotScreen(getRwrap, async (w) => {
+          recovered = { wrap: w };
+        }, ask),
+    });
+  return ask();
 }
 
 export function signInAgain() {

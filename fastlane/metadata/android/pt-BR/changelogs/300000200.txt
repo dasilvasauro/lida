@@ -1,0 +1,5 @@
+Chave de recuperação, exportação, tour e manual
+
+• Novo: Chave de recuperação: um código de 24 letras e números que devolve o acesso aos dados se você esquecer a senha. Aparece ao criar a conta; em contas antigas, crie em Ajustes > Conta. Na tela de desbloqueio, "Esqueci a senha" pede o código e uma senha nova, que vale em todos os aparelhos.
+• Novo: Exportar para outros apps: tarefas e hábitos em planilha (CSV, abre no Excel,…
+Mais em Ajustes > Novidades e correções.

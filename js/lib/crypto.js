@@ -66,6 +66,58 @@ export async function changePass(oldPass, newPass, wrap) {
   return next;
 }
 
+/* ---------- Chave de recuperação ---------- */
+// Um código aleatório (120 bits, 24 letras e números em blocos de 4) que embrulha a mesma chave de dados,
+// como uma segunda senha. Serve para criar uma senha nova quando a pessoa esquece a dela.
+// Alfabeto sem letras parecidas (Crockford): na hora de digitar, O vira 0 e I/L viram 1.
+const RC_ABC = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+export function newRecoveryCode() {
+  const b = rand(24);
+  const s = Array.from(b, (x) => RC_ABC[x & 31]).join('');
+  return s.match(/.{4}/g).join('-');
+}
+export const normCode = (c) =>
+  String(c || '')
+    .toUpperCase()
+    .replace(/[\s-]/g, '')
+    .replace(/O/g, '0')
+    .replace(/[IL]/g, '1');
+export const validCode = (c) => /^[0-9A-HJKMNP-TV-Z]{24}$/.test(normCode(c));
+
+// Conta nova: senha + código de recuperação embrulhando a mesma chave.
+export async function createKeyWithRecovery(pass) {
+  const raw = rand(32);
+  const code = newRecoveryCode();
+  const wrap = await wrapRaw(pass, raw);
+  const rwrap = await wrapRaw(normCode(code), raw);
+  const key = await importDataKey(raw);
+  raw.fill(0);
+  return { key, wrap, rwrap, code };
+}
+// Conta que já existe: com a senha atual, cria (ou troca) o código de recuperação.
+export async function addRecovery(pass, wrap) {
+  const raw = await unwrapRaw(pass, wrap);
+  const code = newRecoveryCode();
+  const rwrap = await wrapRaw(normCode(code), raw);
+  raw.fill(0);
+  return { rwrap, code };
+}
+// Esqueceu a senha: o código abre a chave e uma senha nova passa a embrulhá-la. O código continua valendo.
+export async function recoverWithCode(code, rwrap, newPass) {
+  let raw;
+  try {
+    raw = await unwrapRaw(normCode(code), rwrap);
+  } catch {
+    const e = new Error('Código de recuperação incorreto.');
+    e.code = 'bad-code';
+    throw e;
+  }
+  const wrap = await wrapRaw(newPass, raw);
+  const key = await importDataKey(raw);
+  raw.fill(0);
+  return { key, wrap };
+}
+
 async function pipe(bytes, stream) {
   const s = new Blob([bytes]).stream().pipeThrough(stream);
   return new Uint8Array(await new Response(s).arrayBuffer());

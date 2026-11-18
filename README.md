@@ -63,7 +63,8 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | alfa 16 | **Conquistas** (112, com medalhas, ouro resgatável e revelação com suspense), **Lidinho na foto** (inteiro ou selfie, qualquer um já alcançado), **atualização dentro do app no Linux** | Pronta |
 | alfa 17 | O app inteiro em **inglês e espanhol** (Ajustes > Idioma), **alarmes de tela cheia** com 6 toques, tema **AMOLED Azul**, água sempre azul | Pronta |
 | alfa 18 | **Ofensiva** (meta do dia ajustável) com o **Lidinho em seis caras**, widgets **Ofensiva** e **IPL da semana** (Android e Plasma), **Ajustes em seções**, alarmes que abrem com o celular em uso, resumo de ontem uma vez só por conta | Pronta |
-| alfa 19 | **Pomodoro novo** (escolha do tempo girando como um timer de cozinha, com vibração), **tique do relógio** e **metrônomo** (até 8/8, seis sons) no Pomodoro e no modo foco com tempo | **Esta versão** |
+| alfa 19 | **Pomodoro novo** (escolha do tempo girando como um timer de cozinha, com vibração), **tique do relógio** e **metrônomo** (até 8/8, seis sons) no Pomodoro e no modo foco com tempo | Pronta |
+| alfa 20 | **Chave de recuperação** da senha, **exportar** tarefas e hábitos em CSV e tudo em JSON, **tour de boas-vindas** nas contas novas, **"?" de ajuda** nas seções e **manual** em Ajustes | **Esta versão** |
 
 ## Como o jogo funciona
 
@@ -202,10 +203,26 @@ Evernote) por 3.000.
 agora** e, quando dois aparelhos mudaram o mesmo campo (título, data, descrição, prioridade…) antes de um ver
 o outro, a lista dessas mudanças para você escolher qual versão fica.
 
-**Backup .lida (Ajustes > Backup):** exporta todos os dados num arquivo cifrado com uma senha que você
+**Backup .lida (Ajustes > Backup e exportação):** exporta todos os dados num arquivo cifrado com uma senha que você
 escolhe; sem ela, ninguém abre o arquivo. Importar **junta** com o que já existe (vence a versão mais nova de
 cada campo, como na sincronização), então serve para restaurar e para levar os dados a outro aparelho ou a
 outra versão do Lida. No Android o arquivo vai para Downloads; no Linux, para a pasta Downloads.
+
+**Exportar para outros apps (Ajustes > Backup e exportação):** **tarefas em planilha** (CSV com título, situação,
+data, horário, duração, prioridade, projeto, etiquetas, tipo, repetição, descrição, subtarefas e datas de criação e
+conclusão), **hábitos dia a dia** (CSV com cada registro, a quantidade e a meta) e **tudo em JSON** (tarefas,
+projetos, etiquetas, hábitos e registros, rotinas, água, humor, notas do dia, visão, reflexões, Esvaziar a mente,
+desapego, conquistas e o histórico de XP e ouro). Os CSV abrem com acentos certos no Excel, LibreOffice e Planilhas
+Google; os cabeçalhos saem no idioma do app. Estes arquivos **não são cifrados** e não voltam para o Lida (para
+restaurar, use o backup .lida).
+
+**Ajuda, manual e tour:** um **?** ao lado dos títulos (Hábitos, Rotinas, Desapego, Água, Marcos, IPL, Humor,
+Visão, Reflexões, Conquistas, Ouro, Seus itens, Prêmio do dia, Estilo de jogo e Meta da ofensiva) abre uma explicação
+curta, com **Ler mais no manual**. O manual completo fica em **Ajustes > Ajuda e manual**: sete capítulos (Começando,
+Hábitos, Jogo, Foco, Acompanhamento, Avisos e Seus dados), com busca. Nas contas novas, o **tour de boas-vindas**
+passa pelas partes do app destacando uma de cada vez e escurecendo o resto (Hoje, adicionar tarefa, ofensiva, foco,
+Planejar, Hábitos, Loja, Eu e Ajustes); dá para pular e rever pelo manual. Na tela larga, o tour mostra o Painel no
+lugar de Planejar.
 
 **Foto de perfil (toque no avatar em Ajustes):** uma foto sua (reduzida para 256 px e cifrada), o Lidinho do
 seu título ou a inicial do nome.
@@ -573,10 +590,20 @@ O cofre antigo não é alterado nem apagado.
 ## Privacidade e sincronização
 
 - Tudo é cifrado no aparelho (AES-256-GCM). A chave é protegida pela sua senha (PBKDF2, 600 mil iterações)
-  e nunca sai do aparelho em texto puro. **A senha não pode ser recuperada.**
+  e nunca sai do aparelho em texto puro. **A senha não pode ser recuperada**, mas a **chave de recuperação** cria
+  uma senha nova (veja abaixo).
 - Cada tarefa é um registro separado. Alterações em aparelhos diferentes são juntadas campo a campo.
 - Offline: tudo funciona; as alterações sobem quando a internet voltar (bolinha ao lado do título).
 - Em Ajustes: pedir a senha a cada abertura, alterar a senha, sair da conta.
+
+**Chave de recuperação:** ao criar a conta, o Lida mostra um código de 24 letras e números (ex.:
+`7K3M-…`) para guardar fora do app (papel, gerenciador de senhas ou o arquivo .txt). O código embrulha a mesma chave
+dos dados que a senha embrulha (PBKDF2 com 600 mil iterações + AES-GCM), então ele sozinho também abre os dados: só o
+embrulho cifrado vai para a nuvem (no documento do espaço, na conta Google, ou no `space.json`, na sua nuvem), nunca o
+código. Para usar, toque em **Esqueci a senha** na tela de desbloqueio ou ao entrar num aparelho novo: digite o
+código (maiúsculas, minúsculas e traços tanto faz) e uma senha nova. A senha nova vale para todos os aparelhos. Contas
+criadas antes da alfa 20 recebem um aviso para criar a chave em **Ajustes > Conta > Chave de recuperação**; gerar outra
+invalida a anterior. **Sem a senha e sem o código, ninguém recupera os dados, nem o Lida.**
 
 **Onde sincronizar** (Ajustes > Conta):
 

@@ -1,0 +1,5 @@
+Recovery key, export, tour and manual
+
+• New: Recovery key: a 24-character code that gives you back access to your data if you forget your password. It appears when you create the account; on older accounts, create it in Settings > Account. On the unlock screen, "Forgot password" asks for the code and a new password, which works on all devices.
+• New: Export to other apps: tasks and habits as a spreadsheet (CSV, opens in Excel,…
+More in Settings > What's new and fixes.

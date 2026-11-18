@@ -4,6 +4,35 @@
 // en/es (opcional): { title, items: [textos na mesma ordem] } para quem usa o app em inglês ou espanhol.
 export const CHANGELOG = [
   {
+    v: '3.0.0-alfa.20',
+    date: '2026-11-18',
+    title: 'Chave de recuperação, exportação, tour e manual',
+    items: [
+      ['novo', 'Chave de recuperação: um código de 24 letras e números que devolve o acesso aos dados se você esquecer a senha. Aparece ao criar a conta; em contas antigas, crie em Ajustes > Conta. Na tela de desbloqueio, "Esqueci a senha" pede o código e uma senha nova, que vale em todos os aparelhos.'],
+      ['novo', 'Exportar para outros apps: tarefas e hábitos em planilha (CSV, abre no Excel, LibreOffice e Planilhas Google) e tudo em JSON, em Ajustes > Backup e exportação.'],
+      ['novo', 'Tour de boas-vindas nas contas novas: passo a passo pelas partes do Lida, destacando cada uma e escurecendo o resto. Dá para rever em Ajustes > Ajuda e manual.'],
+      ['novo', 'Ajuda: um "?" ao lado dos títulos das seções explica cada recurso, e o manual completo (com busca) fica em Ajustes > Ajuda e manual.'],
+    ],
+    en: {
+      title: 'Recovery key, export, tour and manual',
+      items: [
+        'Recovery key: a 24-character code that gives you back access to your data if you forget your password. It appears when you create the account; on older accounts, create it in Settings > Account. On the unlock screen, "Forgot password" asks for the code and a new password, which works on all devices.',
+        'Export to other apps: tasks and habits as a spreadsheet (CSV, opens in Excel, LibreOffice and Google Sheets) and everything as JSON, in Settings > Backup and export.',
+        'Welcome tour for new accounts: a step-by-step walk through the parts of Lida, highlighting each one and dimming the rest. You can replay it in Settings > Help and manual.',
+        'Help: a "?" next to section titles explains each feature, and the full manual (with search) is in Settings > Help and manual.',
+      ],
+    },
+    es: {
+      title: 'Clave de recuperación, exportación, tour y manual',
+      items: [
+        'Clave de recuperación: un código de 24 letras y números que te devuelve el acceso a los datos si olvidas la contraseña. Aparece al crear la cuenta; en cuentas antiguas, créala en Ajustes > Cuenta. En la pantalla de desbloqueo, "Olvidé la contraseña" pide el código y una contraseña nueva, que vale en todos los dispositivos.',
+        'Exportar a otras apps: tareas y hábitos en hoja de cálculo (CSV, se abre en Excel, LibreOffice y Hojas de cálculo de Google) y todo en JSON, en Ajustes > Copia de seguridad y exportación.',
+        'Tour de bienvenida en las cuentas nuevas: un paso a paso por las partes de Lida, destacando cada una y oscureciendo el resto. Puedes verlo de nuevo en Ajustes > Ayuda y manual.',
+        'Ayuda: un "?" junto a los títulos de las secciones explica cada función, y el manual completo (con búsqueda) está en Ajustes > Ayuda y manual.',
+      ],
+    },
+  },
+  {
     v: '3.0.0-alfa.19',
     date: '2026-11-18',
     title: 'Pomodoro novo, tique do relógio e metrônomo',
