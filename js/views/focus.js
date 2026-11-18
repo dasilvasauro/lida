@@ -14,7 +14,9 @@ import { icon, sheet, toast, bar } from '../ui/ui.js';
 import { play } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
 import { celebrate } from './celebrate.js';
-import { t as tx } from '../core/i18n.js';
+import { t as tx, tr } from '../core/i18n.js';
+import { dial } from '../ui/dial.js';
+import { tickPrefs, setTickPrefs, tickWhere, previewRun, previewBeat, TICK_SOUNDS, TICK_ORDER, BEAT_STATES, MAX_BEATS } from '../core/metronome.js';
 
 const fmt = (sec) => {
   const s = Math.max(0, Math.round(sec));
@@ -112,6 +114,7 @@ function ensureTicker() {
     if (pomo.running && nowMs() >= pomo.endsAt) pomoFinish();
     if (task.running && !task.rang && nowMs() >= task.endsAt) taskTimeUp();
     paintChip();
+    syncTick();
     listeners.forEach((f) => f(true));
   }, 1000);
 }
@@ -193,46 +196,65 @@ export async function focusOn(id) {
 
 export function openPomodoro() {
   ensureTicker();
-  const C = 2 * Math.PI * 110;
   sheet({
     title: 'Pomodoro',
     body: `<div class="pomo" data-pomo>
       <div class="seg small pomo-modes" role="radiogroup" aria-label="Modo">
-        <button type="button" role="radio" data-mode="focus">Foco</button><button type="button" role="radio" data-mode="break">Pausa</button>
+        <button type="button" role="radio" data-mode="focus"></button><button type="button" role="radio" data-mode="break"></button>
       </div>
-      <div class="pomo-dial">
-        <svg viewBox="0 0 240 240" aria-hidden="true"><circle cx="120" cy="120" r="110" class="pomo-track"/><circle cx="120" cy="120" r="110" class="pomo-arc" stroke-dasharray="${C}" transform="rotate(-90 120 120)"/></svg>
-        <div class="pomo-time"><b data-time></b><small data-label></small></div>
-      </div>
+      <div class="pomo-time big"><b data-time></b><small data-label></small></div>
+      <div class="pomo-wheel" data-wheel></div>
+      <p class="pomo-hint" data-hint>Gire para escolher os minutos</p>
       <div class="pomo-actions">
         <button type="button" class="icon-btn round" data-reset aria-label="Reiniciar">${icon('refresh')}</button>
         <button type="button" class="btn primary pomo-go" data-go></button>
         <button type="button" class="icon-btn round" data-skip aria-label="Pular para o próximo">${icon('right')}</button>
       </div>
-      <div class="pomo-set" data-set>
-        <div class="stepper"><span>Foco</span><button type="button" class="icon-btn" data-step="focusMin:-5" aria-label="Menos foco">${icon('minus')}</button><b data-v="focusMin"></b><button type="button" class="icon-btn" data-step="focusMin:5" aria-label="Mais foco">${icon('plus')}</button></div>
-        <div class="stepper"><span>Pausa</span><button type="button" class="icon-btn" data-step="breakMin:-1" aria-label="Menos pausa">${icon('minus')}</button><b data-v="breakMin"></b><button type="button" class="icon-btn" data-step="breakMin:1" aria-label="Mais pausa">${icon('plus')}</button></div>
-      </div>
+      ${tickControls()}
       <p class="pomo-foot" data-foot></p>
     </div>`,
     onMount(el) {
       const $ = (s) => el.querySelector(s);
+      let wheel = null;
+      let wheelMode = null;
+      // O dial do modo atual: foco de 1 a 90 min, pausa de 1 a 30. Girar muda os minutos (com o
+      // Pomodoro parado); correndo, ele gira sozinho com o tempo, como um timer de cozinha.
+      const makeWheel = () => {
+        wheelMode = pomo.mode;
+        const key = pomo.mode === 'focus' ? 'focusMin' : 'breakMin';
+        wheel = dial($('[data-wheel]'), {
+          min: 1,
+          max: pomo.mode === 'focus' ? 90 : 30,
+          value: pomo[key],
+          ariaLabel: pomo.mode === 'focus' ? 'Minutos de foco' : 'Minutos de pausa',
+          onChange: (v) => {
+            $('[data-time]').textContent = fmt(v * 60);
+          },
+          onCommit: (v) => {
+            if (pomo.running || v === pomo[key]) return;
+            setPomo({ [key]: v });
+            pomoReset();
+          },
+        });
+      };
       const paint = (tick) => {
         const left = leftNow();
         const total = dur();
+        if (wheelMode !== pomo.mode) makeWheel();
+        const idle = !pomo.running && Math.abs(left - total) < 1;
+        wheel.lock(pomo.running);
+        wheel.set(idle ? total / 60 : left / 60, { animate: true });
         $('[data-time]').textContent = fmt(left);
         $('[data-label]').textContent = pomo.mode === 'focus' ? (pomo.running ? 'Foco' : 'Foco · parado') : pomo.running ? 'Pausa' : 'Pausa · parada';
-        $('.pomo-arc').style.strokeDashoffset = String(C * (1 - left / total));
         el.querySelector('[data-pomo]').dataset.mode = pomo.mode;
+        $('[data-hint]').style.visibility = pomo.running ? 'hidden' : '';
         if (tick) return;
-        el.querySelectorAll('[data-mode]').forEach((b) => {
+        el.querySelectorAll('.pomo-modes [data-mode]').forEach((b) => {
           b.classList.toggle('on', b.dataset.mode === pomo.mode);
           b.setAttribute('aria-checked', b.dataset.mode === pomo.mode);
+          b.textContent = b.dataset.mode === 'focus' ? `Foco · ${pomo.focusMin} min` : `Pausa · ${pomo.breakMin} min`;
         });
         $('[data-go]').innerHTML = pomo.running ? `${icon('pause')}Pausar` : `${icon('play')}${left < total ? 'Continuar' : 'Começar'}`;
-        $('[data-set]').classList.toggle('dim', pomo.running);
-        $('[data-v="focusMin"]').textContent = `${pomo.focusMin} min`;
-        $('[data-v="breakMin"]').textContent = `${pomo.breakMin} min`;
         const S = P();
         const secs = focusSeconds(S);
         const toNext = 60 - Math.floor((secs % 3600) / 60);
@@ -241,23 +263,14 @@ export function openPomodoro() {
       };
       paint();
       listeners.add(paint);
+      bindTickControls(el);
       $('[data-go]').onclick = () => {
         if (pomo.running) pomoPause();
         else pomoStart();
       };
       $('[data-reset]').onclick = () => pomoReset();
       $('[data-skip]').onclick = () => pomoReset(pomo.mode === 'focus' ? 'break' : 'focus');
-      el.querySelectorAll('[data-mode]').forEach((b) => (b.onclick = () => !pomo.running && pomoReset(b.dataset.mode)));
-      el.querySelectorAll('[data-step]').forEach(
-        (b) =>
-          (b.onclick = () => {
-            if (pomo.running) return;
-            const [k, d] = b.dataset.step.split(':');
-            const v = Math.max(k === 'focusMin' ? 5 : 1, Math.min(k === 'focusMin' ? 90 : 30, pomo[k] + Number(d)));
-            setPomo({ [k]: v });
-            pomoReset();
-          }),
-      );
+      el.querySelectorAll('.pomo-modes [data-mode]').forEach((b) => (b.onclick = () => !pomo.running && pomoReset(b.dataset.mode)));
       // Remove o ouvinte quando o painel fecha.
       const obs = new MutationObserver(() => {
         if (!document.body.contains(el)) {
@@ -266,6 +279,128 @@ export function openPomodoro() {
         }
       });
       obs.observe(document.body, { childList: true });
+    },
+  });
+}
+
+/* ---------- Tique do relógio e metrônomo ---------- */
+// Botão "Tique" (liga e desliga) e o montador de batida, no Pomodoro e no modo foco.
+function tickControls() {
+  const p = tickPrefs();
+  return `<div class="tick-row">
+    <button type="button" class="chip tick-toggle${p.on ? ' on' : ''}" data-tick aria-pressed="${p.on}">${icon('timer', 'sm')}<span>Tique</span></button>
+    <button type="button" class="chip" data-tickset>${icon('settings', 'sm')}<span>${p.beats > 1 || p.bpm !== 60 ? `${p.beats}/8 · ${p.bpm} bpm` : 'Metrônomo'}</span></button>
+  </div>`;
+}
+function bindTickControls(el) {
+  const t = el.querySelector('[data-tick]');
+  if (t)
+    t.onclick = () => {
+      const on = !tickPrefs().on;
+      setTickPrefs({ on });
+      t.classList.toggle('on', on);
+      t.setAttribute('aria-pressed', on);
+      haptic('tap');
+      syncTick();
+    };
+  const s = el.querySelector('[data-tickset]');
+  if (s) s.onclick = () => openMetronome(() => el.querySelector('.tick-row')?.replaceWith(htmlEl(tickControls())) || bindTickControls(el));
+}
+const htmlEl = (h) => {
+  const d = document.createElement('div');
+  d.innerHTML = h;
+  return d.firstElementChild;
+};
+// Onde o tique deve tocar agora.
+function syncTick() {
+  tickWhere(task.taskId && task.running ? 'focus' : pomo.running ? (pomo.mode === 'focus' ? 'pomo' : 'pause') : null);
+}
+
+// Montador de batida: tempos por compasso (1 a 8), cada um forte, normal ou mudo; andamento e som.
+export function openMetronome(onDone) {
+  const p0 = tickPrefs();
+  sheet({
+    title: 'Metrônomo',
+    body: `<div class="metro">
+      <label class="set-row"><span class="grow">Tique ligado<small>Toca enquanto o Pomodoro ou o modo foco correm</small></span><span class="toggle"><input type="checkbox" data-mon${p0.on ? ' checked' : ''} aria-label="Tique ligado"><i></i></span></label>
+      <div class="metro-sec"><span class="metro-lbl">Tempos por compasso</span>
+        <div class="seg small metro-beats" role="radiogroup" aria-label="Tempos por compasso">${Array.from({ length: MAX_BEATS }, (_, i) => `<button type="button" role="radio" data-beats="${i + 1}">${i + 1}</button>`).join('')}</div>
+        <small class="metro-sig" data-sig></small></div>
+      <div class="metro-sec"><span class="metro-lbl">Toque em cada tempo: forte, normal ou mudo</span>
+        <div class="metro-pads" data-pads></div></div>
+      <div class="metro-sec"><span class="metro-lbl">Andamento <b data-bpmv></b></span>
+        <input type="range" min="30" max="200" step="1" data-bpm aria-label="Batidas por minuto">
+        <div class="metro-presets">${[
+          [60, 'Segundos'],
+          [72, 'Calmo'],
+          [96, 'Médio'],
+          [120, 'Animado'],
+        ]
+          .map(([v, l]) => `<button type="button" class="chip" data-bpmp="${v}">${l}<small>${v}</small></button>`)
+          .join('')}</div></div>
+      <div class="metro-sec"><span class="metro-lbl">Som</span>
+        <div class="metro-sounds">${TICK_ORDER.map((k) => `<button type="button" class="chip" data-snd="${k}">${esc(tr(TICK_SOUNDS[k].name))}</button>`).join('')}</div></div>
+      <div class="metro-sec"><span class="metro-lbl">Onde tocar</span>
+        <label class="set-row"><span class="grow">No foco do Pomodoro</span><span class="toggle"><input type="checkbox" data-where="pomo"${p0.pomo ? ' checked' : ''}><i></i></span></label>
+        <label class="set-row"><span class="grow">Na pausa do Pomodoro</span><span class="toggle"><input type="checkbox" data-where="pause"${p0.pause ? ' checked' : ''}><i></i></span></label>
+        <label class="set-row"><span class="grow">No modo foco com tempo</span><span class="toggle"><input type="checkbox" data-where="focus"${p0.focus ? ' checked' : ''}><i></i></span></label></div>
+      <div class="metro-sec"><span class="metro-lbl">Volume do tique</span><input type="range" min="0.1" max="1" step="0.05" data-mvol aria-label="Volume do tique"></div>
+      <div class="sheet-actions"><button type="button" class="btn ghost" data-mreset>Voltar ao tique simples</button><button type="button" class="btn primary" data-mok>Pronto</button></div>
+    </div>`,
+    onMount(el, close) {
+      const $ = (s) => el.querySelector(s);
+      const paint = () => {
+        const p = tickPrefs();
+        el.querySelectorAll('[data-beats]').forEach((b) => {
+          const on = Number(b.dataset.beats) === p.beats;
+          b.classList.toggle('on', on);
+          b.setAttribute('aria-checked', on);
+        });
+        $('[data-sig]').textContent = p.beats === 1 ? 'Um tique igual em todas as batidas' : `Compasso ${p.beats}/8`;
+        $('[data-pads]').innerHTML = p.pattern
+          .slice(0, p.beats)
+          .map((st, i) => `<button type="button" class="metro-pad st-${st}" data-pad="${i}" aria-label="Tempo ${i + 1}: ${st === 'accent' ? 'forte' : st === 'mute' ? 'mudo' : 'normal'}"><i></i><small>${i + 1}</small></button>`)
+          .join('');
+        $('[data-bpm]').value = p.bpm;
+        $('[data-bpmv]').textContent = `${p.bpm} bpm`;
+        $('[data-mvol]').value = p.volume;
+        el.querySelectorAll('[data-snd]').forEach((b) => b.classList.toggle('on', b.dataset.snd === p.sound));
+        el.querySelectorAll('[data-bpmp]').forEach((b) => b.classList.toggle('on', Number(b.dataset.bpmp) === p.bpm));
+      };
+      paint();
+      // Toca enquanto o montador está aberto; o tempo atual acende.
+      previewRun(true, (i) => {
+        el.querySelectorAll('[data-pad]').forEach((b) => b.classList.toggle('hit', Number(b.dataset.pad) === i));
+      });
+      el.querySelectorAll('[data-beats]').forEach((b) => (b.onclick = () => (setTickPrefs({ beats: Number(b.dataset.beats) }), haptic('tick'), paint())));
+      $('[data-pads]').onclick = (e) => {
+        const b = e.target.closest('[data-pad]');
+        if (!b) return;
+        const p = tickPrefs();
+        const i = Number(b.dataset.pad);
+        const pattern = [...p.pattern];
+        pattern[i] = BEAT_STATES[(BEAT_STATES.indexOf(pattern[i]) + 1) % BEAT_STATES.length];
+        setTickPrefs({ pattern });
+        haptic('tap');
+        paint();
+      };
+      $('[data-bpm]').oninput = (e) => {
+        setTickPrefs({ bpm: Number(e.target.value) });
+        $('[data-bpmv]').textContent = `${e.target.value} bpm`;
+        el.querySelectorAll('[data-bpmp]').forEach((b) => b.classList.toggle('on', b.dataset.bpmp === e.target.value));
+      };
+      el.querySelectorAll('[data-bpmp]').forEach((b) => (b.onclick = () => (setTickPrefs({ bpm: Number(b.dataset.bpmp) }), paint())));
+      el.querySelectorAll('[data-snd]').forEach((b) => (b.onclick = () => (setTickPrefs({ sound: b.dataset.snd }), previewBeat(b.dataset.snd), paint())));
+      $('[data-mvol]').oninput = (e) => setTickPrefs({ volume: Number(e.target.value) });
+      $('[data-mon]').onchange = (e) => setTickPrefs({ on: e.target.checked });
+      el.querySelectorAll('[data-where]').forEach((c) => (c.onchange = () => setTickPrefs({ [c.dataset.where]: c.checked })));
+      $('[data-mreset]').onclick = () => (setTickPrefs({ beats: 1, bpm: 60, pattern: Array.from({ length: MAX_BEATS }, (_, i) => (i === 0 ? 'accent' : 'normal')) }), paint());
+      $('[data-mok]').onclick = close;
+    },
+    onClose() {
+      previewRun(false);
+      syncTick();
+      onDone?.();
     },
   });
 }
@@ -361,6 +496,7 @@ export function openTaskFocus() {
       <button type="button" class="btn" data-pause></button>
       <button type="button" class="btn primary" data-done>${icon('check')}Concluir</button>
     </div>
+    ${tickControls()}
   </div>`;
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add('open'));
@@ -376,6 +512,7 @@ export function openTaskFocus() {
   };
   paint();
   listeners.add(paint);
+  bindTickControls(overlay);
   const onKey = (e) => e.key === 'Escape' && !document.querySelector('.sheet-wrap.open') && close();
   document.addEventListener('keydown', onKey);
   const close = () => {

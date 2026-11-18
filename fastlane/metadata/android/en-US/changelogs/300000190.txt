@@ -1,0 +1,5 @@
+New Pomodoro, clock tick and metronome
+
+• New: Redesigned Pomodoro: you choose the minutes by turning a strip of numbers, like a kitchen timer. The center number grows and the ones at the edges shrink as if they were on a cylinder, with a vibration every minute (stronger on multiples of 5). While the Pomodoro runs, the strip turns on its own with the time.
+• New: Clock tick: one tick per second while the Pomodoro or timed focus mode is…
+More in Settings > What's new and fixes.

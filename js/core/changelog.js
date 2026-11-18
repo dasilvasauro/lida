@@ -4,6 +4,32 @@
 // en/es (opcional): { title, items: [textos na mesma ordem] } para quem usa o app em inglês ou espanhol.
 export const CHANGELOG = [
   {
+    v: '3.0.0-alfa.19',
+    date: '2026-11-18',
+    title: 'Pomodoro novo, tique do relógio e metrônomo',
+    items: [
+      ['novo', 'Pomodoro redesenhado: os minutos se escolhem girando uma faixa de números, como num timer de cozinha. O número do centro cresce e os das bordas encolhem como se estivessem num cilindro, com vibração a cada minuto (mais forte nos múltiplos de 5). Com o Pomodoro correndo, a faixa gira sozinha com o tempo.'],
+      ['novo', 'Tique do relógio: um tique por segundo enquanto o Pomodoro ou o modo foco com tempo correm. Liga e desliga no botão Tique, no Pomodoro e na tela de foco.'],
+      ['novo', 'Metrônomo (avançado): de 1 a 8 tempos por compasso (até 8/8), cada tempo forte, normal ou mudo, andamento de 30 a 200 batidas por minuto e seis sons (relógio de parede, bloco de madeira, claves, bipe digital, pulso suave e gota). Dá para escolher se toca no foco, na pausa ou no modo foco.'],
+    ],
+    en: {
+      title: 'New Pomodoro, clock tick and metronome',
+      items: [
+        'Redesigned Pomodoro: you choose the minutes by turning a strip of numbers, like a kitchen timer. The center number grows and the ones at the edges shrink as if they were on a cylinder, with a vibration every minute (stronger on multiples of 5). While the Pomodoro runs, the strip turns on its own with the time.',
+        'Clock tick: one tick per second while the Pomodoro or timed focus mode is running. Turn it on and off with the Tick button, in the Pomodoro and on the focus screen.',
+        'Metronome (advanced): 1 to 8 beats per bar (up to 8/8), each beat strong, normal or silent, tempo from 30 to 200 beats per minute and six sounds (wall clock, wood block, claves, digital beep, soft pulse and drop). You can choose whether it plays during focus, breaks or focus mode.',
+      ],
+    },
+    es: {
+      title: 'Pomodoro nuevo, tic del reloj y metrónomo',
+      items: [
+        'Pomodoro rediseñado: los minutos se eligen girando una tira de números, como en un temporizador de cocina. El número del centro crece y los de los bordes se encogen como si estuvieran en un cilindro, con vibración en cada minuto (más fuerte en los múltiplos de 5). Con el Pomodoro en marcha, la tira gira sola con el tiempo.',
+        'Tic del reloj: un tic por segundo mientras el Pomodoro o el modo enfoque con tiempo están en marcha. Se activa y desactiva con el botón Tic, en el Pomodoro y en la pantalla de enfoque.',
+        'Metrónomo (avanzado): de 1 a 8 tiempos por compás (hasta 8/8), cada tiempo fuerte, normal o mudo, tempo de 30 a 200 pulsaciones por minuto y seis sonidos (reloj de pared, bloque de madera, claves, pitido digital, pulso suave y gota). Puedes elegir si suena en el enfoque, en la pausa o en el modo enfoque.',
+      ],
+    },
+  },
+  {
     v: '3.0.0-alfa.18',
     date: '2026-11-18',
     title: 'Ofensiva, widgets novos e alarmes de confiança',

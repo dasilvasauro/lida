@@ -1009,7 +1009,8 @@ button.chip:hover { color: var(--text); border-color: color-mix(in srgb, var(--a
    ===================================================================== */
 .pomo { display: grid; justify-items: center; gap: 1.0667rem; padding-bottom: .2667rem; --arc: var(--accent); }
 .pomo[data-mode='break'] { --arc: var(--pos); }
-.pomo-modes { width: 14.6667rem; }
+.pomo-modes { width: auto; max-width: 100%; }
+.pomo-modes button { white-space: nowrap; padding-left: .8rem; padding-right: .8rem; }
 .pomo-dial { position: relative; width: min(16rem, 66vw); aspect-ratio: 1; }
 .pomo-dial.big { width: min(18.6667rem, 72vw); }
 .pomo-dial svg { width: 100%; height: 100%; }
@@ -1018,6 +1019,49 @@ button.chip:hover { color: var(--text); border-color: color-mix(in srgb, var(--a
 .pomo-time { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
 .pomo-time b { font-size: clamp(2.9333rem, 12vw, 3.8667rem); font-weight: 700; letter-spacing: calc(-0.03em * var(--tk)); font-variant-numeric: tabular-nums; line-height: 1; }
 .pomo-time small { margin-top: .4rem; font-size: .8667rem; font-weight: 700; color: var(--muted); }
+.pomo-time.big { position: static; display: grid; place-items: center; margin-top: .2667rem; }
+.pomo-time.big b { font-size: clamp(3.6rem, 17vw, 4.8rem); }
+/* Dial de minutos: a faixa de um timer de cozinha girando (ui/dial.js) */
+.dial { position: relative; width: min(22rem, 100%); height: 4.5333rem; touch-action: none; cursor: grab; outline: none; overflow: hidden; border-radius: 1.0667rem; background: linear-gradient(90deg, var(--surface) 0%, var(--surface-2) 30%, var(--surface-2) 70%, var(--surface) 100%); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 6%, transparent), inset 0 -1px 0 color-mix(in srgb, #000 20%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); user-select: none; -webkit-user-select: none; }
+.dial:focus-visible { box-shadow: 0 0 0 2px var(--focus); }
+.dial.grab { cursor: grabbing; }
+.dial.locked { cursor: default; }
+.dial-face { position: absolute; inset: 0; }
+.dial-it { position: absolute; left: 50%; top: .5333rem; width: 2.4rem; margin-left: -1.2rem; display: grid; grid-template-rows: 1.3333rem 1.8rem; align-items: start; justify-items: center; gap: .1333rem; transform-origin: 50% 0; will-change: transform, opacity; }
+.dial-it i { width: 2px; height: .6667rem; border-radius: 1px; background: var(--muted); opacity: .7; }
+.dial-it.major i { height: 1.2rem; width: 3px; background: var(--text); opacity: .9; }
+.dial-it b { font-size: .9333rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--dim); line-height: 1; transition: font-size .12s, color .12s; }
+.dial-it.major b { font-size: 1.1333rem; font-weight: 800; color: var(--muted); }
+.dial-it b { align-self: center; }
+.dial-it.on b { font-size: 1.6rem; font-weight: 800; color: var(--arc, var(--accent)); }
+.dial-mark { position: absolute; left: 50%; top: 0; width: 3px; height: 1.6rem; margin-left: -1.5px; border-radius: 0 0 2px 2px; background: var(--arc, var(--accent)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--bg) 40%, transparent); }
+.pomo-hint { margin: -.4rem 0 0; font-size: .8rem; color: var(--muted); }
+.tick-row { display: flex; gap: .5333rem; justify-content: center; flex-wrap: wrap; }
+.tick-row .chip { display: inline-flex; align-items: center; gap: .3333rem; }
+.tick-toggle.on { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+.focus-inner .tick-row { margin-top: .5333rem; }
+/* Montador de batida (metrônomo) */
+.metro { display: grid; gap: 1.0667rem; }
+.metro .set-row { padding-left: 0; padding-right: 0; border-bottom: 0; min-height: 2.9333rem; }
+.metro-sec { display: grid; gap: .5333rem; }
+.metro-lbl { font-size: .8667rem; font-weight: 700; color: var(--muted); display: flex; justify-content: space-between; }
+.metro-lbl b { color: var(--text); font-variant-numeric: tabular-nums; }
+.metro-beats { width: 100%; }
+.metro-beats button { flex: 1; min-width: 0; }
+.metro-sig { color: var(--dim); font-size: .7667rem; }
+.metro-pads { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: .4rem; }
+.metro-pad { display: grid; justify-items: center; gap: .2667rem; padding: .4rem 0; border: 0; background: none; }
+.metro-pad i { width: 100%; max-width: 2.6667rem; aspect-ratio: 1; border-radius: .8rem; background: var(--surface-2); box-shadow: inset 0 0 0 2px var(--line); transition: transform .08s, background .08s; }
+.metro-pad.st-normal i { background: color-mix(in srgb, var(--accent) 45%, var(--surface-2)); box-shadow: none; }
+.metro-pad.st-accent i { background: var(--accent); box-shadow: inset 0 -.4rem 0 color-mix(in srgb, #000 18%, transparent); }
+.metro-pad.hit i { transform: scale(1.12); filter: brightness(1.25); }
+.metro-pad small { font-size: .7333rem; font-weight: 700; color: var(--muted); }
+.metro input[type='range'] { width: 100%; }
+.metro-presets, .metro-sounds { display: flex; flex-wrap: wrap; gap: .4rem; }
+.metro-presets .chip { display: grid; justify-items: center; gap: 1px; flex: 1; }
+.metro-presets .chip small { font-size: .7333rem; color: var(--dim); }
+.metro-presets .chip.on, .metro-sounds .chip.on { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+.metro-presets .chip.on small { color: inherit; opacity: .8; }
 .pomo-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .8rem; }
 .pomo-go { min-width: 10rem; min-height: 3.3333rem; border-radius: 66.6rem; font-size: 1rem; }
 .pomo-go .ic { width: 1.0667rem; height: 1.0667rem; }

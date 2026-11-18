@@ -62,8 +62,8 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | alfa 15 | **Lida Libre** (sem Google nem Firebase, id próprio, APK na Release), receita do F-Droid e metadados, versionCode tirado da versão, licença **GPL-3.0**, correções no ícone do hábito e no Quadro | Pronta |
 | alfa 16 | **Conquistas** (112, com medalhas, ouro resgatável e revelação com suspense), **Lidinho na foto** (inteiro ou selfie, qualquer um já alcançado), **atualização dentro do app no Linux** | Pronta |
 | alfa 17 | O app inteiro em **inglês e espanhol** (Ajustes > Idioma), **alarmes de tela cheia** com 6 toques, tema **AMOLED Azul**, água sempre azul | Pronta |
-| alfa 18 | **Ofensiva** (meta do dia ajustável) com o **Lidinho em seis caras**, widgets **Ofensiva** e **IPL da semana** (Android e Plasma), **Ajustes em seções**, alarmes que abrem com o celular em uso, resumo de ontem uma vez só por conta | **Esta versão** |
-| alfa 19 | **Pomodoro novo** (escolha do tempo girando como um timer de cozinha, com vibração), **tique do relógio** e **metrônomo** (até 8/8, vários sons) no Pomodoro e no modo foco com tempo | Próxima |
+| alfa 18 | **Ofensiva** (meta do dia ajustável) com o **Lidinho em seis caras**, widgets **Ofensiva** e **IPL da semana** (Android e Plasma), **Ajustes em seções**, alarmes que abrem com o celular em uso, resumo de ontem uma vez só por conta | Pronta |
+| alfa 19 | **Pomodoro novo** (escolha do tempo girando como um timer de cozinha, com vibração), **tique do relógio** e **metrônomo** (até 8/8, seis sons) no Pomodoro e no modo foco com tempo | **Esta versão** |
 
 ## Como o jogo funciona
 
@@ -530,6 +530,17 @@ No editor de cada um, escolha um toque em **Alarme de tela cheia** (rotinas e h�
   - **Xiaomi (HyperOS)**: a ilha não desenha o cronômetro do Android, então o chip leva o tempo em texto ("24 min",
     "45 s"), atualizado pelo serviço. O relógio "vivo" na Super Island exige a API de notificação de foco da Xiaomi,
     que só funciona para apps liberados por ela (pedido por e-mail); sem isso, o sistema mostra a notificação comum.
+
+### Pomodoro, tique e metrônomo
+
+- **Escolha do tempo**: no Pomodoro, gire a faixa de números (arrastar, roda do mouse ou setas) como num timer de
+  cozinha. O número do centro é o escolhido; vibra a cada minuto e mais forte nos múltiplos de 5. Foco de 1 a 90 min,
+  pausa de 1 a 30. Com o Pomodoro correndo, a faixa gira sozinha com o tempo que falta.
+- **Tique**: o botão **Tique** (no Pomodoro e na tela do modo foco) liga um tique por segundo enquanto o cronômetro corre.
+- **Metrônomo** (botão ao lado): de 1 a 8 tempos por compasso (até 8/8), toque em cada tempo para deixá-lo forte,
+  normal ou mudo; andamento de 30 a 200 bpm; seis sons (relógio de parede, bloco de madeira, claves, bipe digital,
+  pulso suave e gota); escolha se toca no foco, na pausa e no modo foco. Enquanto o montador está aberto, ele toca
+  para você ouvir. Preferência de cada aparelho; o volume segue também o de Ajustes > Sons.
 
 ## Widgets (Android)
 

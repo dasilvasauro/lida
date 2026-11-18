@@ -1,0 +1,5 @@
+Pomodoro novo, tique do relógio e metrônomo
+
+• Novo: Pomodoro redesenhado: os minutos se escolhem girando uma faixa de números, como num timer de cozinha. O número do centro cresce e os das bordas encolhem como se estivessem num cilindro, com vibração a cada minuto (mais forte nos múltiplos de 5). Com o Pomodoro correndo, a faixa gira sozinha com o tempo.
+• Novo: Tique do relógio: um tique por segundo enquanto o Pomodoro ou o modo foco…
+Mais em Ajustes > Novidades e correções.

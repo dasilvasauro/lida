@@ -145,6 +145,14 @@ function note(freq, opts = {}) {
 const PENTA = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.51, 1567.98, 1760];
 
 const SOUNDS = {
+  // Dial do Pomodoro: a catraca de um timer de cozinha (mais forte a cada 5 minutos).
+  dial() {
+    click(ctx.currentTime, 0.18, master);
+  },
+  dialMajor() {
+    click(ctx.currentTime, 0.32, master);
+    note(2093, { dur: 0.025, gain: 0.05, type: 'triangle' });
+  },
   // Tarefa concluída: "plim" de duas notas subindo.
   complete() {
     note(880, { dur: 0.12, gain: 0.28 });
