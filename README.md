@@ -16,15 +16,16 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 4. [Usar no Android (APK)](#usar-no-android-apk)
 5. [Lida para Linux](#lida-para-linux) (app, CLI `lida` e widgets do Plasma)
 6. [Idiomas](#idiomas)
-7. [Lembretes](#lembretes)
-8. [Alarmes](#alarmes)
-9. [Foco](#foco)
-10. [Trazer os dados do Lida anterior](#trazer-os-dados-do-lida-anterior)
-11. [Privacidade e sincronização](#privacidade-e-sincronização)
-12. [Sua parte: publicar](#sua-parte-publicar)
-13. [Licença](#licença)
-14. [Desenvolvimento](#desenvolvimento)
-15. [Limites honestos](#limites-honestos)
+7. [Ofensiva](#ofensiva)
+8. [Lembretes](#lembretes)
+9. [Alarmes](#alarmes)
+10. [Foco](#foco)
+11. [Trazer os dados do Lida anterior](#trazer-os-dados-do-lida-anterior)
+12. [Privacidade e sincronização](#privacidade-e-sincronização)
+13. [Sua parte: publicar](#sua-parte-publicar)
+14. [Licença](#licença)
+15. [Desenvolvimento](#desenvolvimento)
+16. [Limites honestos](#limites-honestos)
 
 ---
 
@@ -60,7 +61,9 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | alfa 14 | **Sincronização pela sua nuvem** (Dropbox, OneDrive, Nextcloud/WebDAV), **mover a sincronização** da conta Google para ela, **Lidinho redesenhado**, 12 títulos novos com presentes | Pronta |
 | alfa 15 | **Lida Libre** (sem Google nem Firebase, id próprio, APK na Release), receita do F-Droid e metadados, versionCode tirado da versão, licença **GPL-3.0**, correções no ícone do hábito e no Quadro | Pronta |
 | alfa 16 | **Conquistas** (112, com medalhas, ouro resgatável e revelação com suspense), **Lidinho na foto** (inteiro ou selfie, qualquer um já alcançado), **atualização dentro do app no Linux** | Pronta |
-| alfa 17 | O app inteiro em **inglês e espanhol** (Ajustes > Idioma), **alarmes de tela cheia** com 6 toques, tema **AMOLED Azul**, água sempre azul | **Esta versão** |
+| alfa 17 | O app inteiro em **inglês e espanhol** (Ajustes > Idioma), **alarmes de tela cheia** com 6 toques, tema **AMOLED Azul**, água sempre azul | Pronta |
+| alfa 18 | **Ofensiva** (meta do dia ajustável) com o **Lidinho em seis caras**, widgets **Ofensiva** e **IPL da semana** (Android e Plasma), **Ajustes em seções**, alarmes que abrem com o celular em uso, resumo de ontem uma vez só por conta | **Esta versão** |
+| alfa 19 | **Pomodoro novo** (escolha do tempo girando como um timer de cozinha, com vibração), **tique do relógio** e **metrônomo** (até 8/8, vários sons) no Pomodoro e no modo foco com tempo | Próxima |
 
 ## Como o jogo funciona
 
@@ -412,8 +415,11 @@ Clique com o botão direito no painel ou na área de trabalho > **Adicionar widg
   linguagem natural, concluir/Pomodoro/parar o foco, abas Hoje · Atrasadas · Entrada (concluir ou focar cada tarefa),
   hábitos (toque soma um) e água (Copo, Garrafa).
 - **Lida · Anéis**: os três anéis do dia (tarefas, hábitos e água), com legenda, IPL e botões Copo/Garrafa.
+- **Lida · Ofensiva**: o Lidinho com a cara do momento, a ofensiva, o que falta hoje e a semana. No painel, a chama
+  e o número.
+- **Lida · IPL da semana**: barras com a nota de cada um dos últimos 7 dias (hoje, parcial), a média e o melhor dia.
 
-Os dois leem o estado que o app grava em `~/.cache/lida/state.json` e agem pela CLI. Nas configurações do widget dá
+Todos leem o estado que o app grava em `~/.cache/lida/state.json` e agem pela CLI. Nas configurações do widget dá
 para mudar o comando (`lida`), a frequência de leitura e, no Foco, a largura do nome no painel.
 
 ### Onde ficam as coisas
@@ -441,6 +447,20 @@ mês/dia). Nomes de tarefas, hábitos e projetos ficam como você escreveu.
 
 Fica em português: a CLI `lida` (comandos e respostas), as notas das versões antigas em Novidades e correções e os
 nomes dos canais de notificação no Android, que seguem o idioma do sistema.
+
+## Ofensiva
+
+A **ofensiva** conta os dias seguidos em que você cumpriu uma parte do que estava programado: as tarefas com prazo no
+dia e os hábitos do dia. A meta padrão é **50%** e muda em **Ajustes > Jogo > Meta da ofensiva** (25, 50, 75 ou 100%).
+Tarefas adiantadas, atrasadas ou sem data concluídas no dia contam a favor. Num dia sem nada programado, basta concluir
+uma coisa. **Dias de folga** e a **Folga dos hábitos** não quebram a ofensiva (e não somam). Tudo sai dos dados
+sincronizados, então todos os aparelhos mostram o mesmo número.
+
+Em **Hoje**, a chama ao lado da saudação acende quando a meta do dia vem; tocar abre a ofensiva com o Lidinho, o que
+falta hoje, a semana e a melhor ofensiva. O Lidinho muda de cara: **manhã** (animado), **feito** (comemorando),
+**urgente** (bravo, das 18h em diante sem a meta), **pijama** (meta batida, depois das 21h), **quebrada** (chorando, no
+dia seguinte a uma ofensiva que quebrou) e **abandonado** (cinza e com teia, depois de 3 dias sem nada). As caras saem
+de `python3 scripts/lidinho-moods.py`.
 
 ## Lembretes
 
@@ -479,7 +499,9 @@ No editor de cada um, escolha um toque em **Alarme de tela cheia** (rotinas e h�
 - **Limite de 10 alarmes ligados** ao mesmo tempo: alarme demais vira barulho e se aprende a ignorar.
 - **Android**: agendado no sistema como despertador (toca com o app fechado, o celular bloqueado e depois de
   reiniciar), no canal de alarme, com o brilho no máximo enquanto toca. No Android 14+, libere **Notificações em tela
-  cheia** em Ajustes > Alarmes (sem isso, chega como notificação com os mesmos botões).
+  cheia** em Ajustes > Alarmes (sem isso, chega como notificação com os mesmos botões). Para a tela abrir também com o
+  celular em uso, libere **Sobrepor a outros apps** (o atalho aparece em Ajustes > Alarmes quando falta). A própria
+  tela toca o som e vibra, mesmo sem a permissão de notificações.
 - **Linux**: com o app aberto ou na bandeja, a janela vem para a frente em tela cheia. **Web**: só com o Lida aberto.
 - **Testar o alarme** em Ajustes mostra a tela na hora (no Android, em 3 segundos: bloqueie o celular para ver).
 
@@ -512,6 +534,12 @@ No editor de cada um, escolha um toque em **Alarme de tela cheia** (rotinas e h�
 ## Widgets (Android)
 
 **Lida · Anéis**: três anéis do dia — tarefas (fora), hábitos (meio) e água (dentro) — com os números ao lado.
+
+**Lida · Ofensiva**: o Lidinho, a ofensiva e o que falta hoje. A cara muda com a hora mesmo com o app fechado (o widget
+se atualiza a cada meia hora); tocar abre a ofensiva no app.
+
+**Lida · IPL da semana** (grande): barras com a nota de cada um dos últimos 7 dias, a média e o melhor dia. Tocar abre a
+aba Eu.
 
 
 Segure o dedo na tela inicial > **Widgets** > **Lida · Hoje**. Mostra o progresso do dia, as próximas tarefas

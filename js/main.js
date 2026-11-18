@@ -19,6 +19,7 @@ import { initUpdates } from './views/update.js';
 import { initAchievements } from './views/achievements.js';
 import { initAlarms, alarmLink } from './views/alarm.js';
 import { loadDict, startDomTranslation, t } from './core/i18n.js';
+import { openStreak, streakData, streakTexts, iplWeekData } from './views/streak.js';
 import { loadCreds, saveCreds, startFileSync } from './views/cloudfiles.js';
 import { initSound } from './core/sound.js';
 import { grantPastTitles, itemsGiftText } from './core/game.js';
@@ -475,8 +476,8 @@ const updateWidget = debounce(() => {
   const rings = { tasksDone: g.tasks.done, tasksTotal: g.tasks.total, habitsDone: g.habits.done, habitsTotal: g.habits.total, waterMl: g.water.ml, waterGoal: g.water.goal };
   const total = B.today.length + B.doneToday.length;
   // os textos fixos do widget vão junto, no idioma do app
-  const txt = { today: t('Hoje'), tapDay: t('Toque para abrir o Lida e ver o seu dia.'), allDone: t('Tudo feito por hoje.'), freeDay: t('Dia livre. Toque para planejar.'), tasks: t('Tarefas'), habits: t('Hábitos'), water: t('Água'), locale: LOC };
-  call('LidaWidget', 'update', { data: JSON.stringify({ date: d, title: t('Hoje'), sub: t(`${B.doneToday.length} de ${total}`), done: B.doneToday.length, total, tasks, footer, rings, txt }) });
+  const txt = { today: t('Hoje'), tapDay: t('Toque para abrir o Lida e ver o seu dia.'), allDone: t('Tudo feito por hoje.'), freeDay: t('Dia livre. Toque para planejar.'), tasks: t('Tarefas'), habits: t('Hábitos'), water: t('Água'), locale: LOC, ...streakTexts() };
+  call('LidaWidget', 'update', { data: JSON.stringify({ date: d, title: t('Hoje'), sub: t(`${B.doneToday.length} de ${total}`), done: B.doneToday.length, total, tasks, footer, rings, txt, streak: streakData(S), iplWeek: iplWeekData(S) }) });
 }, 1500);
 
 // Links lida://secao (vindos do widget) abrem a seção certa.
@@ -486,6 +487,7 @@ function deepLinks() {
   const go = (url) => {
     if (alarmLink(url)) return; // "Concluir" no alarme nativo
     const m = String(url || '').match(/^lida:\/\/([a-z-]+)/);
+    if (m?.[1] === 'ofensiva') return setTimeout(openStreak, 400); // widget da ofensiva
     if (m) location.hash = m[1];
   };
   A.addListener('appUrlOpen', (e) => go(e?.url));

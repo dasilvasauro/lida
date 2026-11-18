@@ -56,7 +56,7 @@ if [ "$UNINSTALL" = 1 ]; then
   rm -f "$DATA/applications/$APP_ID.desktop" "$CONF/autostart/$APP_ID.desktop"
   rm -f "$DATA"/icons/hicolor/*/apps/"$APP_ID".png "$DATA"/icons/hicolor/*/apps/"$APP_ID".svg "$DATA"/icons/hicolor/*/status/"$APP_ID"-tray.*
   rm -f "$DATA/bash-completion/completions/lida" "$DATA/zsh/site-functions/_lida" "$CONF/fish/completions/lida.fish"
-  for w in org.lida.foco org.lida.aneis; do
+  for w in org.lida.foco org.lida.aneis org.lida.ofensiva org.lida.semana; do
     if command -v kpackagetool6 >/dev/null; then kpackagetool6 -t Plasma/Applet -r "$w" >/dev/null 2>&1 || true; fi
     rm -rf "$DATA/plasma/plasmoids/$w"
   done
@@ -195,7 +195,7 @@ if [ "$AUTOSTART" = 1 ]; then
 fi
 
 # ---------------------------------------------------------------- widgets do Plasma
-for w in org.lida.foco org.lida.aneis; do
+for w in org.lida.foco org.lida.aneis org.lida.ofensiva org.lida.semana; do
   src="$HERE/plasmoids/$w"
   if command -v kpackagetool6 >/dev/null; then
     if kpackagetool6 -t Plasma/Applet -s "$w" >/dev/null 2>&1; then
@@ -209,7 +209,7 @@ for w in org.lida.foco org.lida.aneis; do
     cp -r "$src" "$DATA/plasma/plasmoids/$w"
   fi
 done
-ok "Widgets do Plasma: Lida · Foco e Lida · Anéis (clique com o botão direito no painel > Adicionar widgets)"
+ok "Widgets do Plasma: Lida · Foco, Anéis, Ofensiva e IPL da semana (clique com o botão direito no painel > Adicionar widgets)"
 
 # ---------------------------------------------------------------- completar comandos
 mkdir -p "$DATA/bash-completion/completions" "$DATA/zsh/site-functions" "$CONF/fish/completions"

@@ -22,6 +22,7 @@ import { openExternal } from '../core/net.js';
 import { TONES, TONE_ORDER, MAX_ALARMS, alarmCount, alarmStyle, defaultTone } from '../core/alarms.js';
 import { testAlarm, nativeAlarms } from './alarm.js';
 import { tr, lang, setLang, LANGS } from '../core/i18n.js';
+import { STREAK_GOALS, streakGoal } from '../core/streak.js';
 
 const toggle = (name, on, label) => `<span class="toggle"><input type="checkbox" data-${name}${on ? ' checked' : ''} aria-label="${esc(label)}"><i></i></span>`;
 // Para linhas que não são <label> (têm outro controle dentro): o próprio botão vira o rótulo.
@@ -44,7 +45,7 @@ function lockLabel(id) {
 const CATS = {
   conta: { name: 'Conta e sincronização', icon: 'user', sub: () => (app.demo ? 'Modo demo' : app.mode === 'cloud' ? 'Conta Google' : app.mode === 'files' ? providerName(app.syncKind) : 'Somente neste aparelho') },
   aparencia: { name: 'Aparência e idioma', icon: 'palette', sub: () => `${themeName(storedAppearance().theme)} · ${FONTS[storedAppearance().font]?.name || ''} · ${LANGS[lang()]}` },
-  jogo: { name: 'Jogo', icon: 'trophy', sub: () => 'Estilo de jogo, punições e dias de folga' },
+  jogo: { name: 'Jogo', icon: 'trophy', sub: () => 'Estilo de jogo, punições, dias de folga e meta da ofensiva' },
   sons: { name: 'Sons e vibração', icon: 'volume', sub: () => (soundPrefs().on ? 'Sons ligados' : 'Sons desligados') },
   lembretes: { name: 'Lembretes', icon: 'bell', sub: () => (notify.notifyPrefs().on ? 'Ligados' : 'Desligados') },
   alarmes: { name: 'Alarmes', icon: 'timer', sub: (S) => `${alarmCount(S)} de ${MAX_ALARMS} ligados` },
@@ -122,6 +123,8 @@ export const settingsView = {
         <label class="set-row">${icon('flag')}<span class="grow">Punições<small>Tarefa que vence tira XP e ouro (sem nunca baixar de nível)</small></span>${toggle('punish', S.prefs.punishments !== false, 'Punições')}</label>
         <div class="set-row col"><span class="grow">Dias de folga<small>Dias de folga não são cobrados no IPL; o que você fizer neles conta a favor</small></span>
           <div class="wdays small">${[1, 2, 3, 4, 5, 6, 0].map((d) => `<label><input type="checkbox" data-dayoff value="${d}"${(S.prefs.daysOff || []).includes(d) ? ' checked' : ''}><span title="${WD_SHORT[d]}">${WD_LETTER[d]}</span></label>`).join('')}</div></div>
+        <div class="set-row col"><span class="grow">Meta da ofensiva<small>Quanto do que estava programado no dia (tarefas e hábitos) precisa ser feito para o dia contar na ofensiva</small></span>
+          <div class="seg small" role="radiogroup" aria-label="Meta da ofensiva">${STREAK_GOALS.map((g) => `<button type="button" role="radio" aria-checked="${streakGoal(S) === g}" class="${streakGoal(S) === g ? 'on' : ''}" data-sgoal="${g}">${g}%</button>`).join('')}</div></div>
       </div></section>
 
       <section class="set-group" data-cat="sons"><h2>Sons e vibração</h2><div class="set-list">
@@ -352,6 +355,7 @@ function bind(el, S) {
     }),
   );
   el.querySelector('[data-punish]').onchange = (e) => savePrefs({ punishments: e.target.checked });
+  el.querySelectorAll('[data-sgoal]').forEach((b) => (b.onclick = () => savePrefs({ streakGoal: Number(b.dataset.sgoal) }).then(rerender)));
   el.querySelectorAll('[data-dayoff]').forEach((c) => (c.onchange = () => savePrefs({ daysOff: [...el.querySelectorAll('[data-dayoff]:checked')].map((x) => Number(x.value)) })));
 
   el.querySelector('[data-name]').onclick = async () => {

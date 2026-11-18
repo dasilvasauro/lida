@@ -26,6 +26,8 @@ public class LidaWidgetPlugin extends Plugin {
         sp.edit().putString("data", data).apply();
         TodayWidget.refreshAll(ctx);
         RingsWidget.refreshAll(ctx);
+        StreakWidget.refreshAll(ctx);
+        WeekWidget.refreshAll(ctx);
         call.resolve();
     }
 }

@@ -12,7 +12,7 @@ import sys
 
 import cv2
 import numpy as np
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFilter
 from scipy import ndimage
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
@@ -118,8 +118,6 @@ def smile_open(d, w=44, h=34):
     d.polygon(S(pts), outline=INK, width=4 * K)
 
 
-def shine_layer(fig):
-    return fig
 
 
 def star(d, c, r, fill, outline=INK):

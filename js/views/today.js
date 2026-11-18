@@ -14,6 +14,7 @@ import { focusCard, bindFocusCard } from './focus.js';
 import { focusedTask } from '../core/focus.js';
 import { viewBar, bindViewBar, isBoardMode, kanban, bindKanban } from './kanban.js';
 import { t } from '../core/i18n.js';
+import { streakPill, bindStreak } from './streak.js';
 
 function greeting() {
   const h = now().getHours();
@@ -37,7 +38,7 @@ export const todayView = {
     el.innerHTML = `
       <div class="hello"><div class="grow"><h2>${esc(greeting())}</h2><p class="hint">${
         total ? `${fmtInt(B.doneToday.length)} de ${plural(total, 'tarefa concluída', 'tarefas concluídas')} hoje` : 'Nenhuma tarefa marcada para hoje'
-      }</p></div>${total ? ring(B.doneToday.length / total, { size: 48, stroke: 5, label: `${B.doneToday.length} de ${total} concluídas` }) : ''}</div>
+      }</p></div>${streakPill(S)}${total ? ring(B.doneToday.length / total, { size: 48, stroke: 5, label: `${B.doneToday.length} de ${total} concluídas` }) : ''}</div>
       ${focusCard(S)}
       ${checkinCard(S, day)}
       ${moodPicker(S, day)}
@@ -76,6 +77,7 @@ export const todayView = {
     bindKanban(el);
     bindSprint(el);
     bindMood(el);
+    bindStreak(el);
     bindCheckin(el);
     bindFocusCard(el);
     el.querySelectorAll('[data-tool]').forEach((b) => (b.onclick = () => app.actions.tool(b.dataset.tool)));

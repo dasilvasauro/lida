@@ -1,0 +1,15 @@
+{
+    "KPlugin": {
+        "Id": "org.lida.semana",
+        "Name": "Lida · IPL da semana",
+        "Description": "A nota (IPL) de cada um dos últimos 7 dias e a média",
+        "Icon": "io.github.dasilvasauro.lida",
+        "Category": "Utilities",
+        "License": "MIT",
+        "Version": "1.0.0",
+        "Website": "https://dasilvasauro.github.io/lida/",
+        "Authors": [{ "Name": "Lida" }]
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "KPackageStructure": "Plasma/Applet"
+}

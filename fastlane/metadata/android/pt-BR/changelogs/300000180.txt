@@ -1,0 +1,5 @@
+Ofensiva, widgets novos e alarmes de confiança
+
+• Novo: Ofensiva: dias seguidos cumprindo uma parte do que estava programado (tarefas do dia e hábitos). A meta é 50% e dá para mudar em Ajustes > Jogo. Tarefas adiantadas ou atrasadas concluídas no dia contam a favor; dias de folga e a Folga dos hábitos não quebram. A chama fica em Hoje e acende quando a meta do dia vem.
+• Novo: Lidinho com seis caras para a ofensiva: animado de manhã,…
+Mais em Ajustes > Novidades e correções.

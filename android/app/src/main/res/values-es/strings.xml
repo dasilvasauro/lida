@@ -23,4 +23,11 @@
     <string name="widget_today">Hoy</string>
     <string name="widget_tap">Toca para abrir Lida.</string>
     <string name="ch_alarm_quiet">Alarma sonando (sin sonido)</string>
+    <string name="widget_streak_name">Lida · Racha</string>
+    <string name="widget_streak_desc">Lidinho, tu racha y lo que falta hoy</string>
+    <string name="widget_streak_day">día de racha</string>
+    <string name="widget_streak_days">días de racha</string>
+    <string name="widget_streak_open">Abre Lida para empezar.</string>
+    <string name="widget_week_name">IPL de la semana</string>
+    <string name="widget_week_desc">La nota de cada uno de los últimos 7 días</string>
 </resources>

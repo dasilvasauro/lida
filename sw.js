@@ -2,7 +2,7 @@
 // O app inteiro funciona offline depois da primeira abertura.
 // Ao publicar uma nova versão, aumente VERSION aqui e app.version em js/state.js.
 // A lista SHELL é conferida pelos testes (npm test): todo arquivo do app precisa estar nela.
-const VERSION = 'lida-v3.0.0-alfa.17';
+const VERSION = 'lida-v3.0.0-alfa.18';
 const SHELL = [
   './',
   'index.html',
@@ -86,6 +86,7 @@ const SHELL = [
   'js/core/simulate.js',
   'js/core/sound.js',
   'js/core/store.js',
+  'js/core/streak.js',
   'js/core/sync.js',
   'js/core/tasks.js',
   'js/desktop.js',
@@ -132,6 +133,7 @@ const SHELL = [
   'js/views/search.js',
   'js/views/settings.js',
   'js/views/shop.js',
+  'js/views/streak.js',
   'js/views/summary.js',
   'js/views/sync.js',
   'js/views/tasks.js',

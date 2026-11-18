@@ -22,6 +22,7 @@ import * as notify from './core/notify.js';
 import { today } from './lib/clock.js';
 import { addDays, norm, ymOf, debounce } from './lib/util.js';
 import { lang, locale, t as tt } from './core/i18n.js';
+import { streakData, iplWeekData } from './views/streak.js';
 
 const D = () => window.__LIDA_DESKTOP__ || null;
 export const isDesktop = () => !!D();
@@ -150,6 +151,19 @@ const PLASMA_TEXTS = [
   'Hábitos',
   'Água',
   'IPL de hoje: {0}',
+  // ofensiva e IPL da semana
+  'dia de ofensiva',
+  'dias de ofensiva',
+  'Abra o Lida para começar.',
+  'Bom dia! Bora manter a ofensiva.',
+  'Ofensiva garantida hoje!',
+  'Meta batida. Boa noite!',
+  'O dia está acabando: falta pouco para manter a ofensiva!',
+  'A ofensiva quebrou. Recomece hoje.',
+  'Faz dias que você não aparece…',
+  'Melhor ofensiva: {0}',
+  'Lida · Ofensiva',
+  'IPL da semana',
 ];
 const plasmaTexts = () => (lang() === 'pt' ? {} : Object.fromEntries(PLASMA_TEXTS.map((k) => [k, tt(k)])));
 
@@ -168,6 +182,8 @@ function stateNow() {
     lang: lang(),
     locale: locale(),
     txt: plasmaTexts(),
+    streak: streakData(S),
+    iplWeek: iplWeekData(S),
     user: app.user ? { name: app.user.displayName || '', email: app.user.email || '' } : null,
     mode: app.mode,
     glance: g,

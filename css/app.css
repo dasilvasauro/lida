@@ -760,6 +760,29 @@ button.set-row:hover { background: var(--surface-2); }
 .hello { display: flex; align-items: center; gap: .9333rem; margin: .4rem 0 .9333rem; }
 .hello h2 { font-size: 1.2667rem; }
 .hello .grow { flex: 1; min-width: 0; }
+/* Ofensiva: chama apagada até a meta do dia vir */
+.streak-pill { display: inline-flex; align-items: center; gap: .2667rem; height: 2.4rem; padding: 0 .8rem 0 .6rem; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); color: var(--muted); font-weight: 800; font-size: 1rem; font-variant-numeric: tabular-nums; }
+.streak-pill .ic { width: 1.2rem; height: 1.2rem; }
+.streak-pill.lit { border-color: transparent; background: linear-gradient(135deg, #ff9f2e, #ff5e3a); color: #fff; }
+.streak-sheet { display: grid; justify-items: center; text-align: center; gap: .4rem; }
+.streak-lidi { width: 9.3333rem; height: 9.3333rem; margin: -.4rem 0 -.2667rem; }
+.streak-num { display: inline-flex; align-items: center; gap: .3rem; font-size: 2.4rem; font-weight: 800; line-height: 1; color: var(--muted); font-variant-numeric: tabular-nums; }
+.streak-num .ic { width: 2.1rem; height: 2.1rem; }
+.streak-num.lit { color: #ff7a2e; }
+.streak-sub { margin: 0; color: var(--muted); font-weight: 700; font-size: .9rem; }
+.streak-msg { margin: .2667rem 0 .4rem; font-weight: 700; }
+.streak-today { width: 100%; display: grid; gap: .4rem; }
+.streak-bar { position: relative; height: .6rem; border-radius: 99px; background: var(--surface-2); overflow: visible; }
+.streak-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: linear-gradient(90deg, #ffb340, #ff5e3a); }
+.streak-bar b { position: absolute; top: -.2667rem; bottom: -.2667rem; width: 2px; background: var(--text); opacity: .55; }
+.streak-today small { color: var(--muted); font-size: .8rem; }
+.streak-week { display: flex; justify-content: center; gap: .5333rem; list-style: none; margin: .6667rem 0 .2667rem; padding: 0; }
+.streak-week li { display: grid; justify-items: center; gap: .2rem; font-size: .7333rem; font-weight: 700; color: var(--muted); }
+.streak-week i { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: var(--surface-2); color: var(--dim); }
+.streak-week .st-met i { background: linear-gradient(135deg, #ffb340, #ff5e3a); color: #fff; }
+.streak-week .st-miss i { color: var(--neg, #e5484d); }
+.streak-week .st-open i { box-shadow: inset 0 0 0 2px var(--line); background: none; }
+.streak-best { margin: 0; color: var(--muted); font-size: .8667rem; display: inline-flex; align-items: center; gap: .3rem; }
 
 /* ---------- Adicionar rápido (dentro da lista) ---------- */
 .quick-add { display: flex; align-items: center; gap: .8rem; padding: .4rem 2px; border-bottom: 1px solid transparent; }

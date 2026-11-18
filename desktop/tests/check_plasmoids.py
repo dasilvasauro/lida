@@ -8,6 +8,7 @@ widget de abrir. Os módulos de mentira imitam só o que os widgets usam.
 """
 
 import json
+import shutil
 import os
 import re
 import sys
@@ -35,12 +36,21 @@ FIXTURE = {
     "inbox": 1,
     "habits": [{"id": "h1", "title": "Ler", "icon": "📚", "goal": 10, "count": 4, "done": False, "scheduled": True, "streak": 5}],
     "water": {"ml": 750, "goal": 2000, "glass": 250, "bottle": 500},
+    "streak": {"count": 12, "best": 20, "todayMet": False, "broken": 0, "lastActive": "2000-01-01", "pct": 40, "goal": 50, "line": "Faltam 2 para a meta de hoje",
+               "week": [{"l": l, "state": s} for l, s in zip("DSTQQSS", ["met", "met", "off", "met", "met", "met", "open"])]},
+    "iplWeek": {"title": "IPL da semana", "avg": "Média 71", "note": "Melhor dia: 88",
+                "days": [{"d": "x", "l": l, "s": s, "today": i == 6} for i, (l, s) in enumerate(zip("DSTQQSS", [62, 88, None, 74, 55, 70, 41]))]},
 }
 
 
 def check(widget):
     src = PLASMOIDS / widget / "contents" / "ui"
-    tmp = Path(tempfile.mkdtemp())
+    base = Path(tempfile.mkdtemp())
+    tmp = base / "ui"
+    tmp.mkdir()
+    img = PLASMOIDS / widget / "contents" / "images"
+    if img.exists():
+        shutil.copytree(img, base / "images")
     for f in src.glob("*.js"):
         (tmp / f.name).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
     for f in src.glob("*.qml"):
@@ -65,7 +75,7 @@ def shoot(results, out_dir):
 
 def main():
     app = QGuiApplication(sys.argv)
-    results = {w: check(w) for w in ("org.lida.foco", "org.lida.aneis")}
+    results = {w: check(w) for w in ("org.lida.foco", "org.lida.aneis", "org.lida.ofensiva", "org.lida.semana")}
     failed = []
 
     def done():

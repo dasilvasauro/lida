@@ -23,4 +23,11 @@
     <string name="widget_today">Today</string>
     <string name="widget_tap">Tap to open Lida.</string>
     <string name="ch_alarm_quiet">Alarm ringing (silent)</string>
+    <string name="widget_streak_name">Lida · Streak</string>
+    <string name="widget_streak_desc">Lidinho, your streak and what is left today</string>
+    <string name="widget_streak_day">day streak</string>
+    <string name="widget_streak_days">day streak</string>
+    <string name="widget_streak_open">Open Lida to start.</string>
+    <string name="widget_week_name">IPL this week</string>
+    <string name="widget_week_desc">The score of each of the last 7 days</string>
 </resources>

@@ -29,4 +29,11 @@
     </style>
     <string name="widget_today">Hoje</string>
     <string name="widget_tap">Toque para abrir o Lida.</string>
+    <string name="widget_streak_name">Lida · Ofensiva</string>
+    <string name="widget_streak_desc">O Lidinho, a ofensiva e o que falta hoje</string>
+    <string name="widget_streak_day">dia de ofensiva</string>
+    <string name="widget_streak_days">dias de ofensiva</string>
+    <string name="widget_streak_open">Abra o Lida para começar.</string>
+    <string name="widget_week_name">IPL da semana</string>
+    <string name="widget_week_desc">A nota de cada dia dos últimos 7 dias</string>
 </resources>

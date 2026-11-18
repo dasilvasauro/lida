@@ -1,0 +1,5 @@
+Streak, new widgets and alarms you can trust
+
+• New: Streak: days in a row completing part of what was scheduled (the day's tasks and habits). The goal is 50% and can be changed in Settings > Game. Tasks done ahead of time or late count on the day you complete them; days off and the Habit Day Off don't break it. The flame sits in Today and lights up when the day's goal is reached.
+• New: Lidinho with six faces for the streak: cheerful…
+More in Settings > What's new and fixes.

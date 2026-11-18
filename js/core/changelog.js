@@ -4,6 +4,47 @@
 // en/es (opcional): { title, items: [textos na mesma ordem] } para quem usa o app em inglês ou espanhol.
 export const CHANGELOG = [
   {
+    v: '3.0.0-alfa.18',
+    date: '2026-11-18',
+    title: 'Ofensiva, widgets novos e alarmes de confiança',
+    items: [
+      ['novo', 'Ofensiva: dias seguidos cumprindo uma parte do que estava programado (tarefas do dia e hábitos). A meta é 50% e dá para mudar em Ajustes > Jogo. Tarefas adiantadas ou atrasadas concluídas no dia contam a favor; dias de folga e a Folga dos hábitos não quebram. A chama fica em Hoje e acende quando a meta do dia vem.'],
+      ['novo', 'Lidinho com seis caras para a ofensiva: animado de manhã, comemorando, bravo quando o dia está acabando sem a meta, de pijama depois de cumprir, chorando quando a ofensiva quebra e empoeirado quando o Lida fica abandonado.'],
+      ['novo', 'Widgets novos no Android e no Plasma: Ofensiva (o Lidinho muda de cara com a hora, mesmo com o app fechado) e IPL da semana (a nota de cada dia, a média e o melhor dia).'],
+      ['melhoria', 'Ajustes em seções: um índice com Conta, Aparência e idioma, Jogo, Sons, Lembretes, Alarmes, Foco, Backup e Sobre, cada uma na sua página.'],
+      ['melhoria', 'Tela do alarme mais limpa: a hora, o nome, a descrição e dois botões, sem o realce azul ao tocar. O LED agora é vermelho puro e pisca seco, sem brilho em volta.'],
+      ['correcao', 'Alarmes no Android: a tela abre também com o celular em uso (antes ficava só o aviso no topo), não fica mais escondida atrás do pedido de senha da tela de bloqueio e toca o próprio som mesmo sem a permissão de notificações. Em Ajustes > Alarmes, um atalho libera "Sobrepor a outros apps" quando faltar.'],
+      ['correcao', 'O resumo de ontem aparece uma vez só, no primeiro aparelho aberto no dia (antes repetia em cada aparelho), e só depois da revisão das tarefas esquecidas, com os números já fechados.'],
+      ['correcao', 'A janela de conquista não sai mais da tela no celular, e espera a revisão e os resumos fecharem antes de aparecer.'],
+    ],
+    en: {
+      title: 'Streak, new widgets and alarms you can trust',
+      items: [
+        'Streak: days in a row completing part of what was scheduled (the day\'s tasks and habits). The goal is 50% and can be changed in Settings > Game. Tasks done ahead of time or late count on the day you complete them; days off and the Habit Day Off don\'t break it. The flame sits in Today and lights up when the day\'s goal is reached.',
+        'Lidinho with six faces for the streak: cheerful in the morning, celebrating, angry when the day is ending without the goal, in pajamas after reaching it, crying when the streak breaks and dusty when Lida is abandoned.',
+        'New widgets on Android and Plasma: Streak (Lidinho changes his face with the time of day, even with the app closed) and IPL this week (each day\'s score, the average and the best day).',
+        'Settings in sections: an index with Account, Appearance and language, Game, Sounds, Reminders, Alarms, Focus, Backup and About, each on its own page.',
+        'Cleaner alarm screen: the time, the name, the description and two buttons, without the blue tap highlight. The LED is now pure red and blinks sharply, with no glow.',
+        'Alarms on Android: the screen now opens while you are using the phone (before, only the banner at the top showed), no longer hides behind the lock screen PIN, and plays its own sound even without notification permission. Settings > Alarms has a shortcut to allow "Display over other apps" when it is missing.',
+        'Yesterday\'s summary shows only once, on the first device opened that day (before, it repeated on each device), and only after reviewing forgotten tasks, with the final numbers.',
+        'The achievement window no longer runs off the screen on phones, and waits for the review and summaries to close before showing up.',
+      ],
+    },
+    es: {
+      title: 'Racha, widgets nuevos y alarmas confiables',
+      items: [
+        'Racha: días seguidos cumpliendo una parte de lo programado (tareas del día y hábitos). La meta es 50% y se puede cambiar en Ajustes > Juego. Las tareas adelantadas o atrasadas completadas en el día cuentan; los días de descanso y el Descanso de hábitos no la rompen. La llama está en Hoy y se enciende cuando llega la meta del día.',
+        'Lidinho con seis caras para la racha: animado por la mañana, celebrando, enojado cuando el día se acaba sin la meta, en pijama después de cumplirla, llorando cuando se rompe la racha y empolvado cuando Lida queda abandonado.',
+        'Widgets nuevos en Android y Plasma: Racha (Lidinho cambia de cara con la hora, incluso con la app cerrada) e IPL de la semana (la nota de cada día, el promedio y el mejor día).',
+        'Ajustes en secciones: un índice con Cuenta, Apariencia e idioma, Juego, Sonidos, Recordatorios, Alarmas, Enfoque, Copia de seguridad y Acerca de, cada una en su página.',
+        'Pantalla de alarma más limpia: la hora, el nombre, la descripción y dos botones, sin el resaltado azul al tocar. El LED ahora es rojo puro y parpadea seco, sin brillo alrededor.',
+        'Alarmas en Android: la pantalla se abre también con el teléfono en uso (antes solo aparecía el aviso arriba), ya no queda escondida detrás del PIN de la pantalla de bloqueo y suena por sí misma incluso sin permiso de notificaciones. En Ajustes > Alarmas, un atajo habilita "Mostrar sobre otras apps" cuando falta.',
+        'El resumen de ayer aparece una sola vez, en el primer dispositivo abierto en el día (antes se repetía en cada uno), y solo después de revisar las tareas olvidadas, con los números ya cerrados.',
+        'La ventana de logro ya no se sale de la pantalla en el teléfono, y espera a que se cierren la revisión y los resúmenes antes de aparecer.',
+      ],
+    },
+  },
+  {
     v: '3.0.0-alfa.17',
     date: '2026-11-12',
     title: 'Lida em inglês e espanhol, e alarmes de tela cheia',
