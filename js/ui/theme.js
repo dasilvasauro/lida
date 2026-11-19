@@ -152,6 +152,25 @@ const T = {
     pos: '#ffd400', neg: '#ff5c4d', warn: '#ff9f1a',
     p0: '#ff5c4d', p1: '#ff9f1a', p2: '#ffd400', p3: '#b8b4a2', p4: '#706c5e',
   },
+  // Monocromo invertido, com preto puro de fundo (economiza bateria em tela AMOLED).
+  amoledmono: {
+    name: 'AMOLED Mono', scheme: 'dark', unlock: { shop: true }, gray: true, isNew: true,
+    bg: '#000000', surface: '#0a0a0a', surface2: '#141414', surface3: '#1f1f1f', line: '#222222',
+    text: '#f5f5f5', muted: '#b0b0b0', dim: '#707070',
+    accent: '#f2f2f2', onAccent: '#000000', g1: '#f2f2f2', g2: '#6a6a6a',
+    pos: '#e6e6e6', neg: '#8f8f8f', warn: '#a8a8a8',
+    p0: '#ffffff', p1: '#cfcfcf', p2: '#a3a3a3', p3: '#777777', p4: '#4f4f4f',
+  },
+  // Cores do Ubuntu (Yaru escuro): laranja como ação e a barra lateral berinjela do terminal.
+  yaru: {
+    name: 'Yaru', scheme: 'dark', unlock: { shop: true }, isNew: true,
+    bg: '#1e1e1e', surface: '#2c2c2c', surface2: '#353535', surface3: '#404040', line: '#3a3a3a',
+    text: '#f7f7f7', muted: '#b9b9b9', dim: '#7d7d7d',
+    accent: '#e95420', onAccent: '#ffffff', g1: '#e95420', g2: '#f99b11',
+    pos: '#3eb34f', neg: '#f0566a', warn: '#f99b11',
+    p0: '#f0566a', p1: '#f5813f', p2: '#4a9fe0', p3: '#9a9a9a', p4: '#6a6a6a',
+    nav: { bg: '#300a24', text: '#f7f7f7', muted: '#cdb9c8', dim: '#93748b', line: '#3d1430', hover: '#45163a' },
+  },
   tumbleweed: {
     name: 'Tumbleweed', scheme: 'light', unlock: { shop: true },
     bg: '#f7f7f5', surface: '#ffffff', surface2: '#efefec', surface3: '#e2e2de', line: '#e3e3df',
@@ -164,7 +183,7 @@ const T = {
 };
 
 export const THEMES = T;
-export const THEME_ORDER = ['sistema', 'grafite', 'claro', 'amoled', 'eletrico', 'suave', 'manteiga', 'marinho', 'darcula', 'cinza', 'aqua', 'rosa', 'laranja', 'tomate', 'matrix', 'edna', 'monocromo', 'bumblebee', 'tumbleweed'];
+export const THEME_ORDER = ['sistema', 'grafite', 'claro', 'amoled', 'eletrico', 'suave', 'manteiga', 'marinho', 'darcula', 'cinza', 'aqua', 'rosa', 'laranja', 'tomate', 'matrix', 'edna', 'monocromo', 'amoledmono', 'bumblebee', 'tumbleweed', 'yaru'];
 export const themeName = (id) => (id === 'sistema' ? 'Automático' : T[id]?.name || id);
 export const isFreeTheme = (id) => id === 'sistema' || id === 'grafite' || id === 'claro';
 

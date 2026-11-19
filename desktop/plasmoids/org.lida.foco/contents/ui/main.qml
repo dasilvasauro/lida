@@ -15,7 +15,6 @@ import QtQuick.Layouts
 import QtQuick.Shapes
 import QtQuick.Controls as QQC2
 import org.kde.plasma.plasmoid
-import org.kde.plasma.plasma5support as Plasma5Support
 import org.kde.kirigami as Kirigami
 import "Icons.js" as Icons
 
@@ -24,7 +23,8 @@ PlasmoidItem {
 
     // ---------------------------------------------------------------- estado (vem do app)
     // Nomes que não colidem com propriedades do Item (focus, state...).
-    property var st: ({})
+    // Lido por LidaState.qml (só muda quando o conteúdo muda de verdade)
+    readonly property var st: reader.st
     readonly property bool appOn: !!st.running
     readonly property var fz: st.focus || ({})
     readonly property var fTask: fz.task || null
@@ -39,7 +39,6 @@ PlasmoidItem {
     readonly property var habitList: st.habits || []
     readonly property var water: st.water || ({ ml: 0, goal: 2000, glass: 250, bottle: 500 })
     property double now: Date.now()
-    property int lastDone: -1
     property string lastError: ""
     property string busyMsg: ""
     property int tab: 0
@@ -144,52 +143,36 @@ PlasmoidItem {
     }
 
     // ---------------------------------------------------------------- leitura e comandos
-    Plasma5Support.DataSource {
-        id: sh
-        engine: "executable"
-        connectedSources: []
-        property var callbacks: ({})
-        onNewData: function (source, data) {
-            var cb = callbacks[source]
-            if (cb) { delete callbacks[source]; cb(data["stdout"] || "", data["stderr"] || "", data["exit code"]) }
-            disconnectSource(source)
-        }
-        function run(cmd, cb) {
-            var full = cmd + " # " + Math.random().toString(36).slice(2)
-            if (cb) callbacks[full] = cb
-            connectSource(full)
+    LidaState {
+        id: reader
+        objectName: "reader"
+        interval: Plasmoid.configuration.pollInterval
+        bin: root.bin()
+        onUpdated: function (next, prev) {
+            // concluída agora (em qualquer lugar): "✓ +1" na barra
+            var d = next.glance && next.glance.tasks ? (next.glance.tasks.done || 0) : 0
+            var p = prev && prev.glance && prev.glance.tasks ? (prev.glance.tasks.done || 0) : -1
+            if (p >= 0 && next.date === prev.date && d > p) root.celebrate("+" + (d - p))
         }
     }
-    property bool reading: false
-    function refresh() {
-        if (reading) return
-        reading = true
-        sh.run("cat \"${XDG_CACHE_HOME:-$HOME/.cache}/lida/state.json\" 2>/dev/null", function (out) {
-            reading = false
-            if (!out) { st = ({ running: false }); return }
-            try {
-                var s = JSON.parse(out)
-                var d = (s.glance && s.glance.tasks) ? (s.glance.tasks.done || 0) : 0
-                if (lastDone >= 0 && s.date === st.date && d > lastDone) root.celebrate("+" + (d - lastDone))
-                lastDone = d
-                st = s
-            } catch (e) { }
-        })
-    }
+    function refresh() { reader.refresh() }
     function lida(args, msg) {
         busyMsg = msg || ""
-        sh.run(bin() + " --json " + args, function (out, err, code) {
+        reader.run(args, function (out, err, code) {
             busyMsg = ""
             lastError = ""
-            try { var r = JSON.parse(out); if (r && r.error) lastError = r.error } catch (e) { if (code) lastError = (err || root.tx("Não consegui falar com o Lida.")).split("\n")[0] }
-            refresh()
+            try { var r = JSON.parse(out); if (r && r.error) lastError = r.error } catch (e) { if (code) lastError = (err === "timeout" ? root.tx("O Lida não respondeu a tempo.") : (err || root.tx("Não consegui falar com o Lida.")).split("\n")[0]) }
+            reader.refresh()
         })
     }
-    function openApp(route) { sh.run(bin() + " abrir " + (route ? shq(route) : ""), null) }
-    function startApp() { sh.run("lida-desktop --background", function () { pollTimer.restart() }) }
+    function openApp(route) { reader.exec(bin() + " abrir " + (route ? shq(route) : ""), null) }
+    function startApp() { reader.exec("lida-desktop --background", function () { reader.refresh() }) }
 
-    Timer { id: pollTimer; interval: Math.max(500, Plasmoid.configuration.pollInterval); running: true; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
+    // Relógio da tela: só corre quando há tempo para mostrar ou o painel está aberto.
     Timer { interval: 1000; running: root.ticking || !!root.fTask || root.expanded; repeat: true; onTriggered: root.now = Date.now() }
+    // Ponto vermelho do foco: pisca seco (liga/desliga), sem animação contínua no painel.
+    property bool blinkOn: true
+    Timer { interval: root.ticking ? 650 : 1000; running: !!root.fTask; repeat: true; onTriggered: root.blinkOn = !root.blinkOn; onRunningChanged: root.blinkOn = true }
 
     // ================================================================= peças
     // Ícone do Lida, desenhado na cor pedida.
@@ -218,27 +201,27 @@ PlasmoidItem {
         }
     }
 
-    // Anel de progresso (tarefas do dia, hábitos).
-    component Ring: Canvas {
+    // Anel de progresso (tarefas do dia, hábitos). Shape em vez de Canvas: sem textura por anel.
+    component Ring: Item {
         id: ring
         property real value: 0
         property color color: root.cAccent
         property color track: root.tint(root.cText, 0.14)
         property real thick: 2.4
-        onValueChanged: requestPaint()
-        onColorChanged: requestPaint()
-        onTrackChanged: requestPaint()
-        onWidthChanged: requestPaint()
-        onPaint: {
-            var c = getContext("2d"); c.reset()
-            var r = Math.min(width, height) / 2 - thick / 2
-            c.lineWidth = thick; c.lineCap = "round"
-            c.strokeStyle = track
-            c.beginPath(); c.arc(width / 2, height / 2, r, 0, Math.PI * 2); c.stroke()
-            var v = Math.max(0, Math.min(1, value))
-            if (v <= 0) return
-            c.strokeStyle = color
-            c.beginPath(); c.arc(width / 2, height / 2, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (v >= 1 ? 0.9999 : v)); c.stroke()
+        readonly property real rad: Math.max(0.5, Math.min(width, height) / 2 - thick / 2)
+        readonly property real v: Math.max(0, Math.min(1, value))
+        Shape {
+            anchors.fill: parent
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                strokeColor: ring.track; strokeWidth: ring.thick; fillColor: "transparent"
+                PathAngleArc { centerX: ring.width / 2; centerY: ring.height / 2; radiusX: ring.rad; radiusY: ring.rad; startAngle: 0; sweepAngle: 360 }
+            }
+            ShapePath {
+                strokeColor: ring.v > 0 ? ring.color : "transparent"; strokeWidth: ring.thick; fillColor: "transparent"
+                capStyle: ShapePath.RoundCap
+                PathAngleArc { centerX: ring.width / 2; centerY: ring.height / 2; radiusX: ring.rad; radiusY: ring.rad; startAngle: -90; sweepAngle: 360 * Math.min(ring.v, 0.9999) }
+            }
         }
     }
 
@@ -268,7 +251,7 @@ PlasmoidItem {
             running: tk.overflow && tk.visible
             loops: Animation.Infinite
             onRunningChanged: if (!running) belt.x = 0
-            PauseAnimation { duration: 1600 }
+            PauseAnimation { duration: 3000 }
             NumberAnimation { target: belt; property: "x"; from: 0; to: -(tk.textW + tk.gap); duration: (tk.textW + tk.gap) / 38 * 1000 }
         }
     }
@@ -386,12 +369,7 @@ PlasmoidItem {
                 Rectangle {
                     width: 7; height: 7; radius: 3.5; color: root.cRec
                     anchors.verticalCenter: parent.verticalCenter
-                    SequentialAnimation on opacity {
-                        running: !!root.fTask
-                        loops: Animation.Infinite
-                        NumberAnimation { from: 1; to: 0.25; duration: root.ticking ? 650 : 1100; easing.type: Easing.InOutSine }
-                        NumberAnimation { from: 0.25; to: 1; duration: root.ticking ? 650 : 1100; easing.type: Easing.InOutSine }
-                    }
+                    opacity: root.blinkOn ? 1 : 0.25
                 }
                 Ticker {
                     anchors.verticalCenter: parent.verticalCenter
@@ -568,7 +546,7 @@ PlasmoidItem {
                         Rectangle {
                             visible: !!root.fTask
                             implicitWidth: 7; implicitHeight: 7; radius: 3.5; color: root.cRec
-                            SequentialAnimation on opacity { running: !!root.fTask; loops: Animation.Infinite; NumberAnimation { from: 1; to: 0.25; duration: 900 } NumberAnimation { from: 0.25; to: 1; duration: 900 } }
+                            opacity: root.blinkOn ? 1 : 0.25
                         }
                         LIcon { visible: !root.fTask; name: "timer"; size: 14; color: root.cMuted }
                         Text { text: root.fTask ? "EM FOCO" : "POMODORO"; color: root.fTask ? root.cRec : root.cMuted; font.pixelSize: 11; font.bold: true; font.letterSpacing: 0.8; Layout.fillWidth: true }

@@ -5,6 +5,7 @@ import { P, personal, app } from '../state.js';
 import { esc } from '../lib/util.js';
 import { icon, sheet, toast } from '../ui/ui.js';
 import { helpQ } from '../ui/help.js';
+import { mascotSvg, specialKey } from '../ui/mascot.js';
 import { play } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
 import { ACHIEVEMENTS, CATS, TIER_NAME, TIER_GOLD, achList, achName, achDesc, achById, achStats, checkAchievements, claimAchievement, toClaim, unseen, markShown } from '../core/achievements.js';
@@ -29,13 +30,14 @@ const T = {
   retroTitle: L('Você já tinha conquistas!', 'You already had achievements!', '¡Ya tenías logros!'),
   introTitle: L('Novidade: Conquistas', 'New: Achievements', 'Novedad: Logros'),
   introText: L(
-    'São {t} metas de longo prazo, em oito grupos: tarefas, IPL, água, sequências, hábitos, dias seguidos usando o Lida, dias de folga e jornada. Cada uma tem a sua medalha e paga de {min} a {max} de ouro, conforme a dificuldade. Você resgata o ouro quando quiser, na aba Eu.',
-    'There are {t} long-term goals in eight groups: tasks, IPL, water, streaks, habits, days in a row using Lida, days off and journey. Each one has its own medal and pays from {min} to {max} gold, depending on how hard it is. You claim the gold whenever you want, on the Me tab.',
-    'Son {t} metas de largo plazo en ocho grupos: tareas, IPL, agua, rachas, hábitos, días seguidos usando Lida, días libres y trayectoria. Cada una tiene su medalla y paga de {min} a {max} de oro, según la dificultad. Reclamas el oro cuando quieras, en la pestaña Yo.',
+    'São {t} metas de longo prazo, em nove grupos: tarefas, IPL, água, sequências, hábitos, dias seguidos usando o Lida, dias de folga, jornada e ofensiva. Cada uma tem a sua medalha e paga de {min} a {max} de ouro, conforme a dificuldade. Você resgata o ouro quando quiser, na aba Eu.',
+    'There are {t} long-term goals in nine groups: tasks, IPL, water, streaks, habits, days in a row using Lida, days off, journey and daily streak. Each one has its own medal and pays from {min} to {max} gold, depending on how hard it is. You claim the gold whenever you want, on the Me tab.',
+    'Son {t} metas de largo plazo en nueve grupos: tareas, IPL, agua, rachas, hábitos, días seguidos usando Lida, días libres, trayectoria y racha diaria. Cada una tiene su medalla y paga de {min} a {max} de oro, según la dificultad. Reclamas el oro cuando quieras, en la pestaña Yo.',
   ),
   introRetro: L('E o que você já fez conta: {n} já estão desbloqueadas, esperando o resgate.', 'And what you have already done counts: {n} are already unlocked, waiting to be claimed.', 'Y lo que ya hiciste cuenta: {n} ya están desbloqueados, esperando el reclamo.'),
   introNone: L('Quando você ganhar uma, a medalha aparece aqui, com suspense.', 'When you earn one, the medal shows up right here, with a bit of suspense.', 'Cuando ganes uno, la medalla aparece aquí, con suspenso.'),
   introGo: L('Ver as conquistas', 'See achievements', 'Ver los logros'),
+  kaizen: L('Lidinho Kaizen liberado: escolha em Ajustes > foto de perfil.', 'Kaizen Lidinho unlocked: pick it in Settings > profile picture.', 'Lidinho Kaizen desbloqueado: elígelo en Ajustes > foto de perfil.'),
   retroText: L('Pelo que você já fez no Lida, {n} conquistas foram desbloqueadas. O ouro está esperando por você.', 'Based on what you have already done in Lida, {n} achievements were unlocked. The gold is waiting for you.', 'Por lo que ya hiciste en Lida, se desbloquearon {n} logros. El oro te está esperando.'),
   next: L('Mais perto', 'Closest', 'Más cerca'),
   none: L('Conclua tarefas, cumpra hábitos e beba água: as conquistas aparecem aqui.', 'Complete tasks, keep habits and drink water: achievements show up here.', 'Completa tareas, cumple hábitos y bebe agua: los logros aparecen aquí.'),
@@ -153,7 +155,7 @@ export function reveal(a) {
       <div class="ach-stage"><div class="ach-rays" aria-hidden="true">${rays}</div>
         <div class="ach-coin"><div class="ach-face back">${icon('lock')}</div><div class="ach-face front">${medal(a, { size: 112 })}</div></div></div>
       <p class="ach-kicker" data-kick>${esc(tr(T.suspense))}</p>
-      <div class="ach-reveal"><small class="ach-tier t${a.tier}">${esc(tr(TIER_NAME[a.tier]))}</small><h2>${esc(achName(a))}</h2><p>${esc(achDesc(a))}</p>
+      <div class="ach-reveal"><small class="ach-tier t${a.tier}">${esc(tr(TIER_NAME[a.tier]))}</small><h2>${esc(achName(a))}</h2><p>${esc(achDesc(a))}</p>${a.id === 's_365' ? `<div class="ach-lidi">${mascotSvg(specialKey('kaizen'), { size: 120, cls: 'hop' })}<small>${esc(tr(T.kaizen))}</small></div>` : ''}
         <div class="ach-actions"><button type="button" class="btn ghost" data-later>${esc(tr(T.later))}</button><button type="button" class="btn primary" data-claim>${icon('coin')}${esc(fill(tr(T.claimAll), { g: num(a.gold) }))}</button></div></div>
     </div>`;
     document.body.appendChild(wrap);
@@ -203,7 +205,9 @@ export function initAchievements() {
         if (!app.firstRun) introNotice(first ? fresh.length : toClaim(P()).length);
         return;
       }
-      if (first && fresh.length > 1 && personal.get('ach__intro')) retroNotice(fresh.length);
+      // o que entrou de uma vez (primeira vez, ou um grupo novo de conquistas): um aviso só
+      const retroN = fresh.filter((x) => personal.get(`ach_${x.id}`)?.retro).length;
+      if (retroN > 1 && personal.get('ach__intro')) retroNotice(retroN);
       // Anima só aqui, se a pessoa está usando este aparelho agora, e marca para os outros não animarem.
       if (document.visibilityState !== 'visible') return;
       const show = unseen(P()).filter((a) => !queue.includes(a));

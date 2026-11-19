@@ -10,7 +10,8 @@ import { esc, fmtDayLong, plural, LOC } from '../lib/util.js';
 import { icon, toast } from '../ui/ui.js';
 import { play } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
-import { isBoardMode, viewBar, bindViewBar, kanban, bindKanban } from './kanban.js';
+import { isBoardMode, isCalMode, viewBar, bindViewBar, kanban, bindKanban } from './kanban.js';
+import { calendarView, bindCalendar } from './calendar.js';
 import { sprintCard, bindSprint } from './tasks.js';
 import { buckets } from '../core/tasks.js';
 
@@ -80,6 +81,17 @@ export const boardView = {
   sub: () => fmtDayLong(today()),
   render(el) {
     const S = P();
+    if (isCalMode('painel')) {
+      // Calendário no Painel: ocupa o lugar de Hoje e Planejar; o resumo do dia fica ao lado.
+      el.innerHTML = `<div class="board kb-wide">
+        <div class="board-col b-kb">${viewBar('painel')}${calendarView(S)}</div>
+        <aside class="board-col b-side" aria-label="Resumo do dia">${side(S)}</aside>
+      </div>`;
+      bindViewBar(el);
+      bindCalendar(el);
+      bindSide(el);
+      return;
+    }
     if (isBoardMode('painel')) {
       // Quadro no Painel: as colunas de tarefas ocupam o lugar de Hoje e Planejar; o resumo fica.
       const sp = buckets(S, today()).sprint;

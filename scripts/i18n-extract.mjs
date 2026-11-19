@@ -52,7 +52,7 @@ function strings(src) {
       if (src[i] === '$' && src[i + 1] === '{') {
         i += 2;
         // ${icon(...)} e ${helpQ(...)} viram outro elemento na tela: contam como marcação, não como lacuna
-        const isIcon = /^\s*(?:icon|helpQ)\(/.test(src.slice(i, i + 12));
+        const isIcon = /^\s*(?:icon|helpQ|newTag)\(/.test(src.slice(i, i + 12));
         code(true);
         buf += isIcon ? '<i>' : `{${ph++}}`;
         continue;

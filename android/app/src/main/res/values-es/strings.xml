@@ -30,4 +30,15 @@
     <string name="widget_streak_open">Abre Lida para empezar.</string>
     <string name="widget_week_name">IPL de la semana</string>
     <string name="widget_week_desc">La nota de cada uno de los últimos 7 días</string>
+    <string name="widget_quick_name">Lida · Añadido rápido</string>
+    <string name="widget_quick_desc">Anota una tarea sin abrir la app y completa las de hoy</string>
+    <string name="quick_add">Añadir tarea</string>
+    <string name="quick_hint">Pagar la luz mañana 9h p1 #casa</string>
+    <string name="quick_note">Se entienden fecha, hora, prioridad, #proyecto y @etiqueta. Sin fecha, va para hoy.</string>
+    <string name="quick_cancel">Cancelar</string>
+    <string name="quick_ok">Añadir</string>
+    <string name="quick_saved">Tarea anotada.</string>
+    <string name="quick_saved_later">Tarea anotada. Entra en Lida cuando abras la app.</string>
+    <string name="quick_empty">Nada pendiente para hoy. Toca + para anotar.</string>
+    <string name="quick_pending">anotada</string>
 </resources>

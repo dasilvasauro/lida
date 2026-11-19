@@ -16,16 +16,17 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 4. [Usar no Android (APK)](#usar-no-android-apk)
 5. [Lida para Linux](#lida-para-linux) (app, CLI `lida` e widgets do Plasma)
 6. [Idiomas](#idiomas)
-7. [Ofensiva](#ofensiva)
-8. [Lembretes](#lembretes)
-9. [Alarmes](#alarmes)
-10. [Foco](#foco)
-11. [Trazer os dados do Lida anterior](#trazer-os-dados-do-lida-anterior)
-12. [Privacidade e sincronização](#privacidade-e-sincronização)
-13. [Sua parte: publicar](#sua-parte-publicar)
-14. [Licença](#licença)
-15. [Desenvolvimento](#desenvolvimento)
-16. [Limites honestos](#limites-honestos)
+7. [Calendário](#calendário)
+8. [Ofensiva](#ofensiva)
+9. [Lembretes](#lembretes)
+10. [Alarmes](#alarmes)
+11. [Foco](#foco)
+12. [Trazer os dados do Lida anterior](#trazer-os-dados-do-lida-anterior)
+13. [Privacidade e sincronização](#privacidade-e-sincronização)
+14. [Sua parte: publicar](#sua-parte-publicar)
+15. [Licença](#licença)
+16. [Desenvolvimento](#desenvolvimento)
+17. [Limites honestos](#limites-honestos)
 
 ---
 
@@ -64,7 +65,8 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | alfa 17 | O app inteiro em **inglês e espanhol** (Ajustes > Idioma), **alarmes de tela cheia** com 6 toques, tema **AMOLED Azul**, água sempre azul | Pronta |
 | alfa 18 | **Ofensiva** (meta do dia ajustável) com o **Lidinho em seis caras**, widgets **Ofensiva** e **IPL da semana** (Android e Plasma), **Ajustes em seções**, alarmes que abrem com o celular em uso, resumo de ontem uma vez só por conta | Pronta |
 | alfa 19 | **Pomodoro novo** (escolha do tempo girando como um timer de cozinha, com vibração), **tique do relógio** e **metrônomo** (até 8/8, seis sons) no Pomodoro e no modo foco com tempo | Pronta |
-| alfa 20 | **Chave de recuperação** da senha, **exportar** tarefas e hábitos em CSV e tudo em JSON, **tour de boas-vindas** nas contas novas, **"?" de ajuda** nas seções e **manual** em Ajustes | **Esta versão** |
+| alfa 20 | **Chave de recuperação** da senha, **exportar** tarefas e hábitos em CSV e tudo em JSON, **tour de boas-vindas** nas contas novas, **"?" de ajuda** nas seções e **manual** em Ajustes | Pronta |
+| alfa 21 | **Calendário** (mês, semana e dia, com agendas externas: Google Agenda e links iCal), **widget de adição rápida** no Android, **conquistas da Ofensiva** e o **Lidinho Kaizen**, sons **Metal, Piano e Mokia**, temas **AMOLED Mono e Yaru** e o fim do vazamento de memória dos widgets do Plasma | **Esta versão** |
 
 ## Como o jogo funciona
 
@@ -194,9 +196,10 @@ arrastar; no toque, segure o cartão um instante e arraste (segurar e soltar sem
 o seu "Adicionar tarefa", que já cria a tarefa naquela coluna.
 
 **Temas da Loja:** Aqua, Matrix, Rosa, Tomate, Cinza, Laranja, **Monocromo** (tudo em cinza, até emojis e o
-Lidinho) e **Bumblebee** (preto e amarelo) por 2.500 de ouro; **Edna** (inspirado no tema do KDE, ardósia com
-destaque azul e gradiente verde-água → índigo) e **Tumbleweed** (claro, com a barra lateral preta e o verde do
-Evernote) por 3.000.
+Lidinho), **AMOLED Mono** (o Monocromo invertido, com preto puro) e **Bumblebee** (preto e amarelo) por 2.500 de ouro;
+**Edna** (inspirado no tema do KDE, ardósia com destaque azul e gradiente verde-água → índigo), **Tumbleweed** (claro,
+com a barra lateral preta e o verde do Evernote) e **Yaru** (escuro, nas cores do Ubuntu: laranja e a barra lateral
+berinjela) por 3.000. Temas, sons e recursos recém-chegados levam o selo **Novo**.
 
 **Sincronização visível:** na conta Google, o topo mostra o status e o horário da última sincronização
 ("Sincronizado · 14:32"). Um toque abre os detalhes: quantas alterações esperam para subir, **Sincronizar
@@ -230,8 +233,9 @@ seu título ou a inicial do nome.
 **Água em ofensiva:** a cada 7 dias seguidos batendo a meta de água, 200 XP e 200 de ouro (fora os 20 XP e 10 de
 ouro de cada dia).
 
-**Sons:** o conjunto Clássico é de graça; na Loja (aba Sons) há Retrô 8-bit, Madeira e sinos, Cristal e Digital
-(900 de ouro cada, valem em todos os aparelhos). Toque no alto-falante para ouvir antes de comprar; troque em Ajustes.
+**Sons:** o conjunto Clássico é de graça; na Loja (aba Sons) há Retrô 8-bit, Madeira e sinos, Cristal, Digital e os
+novos **Metal** (guitarra distorcida com acordes de quinta e um riff por nível), **Piano** e **Mokia** (bipes
+monofônicos de celular das antigas, com melodias próprias) por 900 de ouro cada, valendo em todos os aparelhos. Toque no alto-falante para ouvir antes de comprar; troque em Ajustes.
 
 **Fontes:** além das outras, a **VT323**, retrô de terminal antigo (aparece um pouco maior, porque o desenho dela é pequeno).
 
@@ -439,6 +443,17 @@ Clique com o botão direito no painel ou na área de trabalho > **Adicionar widg
 Todos leem o estado que o app grava em `~/.cache/lida/state.json` e agem pela CLI. Nas configurações do widget dá
 para mudar o comando (`lida`), a frequência de leitura e, no Foco, a largura do nome no painel.
 
+**Memória do plasmashell (alfa 21):** o motor "executable" do Plasma guarda a saída de cada comando numa tabela que
+nunca apaga entradas, e os widgets davam a cada leitura um nome novo: a cada 1,5 s nascia uma entrada que nunca
+morria, e o plasmashell crescia (e ficava mais lento) até ser reiniciado. Agora todos usam `LidaState.qml` (original
+em `desktop/plasmoids/shared/`, uma cópia em cada widget): a leitura usa sempre o mesmo nome, os comandos repetem até 4
+nomes (com fila), um comando travado é largado em 20 s, o estado só é trocado quando o conteúdo muda de verdade (sem o
+carimbo de hora), com o app fechado a leitura fica 4× mais lenta, e anéis e chama são desenhados com `Shape` em vez de
+`Canvas`. O ponto do foco pisca liga/desliga, sem animação contínua no painel. O teste
+`desktop/tests/check_plasmoids.py` simula centenas de leituras e comandos e falha se aparecer um nome novo sem limite.
+Depois de atualizar, reinicie o plasmashell uma vez (`systemctl --user restart plasma-plasmashell`) para soltar a
+memória antiga.
+
 ### Onde ficam as coisas
 
 | Caminho | O quê |
@@ -465,6 +480,34 @@ mês/dia). Nomes de tarefas, hábitos e projetos ficam como você escreveu.
 Fica em português: a CLI `lida` (comandos e respostas), as notas das versões antigas em Novidades e correções e os
 nomes dos canais de notificação no Android, que seguem o idioma do sistema.
 
+## Calendário
+
+Em **Hoje**, **Planejar**, no **Painel** e em cada projeto, o botão **Lista · Quadro · Calendário** ganhou a terceira
+opção (lembrada por tela neste aparelho). No projeto, o calendário mostra só as tarefas dele.
+
+- **Mês**: a grade inteira, com hoje destacado. Cada dia mostra as tarefas (cor da prioridade), os eventos e o
+  contador de hábitos (feitos/total; no futuro, quantos estão programados). No celular, os itens viram pontinhos.
+  Um toque escolhe o dia e mostra tudo dele embaixo (tarefas com o círculo de concluir, eventos, previstas, hábitos
+  e o campo de adicionar naquele dia); outro toque abre a linha do tempo do dia.
+- **Semana e Dia**: linha do tempo por hora, com a faixa "dia" para o que não tem horário e a linha vermelha de
+  agora. Horários que se sobrepõem dividem a largura. Um toque num horário vazio cria uma tarefa naquele dia e hora.
+- **Repetições**: a tarefa repetida existe uma vez (a ocorrência atual); as próximas aparecem esmaecidas como
+  **previstas**, calculadas com a mesma regra. As muito frequentes (todo dia, dias úteis, 5 ou mais dias da semana) e
+  as rotinas diárias não enchem o mês: viram uma faixa no topo ("Todo dia: Ler, Meditar"). Na semana e no dia, todas
+  aparecem. Tocar numa prevista abre a ocorrência atual.
+- **Editar**: tocar numa tarefa abre os detalhes; no computador, dá para arrastar uma tarefa para outro dia (mês e
+  faixa "dia") ou outro horário (linha do tempo). Os hábitos de hoje somam com um toque.
+- **Agendas externas** (ícone de calendário na barra): só leitura, os eventos ficam só na memória do aparelho
+  (baixados de novo a cada 15 minutos) e nunca vão para a nuvem do Lida. A lista de agendas sincroniza (cifrada).
+  - **Google Agenda**: pela conta Google, com a permissão de leitura da agenda; escolha quais agendas da conta
+    aparecem. Na web e no Android a permissão vale cerca de uma hora (depois, "Conectar" de novo); no app Linux, o
+    app guarda a permissão em `~/.config/lida/gcal-token.json` e renova sozinho. Precisa da configuração do passo 6
+    de "Sua parte".
+  - **Link iCal (.ics)**: o endereço secreto que Google Agenda, Outlook, iCloud e Nextcloud oferecem (`webcal://`
+    também vale). Entende eventos de dia inteiro, fusos (TZID), repetições (diária, semanal com dias, mensal com
+    "última sexta", anual), exceções e ocorrências remarcadas. Funciona no app Android e no do Linux; no navegador,
+    a maioria dos servidores bloqueia (CORS) e o Lida avisa.
+
 ## Ofensiva
 
 A **ofensiva** conta os dias seguidos em que você cumpriu uma parte do que estava programado: as tarefas com prazo no
@@ -478,6 +521,14 @@ falta hoje, a semana e a melhor ofensiva. O Lidinho muda de cara: **manhã** (an
 **urgente** (bravo, das 18h em diante sem a meta), **pijama** (meta batida, depois das 21h), **quebrada** (chorando, no
 dia seguinte a uma ofensiva que quebrou) e **abandonado** (cinza e com teia, depois de 3 dias sem nada). As caras saem
 de `python3 scripts/lidinho-moods.py`.
+
+**Conquistas da Ofensiva** (novo grupo): 3, 7, 14, 30, 60, 100, 180 e 365 dias seguidos, **Fênix** (chegar a 7 dias,
+deixar quebrar e chegar a 7 de novo) e **Tudo ou nada** (100% do programado em 10 e em 50 dias). Contas que já tinham
+ofensiva recebem de uma vez o que já alcançaram, num aviso só. Com **365 dias** vem o **Lidinho Kaizen** (melhoria
+contínua): todo em fogo, laranja, de óculos escuros. Ele aparece na coleção do Lidinho (seção Especiais) e pode ser a
+foto de perfil; uma vez liberado, fica, mesmo que a ofensiva quebre depois. O desenho sai de
+`python3 scripts/lidinho-costumes.py icons/lidinho kaizen` e a selfie de
+`python3 scripts/lidinho-selfie.py icons/lidinho icons/lidinho/selfie kaizen`.
 
 ## Lembretes
 
@@ -560,6 +611,13 @@ No editor de cada um, escolha um toque em **Alarme de tela cheia** (rotinas e h�
   para você ouvir. Preferência de cada aparelho; o volume segue também o de Ajustes > Sons.
 
 ## Widgets (Android)
+
+**Lida · Adição rápida**: o botão **+** abre uma janelinha com o teclado já aberto para anotar uma tarefa **sem abrir o
+app** (a mesma linguagem natural da adição rápida; sem data, vai para hoje). Embaixo, as tarefas de hoje e as
+atrasadas, cada uma com o círculo de **concluir** ali mesmo. Widgets do Android não aceitam campo de texto (é uma regra
+do Android, não do Capacitor), por isso a janelinha. O que é feito pelo widget aparece nele na hora (a concluída some,
+a anotada aparece como "anotada") e entra no Lida quando o app abre, ou na hora se ele já estiver aberto, com a
+recompensa normal. A fila fica nas preferências privadas do app até ser aplicada.
 
 **Lida · Anéis**: três anéis do dia — tarefas (fora), hábitos (meio) e água (dentro) — com os números ao lado.
 
@@ -713,7 +771,17 @@ O Nextcloud/WebDAV funciona sem nada disso. Para o Dropbox e o OneDrive, o Lida 
    `User.Read` e `offline_access`.
 5. Em **Visão geral**, copie o **ID do aplicativo (cliente)** para `microsoftClientId`.
 
-### 6. Testar
+### 6. Google Agenda no calendário (uma vez, opcional)
+
+1. No [Google Cloud Console](https://console.cloud.google.com/) do projeto **lida-81429** > **APIs e serviços** >
+   **Biblioteca** > ative a **Google Calendar API**.
+2. **Tela de consentimento OAuth** > **Escopos** > adicione `.../auth/calendar.readonly`. Enquanto o app não passar pela
+   verificação do Google, só as contas de **Usuários de teste** conseguem conectar (até 100) e aparece o aviso de "app
+   não verificado".
+3. Web e Android usam o mesmo login do Firebase (nada a mais). No app Linux, o cliente "App para computador" do
+   `~/.config/lida/google-oauth.json` serve também para a agenda.
+
+### 7. Testar
 
 Abra **Actions > Android > Run workflow** (branch `v3`). Em uns 5 minutos o APK aparece em Artifacts.
 Para testar a versão web da `v3` sem tirar o Lida atual do ar, rode localmente (abaixo).

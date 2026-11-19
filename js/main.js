@@ -42,7 +42,7 @@ import { boardView, isBoard, BOARD_MQ } from './views/board.js';
 import { glance } from './core/glance.js';
 import { initDesktop, isDesktop } from './desktop.js';
 import { initChartTips } from './ui/chart.js';
-import { editTask, openTask } from './views/tasks.js';
+import { editTask, openTask, addFromText } from './views/tasks.js';
 import { avatar } from './views/common.js';
 import { openPomodoro, initTimers, paintChip, pickFocus } from './views/focus.js';
 import { openBrain } from './views/brain.js';
@@ -514,9 +514,58 @@ const updateWidget = debounce(() => {
   const rings = { tasksDone: g.tasks.done, tasksTotal: g.tasks.total, habitsDone: g.habits.done, habitsTotal: g.habits.total, waterMl: g.water.ml, waterGoal: g.water.goal };
   const total = B.today.length + B.doneToday.length;
   // os textos fixos do widget vão junto, no idioma do app
-  const txt = { today: t('Hoje'), tapDay: t('Toque para abrir o Lida e ver o seu dia.'), allDone: t('Tudo feito por hoje.'), freeDay: t('Dia livre. Toque para planejar.'), tasks: t('Tarefas'), habits: t('Hábitos'), water: t('Água'), locale: LOC, ...streakTexts() };
-  call('LidaWidget', 'update', { data: JSON.stringify({ date: d, title: t('Hoje'), sub: t(`${B.doneToday.length} de ${total}`), done: B.doneToday.length, total, tasks, footer, rings, txt, streak: streakData(S), iplWeek: iplWeekData(S) }) });
+  const txt = {
+    today: t('Hoje'), tapDay: t('Toque para abrir o Lida e ver o seu dia.'), allDone: t('Tudo feito por hoje.'), freeDay: t('Dia livre. Toque para planejar.'), tasks: t('Tarefas'), habits: t('Hábitos'), water: t('Água'), locale: LOC,
+    // widget de adição rápida
+    quickEmpty: t('Nada pendente para hoje. Toque em + para anotar.'), noted: t('anotada'), more: t('+{0} no app'), ofN: t('{0} de {1}'),
+    ...streakTexts(),
+  };
+  // Adição rápida: as tarefas abertas de hoje (atrasadas primeiro), com id para concluir pelo widget
+  const quick = [...B.overdue, ...B.today].filter((x) => x.kind !== 'routine').slice(0, 20).map((x) => ({ id: x.id, t: x.title, time: x.time ? fmtTime(x.time) : '', p: x.priority || 'P4' }));
+  call('LidaWidget', 'update', { data: JSON.stringify({ date: d, title: t('Hoje'), sub: t(`${B.doneToday.length} de ${total}`), done: B.doneToday.length, total, tasks, quick, footer, rings, txt, streak: streakData(S), iplWeek: iplWeekData(S) }) });
 }, 1500);
+
+// Fila do widget de adição rápida (Android): tarefas anotadas e concluídas com o app fechado.
+// Aplica na ordem em que aconteceram e confirma cada operação (o widget tira da fila).
+let quickBusy = false;
+async function applyQuickQueue() {
+  if (!plugin('LidaWidget') || quickBusy) return;
+  quickBusy = true;
+  try {
+    const r = await call('LidaWidget', 'queue');
+    const ops = (r?.ops || []).slice().sort((a, b) => (a.at || 0) - (b.at || 0));
+    if (!ops.length) return;
+    const ok = [];
+    let added = 0;
+    let done = 0;
+    for (const o of ops) {
+      try {
+        if (o.op === 'add' && o.text) {
+          // datas do texto contam a partir do dia em que foi anotada; sem data, vai para hoje (nunca para trás)
+          const day = o.day || today();
+          const res = await addFromText(String(o.text).slice(0, 500), { due: day < today() ? today() : day }, day);
+          if (res.error) toast(`${t('Do widget')}: ${res.error}`, { ms: 6000 });
+          else added++;
+        } else if (o.op === 'done' && o.task) {
+          const tk = personal.get(o.task);
+          if (tk && !tk.done && !tk.deleted) {
+            await toggleTask(tk.id);
+            done++;
+          }
+        }
+      } catch {
+        /* uma operação ruim não trava as outras */
+      }
+      ok.push(o.id);
+    }
+    await call('LidaWidget', 'ack', { ids: ok });
+    if (added || done) toast([added ? t(added === 1 ? '1 tarefa anotada pelo widget' : `${added} tarefas anotadas pelo widget`) : '', done ? t(done === 1 ? '1 concluída pelo widget' : `${done} concluídas pelo widget`) : ''].filter(Boolean).join(' · '));
+  } catch {
+    /* sem o plugin (web/Linux) */
+  } finally {
+    quickBusy = false;
+  }
+}
 
 // Links lida://secao (vindos do widget) abrem a seção certa.
 function deepLinks() {
@@ -554,6 +603,10 @@ function start() {
   keyboard();
   deepLinks();
   updateWidget();
+  // adição rápida: ao abrir, ao voltar para o app e na hora (aviso do widget com o app aberto)
+  applyQuickQueue();
+  plugin('LidaWidget')?.addListener?.('quickQueue', () => applyQuickQueue());
+  plugin('App')?.addListener?.('resume', () => applyQuickQueue());
   initDesktop();
   initUpdates();
   initAchievements();

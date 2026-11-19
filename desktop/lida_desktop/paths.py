@@ -22,6 +22,7 @@ STATE_FILE = CACHE_DIR / "state.json"   # lido pelos widgets do Plasma (cat)
 LAST_FILE = CACHE_DIR / "last.json"     # última lista numerada da CLI
 SOCKET = RUNTIME / "lida-desktop.sock"  # CLI ↔ app
 OAUTH_FILE = CONFIG_DIR / "google-oauth.json"
+GCAL_FILE = CONFIG_DIR / "gcal-token.json"         # permissão da Google Agenda (refresh token)
 AUTOSTART_FILE = XDG_CONFIG / "autostart" / "io.github.dasilvasauro.lida.desktop"
 
 # Porta fixa: a origem (http://localhost:PORTA) é onde ficam os dados do navegador embutido,

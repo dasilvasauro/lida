@@ -46,7 +46,7 @@ export const ITEMS = {
 export const SHOP_GOLD = ['magicDice', 'xpBoost', 'goldBoost', 'respite', 'relief', 'bonusTask', 'extraP0', 'extraP1', 'changeModus', 'extraQuitter'];
 export const SHOP_VOUCHERS = ['freeze', 'autoFreeze', 'dayOff', 'instantLuck'];
 
-export const THEME_PRICES = { aqua: 2500, matrix: 2500, rosa: 2500, tomate: 2500, cinza: 2500, laranja: 2500, edna: 3000, monocromo: 2500, bumblebee: 2500, tumbleweed: 3000 };
+export const THEME_PRICES = { aqua: 2500, matrix: 2500, rosa: 2500, tomate: 2500, cinza: 2500, laranja: 2500, edna: 3000, monocromo: 2500, bumblebee: 2500, tumbleweed: 3000, amoledmono: 2500, yaru: 3000 };
 
 /* ---------- Marcos de nível ---------- */
 // Desde o alfa 14, cada título também dá um presente ao ser alcançado (vouchers e, em alguns, um

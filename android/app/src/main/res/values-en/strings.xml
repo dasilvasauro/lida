@@ -30,4 +30,15 @@
     <string name="widget_streak_open">Open Lida to start.</string>
     <string name="widget_week_name">IPL this week</string>
     <string name="widget_week_desc">The score of each of the last 7 days</string>
+    <string name="widget_quick_name">Lida · Quick add</string>
+    <string name="widget_quick_desc">Jot down a task without opening the app and complete today\'s</string>
+    <string name="quick_add">Add task</string>
+    <string name="quick_hint">Pay the power bill tomorrow 9am p1 #home</string>
+    <string name="quick_note">Date, time, priority, #project and @label are understood. With no date, it goes to today.</string>
+    <string name="quick_cancel">Cancel</string>
+    <string name="quick_ok">Add</string>
+    <string name="quick_saved">Task added.</string>
+    <string name="quick_saved_later">Task noted. It goes into Lida when you open the app.</string>
+    <string name="quick_empty">Nothing left for today. Tap + to add one.</string>
+    <string name="quick_pending">noted</string>
 </resources>

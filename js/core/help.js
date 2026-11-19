@@ -35,6 +35,16 @@ export const CHAPTERS = [
         ],
       },
       {
+        id: 'calendario',
+        title: 'Calendário',
+        short: 'Ao lado de Lista e Quadro: o mês inteiro, a semana ou o dia numa linha do tempo, com hoje destacado.',
+        body: [
+          'No mês, cada dia mostra as tarefas, os eventos e o contador de hábitos; toque num dia para ver tudo dele embaixo, e de novo para abrir a linha do tempo. Na semana e no dia, os horários ficam numa linha do tempo com a linha vermelha de agora.',
+          'Tarefas repetidas aparecem esmaecidas nos próximos dias ("previstas"); as que repetem todo dia ou nos dias úteis viram uma faixa no topo do mês, para não encher a grade. Toque numa tarefa para abrir; no computador, arraste para outro dia ou horário. Um toque num horário vazio cria uma tarefa ali.',
+          'Agendas externas (o ícone de calendário): Google Agenda pela conta, ou o link secreto iCal de qualquer serviço (Outlook, iCloud, Nextcloud). Os eventos são só leitura e ficam só no aparelho. No navegador, links iCal costumam ser bloqueados; no app Android e no do Linux funcionam.',
+        ],
+      },
+      {
         id: 'tipos',
         title: 'Tipos de tarefa',
         short: 'Normal, com tempo (abre o modo foco com cronômetro), sprint (objetivo maior com etapas), desafio do dia e bônus.',
@@ -129,7 +139,7 @@ export const CHAPTERS = [
       {
         id: 'conquistas',
         title: 'Conquistas',
-        short: 'Mais de cem metas em oito grupos, cada uma com medalha e ouro para resgatar quando quiser.',
+        short: 'Mais de cem metas em nove grupos, cada uma com medalha e ouro para resgatar quando quiser.',
         body: ['O que você já tinha feito conta. Ao ganhar uma, a medalha aparece com suspense no aparelho que você está usando. O ouro fica esperando o resgate na aba Eu > Conquistas.'],
       },
       {
@@ -139,6 +149,7 @@ export const CHAPTERS = [
         body: [
           'Conta as tarefas com prazo no dia e os hábitos do dia; o que você adianta ou recupera também conta. Num dia sem nada programado, basta concluir uma coisa. Dias de folga e a Folga dos hábitos não quebram. A meta muda em Ajustes > Jogo.',
           'O Lidinho muda de cara: animado de manhã, bravo no fim do dia sem a meta, de pijama depois de cumprir, chorando quando a ofensiva quebra.',
+          'A ofensiva tem o seu grupo de conquistas, de 3 a 365 dias. Com 365 dias vem o Lidinho Kaizen, todo em fogo e de óculos escuros, para usar na foto de perfil.',
         ],
       },
       {
@@ -248,8 +259,11 @@ export const CHAPTERS = [
       {
         id: 'widgets',
         title: 'Widgets',
-        short: 'No Android: Hoje, Anéis, Ofensiva e IPL da semana. No Plasma (Linux): Foco, Anéis, Ofensiva e IPL da semana.',
-        body: ['Os widgets mostram o que o app manda e se atualizam sempre que algo muda. No Android, segure a tela inicial > Widgets > Lida.'],
+        short: 'No Android: Hoje, Adição rápida, Anéis, Ofensiva e IPL da semana. No Plasma (Linux): Foco, Anéis, Ofensiva e IPL da semana.',
+        body: [
+          'Os widgets mostram o que o app manda e se atualizam sempre que algo muda. No Android, segure a tela inicial > Widgets > Lida.',
+          'Adição rápida: o botão + abre uma janelinha para anotar uma tarefa sem abrir o app (sem data, vai para hoje), e o círculo de cada tarefa de hoje conclui ali mesmo. O que você faz pelo widget entra no Lida quando o app abre.',
+        ],
       },
     ],
   },

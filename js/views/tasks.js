@@ -164,6 +164,9 @@ export const taskList = (list, opts = {}) => `<ul class="tasks">${list.map((t, i
 // Liga cliques de concluir/abrir em qualquer lista dentro de `root`.
 export function bindTasks(root) {
   root.querySelectorAll('.task:not(.kb-card)').forEach((li) => {
+    // uma vez por linha (o calendário liga a sua lista e a tela em volta também chama bindTasks)
+    if (li.dataset.bound) return;
+    li.dataset.bound = '1';
     const id = li.dataset.id;
     li.querySelector('[data-check]').onclick = (e) => onCheck(e.currentTarget, li, id);
     const body = li.querySelector('[data-open]');
@@ -293,9 +296,10 @@ function previewChips(r, defaults) {
 }
 
 // Linguagem natural → tarefa. Devolve { id } ou { error, shop }. Usado pela adição rápida e pela CLI.
-export async function addFromText(text, defaults = {}) {
+// day: o dia de referência para "amanhã", "sexta"... (o widget manda o dia em que a tarefa foi anotada)
+export async function addFromText(text, defaults = {}, day = today()) {
   const S = P();
-  const r = parseQuick(text, { today: today(), projects: S.project, tags: S.tag });
+  const r = parseQuick(text, { today: day, projects: S.project, tags: S.tag });
   if (!r.title) return { error: 'Escreva o título da tarefa.' };
   const batch = [];
   const newIds = [];

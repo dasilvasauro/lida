@@ -60,12 +60,17 @@ export function initSound() {
 //   partials: [[razão, ganho, duração]] osciladores extras sobre a fundamental
 //   detune: cents de um segundo oscilador (coro)   steps: glissando em degraus (8-bit)
 //   lowpass: frequência de corte                   noise: estalo de ruído no ataque (madeira)
+//   drive: distorção (guitarra)                    mul: multiplica a frequência (oitava abaixo)
+// isNew: marca "Novo" na Loja e em Ajustes (conjuntos que acabaram de chegar)
 export const PACKS = {
   classic: { name: 'Clássico', desc: 'Os sons de sempre: plins suaves e um sino.', price: 0 },
   retro: { name: 'Retrô 8-bit', desc: 'Ondas quadradas e arpejos rápidos de videogame antigo.', price: 900 },
   wood: { name: 'Madeira e sinos', desc: 'Marimba, blocos de madeira e sinos de verdade.', price: 900 },
   crystal: { name: 'Cristal', desc: 'Notas agudas e brilhantes, com cauda longa de taça.', price: 900 },
   digital: { name: 'Digital', desc: 'Bipes secos, glissandos e um toque de sintetizador.', price: 900 },
+  metal: { name: 'Metal', desc: 'Guitarra distorcida: acordes de quinta, palhetadas abafadas e um riff para cada nível.', price: 900, isNew: true },
+  piano: { name: 'Piano', desc: 'Notas de piano com cauda natural: arpejos para concluir e um acorde cheio no fim do Pomodoro.', price: 900, isNew: true },
+  mokia: { name: 'Mokia', desc: 'Bipes monofônicos de celular das antigas, com cliques de teclado e toques de despertador.', price: 900, isNew: true },
 };
 export const PACK_ORDER = Object.keys(PACKS);
 
@@ -75,7 +80,27 @@ const VOICES = {
   wood: (o) => ({ ...o, type: 'sine', attack: 0.002, dur: Math.min(o.dur, 0.5) * 0.85, partials: [[4, 0.28, 0.25], [9.2, 0.06, 0.08]], noise: 0.05 }),
   crystal: (o, f) => ({ ...o, type: 'sine', gain: o.gain * 0.8, attack: 0.004, dur: o.dur * 1.7 + 0.15, detune: 7, partials: [[f < 700 ? 4 : 2, 0.22, 0.8], [5.04, 0.05, 0.4]] }),
   digital: (o) => ({ ...o, type: 'sawtooth', gain: o.gain * 0.36, attack: 0.002, dur: Math.max(0.04, o.dur * 0.6), lowpass: 2600 }),
+  // Acorde de quinta (fundamental + quinta + oitava) numa guitarra com distorção; agudos descem duas oitavas.
+  metal: (o, f) => ({ ...o, type: 'sawtooth', gain: o.gain * 0.3, attack: 0.003, dur: Math.max(0.07, o.dur * 1.1), drive: 30, lowpass: 3400, detune: 8, mul: f > 1400 ? 0.25 : f > 500 ? 0.5 : 1, partials: [[1.5, 0.75, 1], [2, 0.45, 1]] }),
+  // Piano: ataque seco, harmônicos que somem antes da fundamental e cauda longa.
+  piano: (o, f) => ({ ...o, type: 'triangle', gain: o.gain * 0.8, attack: 0.002, dur: Math.min(1.9, o.dur * 2.2 + 0.25), detune: 3, lowpass: 5200, mul: f > 1700 ? 0.5 : 1, partials: [[2, 0.36, 0.7], [3, 0.13, 0.45], [4, 0.06, 0.3]] }),
+  // Celular das antigas: onda quadrada monofônica, curtinha.
+  mokia: (o) => ({ ...o, type: 'square', gain: o.gain * 0.28, attack: 0.001, dur: Math.min(o.dur, 0.24), lowpass: 3800, steps: !!o.to }),
 };
+
+// Curva da distorção (uma por intensidade, guardada).
+const curves = new Map();
+function driveCurve(k) {
+  if (curves.has(k)) return curves.get(k);
+  const n = 1024;
+  const c = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1;
+    c[i] = ((1 + k) * x) / (1 + k * Math.abs(x));
+  }
+  curves.set(k, c);
+  return c;
+}
 
 function pack() {
   const k = soundPrefs().pack;
@@ -122,16 +147,30 @@ function click(t, gain, dest) {
 function note(freq, opts = {}) {
   const base = { at: 0, dur: 0.18, type: 'sine', gain: 0.35, to: null, attack: 0.006, ...opts };
   const o = VOICES[voiceOverride || pack()](base, freq);
+  if (o.mul) {
+    freq *= o.mul;
+    if (o.to) o.to *= o.mul;
+  }
   const t = ctx.currentTime + o.at;
   let dest = master;
+  const nodes = [];
   if (o.lowpass) {
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
     lp.frequency.value = o.lowpass;
-    lp.connect(master);
+    lp.connect(dest);
     dest = lp;
-    setTimeout(() => lp.disconnect(), (o.at + o.dur + 0.3) * 1000);
+    nodes.push(lp);
   }
+  if (o.drive) {
+    const ws = ctx.createWaveShaper();
+    ws.curve = driveCurve(o.drive);
+    ws.oversample = '2x';
+    ws.connect(dest);
+    dest = ws;
+    nodes.push(ws);
+  }
+  if (nodes.length) setTimeout(() => nodes.forEach((x) => x.disconnect()), (o.at + o.dur + 0.3) * 1000);
   osc(freq, { ...o, t }, dest);
   if (o.detune) osc(freq, { ...o, t, gain: o.gain * 0.5, detune: o.detune }, dest);
   for (const [r, gm, dm] of o.partials || []) {
@@ -268,6 +307,129 @@ const MELODIES = {
     },
     levelup() {
       [1046.5, 1318.51, 1567.98, 2093, 2637].forEach((f, i) => note(f, { at: i * 0.08, dur: 0.3, gain: 0.18 }));
+    },
+  },
+  // Metal: notas graves (Mi, Lá...) viram acordes de quinta na guitarra distorcida.
+  metal: {
+    complete() {
+      note(110, { dur: 0.06, gain: 0.3 });
+      note(110, { at: 0.09, dur: 0.06, gain: 0.3 });
+      note(164.81, { at: 0.18, dur: 0.5, gain: 0.32 });
+    },
+    tick() {
+      note(82.41, { dur: 0.05, gain: 0.22 });
+    },
+    uncheck() {
+      note(98, { dur: 0.12, gain: 0.2 });
+    },
+    coin() {
+      note(146.83, { dur: 0.07, gain: 0.28 });
+      note(196, { at: 0.08, dur: 0.3, gain: 0.28 });
+    },
+    levelup() {
+      [82.41, 82.41, 98, 110, 82.41, 82.41, 116.54, 110].forEach((f, i) => note(f, { at: i * 0.095, dur: 0.08, gain: 0.28 }));
+      note(164.81, { at: 0.8, dur: 1.2, gain: 0.32 });
+      // harmônico artificial: o "grito" agudo no fim
+      osc(1318.51, { t: ctx.currentTime + 0.85, dur: 0.6, type: 'sine', gain: 0.05, to: 1567.98, attack: 0.01 }, master);
+    },
+    purchase() {
+      [110, 123.47, 146.83].forEach((f, i) => note(f, { at: i * 0.09, dur: i === 2 ? 0.4 : 0.08, gain: 0.28 }));
+    },
+    penalty() {
+      note(110, { dur: 0.55, gain: 0.28, to: 55 });
+    },
+    bell() {
+      note(82.41, { dur: 1.8, gain: 0.3 });
+      note(123.47, { at: 0.02, dur: 1.6, gain: 0.18 });
+    },
+    powerup() {
+      note(82.41, { dur: 0.35, gain: 0.26, to: 164.81 });
+    },
+    error() {
+      note(77.78, { dur: 0.07, gain: 0.26 });
+      note(77.78, { at: 0.11, dur: 0.12, gain: 0.26 });
+    },
+    water() {
+      note(196, { dur: 0.16, gain: 0.24, to: 98 });
+    },
+  },
+  piano: {
+    complete() {
+      note(523.25, { dur: 0.3, gain: 0.3 });
+      note(659.25, { at: 0.08, dur: 0.3, gain: 0.3 });
+      note(783.99, { at: 0.16, dur: 0.5, gain: 0.3 });
+    },
+    uncheck() {
+      note(392, { dur: 0.2, gain: 0.2 });
+    },
+    tick() {
+      note(1567.98, { dur: 0.06, gain: 0.14 });
+    },
+    coin() {
+      note(1046.5, { dur: 0.12, gain: 0.22 });
+      note(1318.51, { at: 0.07, dur: 0.3, gain: 0.22 });
+    },
+    levelup() {
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => note(f, { at: i * 0.11, dur: 0.4, gain: 0.26 }));
+      [523.25, 659.25, 783.99, 1046.5].forEach((f) => note(f, { at: 0.5, dur: 1.1, gain: 0.16 }));
+    },
+    purchase() {
+      note(783.99, { dur: 0.15, gain: 0.22 });
+      note(987.77, { at: 0.09, dur: 0.15, gain: 0.22 });
+      note(1174.66, { at: 0.18, dur: 0.4, gain: 0.22 });
+    },
+    penalty() {
+      note(392, { dur: 0.25, gain: 0.24 });
+      note(369.99, { at: 0.14, dur: 0.5, gain: 0.24 });
+    },
+    bell() {
+      [261.63, 329.63, 392, 523.25].forEach((f, i) => note(f, { at: i * 0.03, dur: 1.6, gain: 0.2 }));
+    },
+    error() {
+      note(311.13, { dur: 0.18, gain: 0.22 });
+      note(440, { dur: 0.18, gain: 0.16 });
+    },
+    water() {
+      note(1567.98, { dur: 0.12, gain: 0.2 });
+      note(1174.66, { at: 0.06, dur: 0.3, gain: 0.2 });
+    },
+  },
+  // Mokia: melodias próprias, no jeito dos toques monofônicos de antigamente.
+  mokia: {
+    complete() {
+      note(1760, { dur: 0.06, gain: 0.3 });
+      note(2349.32, { at: 0.08, dur: 0.12, gain: 0.3 });
+    },
+    tick() {
+      note(1975.53, { dur: 0.025, gain: 0.16 });
+    },
+    uncheck() {
+      note(880, { dur: 0.05, gain: 0.2 });
+    },
+    coin() {
+      note(1567.98, { dur: 0.05, gain: 0.24 });
+      note(2093, { at: 0.06, dur: 0.1, gain: 0.24 });
+    },
+    levelup() {
+      [1046.5, 1318.51, 1567.98, 2093, 0, 1567.98, 2093].forEach((f, i) => f && note(f, { at: i * 0.1, dur: 0.09, gain: 0.26 }));
+    },
+    purchase() {
+      [1318.51, 1318.51, 1760].forEach((f, i) => note(f, { at: i * 0.09, dur: 0.07, gain: 0.24 }));
+    },
+    penalty() {
+      [659.25, 587.33, 523.25].forEach((f, i) => note(f, { at: i * 0.12, dur: 0.1, gain: 0.24 }));
+    },
+    bell() {
+      [2093, 0, 2093, 0, 0, 2093, 0, 2093].forEach((f, i) => f && note(f, { at: i * 0.11, dur: 0.09, gain: 0.3 }));
+    },
+    error() {
+      note(220, { dur: 0.24, gain: 0.26 });
+    },
+    water() {
+      note(1400, { dur: 0.14, gain: 0.24, to: 700 });
+    },
+    powerup() {
+      note(700, { dur: 0.24, gain: 0.24, to: 2100 });
     },
   },
   digital: {

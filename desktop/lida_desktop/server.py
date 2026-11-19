@@ -213,6 +213,18 @@ def make_http(hub, token, google_login, updater=None, restart=None, alarm=None):
                     out = {"idToken": google_login()}
                 except Exception as e:  # noqa: BLE001 - a mensagem vai para a tela de login
                     out = {"error": str(e)}
+            elif route == "gcal":
+                from .oauth import calendar_token
+
+                try:
+                    out = calendar_token(bool(data.get("interactive")))
+                except Exception as e:  # noqa: BLE001 - a mensagem vai para a tela do calendário
+                    out = {"error": str(e)}
+            elif route == "gcal-forget":
+                from .oauth import calendar_forget
+
+                calendar_forget()
+                out = {"ok": True}
             else:
                 return self._send(404, b"{}")
             self._send(200, json.dumps(out).encode())

@@ -9,13 +9,12 @@ import QtQuick
 import QtQuick.Layouts
 import org.kde.plasma.plasmoid
 import org.kde.plasma.components as PlasmaComponents
-import org.kde.plasma.plasma5support as Plasma5Support
 import org.kde.kirigami as Kirigami
 
 PlasmoidItem {
     id: root
 
-    property var st: ({})
+    readonly property var st: reader.st
     readonly property var wk: st.iplWeek || null
     readonly property var days: wk && wk.days ? wk.days : []
 
@@ -25,29 +24,8 @@ PlasmoidItem {
 
     function color(s) { return s >= 85 ? "#3dd6a3" : s >= 70 ? "#7c8cff" : s >= 50 ? "#f2c14e" : "#ff7a6b" }
 
-    Plasma5Support.DataSource {
-        id: sh
-        engine: "executable"
-        connectedSources: []
-        property var callbacks: ({})
-        onNewData: function (source, data) {
-            var cb = callbacks[source]
-            if (cb) { delete callbacks[source]; cb(data["stdout"] || "") }
-            disconnectSource(source)
-        }
-        function run(cmd, cb) {
-            var full = cmd + " # " + Math.random().toString(36).slice(2)
-            if (cb) callbacks[full] = cb
-            connectSource(full)
-        }
-    }
-    function refresh() {
-        sh.run("cat \"${XDG_CACHE_HOME:-$HOME/.cache}/lida/state.json\" 2>/dev/null", function (out) {
-            if (!out) return
-            try { st = JSON.parse(out) } catch (e) { }
-        })
-    }
-    Timer { interval: Math.max(1000, Plasmoid.configuration.pollInterval); running: true; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
+    // Leitura do estado sem vazar memória (veja LidaState.qml)
+    LidaState { id: reader; objectName: "reader"; interval: Plasmoid.configuration.pollInterval }
 
     component Bars: RowLayout {
         id: bars

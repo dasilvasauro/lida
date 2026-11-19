@@ -1,0 +1,5 @@
+Calendar, quick add widget and the Kaizen Lidinho
+
+• New: Calendar next to List and Board: the whole month, the week or the day on a timeline, with today highlighted. Repeats show up as upcoming (daily ones become a strip at the top of the month) and habits as a counter. You can complete, open, drag and create tasks right there.
+• New: External calendars in the calendar, view-only: Google Calendar through your account or the iCal link…
+More in Settings > What's new and fixes.

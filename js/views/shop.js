@@ -4,7 +4,7 @@ import * as G from '../core/game.js';
 import { THEMES, swatch, themeName } from '../ui/theme.js';
 import { esc, fmtInt } from '../lib/util.js';
 import { nowMs } from '../lib/clock.js';
-import { icon, toast, confirmDialog } from '../ui/ui.js';
+import { icon, toast, confirmDialog, newTag } from '../ui/ui.js';
 import { helpQ } from '../ui/help.js';
 import { play, preview, PACKS, PACK_ORDER, soundPrefs, setSoundPrefs } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
@@ -89,7 +89,7 @@ function themes(S) {
       const have = owned.has(id) || (u.level && level >= u.level);
       const price = G.THEME_PRICES[id];
       const label = have ? `${icon('check')}Seu` : u.level ? `${icon('lock')}Nível ${u.level}` : `${icon('coin')}${fmtInt(price)}`;
-      return `<button type="button" class="theme-opt${have ? ' have' : ''}" data-theme="${id}"${have || u.level ? ' aria-disabled="true"' : ''}>${swatch(id)}<span>${esc(themeName(id))}</span><small>${label}</small></button>`;
+      return `<button type="button" class="theme-opt${have ? ' have' : ''}" data-theme="${id}"${have || u.level ? ' aria-disabled="true"' : ''}>${swatch(id)}<span>${esc(themeName(id))}${THEMES[id].isNew ? newTag() : ''}</span><small>${label}</small></button>`;
     })
     .join('')}</div><p class="hint">Temas comprados ficam em Ajustes. Alguns são liberados por nível.</p>`;
 }
@@ -108,7 +108,7 @@ function packs(S) {
         : `<button type="button" class="price${can ? '' : ' short'}" data-pack-buy="${id}" aria-label="Comprar ${esc(p.name)} por ${p.price} de ouro">${icon('coin')}${fmtInt(p.price)}</button>`;
     return `<li class="shop-item tone-${['acc', 'warn', 'pos', 'acc', 'neg'][i % 5]}" style="--i:${i}">
       <button type="button" class="shop-ic pack-hear" data-pack-hear="${id}" aria-label="Ouvir ${esc(p.name)}">${icon('volume')}</button>
-      <div class="grow"><b>${esc(p.name)}${!p.price ? '<span class="own">Grátis</span>' : ''}</b><p>${esc(p.desc)}</p></div>
+      <div class="grow"><b>${esc(p.name)}${!p.price ? '<span class="own">Grátis</span>' : ''}${p.isNew ? newTag() : ''}</b><p>${esc(p.desc)}</p></div>
       ${btn}
     </li>`;
   }).join('')}</ul>`;

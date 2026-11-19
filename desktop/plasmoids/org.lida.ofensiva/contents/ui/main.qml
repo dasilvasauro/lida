@@ -10,16 +10,17 @@ import QtQuick
 import QtQuick.Layouts
 import org.kde.plasma.plasmoid
 import org.kde.plasma.components as PlasmaComponents
-import org.kde.plasma.plasma5support as Plasma5Support
+import QtQuick.Shapes
 import org.kde.kirigami as Kirigami
 
 PlasmoidItem {
     id: root
 
-    property var st: ({})
+    readonly property var st: reader.st
     property int hour: new Date().getHours()
+    // muda à meia-noite (atualizado pelo relógio abaixo)
+    property string todayStr: dayStr()
     readonly property var sk: st.streak || null
-    readonly property string todayStr: { var d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) }
     // dias desde os dados do app (0 = de hoje)
     readonly property int since: st.date ? daysBetween(st.date, todayStr) : 0
     readonly property bool met: !!sk && since === 0 && !!sk.todayMet
@@ -42,6 +43,7 @@ PlasmoidItem {
     toolTipSubText: root.count + " " + (root.count === 1 ? root.tx("dia de ofensiva") : root.tx("dias de ofensiva")) + "\n" + root.tx(root.moodText[root.mood])
 
     function pad(n) { return n < 10 ? "0" + n : "" + n }
+    function dayStr() { var d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) }
     function daysBetween(a, b) {
         var pa = String(a).split("-"), pb = String(b).split("-")
         var da = new Date(+pa[0], +pa[1] - 1, +pa[2]), db = new Date(+pb[0], +pb[1] - 1, +pb[2])
@@ -53,50 +55,27 @@ PlasmoidItem {
         return out
     }
 
-    Plasma5Support.DataSource {
-        id: sh
-        engine: "executable"
-        connectedSources: []
-        property var callbacks: ({})
-        onNewData: function (source, data) {
-            var cb = callbacks[source]
-            if (cb) { delete callbacks[source]; cb(data["stdout"] || "") }
-            disconnectSource(source)
-        }
-        function run(cmd, cb) {
-            var full = cmd + " # " + Math.random().toString(36).slice(2)
-            if (cb) callbacks[full] = cb
-            connectSource(full)
-        }
+    // Leitura do estado sem vazar memória (veja LidaState.qml)
+    LidaState { id: reader; objectName: "reader"; interval: Plasmoid.configuration.pollInterval }
+    // A cara do Lidinho segue a hora: confere uma vez por minuto (não a cada leitura)
+    Timer {
+        interval: 60000; running: true; repeat: true; triggeredOnStart: true
+        onTriggered: { var h = new Date().getHours(); if (h !== root.hour) root.hour = h; var d = root.dayStr(); if (d !== root.todayStr) root.todayStr = d }
     }
-    function refresh() {
-        root.hour = new Date().getHours()
-        sh.run("cat \"${XDG_CACHE_HOME:-$HOME/.cache}/lida/state.json\" 2>/dev/null", function (out) {
-            if (!out) return
-            try { st = JSON.parse(out) } catch (e) { }
-        })
-    }
-    Timer { interval: Math.max(1000, Plasmoid.configuration.pollInterval); running: true; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
 
     // Chama: a mesma do app (acesa quando a meta de hoje veio)
-    component Flame: Canvas {
+    component Flame: Item {
+        id: fl
         property color color: Kirigami.Theme.disabledTextColor
-        onColorChanged: requestPaint()
-        onPaint: {
-            var c = getContext("2d")
-            c.reset()
-            c.scale(width / 24, height / 24)
-            c.fillStyle = color
-            c.beginPath()
-            c.moveTo(12, 21)
-            c.bezierCurveTo(15.9, 21, 18.5, 18.4, 18.5, 14.7)
-            c.bezierCurveTo(18.5, 11.5, 16.4, 9.7, 15.1, 7.4)
-            c.bezierCurveTo(14.6, 9.1, 13.5, 10.2, 12.3, 10.6)
-            c.bezierCurveTo(11.9, 8.2, 10.8, 6.4, 8.7, 5.2)
-            c.bezierCurveTo(9, 8, 7.5, 9.8, 6.3, 11.4)
-            c.bezierCurveTo(5.8, 12.2, 5.5, 13.4, 5.5, 14.7)
-            c.bezierCurveTo(5.5, 18.4, 8.1, 21, 12, 21)
-            c.fill()
+        Shape {
+            width: 24; height: 24
+            scale: Math.min(fl.width, fl.height) / 24
+            transformOrigin: Item.TopLeft
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath {
+                strokeColor: "transparent"; fillColor: fl.color
+                PathSvg { path: "M12 21C15.9 21 18.5 18.4 18.5 14.7C18.5 11.5 16.4 9.7 15.1 7.4C14.6 9.1 13.5 10.2 12.3 10.6C11.9 8.2 10.8 6.4 8.7 5.2C9 8 7.5 9.8 6.3 11.4C5.8 12.2 5.5 13.4 5.5 14.7C5.5 18.4 8.1 21 12 21Z" }
+            }
         }
     }
 

@@ -2,6 +2,7 @@ import { esc } from '../lib/util.js';
 
 /* ---------- Ícones (traço único, 24px) ---------- */
 const P = {
+  calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8.5 3v4M15.5 3v4M7.5 13.5h2M11 13.5h2M14.5 13.5h2M7.5 17h2M11 17h2"/>',
   help: '<circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.7M12 16.8h.01"/>',
   today: '<rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4"/><path d="m9.5 15 1.8 1.8 3.4-3.6"/>',
   inbox: '<path d="M4 13.5 6.2 6a1.5 1.5 0 0 1 1.4-1h8.8a1.5 1.5 0 0 1 1.4 1L20 13.5V18a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18z"/><path d="M4 13.5h4.5l1.2 2h4.6l1.2-2H20"/>',
@@ -395,6 +396,8 @@ export function seg(name, options, value) {
     .join('')}</div>`;
 }
 
+// Selo "Novo" (recursos, temas e sons que acabaram de chegar).
+export const newTag = () => '<span class="new-tag">Novo</span>';
 export const field = (label, control, help) =>
   `<label class="field"><span>${esc(label)}${help ? tip(help) : ''}</span>${control}</label>`;
 

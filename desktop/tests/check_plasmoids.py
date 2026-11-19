@@ -17,7 +17,7 @@ import time
 from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-from PySide6.QtCore import QTimer, QUrl  # noqa: E402
+from PySide6.QtCore import QObject, QTimer, QUrl, QMetaObject, Q_ARG, qInstallMessageHandler  # noqa: E402
 from PySide6.QtGui import QGuiApplication  # noqa: E402
 from PySide6.QtQuick import QQuickView  # noqa: E402
 
@@ -53,6 +53,9 @@ def check(widget):
         shutil.copytree(img, base / "images")
     for f in src.glob("*.js"):
         (tmp / f.name).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
+    shared = (PLASMOIDS / "shared" / "LidaState.qml").read_text(encoding="utf-8")
+    if (src / "LidaState.qml").read_text(encoding="utf-8") != shared:
+        raise SystemExit(f"{widget}: LidaState.qml diferente de plasmoids/shared/LidaState.qml (copie de novo)")
     for f in src.glob("*.qml"):
         # "Plasmoid.icon: …" é propriedade anexada do Plasma; o módulo de mentira não tem.
         (tmp / f.name).write_text(re.sub(r"^\s*Plasmoid\.icon:.*$", "", f.read_text(encoding="utf-8"), flags=re.M), encoding="utf-8")
@@ -73,7 +76,19 @@ def shoot(results, out_dir):
         view.grabWindow().save(str(Path(out_dir) / f"{w}.png"))
 
 
+# Avisos do DataSource de mentira (console.warn) também reprovam: vazamento de nomes, reconexão.
+DS_WARN = []
+
+
+def on_msg(mode, ctx, msg):
+    if "DataSource:" in msg:
+        DS_WARN.append(msg)
+    elif not msg.startswith("CMD:"):
+        sys.stderr.write(msg + "\n")
+
+
 def main():
+    qInstallMessageHandler(on_msg)
     app = QGuiApplication(sys.argv)
     results = {w: check(w) for w in ("org.lida.foco", "org.lida.aneis", "org.lida.ofensiva", "org.lida.semana")}
     failed = []
@@ -88,9 +103,36 @@ def main():
                 print("   ", m)
             if msgs:
                 failed.append(w)
+        if DS_WARN:
+            print("FALHOU DataSource (%d avisos), ex.: %s" % (len(DS_WARN), DS_WARN[0]))
+            failed.append("DataSource")
         app.exit(1 if failed else 0)
 
-    QTimer.singleShot(2000, done)
+    # Uso prolongado: centenas de leituras e comandos não podem criar nomes novos sem limite
+    # nem trocar o estado quando só o carimbo "at" mudou.
+    soak = {"n": 0}
+
+    def tick():
+        soak["n"] += 1
+        for w, (view, msgs, tmp) in results.items():
+            r = view.rootObject().findChild(QObject, "reader") if view.rootObject() else None
+            if r is None:
+                if soak["n"] == 1:
+                    msgs.append("sem LidaState (objectName reader)")
+                continue
+            r.setProperty("readSince", 0)
+            QMetaObject.invokeMethod(r, "refresh")
+            QMetaObject.invokeMethod(r, "run", Q_ARG("QVariant", "soak %d" % (soak["n"] % 5)), Q_ARG("QVariant", None))
+        if soak["n"] < 300:
+            QTimer.singleShot(2, tick)
+        else:
+            for w, (view, msgs, tmp) in results.items():
+                r = view.rootObject().findChild(QObject, "reader")
+                if r is not None and r.property("applied") != 1:
+                    msgs.append("estado trocado %s vezes (esperado 1)" % r.property("applied"))
+
+    QTimer.singleShot(300, tick)
+    QTimer.singleShot(4000, done)
     sys.exit(app.exec())
 
 

@@ -9,13 +9,13 @@ import QtQuick
 import QtQuick.Layouts
 import org.kde.plasma.plasmoid
 import org.kde.plasma.components as PlasmaComponents
-import org.kde.plasma.plasma5support as Plasma5Support
+import QtQuick.Shapes
 import org.kde.kirigami as Kirigami
 
 PlasmoidItem {
     id: root
 
-    property var st: ({})
+    readonly property var st: reader.st
     property bool running: !!st.running
     property var g: st.glance || ({ tasks: {}, habits: {}, water: {} })
     readonly property real fTasks: g.tasks && g.tasks.total ? g.tasks.done / g.tasks.total : 0
@@ -40,68 +40,35 @@ PlasmoidItem {
     function shq(s) { return "'" + String(s).replace(/'/g, "'\\''") + "'" }
     function bin() { return shq(Plasmoid.configuration.binaryPath || "lida") }
 
-    Plasma5Support.DataSource {
-        id: sh
-        engine: "executable"
-        connectedSources: []
-        property var callbacks: ({})
-        onNewData: function (source, data) {
-            var cb = callbacks[source]
-            if (cb) { delete callbacks[source]; cb(data["stdout"] || "") }
-            disconnectSource(source)
-        }
-        function run(cmd, cb) {
-            var full = cmd + " # " + Math.random().toString(36).slice(2)
-            if (cb) callbacks[full] = cb
-            connectSource(full)
-        }
-    }
-    function refresh() {
-        sh.run("cat \"${XDG_CACHE_HOME:-$HOME/.cache}/lida/state.json\" 2>/dev/null", function (out) {
-            if (!out) { st = ({ running: false }); return }
-            try { st = JSON.parse(out) } catch (e) { }
-        })
-    }
-    function lida(args) { sh.run(bin() + " --json " + args, function () { refresh() }) }
-    Timer { interval: Math.max(1000, Plasmoid.configuration.pollInterval); running: true; repeat: true; triggeredOnStart: true; onTriggered: root.refresh() }
+    // Leitura do estado e comandos sem vazar memória (veja LidaState.qml)
+    LidaState { id: reader; objectName: "reader"; interval: Plasmoid.configuration.pollInterval; bin: root.bin() }
+    function lida(args) { reader.run(args, function () { reader.refresh() }) }
 
-    // Desenho dos anéis (Canvas): trilho + arco de cada anel, com ponta arredondada.
-    component Rings: Canvas {
-        id: cv
+    // Desenho dos anéis: trilho + arco de cada anel, com ponta arredondada. Shape (geometria) em vez
+    // de Canvas: não aloca imagem nem repinta quadro a quadro.
+    component Rings: Item {
+        id: rg
         property real t: root.fTasks
         property real h: root.fHabits
         property real w: root.fWater
-        property real thick: Math.max(2, Math.min(width, height) * 0.085)
-        property color track: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.12)
-        onTChanged: requestPaint()
-        onHChanged: requestPaint()
-        onWChanged: requestPaint()
-        onWidthChanged: requestPaint()
-        onHeightChanged: requestPaint()
-        Behavior on t { NumberAnimation { duration: 600; easing.type: Easing.OutBack } }
-        Behavior on h { NumberAnimation { duration: 600; easing.type: Easing.OutBack } }
-        Behavior on w { NumberAnimation { duration: 600; easing.type: Easing.OutBack } }
-        onPaint: {
-            var ctx = getContext("2d")
-            ctx.reset()
-            var size = Math.min(width, height)
-            var cx = width / 2, cy = height / 2
-            var gap = thick * 0.35
-            var rows = [[t, root.cTasks], [h, root.cHabits], [w, root.cWater]]
-            ctx.lineCap = "round"
-            ctx.lineWidth = thick
-            for (var i = 0; i < 3; i++) {
-                var r = size / 2 - thick / 2 - i * (thick + gap) - 1
-                if (r <= 0) continue
-                ctx.strokeStyle = track
-                ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke()
-                var f = Math.max(0, Math.min(1, rows[i][0]))
-                if (f <= 0) continue
-                ctx.strokeStyle = rows[i][1]
-                ctx.beginPath()
-                ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (f >= 1 ? 0.9999 : f))
-                ctx.stroke()
-            }
+        readonly property real size: Math.min(width, height)
+        readonly property real thick: Math.max(2, size * 0.085)
+        readonly property real gap: thick * 0.35
+        readonly property color track: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.12)
+        Behavior on t { NumberAnimation { duration: 600; easing.type: Easing.OutCubic } }
+        Behavior on h { NumberAnimation { duration: 600; easing.type: Easing.OutCubic } }
+        Behavior on w { NumberAnimation { duration: 600; easing.type: Easing.OutCubic } }
+        function rad(i) { return Math.max(0.5, rg.size / 2 - rg.thick / 2 - i * (rg.thick + rg.gap) - 1) }
+        function sweep(f) { return 360 * Math.min(0.9999, Math.max(0, f)) }
+        Shape {
+            anchors.fill: parent
+            preferredRendererType: Shape.CurveRenderer
+            ShapePath { strokeColor: rg.track; strokeWidth: rg.thick; fillColor: "transparent"; PathAngleArc { centerX: rg.width / 2; centerY: rg.height / 2; radiusX: rg.rad(0); radiusY: rg.rad(0); startAngle: 0; sweepAngle: 360 } }
+            ShapePath { strokeColor: rg.track; strokeWidth: rg.thick; fillColor: "transparent"; PathAngleArc { centerX: rg.width / 2; centerY: rg.height / 2; radiusX: rg.rad(1); radiusY: rg.rad(1); startAngle: 0; sweepAngle: 360 } }
+            ShapePath { strokeColor: rg.track; strokeWidth: rg.thick; fillColor: "transparent"; PathAngleArc { centerX: rg.width / 2; centerY: rg.height / 2; radiusX: rg.rad(2); radiusY: rg.rad(2); startAngle: 0; sweepAngle: 360 } }
+            ShapePath { strokeColor: rg.t > 0.001 ? root.cTasks : "transparent"; strokeWidth: rg.thick; fillColor: "transparent"; capStyle: ShapePath.RoundCap; PathAngleArc { centerX: rg.width / 2; centerY: rg.height / 2; radiusX: rg.rad(0); radiusY: rg.rad(0); startAngle: -90; sweepAngle: rg.sweep(rg.t) } }
+            ShapePath { strokeColor: rg.h > 0.001 ? root.cHabits : "transparent"; strokeWidth: rg.thick; fillColor: "transparent"; capStyle: ShapePath.RoundCap; PathAngleArc { centerX: rg.width / 2; centerY: rg.height / 2; radiusX: rg.rad(1); radiusY: rg.rad(1); startAngle: -90; sweepAngle: rg.sweep(rg.h) } }
+            ShapePath { strokeColor: rg.w > 0.001 ? root.cWater : "transparent"; strokeWidth: rg.thick; fillColor: "transparent"; capStyle: ShapePath.RoundCap; PathAngleArc { centerX: rg.width / 2; centerY: rg.height / 2; radiusX: rg.rad(2); radiusY: rg.rad(2); startAngle: -90; sweepAngle: rg.sweep(rg.w) } }
         }
     }
 

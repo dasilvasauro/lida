@@ -78,3 +78,27 @@ test('humor do Lidinho', () => {
   assert.equal(streakMood({ ...base, todayMet: true }, h(22)), 'pijama');
   assert.equal(streakMood({ ...base, idle: 4 }, h(10)), 'abandonado');
 });
+
+test('números da ofensiva para as conquistas: melhor, voltas a 7 dias e dias de 100%', async () => {
+  const { streakStats } = await import('../js/core/streak.js');
+  // 8 dias feitos, 1 dia perdido, 7 dias feitos (o último é ontem); todos com 100% do programado
+  const t = [];
+  for (let i = 16; i >= 1; i--) {
+    const d = addDays(NOW, -i);
+    t.push(task(d, i === 8 ? null : d));
+  }
+  const s = streakStats(snap(t), NOW);
+  assert.equal(s.best, 8);
+  assert.equal(s.runs7, 2, 'chegou a 7 duas vezes (antes e depois de quebrar)');
+  assert.equal(s.full, 15);
+});
+
+test('um ano de ofensiva cabe na janela olhada (Kaizen)', async () => {
+  const { streakStats } = await import('../js/core/streak.js');
+  const t = [];
+  for (let i = 366; i >= 1; i--) {
+    const d = addDays(NOW, -i);
+    t.push({ ...task(d, d), createdDay: d });
+  }
+  assert.ok(streakStats(snap(t), NOW).best >= 365);
+});

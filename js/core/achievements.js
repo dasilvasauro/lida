@@ -1,5 +1,5 @@
-// Conquistas: metas de longo prazo em sete grupos (tarefas, IPL do mês, água, sequências, hábitos,
-// dias seguidos usando o Lida e atividade nos dias de folga). Cada uma paga ouro de acordo com a
+// Conquistas: metas de longo prazo em nove grupos (tarefas, IPL do mês, água, sequências, hábitos,
+// dias seguidos usando o Lida, atividade nos dias de folga, jornada e ofensiva). Cada uma paga ouro de acordo com a
 // dificuldade, e o ouro é resgatado à mão (na aba Eu > Conquistas).
 //
 // Registros: ach_<id> { id, at, claimed?, retro? } guarda o desbloqueio (uma vez desbloqueada, fica,
@@ -12,6 +12,7 @@ import { today } from '../lib/clock.js';
 import { isDone, isScheduled, bestStreak, daysClean } from './habits.js';
 import { strip } from './tasks.js';
 import { tr, fill, num } from './i18n.js';
+import { streakStats } from './streak.js';
 
 // Ouro por dificuldade.
 export const TIER_GOLD = { 1: 100, 2: 250, 3: 600, 4: 1400, 5: 3000 };
@@ -32,6 +33,7 @@ export const CATS = {
   active: { icon: 'today', name: { pt: 'Dias seguidos', en: 'Days in a row', es: 'Días seguidos' } },
   off: { icon: 'coffee', name: { pt: 'Dias de folga', en: 'Days off', es: 'Días libres' } },
   journey: { icon: 'compass', name: { pt: 'Jornada', en: 'Journey', es: 'Trayectoria' } },
+  ofensiva: { icon: 'flame', name: { pt: 'Ofensiva', en: 'Streak', es: 'Racha' } },
 };
 
 // [id, grupo, ícone, dificuldade, métrica, meta, nome, descrição]  ({n} = meta)
@@ -55,6 +57,7 @@ const O_HAB = L('Cumpra hábitos {n} vezes em dias de folga.', 'Complete habits 
 const J_LVL = L('Chegue ao nível {n}.', 'Reach level {n}.', 'Llega al nivel {n}.');
 const J_FOCUS = L('Some {n} horas de foco no Pomodoro.', 'Log {n} hours of Pomodoro focus.', 'Suma {n} horas de enfoque en Pomodoro.');
 const J_MOOD = L('Registre o seu humor em {n} dias.', 'Log your mood on {n} days.', 'Registra tu ánimo en {n} días.');
+const S_RUN = L('Mantenha a ofensiva por {n} dias seguidos.', 'Keep your streak going for {n} days in a row.', 'Mantén la racha durante {n} días seguidos.');
 const DEFS = [
   // Tarefas criadas e concluídas
   ['t_c1', 'tasks', 'pencil', 1, 'created', 1, L('Primeira anotação', 'First note', 'Primera nota'), L('Crie a sua primeira tarefa.', 'Create your first task.', 'Crea tu primera tarea.')],
@@ -183,6 +186,19 @@ const DEFS = [
   ['j_luck', 'journey', 'clover', 2, 'cards', 10, L('Sortudo', 'Lucky one', 'Afortunado'), L('Vire {n} Cartas da Sorte.', 'Flip {n} Lucky Cards.', 'Voltea {n} Cartas de la Suerte.')],
   ['j_gold', 'journey', 'coins', 3, 'goldEarned', 10000, L('Cofrinho', 'Piggy bank', 'Alcancía'), L('Ganhe {n} de ouro, somando tudo.', 'Earn {n} gold in total.', 'Gana {n} de oro en total.')],
   ['j_gold50', 'journey', 'gem', 5, 'goldEarned', 50000, L('Tesouro', 'Treasure', 'Tesoro'), L('Ganhe {n} de ouro, somando tudo.', 'Earn {n} gold in total.', 'Gana {n} de oro en total.')],
+
+  // Ofensiva (dias seguidos cumprindo a meta do dia)
+  ['s_3', 'ofensiva', 'spark', 1, 'streakBest', 3, L('Faísca', 'Spark', 'Chispa'), S_RUN],
+  ['s_7', 'ofensiva', 'flame', 1, 'streakBest', 7, L('Uma semana acesa', 'A week on fire', 'Una semana encendida'), S_RUN],
+  ['s_14', 'ofensiva', 'flame', 2, 'streakBest', 14, L('Chama firme', 'Steady flame', 'Llama firme'), S_RUN],
+  ['s_30', 'ofensiva', 'flames', 2, 'streakBest', 30, L('Um mês em chamas', 'A month ablaze', 'Un mes en llamas'), S_RUN],
+  ['s_60', 'ofensiva', 'flames', 3, 'streakBest', 60, L('Fogueira', 'Bonfire', 'Hoguera'), S_RUN],
+  ['s_100', 'ofensiva', 'torch', 4, 'streakBest', 100, L('Cem dias de chama', 'A hundred days of flame', 'Cien días de llama'), S_RUN],
+  ['s_180', 'ofensiva', 'torch', 4, 'streakBest', 180, L('Meio ano aceso', 'Half a year lit', 'Medio año encendido'), S_RUN],
+  ['s_365', 'ofensiva', 'shades', 5, 'streakBest', 365, L('Kaizen', 'Kaizen', 'Kaizen'), L('Mantenha a ofensiva por {n} dias seguidos. Libera o Lidinho Kaizen.', 'Keep your streak going for {n} days in a row. Unlocks the Kaizen Lidinho.', 'Mantén la racha durante {n} días seguidos. Desbloquea al Lidinho Kaizen.')],
+  ['s_phoenix', 'ofensiva', 'bird', 2, 'streakRuns7', 2, L('Fênix', 'Phoenix', 'Fénix'), L('Chegue a 7 dias de ofensiva, deixe quebrar e chegue a 7 de novo ({n} vezes ao todo).', 'Reach a 7-day streak, let it break and reach 7 again ({n} times in all).', 'Llega a 7 días de racha, déjala romperse y llega a 7 otra vez ({n} veces en total).')],
+  ['s_full10', 'ofensiva', 'checks', 2, 'streakFull', 10, L('Tudo ou nada', 'All or nothing', 'Todo o nada'), L('Faça 100% do programado em {n} dias.', 'Get 100% of what was planned done on {n} days.', 'Haz el 100% de lo programado en {n} días.')],
+  ['s_full50', 'ofensiva', 'medal', 4, 'streakFull', 50, L('Sem sobras', 'Nothing left over', 'Sin sobras'), L('Faça 100% do programado em {n} dias.', 'Get 100% of what was planned done on {n} days.', 'Haz el 100% de lo programado en {n} días.')],
 ];
 
 export const ACHIEVEMENTS = DEFS.map(([id, cat, icon, tier, metric, goal, name, desc]) => ({ id, cat, icon, tier, metric, goal, name, desc, gold: TIER_GOLD[tier] }));
@@ -270,7 +286,11 @@ export function achStats(S = P()) {
   const quitBest = Math.max(0, ...S.quit.map((q) => daysClean(q)));
   const scores = S.score.filter((x) => x.score != null);
   const hourOf = (t) => (t.doneAt ? new Date(t.doneAt).getHours() : -1);
+  const sk = streakStats(S, t0);
   return {
+    streakBest: sk.best,
+    streakRuns7: sk.runs7,
+    streakFull: sk.full,
     sprints: done.filter((t) => t.kind === 'sprint').length,
     challenges: done.filter((t) => t.kind === 'challenge').length,
     early: done.filter((t) => hourOf(t) >= 0 && hourOf(t) < 8).length,
@@ -330,7 +350,11 @@ export async function checkAchievements(S = P()) {
   const first = !ACHIEVEMENTS.some((a) => S.byId.get(`ach_${a.id}`)) && !S.byId.get('ach__seen');
   const fresh = ACHIEVEMENTS.filter((a) => !S.byId.get(`ach_${a.id}`) && (stats[a.metric] || 0) >= a.goal);
   const at = Date.now();
-  const batch = fresh.map((a) => ({ type: 'ach', id: `ach_${a.id}`, data: { aid: a.id, at, ...(first ? { retro: true } : {}) } }));
+  // Grupo novo numa conta que já usava as conquistas (ex.: Ofensiva, na alfa 21): o que já tinha sido
+  // alcançado entra de uma vez, sem uma animação para cada; da próxima em diante, anima normalmente.
+  const newCat = new Set(Object.keys(CATS).filter((c) => !ACHIEVEMENTS.some((a) => a.cat === c && S.byId.get(`ach_${a.id}`))));
+  const retro = (a) => first || (newCat.has(a.cat) && fresh.filter((x) => x.cat === a.cat).length > 1);
+  const batch = fresh.map((a) => ({ type: 'ach', id: `ach_${a.id}`, data: { aid: a.id, at, ...(retro(a) ? { retro: true } : {}) } }));
   if (first) batch.push({ type: 'ach', id: 'ach__seen', data: { aid: '_seen', at } });
   if (batch.length) await personal.saveMany(batch);
   return { fresh, first, stats };

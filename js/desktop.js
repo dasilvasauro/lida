@@ -41,6 +41,16 @@ export async function googleIdToken() {
   return r.idToken;
 }
 
+// Google Agenda no app Linux: o app guarda a permissão (refresh token) neste computador e devolve um
+// token de acesso novo quando precisa. interactive: sem permissão ainda, abre o navegador para pedir.
+export async function googleCalToken(interactive = false) {
+  const r = await post('gcal', { interactive });
+  if (r.accessToken) return { token: r.accessToken, expiresIn: r.expiresIn || 3000 };
+  if (interactive && r.error) throw new Error(r.error);
+  return null;
+}
+export const googleCalForget = () => post('gcal-forget', {}).catch(() => {});
+
 /* ---------- Conversões para a CLI e os widgets ---------- */
 const projName = (S, id) => (id ? S.byId.get(id)?.name || null : null);
 const taskOut = (S, t) => ({

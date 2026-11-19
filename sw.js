@@ -2,7 +2,7 @@
 // O app inteiro funciona offline depois da primeira abertura.
 // Ao publicar uma nova versão, aumente VERSION aqui e app.version em js/state.js.
 // A lista SHELL é conferida pelos testes (npm test): todo arquivo do app precisa estar nela.
-const VERSION = 'lida-v3.0.0-alfa.20';
+const VERSION = 'lida-v3.0.0-alfa.21';
 const SHELL = [
   './',
   'index.html',
@@ -32,6 +32,7 @@ const SHELL = [
   'icons/lidinho/humor/quebrada.webp',
   'icons/lidinho/humor/urgente.webp',
   'icons/lidinho/iniciado.webp',
+  'icons/lidinho/kaizen.webp',
   'icons/lidinho/lifehacker.webp',
   'icons/lidinho/mestre.webp',
   'icons/lidinho/neofito.webp',
@@ -45,6 +46,7 @@ const SHELL = [
   'icons/lidinho/selfie/dragao.webp',
   'icons/lidinho/selfie/erudito.webp',
   'icons/lidinho/selfie/iniciado.webp',
+  'icons/lidinho/selfie/kaizen.webp',
   'icons/lidinho/selfie/lifehacker.webp',
   'icons/lidinho/selfie/mestre.webp',
   'icons/lidinho/selfie/neofito.webp',
@@ -66,6 +68,8 @@ const SHELL = [
   'js/core/achievements.js',
   'js/core/alarms.js',
   'js/core/backup.js',
+  'js/core/calendar.js',
+  'js/core/calsources.js',
   'js/core/changelog.js',
   'js/core/cloud.js',
   'js/core/demo.js',
@@ -77,6 +81,7 @@ const SHELL = [
   'js/core/habits.js',
   'js/core/help.js',
   'js/core/i18n.js',
+  'js/core/ical.js',
   'js/core/ipl.js',
   'js/core/legacy.js',
   'js/core/metronome.js',
@@ -127,6 +132,7 @@ const SHELL = [
   'js/views/alarm.js',
   'js/views/board.js',
   'js/views/brain.js',
+  'js/views/calendar.js',
   'js/views/celebrate.js',
   'js/views/cloudfiles.js',
   'js/views/common.js',

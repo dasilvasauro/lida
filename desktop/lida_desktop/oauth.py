@@ -8,7 +8,13 @@ e entrega o idToken para o Firebase da página, que faz o resto.
 Precisa de um cliente OAuth do tipo "App para computador" criado no MESMO projeto do Firebase
 (Google Cloud Console > APIs e serviços > Credenciais). O JSON baixado vai em
 ~/.config/lida/google-oauth.json.
+
+Google Agenda (calendário do Lida): o mesmo fluxo, com a permissão de leitura da agenda e acesso
+"offline". O refresh token fica em ~/.config/lida/gcal-token.json (só para o seu usuário) e cada
+pedido do app recebe um token de acesso novo, sem abrir o navegador de novo.
 """
+
+import os
 
 import base64
 import hashlib
@@ -52,7 +58,80 @@ def load_client():
     return c["client_id"], c.get("client_secret", "")
 
 
+CAL_SCOPE = "https://www.googleapis.com/auth/calendar.readonly"
+
+
 def login(timeout=240):
+    """Login do Firebase: devolve o idToken."""
+    tok = _authorize("openid email profile", timeout=timeout)
+    if not tok.get("id_token"):
+        raise LoginError("O Google não devolveu o idToken.")
+    return tok["id_token"]
+
+
+def _token_request(data):
+    try:
+        with urllib.request.urlopen(urllib.request.Request(TOKEN_URL, data=urllib.parse.urlencode(data).encode()), timeout=30) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace")[:300]
+        if '"invalid_grant"' in body:
+            raise LoginError("A permissão da Google Agenda foi revogada: conecte de novo.") from e
+        raise LoginError(f"Falha ao falar com o Google: {body}") from e
+    except OSError as e:
+        raise LoginError(f"Sem conexão com o Google: {e}") from e
+
+
+def _save_cal(data):
+    paths.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    f = paths.GCAL_FILE
+    tmp = f.with_suffix(".tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        json.dump(data, fh)
+    os.replace(tmp, f)
+
+
+def calendar_forget():
+    try:
+        paths.GCAL_FILE.unlink()
+    except OSError:
+        pass
+
+
+def calendar_token(interactive=False):
+    """Token de acesso da Google Agenda: {accessToken, expiresIn}. Sem permissão salva e sem
+    interactive, devolve {} (o app mostra o botão Conectar)."""
+    client_id, client_secret = load_client()
+    saved = {}
+    try:
+        saved = json.loads(paths.GCAL_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        saved = {}
+    if saved.get("refresh_token"):
+        try:
+            tok = _token_request({
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "refresh_token": saved["refresh_token"],
+                "grant_type": "refresh_token",
+            })
+            return {"accessToken": tok["access_token"], "expiresIn": int(tok.get("expires_in", 3600))}
+        except LoginError:
+            if not interactive:
+                raise
+            calendar_forget()
+    if not interactive:
+        return {}
+    tok = _authorize(f"openid email {CAL_SCOPE}", offline=True)
+    if tok.get("refresh_token"):
+        _save_cal({"refresh_token": tok["refresh_token"], "scope": tok.get("scope", "")})
+    if not tok.get("access_token"):
+        raise LoginError("O Google não devolveu a permissão da agenda.")
+    return {"accessToken": tok["access_token"], "expiresIn": int(tok.get("expires_in", 3600))}
+
+
+def _authorize(scope, offline=False, timeout=240):
     client_id, client_secret = load_client()
     verifier = secrets.token_urlsafe(64)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
@@ -88,11 +167,12 @@ def login(timeout=240):
         "client_id": client_id,
         "redirect_uri": redirect,
         "response_type": "code",
-        "scope": "openid email profile",
+        "scope": scope,
         "code_challenge": challenge,
         "code_challenge_method": "S256",
         "state": state,
-        "prompt": "select_account",
+        "prompt": "consent" if offline else "select_account",
+        **({"access_type": "offline", "include_granted_scopes": "true"} if offline else {}),
     })
     webbrowser.open(url)
     deadline = time.monotonic() + timeout
@@ -107,21 +187,11 @@ def login(timeout=240):
         raise LoginError("Login cancelado." if result["error"] == "access_denied" else f"O Google recusou: {result['error']}")
     if result.get("state") != state:
         raise LoginError("Resposta do Google não confere (state). Tente de novo.")
-    data = urllib.parse.urlencode({
+    return _token_request({
         "code": result["code"],
         "client_id": client_id,
         "client_secret": client_secret,
         "code_verifier": verifier,
         "redirect_uri": redirect,
         "grant_type": "authorization_code",
-    }).encode()
-    try:
-        with urllib.request.urlopen(urllib.request.Request(TOKEN_URL, data=data), timeout=30) as r:
-            tok = json.loads(r.read())
-    except urllib.error.HTTPError as e:
-        raise LoginError(f"Falha ao trocar o código pelo token: {e.read().decode(errors='replace')[:300]}") from e
-    except OSError as e:
-        raise LoginError(f"Sem conexão com o Google: {e}") from e
-    if not tok.get("id_token"):
-        raise LoginError("O Google não devolveu o idToken.")
-    return tok["id_token"]
+    })

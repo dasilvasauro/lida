@@ -5,7 +5,7 @@ import { nowMs } from '../lib/clock.js';
 import { levelTitle, LEVEL_TITLES } from '../core/model.js';
 import { boosts, levelProgress } from '../core/game.js';
 import { icon, bar, sheet } from '../ui/ui.js';
-import { mascotFor, mascotCollection, mascotSvg, selfieSrc, unlockedTitles, COSTUMES, costumeKey } from '../ui/mascot.js';
+import { mascotFor, mascotCollection, mascotSvg, selfieSrc, unlockedTitles, COSTUMES, costumeKey, SPECIALS, specialKey, specialOk } from '../ui/mascot.js';
 
 // Avatar: a escolha em Ajustes (foto enviada, Lidinho inteiro ou em "selfie", conta Google ou inicial);
 // sem nada, a foto da conta Google ou a inicial do nome. O Lidinho pode ser qualquer um já alcançado
@@ -13,6 +13,7 @@ import { mascotFor, mascotCollection, mascotSvg, selfieSrc, unlockedTitles, COST
 export function avatarTitle(pr = P().profileMeta || {}) {
   const level = P().money.level;
   if (pr.lidinho && COSTUMES.some((c) => costumeKey(c.id) === pr.lidinho)) return pr.lidinho;
+  if (pr.lidinho && SPECIALS.some((sp) => specialKey(sp.id) === pr.lidinho && specialOk(P(), sp))) return pr.lidinho;
   return pr.lidinho && unlockedTitles(level).includes(pr.lidinho) ? pr.lidinho : levelTitle(level);
 }
 export function avatar(size) {
@@ -51,7 +52,7 @@ export function levelCard(S) {
 export function openMascot(level) {
   sheet({
     title: 'Lidinho',
-    body: `<p class="sheet-text">Cada título é uma fase da sua jornada de produtividade. Os próximos ficam na sombra até você chegar lá.</p>${mascotCollection(level)}`,
+    body: `<p class="sheet-text">Cada título é uma fase da sua jornada de produtividade. Os próximos ficam na sombra até você chegar lá.</p>${mascotCollection(level, P())}`,
     onMount(el) {
       setTimeout(() => el.querySelector('[data-now]')?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 260);
     },
@@ -103,13 +104,19 @@ export function openAvatar(onDone) {
   const lidis = () => {
     const p = P().profileMeta || {};
     const kind = p.avatar === 'mascot' ? 'mascot' : 'selfie';
-    const chosen = p.lidinho && (unlockedTitles(level).includes(p.lidinho) || COSTUMES.some((c) => costumeKey(c.id) === p.lidinho)) ? p.lidinho : '';
+    const S = P();
+    const chosen = p.lidinho && (unlockedTitles(level).includes(p.lidinho) || COSTUMES.some((c) => costumeKey(c.id) === p.lidinho) || SPECIALS.some((sp) => specialKey(sp.id) === p.lidinho && specialOk(S, sp))) ? p.lidinho : '';
     const art = (title, locked) => (kind === 'selfie' ? `<img class="${locked ? 'mascot locked' : ''}" src="${selfieSrc(title)}" alt="">` : mascotSvg(title, { size: 52, locked }));
     return `<div class="av-lidis-head"><b>Qual Lidinho?</b><small>Os próximos aparecem quando você chegar ao título.</small></div>
       <div class="av-lidis"><button type="button" class="av-lidi${chosen ? '' : ' on'}" data-lidi=""><span class="av-lidi-art">${art(levelTitle(level), false)}</span><span>Sempre o do meu título</span></button>
       ${LEVEL_TITLES.map(([min, title]) => {
         const locked = level < min;
         return `<button type="button" class="av-lidi${chosen === title ? ' on' : ''}" data-lidi="${esc(title)}"${locked ? ' disabled' : ''} aria-label="${locked ? `Libera no nível ${min}` : esc(title)}"><span class="av-lidi-art">${art(title, locked)}</span><span>${locked ? `Nível ${min}` : esc(title)}</span></button>`;
+      }).join('')}</div>
+      <div class="av-lidis-head"><b>Especiais</b><small>Liberados por conquistas.</small></div>
+      <div class="av-lidis">${SPECIALS.map((sp) => {
+        const ok = specialOk(S, sp);
+        return `<button type="button" class="av-lidi${chosen === specialKey(sp.id) ? ' on' : ''}" data-lidi="${specialKey(sp.id)}"${ok ? '' : ' disabled'} aria-label="${ok ? esc(sp.name) : `Libera com ${esc(sp.how)}`}"><span class="av-lidi-art">${art(specialKey(sp.id), !ok)}</span><span>${ok ? esc(sp.name) : esc(sp.how)}</span></button>`;
       }).join('')}</div>
       <div class="av-lidis-head"><b>Fantasias</b><small>Liberadas para todo mundo.</small></div>
       <div class="av-lidis">${COSTUMES.map((c) => `<button type="button" class="av-lidi${chosen === costumeKey(c.id) ? ' on' : ''}" data-lidi="${costumeKey(c.id)}"><span class="av-lidi-art">${art(costumeKey(c.id), false)}</span><span>${esc(c.name.split(',')[0])}</span></button>`).join('')}</div>`;

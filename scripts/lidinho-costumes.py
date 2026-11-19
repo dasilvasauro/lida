@@ -1,7 +1,8 @@
 # Fantasias do Lidinho (desbloqueadas para todo mundo): pinguim, robô e dragão. Desenhadas por cima
 # do Lidinho Neófito (sem o broto), no mesmo traço: contorno de tinta escura e cores chapadas.
+# Mais o Kaizen (365 dias de ofensiva): o Lidinho inteiro em fogo, com óculos escuros.
 # Saída: icons/lidinho/<fantasia>.webp (320 px, fundo transparente). As selfies saem do
-# scripts/lidinho-selfie.py. Uso: python3 scripts/lidinho-costumes.py icons/lidinho
+# scripts/lidinho-selfie.py. Uso: python3 scripts/lidinho-costumes.py icons/lidinho [nomes...]
 import sys
 
 import numpy as np
@@ -208,8 +209,103 @@ def dragon(base):
     finish(fig, 'dragao')
 
 
+def fire_body(base):
+    """Troca o lavanda do corpo por fogo: sombra vermelha, meio laranja, brilho amarelo."""
+    a = np.array(base).astype(np.float32)
+    rgb = a[..., :3] / 255
+    mx, mn = rgb.max(-1), rgb.min(-1)
+    sat = (mx - mn) / (mx + 1e-6)
+    alive = a[..., 3] > 0
+    blue = (a[..., 2] > a[..., 0] + 20) & (sat > 0.15) & alive
+    # borda (tinta misturada com o lavanda): vira um marrom-fogo escuro, sem pontinhos claros
+    edge = blue & (mx < 0.42)
+    v = np.clip((mx - 0.42) / 0.55, 0, 1)[..., None]
+    lo = np.array([206, 52, 18], np.float32)
+    mid = np.array([255, 110, 22], np.float32)
+    hi = np.array([255, 168, 54], np.float32)
+    col = np.where(v < 0.72, lo + (mid - lo) * (v / 0.72), mid + (hi - mid) * ((v - 0.72) / 0.28))
+    a[..., :3] = np.where(blue[..., None], col, a[..., :3])
+    a[edge, :3] = (70, 26, 14)
+    # bochechas rosadas viram um vermelho-brasa
+    pink = (a[..., 0] > 170) & (a[..., 0] > a[..., 1] + 40) & (a[..., 2] > 110) & ~blue & alive
+    a[pink, :3] = (232, 60, 40)
+    return Image.fromarray(a.clip(0, 255).astype(np.uint8), 'RGBA')
+
+
+def flame_poly(cx, base_y, w, h, lean=0.0):
+    """Uma labareda: base larga, ponta fina, com leve curva."""
+    pts = []
+    for i in range(0, 21):
+        t = i / 20
+        x = cx - w / 2 + w * t
+        bulge = np.sin(np.pi * t)
+        y = base_y - bulge ** 0.6 * h * 0.35
+        pts.append((x, y))
+    tip = (cx + lean * h, base_y - h)
+    left = [(cx - w / 2, base_y), (cx - w * 0.42 + lean * h * 0.3, base_y - h * 0.45), (cx - w * 0.18 + lean * h * 0.7, base_y - h * 0.8), tip]
+    right = [tip, (cx + w * 0.16 + lean * h * 0.6, base_y - h * 0.62), (cx + w * 0.44 + lean * h * 0.25, base_y - h * 0.3), (cx + w / 2, base_y)]
+    return left + right[1:] + [(cx, base_y + h * 0.08)]
+
+
+def flames(layer, specs, outline=9):
+    """Labaredas contornadas: fora vermelho-laranja, dentro laranja e o miolo amarelo."""
+    for cx, by, w, h, lean in specs:
+        for scale, color, ol in ((1.0, (240, 84, 30, 255), outline), (0.66, (255, 150, 40, 255), 0), (0.36, (255, 226, 110, 255), 0)):
+            m = Image.new('L', (N * K, N * K), 0)
+            ImageDraw.Draw(m).polygon(S(flame_poly(cx, by, w * scale, h * scale, lean)), fill=255)
+            layer.alpha_composite(outlined(m, color, ol) if ol else Image.merge('RGBA', (*[Image.new('L', m.size, c) for c in color[:3]], m)))
+
+
+def kaizen(base):
+    body = fire_body(base)
+    # brilho de fogo em volta de tudo
+    glow = Image.new('RGBA', (N, N), (255, 120, 30, 0))
+    ga = np.array(base.getchannel('A')).astype(np.float32)
+    g = Image.fromarray(ga.astype(np.uint8), 'L').filter(ImageFilter.GaussianBlur(26))
+    glow.putalpha(Image.fromarray((np.array(g).astype(np.float32) * 0.75).astype(np.uint8), 'L'))
+    fig = glow
+    # labaredas atrás do corpo (cabeça e laterais)
+    B = big()
+    flames(B, [
+        (250, 200, 120, 190, -0.25), (330, 182, 150, 250, 0.0), (410, 196, 120, 200, 0.22),
+        (190, 262, 90, 140, -0.45), (470, 252, 90, 150, 0.4), (150, 360, 70, 110, -0.6), (520, 340, 64, 100, 0.55),
+    ])
+    fig.alpha_composite(B.resize((N, N), Image.LANCZOS))
+    fig.alpha_composite(body)
+    L = big()
+    # topete de fogo por cima da cabeça
+    flames(L, [(300, 214, 90, 120, -0.2), (352, 206, 100, 150, 0.05), (400, 214, 80, 110, 0.25)], 8)
+    # chamas nos pés
+    flames(L, [(250, 560, 60, 70, -0.15), (300, 556, 50, 56, 0.1), (370, 560, 60, 70, -0.1), (424, 556, 50, 60, 0.2)], 7)
+    fig.alpha_composite(L.resize((N, N), Image.LANCZOS))
+    # boca: em vez do "o" de surpresa, um sorriso de canto confiante
+    M = big()
+    md = ImageDraw.Draw(M)
+    fill = tuple(np.array(body)[416, 300][:3]) + (255,)
+    md.ellipse(S([(314, 392), (366, 448)]), fill=fill)
+    md.arc(S([(306, 386), (380, 438)]), start=20, end=150, fill=INK, width=9 * K)
+    md.line(S([(372, 414), (382, 404)]), fill=INK, width=8 * K)
+    fig.alpha_composite(M.resize((N, N), Image.LANCZOS))
+    # óculos escuros
+    G = big()
+    gd = ImageDraw.Draw(G)
+    lens = [((236, 318), (318, 378)), ((350, 312), (440, 372))]
+    gd.line(S([(318, 334), (350, 330)]), fill=INK, width=12 * K)  # ponte
+    gd.line(S([(236, 330), (196, 318)]), fill=INK, width=10 * K)  # hastes
+    gd.line(S([(440, 326), (474, 312)]), fill=INK, width=10 * K)
+    for (x0, y0), (x1, y1) in lens:
+        gd.rounded_rectangle(S([(x0, y0), (x1, y1)]), radius=22 * K, fill=INK)
+        gd.rounded_rectangle(S([(x0 + 6, y0 + 6), (x1 - 6, y1 - 6)]), radius=17 * K, fill=(40, 30, 46, 255))
+        # reflexo
+        gd.line(S([(x0 + 16, y0 + 18), (x0 + 34, y0 + 14)]), fill=(255, 255, 255, 210), width=6 * K)
+        gd.line(S([(x0 + 14, y0 + 30), (x0 + 22, y0 + 28)]), fill=(255, 255, 255, 150), width=4 * K)
+    fig.alpha_composite(G.resize((N, N), Image.LANCZOS))
+    arm_on_top(fig, body)
+    finish(fig, 'kaizen')
+
+
 b = base_figure()
-penguin(b)
-robot(b)
-dragon(b)
+DRAW = {'pinguim': penguin, 'robo': robot, 'dragao': dragon, 'kaizen': kaizen}
+for name in sys.argv[2:] or list(DRAW):
+    DRAW[name](b)
 print('ok')

@@ -4,6 +4,41 @@
 // en/es (opcional): { title, items: [textos na mesma ordem] } para quem usa o app em inglês ou espanhol.
 export const CHANGELOG = [
   {
+    v: '3.0.0-alfa.21',
+    date: '2026-11-18',
+    title: 'Calendário, adição rápida no widget e Lidinho Kaizen',
+    items: [
+      ['novo', 'Calendário ao lado de Lista e Quadro: o mês inteiro, a semana ou o dia numa linha do tempo, com hoje destacado. Repetições aparecem como previstas (as diárias viram uma faixa no topo do mês) e os hábitos como contador. Dá para concluir, abrir, arrastar e criar tarefas direto nele.'],
+      ['novo', 'Agendas externas no calendário, só para ver: Google Agenda pela conta ou o link iCal de qualquer serviço (Outlook, iCloud, Nextcloud).'],
+      ['novo', 'Widget de adição rápida no Android: o + abre uma janelinha para anotar sem abrir o app, e as tarefas de hoje se concluem ali.'],
+      ['novo', 'Conquistas da Ofensiva, de 3 a 365 dias. Com um ano de ofensiva vem o Lidinho Kaizen, todo em fogo e de óculos escuros.'],
+      ['novo', 'Sons Metal, Piano e Mokia, e os temas AMOLED Mono e Yaru, na Loja.'],
+      ['correcao', 'Widgets do Plasma não fazem mais o plasmashell crescer sem parar: a leitura do estado deixou de criar uma entrada nova a cada segundo, e listas e anéis só são redesenhados quando algo muda.'],
+    ],
+    en: {
+      title: 'Calendar, quick add widget and the Kaizen Lidinho',
+      items: [
+        'Calendar next to List and Board: the whole month, the week or the day on a timeline, with today highlighted. Repeats show up as upcoming (daily ones become a strip at the top of the month) and habits as a counter. You can complete, open, drag and create tasks right there.',
+        'External calendars in the calendar, view-only: Google Calendar through your account or the iCal link from any service (Outlook, iCloud, Nextcloud).',
+        'Quick add widget on Android: the + opens a small window to jot something down without opening the app, and today\'s tasks can be completed right there.',
+        'Streak achievements, from 3 to 365 days. A year-long streak unlocks the Kaizen Lidinho, all on fire and in sunglasses.',
+        'Metal, Piano and Mokia sound packs, and the AMOLED Mono and Yaru themes, in the Shop.',
+        'Plasma widgets no longer make plasmashell grow nonstop: reading the state stopped creating a new entry every second, and lists and rings are only redrawn when something changes.',
+      ],
+    },
+    es: {
+      title: 'Calendario, añadido rápido en el widget y Lidinho Kaizen',
+      items: [
+        'Calendario junto a Lista y Tablero: el mes entero, la semana o el día en una línea de tiempo, con hoy destacado. Las repeticiones aparecen como previstas (las diarias se vuelven una franja arriba del mes) y los hábitos como contador. Puedes completar, abrir, arrastrar y crear tareas ahí mismo.',
+        'Calendarios externos en el calendario, solo para ver: Google Calendar con tu cuenta o el enlace iCal de cualquier servicio (Outlook, iCloud, Nextcloud).',
+        'Widget de añadido rápido en Android: el + abre una ventanita para anotar sin abrir la app, y las tareas de hoy se completan ahí.',
+        'Logros de la Racha, de 3 a 365 días. Con un año de racha llega el Lidinho Kaizen, todo en llamas y con gafas de sol.',
+        'Sonidos Metal, Piano y Mokia, y los temas AMOLED Mono y Yaru, en la Tienda.',
+        'Los widgets de Plasma ya no hacen crecer plasmashell sin parar: leer el estado dejó de crear una entrada nueva cada segundo, y las listas y anillos solo se redibujan cuando algo cambia.',
+      ],
+    },
+  },
+  {
     v: '3.0.0-alfa.20',
     date: '2026-11-18',
     title: 'Chave de recuperação, exportação, tour e manual',

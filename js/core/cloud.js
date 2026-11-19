@@ -14,7 +14,7 @@
 // contas nativo do Android (plugin @capacitor-firebase/authentication, só a parte do Google) e a
 // credencial devolvida entra no mesmo SDK web do Firebase, que cuida do resto (Firestore, sessão).
 import { isNative, plugin, hasPlugin } from '../native.js';
-import { isDesktop, googleIdToken } from '../desktop.js';
+import { isDesktop, googleIdToken, googleCalToken, googleCalForget } from '../desktop.js';
 
 const SDK = 'https://www.gstatic.com/firebasejs/10.14.1';
 
@@ -110,6 +110,81 @@ export async function signIn() {
     }
     throw e;
   }
+}
+
+/* ---------- Google Agenda (só leitura) ---------- */
+// Token de acesso para a API da Google Agenda. Fica na memória (e, na web, na sessão da aba); vale
+// cerca de uma hora. interactive: pode abrir o seletor de conta / a tela de permissão do Google.
+// Precisa da Calendar API ligada no projeto do Firebase (veja o README, "Sua parte").
+export const CAL_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+let calTok = null;
+const CK = 'lida.gcal';
+function keepCal(token, secs = 3300) {
+  calTok = { token, exp: Date.now() + secs * 1000 };
+  try {
+    sessionStorage.setItem(CK, JSON.stringify(calTok));
+  } catch {
+    /* sem armazenamento */
+  }
+  return token;
+}
+export function dropCalendarToken({ forget = false } = {}) {
+  calTok = null;
+  try {
+    sessionStorage.removeItem(CK);
+  } catch {
+    /* sem armazenamento */
+  }
+  if (forget && isDesktop()) googleCalForget();
+}
+export async function googleCalendarToken({ interactive = false } = {}) {
+  if (calTok && calTok.exp > Date.now() + 60000) return calTok.token;
+  try {
+    const s = JSON.parse(sessionStorage.getItem(CK) || 'null');
+    if (s && s.exp > Date.now() + 60000) return (calTok = s).token;
+  } catch {
+    /* sem armazenamento */
+  }
+  if (isDesktop()) {
+    const r = await googleCalToken(interactive);
+    return r ? keepCal(r.token, r.expiresIn - 60) : null;
+  }
+  if (!interactive) return null;
+  if (isNative()) {
+    if (!nativeGoogle()) throw new Error('O login com Google não está disponível nesta versão do app.');
+    let r;
+    try {
+      r = await plugin('FirebaseAuthentication').signInWithGoogle({ scopes: [CAL_SCOPE], useCredentialManager: false });
+    } catch (e) {
+      if (/cancel/i.test(String(e?.message || e))) return null;
+      throw new Error(`O Google recusou: ${e?.message || e}`);
+    }
+    const at = r?.credential?.accessToken;
+    if (!at) throw new Error('O Google não devolveu a permissão da agenda.');
+    return keepCal(at);
+  }
+  if (!cloudConfigured()) throw new Error('O login com Google não está configurado nesta versão do Lida.');
+  const { auth, A } = await loadFirebase();
+  const provider = new A.GoogleAuthProvider();
+  provider.addScope(CAL_SCOPE);
+  const u = auth.currentUser;
+  provider.setCustomParameters(u?.email ? { login_hint: u.email } : { prompt: 'select_account' });
+  let res;
+  try {
+    if (u) res = await A.reauthenticateWithPopup(u, provider);
+    else {
+      // sem conta Google no Lida (só no aparelho / nuvem própria): só queremos a permissão da agenda
+      res = await A.signInWithPopup(auth, provider);
+      await A.signOut(auth).catch(() => {});
+    }
+  } catch (e) {
+    if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return null;
+    if (e.code === 'auth/user-mismatch') throw new Error('Escolha a mesma conta Google que você usa no Lida.');
+    throw e;
+  }
+  const at = A.GoogleAuthProvider.credentialFromResult(res)?.accessToken;
+  if (!at) throw new Error('O Google não devolveu a permissão da agenda.');
+  return keepCal(at);
 }
 
 export async function signOut() {

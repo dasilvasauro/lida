@@ -7,7 +7,7 @@ import * as notify from '../core/notify.js';
 import { isNative, hasPlugin, plugin } from '../native.js';
 import { googleAvailable } from '../core/cloud.js';
 import { esc, fmtInt, fmtDate, plural, LOC } from '../lib/util.js';
-import { icon, toast, confirmDialog, promptDialog, sheet } from '../ui/ui.js';
+import { icon, toast, confirmDialog, promptDialog, sheet, newTag } from '../ui/ui.js';
 import { avatar, openAvatar } from './common.js';
 import { MODUS, useItemEvent, THEME_PRICES, ownsPack } from '../core/game.js';
 import { WD_LETTER, WD_SHORT } from '../lib/util.js';
@@ -109,7 +109,7 @@ export const settingsView = {
         <div class="themes">${THEME_ORDER.map((id) => {
           const owned = themeOwned(id, S);
           const on = ap.theme === id;
-          return `<button type="button" class="theme-opt${on ? ' on' : ''}${owned ? '' : ' locked'}" data-theme="${id}" aria-pressed="${on}"${owned ? '' : ' aria-disabled="true"'}>${swatch(id)}<span>${esc(themeName(id))}</span>${id === 'sistema' ? '<small>Segue o aparelho</small>' : owned ? '' : `<small>${lockLabel(id)}</small>`}</button>`;
+          return `<button type="button" class="theme-opt${on ? ' on' : ''}${owned ? '' : ' locked'}" data-theme="${id}" aria-pressed="${on}"${owned ? '' : ' aria-disabled="true"'}>${swatch(id)}<span>${esc(themeName(id))}${THEMES[id]?.isNew ? newTag() : ''}</span>${id === 'sistema' ? '<small>Segue o aparelho</small>' : owned ? '' : `<small>${lockLabel(id)}</small>`}</button>`;
         }).join('')}</div>
         ${isDesktop() ? `<div class="set-list set-after"><label class="set-row">${icon('sparkles')}<span class="grow">Barra lateral translúcida<small>O fundo da barra fica transparente e o KDE desfoca o que está atrás (veja no README como ligar o desfoque no KWin)</small></span>${toggle('glass', glassOn(), 'Barra lateral translúcida')}</label></div>` : ''}
       </section>
@@ -137,7 +137,7 @@ export const settingsView = {
       <section class="set-group" data-cat="sons"><h2>Sons e vibração</h2><div class="set-list">
         <label class="set-row">${icon(sp.on ? 'volume' : 'mute')}<span class="grow">Sons<small>Ao concluir tarefas, ganhar XP e subir de nível</small></span>${toggle('sound', sp.on, 'Sons')}</label>
         <div class="set-row"${sp.on ? '' : ' hidden'}><span class="grow">Volume<input type="range" min="0.1" max="1" step="0.05" value="${sp.volume}" data-volume aria-label="Volume dos sons"></span><button type="button" class="btn small" data-hear>Ouvir</button></div>
-        <div class="set-row"${sp.on ? '' : ' hidden'}><span class="grow">Conjunto de sons<small>Mais conjuntos na Loja</small></span><select data-pack aria-label="Conjunto de sons">${PACK_ORDER.filter((k) => ownsPack(k, S)).map((k) => `<option value="${k}"${(sp.pack || 'classic') === k ? ' selected' : ''}>${esc(PACKS[k].name)}</option>`).join('')}</select></div>
+        <div class="set-row"${sp.on ? '' : ' hidden'}><span class="grow">Conjunto de sons<small>Mais conjuntos na Loja</small></span><select data-pack aria-label="Conjunto de sons">${PACK_ORDER.filter((k) => ownsPack(k, S)).map((k) => `<option value="${k}"${(sp.pack || 'classic') === k ? ' selected' : ''}>${esc(PACKS[k].name)}${PACKS[k].isNew ? ' · Novo' : ''}</option>`).join('')}</select></div>
         ${hapticsSupported() || isNative() ? `<label class="set-row">${icon('phone')}<span class="grow">Vibração<small>Um toque leve ao marcar e concluir</small></span>${toggle('haptics', hapticsOn(), 'Vibração')}</label>` : ''}
       </div></section>
 

@@ -32,9 +32,23 @@ export const COSTUMES = [
 ];
 export const costumeKey = (id) => `c:${id}`;
 const costumeOf = (key) => (typeof key === 'string' && key.startsWith('c:') ? COSTUMES.find((c) => c.id === key.slice(2)) : null);
-export const lidiName = (key) => costumeOf(key)?.name || key;
+// Especiais: liberados por uma conquista (a chave é "s:<id>"). O Kaizen vem com 365 dias de ofensiva.
+export const SPECIALS = [
+  {
+    id: 'kaizen',
+    name: 'Kaizen',
+    ach: 's_365',
+    how: '365 dias de ofensiva',
+    text: 'Kaizen é melhoria contínua: um pouco melhor todo dia, sem pular nenhum. Foram 365 dias seguidos cumprindo a meta, e o Lidinho pegou fogo de tanto ritmo. Os óculos escuros são para o brilho da chama (e um pouquinho de pose, ele merece).',
+  },
+];
+export const specialKey = (id) => `s:${id}`;
+const specialOf = (key) => (typeof key === 'string' && key.startsWith('s:') ? SPECIALS.find((c) => c.id === key.slice(2)) : null);
+// Especial liberado? (o registro da conquista fica para sempre, mesmo que a ofensiva quebre depois)
+export const specialOk = (S, sp) => !!S?.byId?.get(`ach_${sp.ach}`);
+export const lidiName = (key) => costumeOf(key)?.name || specialOf(key)?.name || key;
 const known = new Set(LEVEL_TITLES.map(([, t]) => t));
-const fileOf = (key) => costumeOf(key)?.id || slugOf(known.has(key) ? key : LEVEL_TITLES[0][1]);
+const fileOf = (key) => costumeOf(key)?.id || specialOf(key)?.id || slugOf(known.has(key) ? key : LEVEL_TITLES[0][1]);
 export const mascotSrc = (key) => `icons/lidinho/${fileOf(key)}.webp`;
 // "Selfie": o rosto ocupando o círculo e o detalhe do título (ou da fantasia) — foto de perfil.
 export const selfieSrc = (key) => `icons/lidinho/selfie/${fileOf(key)}.webp`;
@@ -43,7 +57,7 @@ export const unlockedTitles = (level) => LEVEL_TITLES.filter(([min]) => level >=
 
 // Mantém o nome antigo (era SVG desenhado no código): devolve a imagem do título.
 export function mascotSvg(title, { size = 56, cls = '', locked = false } = {}) {
-  const label = locked ? 'Lidinho escondido: título ainda não alcançado' : `Lidinho, ${lidiName(title)}`;
+  const label = locked ? (specialOf(title) ? 'Lidinho especial escondido: conquista ainda não alcançada' : 'Lidinho escondido: título ainda não alcançado') : `Lidinho, ${lidiName(title)}`;
   return `<img class="mascot${locked ? ' locked' : ''} ${cls}" src="${mascotSrc(title)}" width="${size}" height="${size}" alt="${esc(label)}" draggable="false" decoding="async">`;
 }
 export const mascotImg = mascotSvg;
@@ -78,7 +92,8 @@ export const MASCOT_TEXT = {
     'Cinquenta níveis de tarefas feitas, hábitos mantidos e prazos respeitados. Seu tempo responde a você, não o contrário. Não existe próximo título: o desafio agora é manter o ritmo sem perder a graça. Soberano também tira folga.',
 };
 
-export function mascotCollection(level) {
+// S: os dados (para saber quais especiais já foram liberados).
+export function mascotCollection(level, S = null) {
   const cur = levelTitle(level);
   return `<div class="mascot-col">${LEVEL_TITLES.map(([min, t]) => {
     const have = level >= min;
@@ -88,6 +103,11 @@ export function mascotCollection(level) {
       <div class="mc-txt">${have ? `<h3>${esc(t)}${now ? '<span class="mc-tag">Você está aqui</span>' : ''}</h3><small>A partir do nível ${min}</small><p>${esc(MASCOT_TEXT[t])}</p>` : `<h3 class="mc-hidden" aria-label="Título escondido">? ? ?</h3><small>Libera no nível ${min}</small>`}</div>
     </article>`;
   }).join('')}
+    <h3 class="mc-sec">Especiais <small>liberados por conquistas</small></h3>
+    ${SPECIALS.map((sp) => {
+      const ok = specialOk(S, sp);
+      return `<article class="mc-item mc-special${ok ? '' : ' locked'}"><div class="mc-art">${mascotSvg(specialKey(sp.id), { size: 84, locked: !ok })}</div><div class="mc-txt">${ok ? `<h3>${esc(sp.name)}</h3><small>${esc(sp.how)}</small><p>${esc(sp.text)}</p>` : `<h3 class="mc-hidden" aria-label="Lidinho especial escondido">? ? ?</h3><small>Libera com ${esc(sp.how)}</small>`}</div></article>`;
+    }).join('')}
     <h3 class="mc-sec">Fantasias <small>liberadas para todo mundo</small></h3>
     ${COSTUMES.map((c) => `<article class="mc-item"><div class="mc-art">${mascotSvg(costumeKey(c.id), { size: 84 })}</div><div class="mc-txt"><h3>${esc(c.name)}</h3><small>Fantasia</small><p>${esc(c.text)}</p></div></article>`).join('')}</div>`;
 }

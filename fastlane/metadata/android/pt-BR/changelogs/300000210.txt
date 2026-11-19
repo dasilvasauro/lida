@@ -1,0 +1,5 @@
+Calendário, adição rápida no widget e Lidinho Kaizen
+
+• Novo: Calendário ao lado de Lista e Quadro: o mês inteiro, a semana ou o dia numa linha do tempo, com hoje destacado. Repetições aparecem como previstas (as diárias viram uma faixa no topo do mês) e os hábitos como contador. Dá para concluir, abrir, arrastar e criar tarefas direto nele.
+• Novo: Agendas externas no calendário, só para ver: Google Agenda pela conta ou o link iCal de…
+Mais em Ajustes > Novidades e correções.

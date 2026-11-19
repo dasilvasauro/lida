@@ -1,5 +1,6 @@
 // Quadro (Kanban): as tarefas em colunas, agrupadas por data, prioridade ou projeto.
-// Hoje, Planejar e cada projeto têm o botão Lista/Quadro, lembrado por tela neste aparelho.
+// Hoje, Planejar e cada projeto têm o botão Lista/Quadro/Calendário, lembrado por tela neste aparelho
+// (o calendário fica em calendar.js).
 // Arrastar um cartão para outra coluna muda a data, a prioridade ou o projeto da tarefa.
 // No mouse, é só arrastar; no toque, segure o cartão um instante e arraste (soltar sem mover edita).
 import { P, app, personal } from '../state.js';
@@ -7,7 +8,7 @@ import { PRIORITIES, PRIORITY_RANK, taskOpen, recurrenceLabel } from '../core/mo
 import { saveTask, strip, checkTask } from '../core/tasks.js';
 import { today } from '../lib/clock.js';
 import { esc, addDays, relDay, fmtTime } from '../lib/util.js';
-import { icon, toast } from '../ui/ui.js';
+import { icon, toast, newTag } from '../ui/ui.js';
 import { plainPreview } from '../ui/rich.js';
 import { haptic } from '../ui/haptics.js';
 import { play } from '../core/sound.js';
@@ -29,9 +30,9 @@ const read = () => {
 export function viewPref(screen) {
   const v = read()[screen] || {};
   const by = v.by && BYS[v.by] && !(screen === 'projeto' && v.by === 'projeto') ? v.by : screen === 'planejar' || screen === 'painel' ? 'data' : 'prioridade';
-  return { mode: v.mode === 'board' ? 'board' : 'list', by };
+  return { mode: v.mode === 'board' || v.mode === 'cal' ? v.mode : 'list', by };
 }
-function setViewPref(screen, patch) {
+export function setViewPref(screen, patch) {
   try {
     localStorage.setItem(KEY, JSON.stringify({ ...read(), [screen]: { ...viewPref(screen), ...patch } }));
   } catch {
@@ -39,6 +40,7 @@ function setViewPref(screen, patch) {
   }
 }
 export const isBoardMode = (screen) => viewPref(screen).mode === 'board';
+export const isCalMode = (screen) => viewPref(screen).mode === 'cal';
 
 // Barra com Lista/Quadro e, no quadro, o "Agrupar por".
 export function viewBar(screen) {
@@ -48,6 +50,7 @@ export function viewBar(screen) {
     <div class="seg small kb-mode" role="group" aria-label="Forma de ver">
       <button type="button" data-vmode="list" class="${v.mode === 'list' ? 'on' : ''}" aria-pressed="${v.mode === 'list'}">${icon('list')}Lista</button>
       <button type="button" data-vmode="board" class="${v.mode === 'board' ? 'on' : ''}" aria-pressed="${v.mode === 'board'}">${icon('grid')}Quadro</button>
+      <button type="button" data-vmode="cal" class="${v.mode === 'cal' ? 'on' : ''}" aria-pressed="${v.mode === 'cal'}">${icon('calendar')}Calendário${newTag()}</button>
     </div>
     ${v.mode === 'board' ? `<label class="kb-by"><span>Agrupar por</span><select data-kbby aria-label="Agrupar por">${bys.map(([k, l]) => `<option value="${k}"${v.by === k ? ' selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
   </div>`;

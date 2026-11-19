@@ -120,6 +120,28 @@ export function streakInfo(S, now = today()) {
   return { count: current, best, today: td, todayMet, broken, lastActive, idle, week, goal: streakGoal(S) };
 }
 
+// Números da ofensiva para as conquistas: a melhor ofensiva, quantas vezes ela chegou a 7 dias
+// (cada volta depois de quebrar conta de novo) e os dias com 100% do programado feito.
+export function streakStats(S, now = today()) {
+  const idx = index(S);
+  let best = 0;
+  let run = 0;
+  let runs7 = 0;
+  let full = 0;
+  for (let i = MAX_BACK; i >= 0; i--) {
+    const d = addDays(now, -i);
+    if (idx.first && d < idx.first) continue;
+    const p = dayProgress(S, d, idx, now);
+    if (p.state === 'met') {
+      run++;
+      if (run === 7) runs7++;
+      best = Math.max(best, run);
+      if (p.planned > 0 && p.done >= p.planned) full++;
+    } else if (p.state === 'miss') run = 0;
+  }
+  return { best, runs7, full };
+}
+
 // Humor do Lidinho para a ofensiva (widgets e app).
 //   abandonado  3 dias ou mais sem fazer nada no Lida
 //   feito       meta de hoje batida (pijama depois das 21h)

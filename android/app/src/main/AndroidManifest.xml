@@ -89,6 +89,27 @@
                 android:resource="@xml/widget_week_info" />
         </receiver>
 
+        <!-- Adição rápida: o widget (lista de hoje com concluir) e a janelinha do botão +. -->
+        <receiver
+            android:name=".QuickWidget"
+            android:exported="true"
+            android:label="@string/widget_quick_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_quick_info" />
+        </receiver>
+        <activity
+            android:name=".QuickAddActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:taskAffinity=".quickadd"
+            android:theme="@style/QuickAddTheme"
+            android:windowSoftInputMode="stateAlwaysVisible|adjustResize" />
+
         <!-- Alarme de tela cheia: a tela (por cima da tela de bloqueio) e quem toca na hora / depois de reiniciar. -->
         <activity
             android:name=".AlarmActivity"

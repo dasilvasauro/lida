@@ -2,7 +2,7 @@
 # Sem fundo: o círculo é o próprio Lidinho (um recorte de dentro do corpo, com o rosto), contornado
 # como o desenho, e o detalhe do título é recortado do desenho inteiro e colocado por cima (broto,
 # boina, capelo, coroa, auréola, telas...). Saída: 256 px, transparente fora do círculo.
-# Uso: python3 scripts/lidinho-selfie.py icons/lidinho icons/lidinho/selfie
+# Uso: python3 scripts/lidinho-selfie.py icons/lidinho icons/lidinho/selfie [nomes...]
 import sys
 
 import numpy as np
@@ -33,6 +33,8 @@ CFG = {
     'robo': ((340, 345, 145), []),
     'dragao': ((335, 300, 165), []),
     'soberano': ((322, 272, 120), [((190, 20, 446, 128), 'all', (0.1, -0.03, 0.8), 0, False)]),
+    # Kaizen: o rosto com os óculos e as labaredas da cabeça por cima do círculo
+    'kaizen': ((336, 372, 140), [((176, 0, 500, 196), 'all', (0.1, -0.22, 0.8), 0, False)]),
 }
 
 
@@ -144,7 +146,10 @@ def body_disc(color_hi, color, color_lo):
     return d
 
 
+ONLY = set(sys.argv[3:])
 for name, (base, extras) in CFG.items():
+    if ONLY and name not in ONLY:
+        continue
     cx, cy, r = base[:3]
     tilt = base[3] if len(base) > 3 else 0  # "muda o ângulo": gira o Lidinho dentro do círculo
     big = Image.open(f'{SRC}/{name}.webp').convert('RGBA').resize((N, N), Image.LANCZOS)
@@ -164,6 +169,8 @@ for name, (base, extras) in CFG.items():
     ca = np.array(crop)
     h, s, v = hsv(ca)
     bodym = (h > 205) & (h < 265) & (s > 0.25) & (v > 0.55) & (ca[..., 3] > 200)
+    if bodym.sum() < 500:  # corpo que não é lavanda (Kaizen, de fogo)
+        bodym = (h > 10) & (h < 40) & (s > 0.5) & (v > 0.7) & (ca[..., 3] > 200)
     med = tuple(int(x) for x in np.median(ca[bodym][:, :3], axis=0)) if bodym.any() else (128, 136, 240)
     lo = tuple(int(x * 0.86) for x in med)
     canvas = body_disc(None, med, lo)

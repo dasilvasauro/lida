@@ -7,6 +7,8 @@
     <color name="widget_muted">#5D6573</color>
     <color name="widget_track">#E3E6EC</color>
     <color name="widget_accent">#4F5BD5</color>
+    <color name="widget_on_accent">#FFFFFF</color>
+    <color name="widget_row">#F1F3F7</color>
     <string name="widget_rings_name">Lida · Anéis</string>
     <string name="widget_rings_desc">Anéis do dia: tarefas, hábitos e água</string>
     <style name="RingLabel">
@@ -36,4 +38,52 @@
     <string name="widget_streak_open">Abra o Lida para começar.</string>
     <string name="widget_week_name">IPL da semana</string>
     <string name="widget_week_desc">A nota de cada dia dos últimos 7 dias</string>
+    <string name="widget_quick_name">Lida · Adição rápida</string>
+    <string name="widget_quick_desc">Anote uma tarefa sem abrir o app e conclua as de hoje</string>
+    <string name="quick_add">Adicionar tarefa</string>
+    <string name="quick_hint">Pagar a luz amanhã 9h p1 #casa</string>
+    <string name="quick_note">Data, hora, prioridade, #projeto e @etiqueta são entendidos. Sem data, vai para hoje.</string>
+    <string name="quick_cancel">Cancelar</string>
+    <string name="quick_ok">Adicionar</string>
+    <string name="quick_saved">Tarefa anotada.</string>
+    <string name="quick_saved_later">Tarefa anotada. Ela entra no Lida quando você abrir o app.</string>
+    <string name="quick_empty">Nada pendente para hoje. Toque em + para anotar.</string>
+    <string name="quick_pending">anotada</string>
+    <style name="QuickRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:layout_marginTop">4dp</item>
+        <item name="android:background">@drawable/widget_row_bg</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:visibility">gone</item>
+    </style>
+    <style name="QuickCheck">
+        <item name="android:layout_width">40dp</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:text">○</item>
+        <item name="android:textColor">@color/widget_accent</item>
+        <item name="android:textSize">22sp</item>
+    </style>
+    <style name="QuickText">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:textColor">@color/widget_text</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+    <style name="QuickTime">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:paddingStart">6dp</item>
+        <item name="android:paddingEnd">12dp</item>
+        <item name="android:textColor">@color/widget_muted</item>
+        <item name="android:textSize">12sp</item>
+    </style>
 </resources>
