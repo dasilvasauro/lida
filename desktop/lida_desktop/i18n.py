@@ -33,6 +33,7 @@ T = {
     "Focar numa tarefa…": ("Focus on a task…", "Enfocarse en una tarea…"),
     "Parar foco": ("Stop focus", "Detener enfoque"),
     "Flow…": ("Flow…", "Flow…"),
+    "Pomodoro automático": ("Automatic Pomodoro", "Pomodoro automático"),
     "Pausar / continuar o Flow": ("Pause / resume Flow", "Pausar / reanudar el Flow"),
     "Concluir e ir para a próxima do Flow": ("Complete and go to the next in Flow", "Completar y pasar a la siguiente del Flow"),
     "Flow: {0} de {1}": ("Flow: {0} of {1}", "Flow: {0} de {1}"),

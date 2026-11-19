@@ -102,7 +102,7 @@ export function initFlow() {
     flowTick: () => (active() ? (!F.paused && F.tick ? 'flow' : null) : undefined),
     flowPomo: (was) => {
       if (!active() || !F.pomo || F.paused) return false;
-      setTimeout(() => pomoStart(), 400);
+      // quem emenda o próximo ciclo é o Pomodoro (views/focus.js)
       if (was === 'focus') toast('Pausa do Pomodoro: respire. O Flow continua quando quiser.');
       return true;
     },

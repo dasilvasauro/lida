@@ -10,7 +10,7 @@ import { strip } from './game.js';
 import { flowSummary } from './flow.js';
 
 export const FOCUS_ID = 'focus';
-export const POMO_DEF = { mode: 'focus', running: false, endsAt: 0, left: 25 * 60, focusMin: 25, breakMin: 5 };
+export const POMO_DEF = { mode: 'focus', running: false, endsAt: 0, left: 25 * 60, focusMin: 25, breakMin: 5, auto: false };
 
 export const focusOf = (S = P()) => S.focus || null;
 

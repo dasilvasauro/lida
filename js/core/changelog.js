@@ -4,6 +4,26 @@
 // en/es (opcional): { title, items: [textos na mesma ordem] } para quem usa o app em inglês ou espanhol.
 export const CHANGELOG = [
   {
+    v: '3.0.0-alfa.24',
+    date: '2026-11-19',
+    title: 'Pomodoro automático',
+    items: [
+      ['novo', 'Pomodoro automático: ligue em Pomodoro > Automático e a pausa começa sozinha quando o foco acaba, e o foco recomeça quando a pausa acaba, até você pausar. Se o app ficou fechado, a sequência continua do ponto certo e os focos do meio-tempo contam. No Linux: menu Foco e lida pomo --auto.'],
+    ],
+    en: {
+      title: 'Automatic Pomodoro',
+      items: [
+        'Automatic Pomodoro: turn on Pomodoro > Automatic and the break starts by itself when focus ends, and focus starts again when the break ends, until you pause. If the app was closed, the sequence picks up at the right point and the focus cycles in between count. On Linux: Focus menu and lida pomo --auto.',
+      ],
+    },
+    es: {
+      title: 'Pomodoro automático',
+      items: [
+        'Pomodoro automático: activa Pomodoro > Automático y la pausa empieza sola cuando termina el enfoque, y el enfoque vuelve a empezar cuando termina la pausa, hasta que pauses. Si la app estuvo cerrada, la secuencia sigue desde el punto correcto y los enfoques de ese tiempo cuentan. En Linux: menú Enfoque y lida pomo --auto.',
+      ],
+    },
+  },
+  {
     v: '3.0.0-alfa.23',
     date: '2026-11-19',
     title: 'Flow: foco em fila',

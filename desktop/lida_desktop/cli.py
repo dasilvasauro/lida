@@ -8,7 +8,7 @@ e espera. Tudo passa pelas regras do Lida: recompensas, punições, foco global 
     lida add "pagar a luz amanhã 10h p1 #casa"
     lida done 2 | lida done "relatório"
     lida foco "relatório"        põe em foco (lida foco sozinho abre a tela de foco ao vivo)
-    lida pomo start|pause|reset|skip|status
+    lida pomo start|pause|reset|skip|status [--auto | --manual]
     lida flow [comecar|concluir|pular|pausar|continuar|encerrar]   o Flow (fila de foco)
     lida habitos | lida habito ler | lida agua copo | lida ipl
 
@@ -425,13 +425,16 @@ def cmd_pomo(a):
         args["focusMin"] = a.foco
     if a.pausa:
         args["breakMin"] = a.pausa
+    if a.auto is not None:
+        args["auto"] = a.auto
     p = call("pomo", args)
     if a.json:
         return print(json.dumps(p))
     left = (p["endsAt"] - time.time() * 1000) / 1000 if p.get("running") else p.get("leftSec", 0)
     label = "Foco" if p.get("mode") == "focus" else "Pausa"
     state = "rodando" if p.get("running") else "parado"
-    print(f"🍅 Pomodoro · {label} {bold(fmt_left(left))} {dim(state)}  {dim(f'(foco {p.get('focusMin')} min, pausa {p.get('breakMin')} min)')}")
+    auto = green(" automático") if p.get("auto") else ""
+    print(f"🍅 Pomodoro · {label} {bold(fmt_left(left))} {dim(state)}{auto}  {dim(f'(foco {p.get('focusMin')} min, pausa {p.get('breakMin')} min)')}")
 
 
 def cmd_habits(a):
@@ -782,6 +785,8 @@ def parser():
     s.add_argument("action", nargs="?", default="status", choices=["start", "pause", "toggle", "reset", "skip", "status", "iniciar", "pausar", "reiniciar", "pular"])
     s.add_argument("--foco", type=int, help="minutos de foco (5 a 90)")
     s.add_argument("--pausa", type=int, help="minutos de pausa (1 a 30)")
+    s.add_argument("--auto", dest="auto", action="store_const", const=True, default=None, help="automático: pausa e foco emendam sozinhos")
+    s.add_argument("--manual", dest="auto", action="store_const", const=False, help="desliga o automático")
 
     add("habitos", cmd_habits, "hábitos de hoje", ["habits", "h"])
     s = add("habito", cmd_habit, "marca um hábito (+1 na meta do dia)", ["habit"])

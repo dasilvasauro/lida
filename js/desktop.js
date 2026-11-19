@@ -15,7 +15,7 @@ import { focusSummary, focusedTask } from './core/focus.js';
 import { dayIPL, monthIPL, grade } from './core/ipl.js';
 import { parseQuick } from './core/parse.js';
 import { addFromText } from './views/tasks.js';
-import { focusOn, pomoStart, pomoPause, pomoReset, pomoSkip, pomoSet, pomoState } from './views/focus.js';
+import { focusOn, pomoStart, pomoPause, pomoReset, pomoSkip, pomoSet, pomoState, pomoAuto } from './views/focus.js';
 import { flowCommand } from './views/flow.js';
 import { storedAppearance, THEMES, THEME_ORDER, FONTS, FONT_ORDER, SIZES, themeName } from './ui/theme.js';
 import { soundPrefs, setSoundPrefs } from './core/sound.js';
@@ -330,8 +330,10 @@ const COMMANDS = {
   },
   // Flow: start | done | skip | pause | resume | toggle | stop | status
   flow: async ({ action = 'status' } = {}) => flowCommand(action),
-  pomo: async ({ action = 'status', focusMin, breakMin } = {}) => {
+  pomo: async ({ action = 'status', focusMin, breakMin, auto } = {}) => {
     if (focusMin || breakMin) pomoSet({ focusMin, breakMin });
+    // automático: foco e pausa emendam sozinhos (true/false; "toggle" alterna)
+    if (auto != null) pomoAuto(auto === 'toggle' ? !pomoState().auto : !!auto);
     if (action === 'start') pomoStart();
     else if (action === 'pause') pomoPause();
     else if (action === 'toggle') (pomoState().running ? pomoPause : pomoStart)();

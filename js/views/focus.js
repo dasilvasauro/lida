@@ -9,7 +9,7 @@ import { toggleTask, toggleSub } from '../core/tasks.js';
 import { timerAlert, liveTimer } from '../core/notify.js';
 import { POMO_DEF, saveFocus, focusOf, focusedTask, setFocus } from '../core/focus.js';
 import { today, nowMs } from '../lib/clock.js';
-import { esc, sum, plural } from '../lib/util.js';
+import { esc, sum, plural, isoOfMs } from '../lib/util.js';
 import { icon, sheet, toast, bar } from '../ui/ui.js';
 import { play } from '../core/sound.js';
 import { haptic } from '../ui/haptics.js';
@@ -70,6 +70,8 @@ export function pomoPause() {
   haptic('stop');
 }
 export const pomoState = () => ({ ...pomo, leftSec: Math.round(leftNow()) });
+// Modo automático: foco e pausa emendam sozinhos até você pausar.
+export const pomoAuto = (on) => setPomo({ auto: !!on });
 export const pomoSkip = () => pomoReset(pomo.mode === 'focus' ? 'break' : 'focus');
 // Ajusta as durações (minutos). Com o Pomodoro parado, recomeça o ciclo com o tempo novo.
 export function pomoSet({ focusMin, breakMin } = {}) {
@@ -85,24 +87,43 @@ export function pomoReset(mode = pomo.mode) {
 }
 
 // Ciclo terminado: registra o foco (1 voucher a cada 60 minutos acumulados) e passa para o próximo modo.
+// No modo automático (e no Flow com Pomodoro), o próximo começa sozinho: a pausa ao fim do foco e o foco ao
+// fim da pausa. Se o app ficou fechado, a corrente é refeita a partir do fim real de cada ciclo (os focos
+// que terminaram nesse meio-tempo também contam).
 async function pomoFinish() {
   const was = pomo.mode;
   const endedAt = pomo.endsAt;
   const next = was === 'focus' ? 'break' : 'focus';
-  setPomo({ mode: next, running: false, left: (next === 'focus' ? pomo.focusMin : pomo.breakMin) * 60 });
   play('bell');
   haptic('done');
-  // No Flow com Pomodoro, os ciclos emendam sozinhos (foco → pausa → foco).
   const inFlow = app.actions.flowPomo?.(was);
-  if (was !== 'focus') return inFlow || toast('Pausa encerrada. Quando quiser, comece outro ciclo.');
-  const id = `ev_focus_${endedAt}`;
-  if (personal.get(id)) return;
-  const batch = [{ type: 'ev', id, data: { kind: 'focus', date: today(), focusSec: pomo.focusMin * 60 } }];
-  const total = focusSeconds() + pomo.focusMin * 60;
+  const chain = inFlow || pomo.auto;
+  const focusEnds = was === 'focus' ? [endedAt] : [];
+  if (chain) {
+    const now = nowMs();
+    let mode = next;
+    let t = endedAt;
+    for (let i = 0; i < 200 && t + dur(mode) * 1000 <= now; i++) {
+      t += dur(mode) * 1000;
+      if (mode === 'focus') focusEnds.push(t);
+      mode = mode === 'focus' ? 'break' : 'focus';
+    }
+    const endsAt = t + dur(mode) * 1000;
+    setPomo({ mode, running: true, endsAt, left: dur(mode) });
+    timerAlert('pomodoro', endsAt, tx(mode === 'focus' ? 'Fim do foco' : 'Fim da pausa'), tx(mode === 'focus' ? 'Hora de uma pausa curta.' : 'Pronto para mais um ciclo?'));
+  } else setPomo({ mode: next, running: false, left: dur(next) });
+  const fresh = focusEnds.filter((at) => !personal.get(`ev_focus_${at}`));
+  if (!fresh.length) {
+    if (was !== 'focus' && !inFlow) toast(chain ? 'Pausa encerrada. O foco já recomeçou.' : 'Pausa encerrada. Quando quiser, comece outro ciclo.');
+    return;
+  }
+  const batch = fresh.map((at) => ({ type: 'ev', id: `ev_focus_${at}`, data: { kind: 'focus', date: isoOfMs(at), focusSec: pomo.focusMin * 60 } }));
+  const total = focusSeconds() + fresh.length * pomo.focusMin * 60;
   for (let k = 1; k <= Math.floor(total / 3600); k++) if (!personal.get(`ev_pomo_v_${k}`)) batch.push({ type: 'ev', id: `ev_pomo_v_${k}`, data: { kind: 'focus-voucher', date: today(), vouchers: 1 } });
-  const gotVoucher = batch.length > 1;
+  const gotVoucher = batch.length > fresh.length;
   await commit(batch);
-  toast(gotVoucher ? 'Ciclo concluído. Uma hora de foco acumulada: +1 voucher!' : `Ciclo de ${pomo.focusMin} minutos concluído. Hora da pausa.`, { ms: 4500 });
+  if (inFlow) return;
+  toast(gotVoucher ? 'Ciclo concluído. Uma hora de foco acumulada: +1 voucher!' : chain ? `Ciclo de ${pomo.focusMin} minutos concluído. A pausa já começou.` : `Ciclo de ${pomo.focusMin} minutos concluído. Hora da pausa.`, { ms: 4500 });
 }
 
 const focusSeconds = (S = P()) => sum(S.ev.filter((e) => e.kind === 'focus'), (e) => e.focusSec || 0);
@@ -220,6 +241,7 @@ export function openPomodoro() {
         <button type="button" class="btn primary pomo-go" data-go></button>
         <button type="button" class="icon-btn round" data-skip aria-label="Pular para o próximo">${icon('right')}</button>
       </div>
+      <label class="set-row pomo-auto"><span class="grow">Automático<small>A pausa começa quando o foco acaba, e o foco, quando a pausa acaba</small></span><span class="toggle"><input type="checkbox" data-auto aria-label="Pomodoro automático"><i></i></span></label>
       ${tickControls()}
       <p class="pomo-foot" data-foot></p>
     </div>`,
@@ -277,6 +299,12 @@ export function openPomodoro() {
       $('[data-go]').onclick = () => {
         if (pomo.running) pomoPause();
         else pomoStart();
+      };
+      const auto = $('[data-auto]');
+      auto.checked = !!pomo.auto;
+      auto.onchange = () => {
+        pomoAuto(auto.checked);
+        haptic('tap');
       };
       $('[data-reset]').onclick = () => pomoReset();
       $('[data-skip]').onclick = () => pomoReset(pomo.mode === 'focus' ? 'break' : 'focus');

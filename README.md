@@ -69,7 +69,8 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | alfa 20 | **Chave de recuperação** da senha, **exportar** tarefas e hábitos em CSV e tudo em JSON, **tour de boas-vindas** nas contas novas, **"?" de ajuda** nas seções e **manual** em Ajustes | Pronta |
 | alfa 21 | **Calendário** (mês, semana e dia, com agendas externas: Google Agenda e links iCal), **widget de adição rápida** no Android, **conquistas da Ofensiva** e o **Lidinho Kaizen**, sons **Metal, Piano e Mokia**, temas **AMOLED Mono e Yaru** e o fim do vazamento de memória dos widgets do Plasma | Pronta |
 | alfa 22 | **Congelamento de Ofensiva**, **comemoração da meta** com o horário médio, **Hub de Produtividade** na aba Eu, demo com ritmo **Impecável** e nove meses, ajustes no "?" e no ouro de seis dígitos | Pronta |
-| alfa 23 | **Flow** (foco em fila, em tela cheia, com horários, pausa, tique, Pomodoro e barras de atividade), Flow no **widget Foco do KDE** e na CLI, **conquistas do Flow**, **leitura gratuita** para os estudos do Hub e o Hub sem cortes no celular | **Esta versão** |
+| alfa 23 | **Flow** (foco em fila, em tela cheia, com horários, pausa, tique, Pomodoro e barras de atividade), Flow no **widget Foco do KDE** e na CLI, **conquistas do Flow**, **leitura gratuita** para os estudos do Hub e o Hub sem cortes no celular | Pronta |
+| alfa 24 | **Pomodoro automático** (pausa e foco emendam sozinhos, inclusive com o app fechado) | **Esta versão** |
 
 ## Como o jogo funciona
 
@@ -405,7 +406,7 @@ lida undone "luz" · lida rm 3 · lida edit 4 -d amanhã -H 15:30 -P 2 · lida s
 lida foco "relatório"                  # põe em foco (celular, bandeja e widget mostram) e abre a tela de foco
 lida foco                              # tela de foco ao vivo: espaço Pomodoro, c concluir, s parar, ↑↓ e enter subtarefas
 lida foco parar | concluir | status
-lida pomo start|pause|toggle|reset|skip|status [--foco 50 --pausa 10]
+lida pomo start|pause|toggle|reset|skip|status [--foco 50 --pausa 10] [--auto | --manual]
 lida flow [comecar|concluir|pular|pausar|continuar|encerrar|abrir]   # o Flow (sem nada: como está)
 lida habitos · lida habito ler [-u] · lida agua [copo|garrafa|300] [-u]
 lida ipl · lida mente "ligar pro banco" · lida projetos · lida buscar luz
@@ -647,6 +648,10 @@ No editor de cada um, escolha um toque em **Alarme de tela cheia** (rotinas e h�
 - **Escolha do tempo**: no Pomodoro, gire a faixa de números (arrastar, roda do mouse ou setas) como num timer de
   cozinha. O número do centro é o escolhido; vibra a cada minuto e mais forte nos múltiplos de 5. Foco de 1 a 90 min,
   pausa de 1 a 30. Com o Pomodoro correndo, a faixa gira sozinha com o tempo que falta.
+- **Automático**: com **Automático** ligado (no Pomodoro, no menu Foco do Linux ou `lida pomo --auto`), a pausa
+  começa sozinha quando o foco acaba e o foco recomeça quando a pausa acaba, até você pausar. Se o app ficou fechado,
+  ao abrir a sequência é refeita a partir do fim real de cada ciclo e os focos desse meio-tempo contam para os vouchers.
+  O aviso de fim (no celular) vale para o ciclo que está correndo; os seguintes são marcados ao abrir o app.
 - **Tique**: o botão **Tique** (no Pomodoro e na tela do modo foco) liga um tique por segundo enquanto o cronômetro corre.
 - **Metrônomo** (botão ao lado): de 1 a 8 tempos por compasso (até 8/8), toque em cada tempo para deixá-lo forte,
   normal ou mudo; andamento de 30 a 200 bpm; seis sons (relógio de parede, bloco de madeira, claves, bipe digital,

@@ -1725,6 +1725,10 @@ export default {
   "Foco em fila: uma tarefa por vez, em tela cheia. Concluiu, a próxima aparece.": "Focus in a queue: one task at a time, full screen. Finish one and the next appears.",
   "Antes de começar, escolha a ordem (prioridade, criação ou arrastando), tire ou acrescente tarefas e diga o que fazer quando chegar o horário de uma tarefa da fila: avisar e trocar em 10 s, trocar na hora ou esperar a atual terminar. Tarefas com tempo começam o cronômetro sozinhas; rotinas mostram os itens.": "Before starting, choose the order (priority, creation or by dragging), remove or add tasks and decide what happens when a queued task's time comes: warn and switch in 10 s, switch right away or wait for the current one to finish. Timed tasks start their timer on their own; routines show their items.",
   "Dá para pausar o Flow (os relógios param), usar o tique e o Pomodoro, e ver as barras de atividade, que só contam teclas e movimentos na hora e não gravam nada. No widget Foco do KDE, o Flow aparece em verde-água, sem segundos; ao clicar, mostra o resumo.": "You can pause Flow (the clocks stop), use the tick and Pomodoro, and see the activity bars, which only count keys and movement in the moment and record nothing. In the KDE Focus widget, Flow shows in teal, without seconds; click it to see the summary.",
+  "Pausa encerrada. O foco já recomeçou.": "Break over. Focus has already started again.",
+  "Ciclo de {0} minutos concluído. A pausa já começou.": "{0}-minute cycle done. The break has already started.",
+  "Pomodoro automático": "Automatic Pomodoro",
+  "A pausa começa quando o foco acaba, e o foco, quando a pausa acaba": "The break starts when focus ends, and focus starts when the break ends",
   // linhas soltas (placeholder de várias linhas, textos montados em partes)
   "Feito é melhor que perfeito.": "Done is better than perfect.",
   "Descansar também é produtivo.": "Resting is productive too.",

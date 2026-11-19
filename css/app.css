@@ -1083,6 +1083,8 @@ button.chip:hover { color: var(--text); border-color: color-mix(in srgb, var(--a
 .stepper { display: inline-flex; align-items: center; gap: .2667rem; padding: .2667rem .4rem .2667rem .8rem; border-radius: .8rem; background: var(--surface-2); font-size: .8667rem; font-weight: 700; color: var(--muted); }
 .stepper b { min-width: 3.4667rem; text-align: center; color: var(--text); }
 .stepper .icon-btn { width: 2rem; height: 2rem; }
+.pomo-auto { width: 100%; max-width: 22rem; text-align: left; }
+.pomo-auto small { display: block; }
 .pomo-foot { font-size: .8667rem; color: var(--muted); text-align: center; }
 
 .focus-overlay { position: fixed; inset: 0; z-index: 650; display: grid; place-items: center; padding: 1.6rem; background: var(--bg); opacity: 0; transform: scale(1.02); transition: opacity 0.25s, transform 0.3s var(--ease); --arc: var(--accent); }

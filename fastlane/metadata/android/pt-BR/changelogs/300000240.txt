@@ -1,0 +1,3 @@
+Pomodoro automático
+
+• Novo: Pomodoro automático: ligue em Pomodoro > Automático e a pausa começa sozinha quando o foco acaba, e o foco recomeça quando a pausa acaba, até você pausar. Se o app ficou fechado, a sequência continua do ponto certo e os focos do meio-tempo contam. No Linux: menu Foco e lida pomo --auto.

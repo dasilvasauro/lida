@@ -1725,6 +1725,10 @@ export default {
   "Foco em fila: uma tarefa por vez, em tela cheia. Concluiu, a próxima aparece.": "Enfoque en cola: una tarea a la vez, a pantalla completa. Terminas una y aparece la siguiente.",
   "Antes de começar, escolha a ordem (prioridade, criação ou arrastando), tire ou acrescente tarefas e diga o que fazer quando chegar o horário de uma tarefa da fila: avisar e trocar em 10 s, trocar na hora ou esperar a atual terminar. Tarefas com tempo começam o cronômetro sozinhas; rotinas mostram os itens.": "Antes de empezar, elige el orden (prioridad, creación o arrastrando), quita o añade tareas y decide qué hacer cuando llegue la hora de una tarea de la cola: avisar y cambiar en 10 s, cambiar al momento o esperar a que termine la actual. Las tareas con tiempo inician su cronómetro solas; las rutinas muestran sus ítems.",
   "Dá para pausar o Flow (os relógios param), usar o tique e o Pomodoro, e ver as barras de atividade, que só contam teclas e movimentos na hora e não gravam nada. No widget Foco do KDE, o Flow aparece em verde-água, sem segundos; ao clicar, mostra o resumo.": "Puedes pausar el Flow (los relojes se detienen), usar el tic y el Pomodoro, y ver las barras de actividad, que solo cuentan teclas y movimientos en el momento y no guardan nada. En el widget Enfoque de KDE, el Flow aparece en verde agua, sin segundos; al hacer clic, muestra el resumen.",
+  "Pausa encerrada. O foco já recomeçou.": "Pausa terminada. El enfoque ya volvió a empezar.",
+  "Ciclo de {0} minutos concluído. A pausa já começou.": "Ciclo de {0} minutos completado. La pausa ya empezó.",
+  "Pomodoro automático": "Pomodoro automático",
+  "A pausa começa quando o foco acaba, e o foco, quando a pausa acaba": "La pausa empieza cuando termina el enfoque, y el enfoque, cuando termina la pausa",
   // linhas soltas (placeholder de várias linhas, textos montados em partes)
   "Feito é melhor que perfeito.": "Hecho es mejor que perfecto.",
   "Descansar também é produtivo.": "Descansar también es productivo.",

@@ -351,6 +351,7 @@ class Window(QMainWindow):
         self.a_pomo = self._act(f, tr("Iniciar Pomodoro"), lambda: self._exec_js(0, "pomo", json.dumps({"action": "toggle"})), "Ctrl+P")
         self._act(f, tr("Reiniciar Pomodoro"), lambda: self._exec_js(0, "pomo", json.dumps({"action": "reset"})))
         self._act(f, tr("Pular para a pausa / foco"), lambda: self._exec_js(0, "pomo", json.dumps({"action": "skip"})))
+        self.a_pomoauto = self._act(f, tr("Pomodoro automático"), lambda on: self._exec_js(0, "pomo", json.dumps({"auto": bool(on)})), checkable=True)
         self._act(f, tr("Abrir o Pomodoro"), lambda: (self.show_window(), self.ui("tool", "focus")))
 
         s = mb.addMenu(tr("&Ajustes"))
@@ -506,6 +507,8 @@ class Window(QMainWindow):
         self.setWindowTitle(title)
         label = tr("Pausar Pomodoro" if running else ("Continuar Pomodoro" if pomo.get("active") else "Iniciar Pomodoro"))
         self.a_pomo.setText(label)
+        if self.a_pomoauto.isChecked() != bool(pomo.get("auto")):
+            self.a_pomoauto.setChecked(bool(pomo.get("auto")))
         self.t_pomo.setText(label)
         self.a_stopfocus.setEnabled(bool(task))
         self.a_donefocus.setEnabled(bool(task))

@@ -1,0 +1,3 @@
+Automatic Pomodoro
+
+• New: Automatic Pomodoro: turn on Pomodoro > Automatic and the break starts by itself when focus ends, and focus starts again when the break ends, until you pause. If the app was closed, the sequence picks up at the right point and the focus cycles in between count. On Linux: Focus menu and lida pomo --auto.
