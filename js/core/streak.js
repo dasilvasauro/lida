@@ -3,10 +3,22 @@
 // ofensiva (50% por padrão, ajustável em Ajustes > Jogo). Tarefas de outros dias concluídas no dia
 // também contam a favor. Num dia sem nada programado, basta concluir alguma coisa.
 // Dia de folga (Ajustes > Jogo) e Folga dos hábitos não quebram a ofensiva (e não somam).
+// Congelamento de Ofensiva (item da Loja, até 2 guardados, como no Duolingo): num dia perdido com a
+// ofensiva em andamento, um é gasto sozinho na virada do dia (registro ev_sfz_<dia>, o mesmo em todos
+// os aparelhos) e o dia fica "congelado": não quebra e não soma.
+// Horário da meta: a primeira vez no dia em que a meta vem fica em ev_sk_<dia> ({ min: minutos do dia })
+// para a média ("você costuma bater a meta às 16h40").
 // Tudo sai dos dados sincronizados: todos os aparelhos mostram o mesmo número.
 import { addDays, daysBetween, weekday, isoOfMs } from '../lib/util.js';
 import { today, nowMs } from '../lib/clock.js';
 import { habitsOnDay } from './tasks.js';
+import { personal } from '../state.js';
+
+export const FREEZE_MAX = 2;
+export const freezeId = (day) => `ev_sfz_${day}`;
+export const goalTimeId = (day) => `ev_sk_${day}`;
+// Dia congelado? (registro sincronizado ou, durante a virada, decidido agora em S.frozenDays)
+const frozenOn = (S, day) => !!(S.frozenDays?.has(day) || S.byId?.get?.(freezeId(day)));
 
 export const STREAK_GOALS = [25, 50, 75, 100];
 export const streakGoal = (S) => (STREAK_GOALS.includes(Number(S.prefs?.streakGoal)) ? Number(S.prefs.streakGoal) : 50);
@@ -60,10 +72,63 @@ export function dayProgress(S, day, idx = index(S), now = today()) {
   const met = planned ? pct >= goal - 1e-9 : done > 0;
   const off = (S.prefs?.daysOff || []).includes(weekday(day));
   const allProtected = !h.done && !h.missed && S.habit.some((x) => !x.archived && S.hlogMap.get(`${x.id}|${day}`)?.mod === 'dayOff');
-  const state = met ? 'met' : day >= now ? 'open' : off || (allProtected && !(idx.due.get(day) || []).length) ? 'off' : 'miss';
+  let state = met ? 'met' : day >= now ? 'open' : off || (allProtected && !(idx.due.get(day) || []).length) ? 'off' : 'miss';
+  if (state === 'miss' && frozenOn(S, day)) state = 'frozen';
   // quanto falta hoje para a meta
   const need = planned ? Math.max(0, Math.ceil(goal * planned - 1e-9) - done) : done > 0 ? 0 : 1;
   return { planned, done, pct, state, need };
+}
+
+// Ofensiva que vinha até o dia anterior a `day` (dias de folga e congelados não somam nem quebram).
+export function streakBefore(S, day, now = today()) {
+  const idx = index(S);
+  let count = 0;
+  let d = addDays(day, -1);
+  for (let i = 0; i < MAX_BACK; i++) {
+    if (idx.first && d < idx.first) break;
+    const st = dayProgress(S, d, idx, now).state;
+    if (st === 'met') count++;
+    else if (st === 'miss') break;
+    d = addDays(d, -1);
+  }
+  return count;
+}
+
+// Congelamentos a gastar na virada: para cada dia fechado (em ordem) que ficou sem a meta, com a
+// ofensiva em andamento e congelamento guardado, gasta um. view: a fotografia da virada (com o que já
+// foi decidido nela). Devolve os registros a gravar e os dias congelados.
+export function freezeBatch(view, days, have, now = today()) {
+  const out = [];
+  const frozen = [];
+  view.frozenDays = new Set(view.frozenDays || []);
+  let left = have;
+  for (const day of days) {
+    if (left <= 0) break;
+    if (view.byId?.get?.(freezeId(day))) continue;
+    const st = dayProgress(view, day, index(view), now).state;
+    if (st !== 'miss') continue;
+    const run = streakBefore(view, day, now);
+    if (run <= 0) continue;
+    left--;
+    view.frozenDays.add(day);
+    cacheKey = null; // os dias seguintes enxergam o congelado
+    frozen.push({ day, run });
+    out.push({ type: 'ev', id: freezeId(day), data: { kind: 'use', ref: `streakFreeze:${day}`, date: day, items: { streakFreeze: -1 } } });
+  }
+  return { batch: out, frozen };
+}
+
+// Guarda o horário em que a meta do dia veio (uma vez por dia). min: minutos desde a meia-noite.
+export async function recordGoalTime(day, min) {
+  if (personal.get(goalTimeId(day))) return false;
+  await personal.save('ev', { kind: 'streakMet', date: day, min }, goalTimeId(day));
+  return true;
+}
+// Média do horário da meta (últimos 60 registros): minutos do dia ou null
+export function goalTimeAvg(S, n = 60) {
+  const list = S.ev.filter((e) => e.kind === 'streakMet' && Number.isFinite(e.min)).sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, n);
+  if (!list.length) return null;
+  return { min: Math.round(list.reduce((a, e) => a + e.min, 0) / list.length), n: list.length };
 }
 
 // A ofensiva agora: { count, best, today, todayMet, broken, lastActive, idle, week }

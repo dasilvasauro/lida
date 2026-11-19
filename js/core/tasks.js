@@ -6,6 +6,7 @@ import { rewardFor, penaltyFor, priorityGate, commit, useItemEvent, ITEMS } from
 import { today, nowMs } from '../lib/clock.js';
 import { addDays, daysBetween, weekday, uid, ymOf, addMonths } from '../lib/util.js';
 import { dayIPL, grade } from './ipl.js';
+import { freezeBatch } from './streak.js';
 
 export const byPriority = (a, b) =>
   (PRIORITY_RANK[a.priority] ?? 4) - (PRIORITY_RANK[b.priority] ?? 4) || (a.time || '99').localeCompare(b.time || '99') || (a.order ?? a._ca ?? 0) - (b.order ?? b._ca ?? 0);
@@ -348,6 +349,13 @@ export async function processDays() {
       summary.closed.push(day);
       summary.days++;
       day = addDays(day, 1);
+    }
+    // Congelamento de Ofensiva: dias perdidos com a ofensiva em andamento gastam um (até acabar).
+    const sf = S.money.items.streakFreeze || 0;
+    if (sf > 0 && summary.closed.length) {
+      const fz = freezeBatch(view, summary.closed, sf, d);
+      batch.push(...fz.batch);
+      if (fz.frozen.length) summary.streakFrozen = fz.frozen;
     }
     // Virada do mês: fecha os meses que terminaram (média do IPL e os números do mês).
     const freshMonths = new Map();

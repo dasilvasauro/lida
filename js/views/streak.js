@@ -3,8 +3,9 @@ import { P, app } from '../state.js';
 import { t } from '../core/i18n.js';
 import { dayIPL } from '../core/ipl.js';
 import { today } from '../lib/clock.js';
-import { streakInfo, streakMood } from '../core/streak.js';
-import { esc, fmtInt, WD_LETTER, weekday, addDays } from '../lib/util.js';
+import { streakInfo, streakMood, goalTimeAvg, FREEZE_MAX } from '../core/streak.js';
+import { hhmm } from '../core/calendar.js';
+import { esc, fmtInt, fmtTime, WD_LETTER, weekday, addDays } from '../lib/util.js';
 import { icon, sheet } from '../ui/ui.js';
 
 export const MOOD_TEXT = {
@@ -34,8 +35,10 @@ export function openStreak() {
   const s = streakInfo(S);
   const mood = streakMood(s);
   const pct = Math.round(s.today.pct * 100);
+  const fz = S.money.items.streakFreeze || 0;
+  const avg = goalTimeAvg(S);
   const dot = (w) => {
-    const ic = w.state === 'met' ? icon('flame', 'sm') : w.state === 'off' ? icon('snow', 'sm') : w.state === 'open' ? '' : icon('x', 'sm');
+    const ic = w.state === 'met' ? icon('flame', 'sm') : w.state === 'frozen' ? icon('snow', 'sm') : w.state === 'off' ? icon('coffee', 'sm') : w.state === 'open' ? '' : icon('x', 'sm');
     return `<li class="st-${w.state}"><i>${ic}</i><span>${WD_LETTER[weekday(w.date)]}</span></li>`;
   };
   sheet({
@@ -48,13 +51,24 @@ export function openStreak() {
       <div class="streak-today"><div class="streak-bar"><i style="width:${pct}%"></i><b style="left:${s.goal}%"></b></div>
         <small>${esc(todayLine(s))} · ${s.today.done} de ${s.today.planned || 0} (${pct}%) · meta ${s.goal}%</small></div>
       <ol class="streak-week">${s.week.map(dot).join('')}</ol>
-      <p class="hint">Um dia conta quando você cumpre ${s.goal}% do que estava programado (tarefas do dia e hábitos). Tarefas adiantadas ou atrasadas concluídas no dia também contam. Dias de folga e a Folga dos hábitos não quebram a ofensiva.</p>
-      <p class="streak-best">${icon('trophy', 'sm')} Melhor ofensiva: <b>${fmtInt(s.best)}</b></p>
+      <p class="hint">Um dia conta quando você cumpre ${s.goal}% do que estava programado (tarefas do dia e hábitos). Tarefas adiantadas ou atrasadas concluídas no dia também contam. Dias de folga, a Folga dos hábitos e o Congelamento de Ofensiva não quebram a ofensiva.</p>
+      <p class="streak-best">${icon('trophy', 'sm')} Melhor ofensiva: <b>${fmtInt(s.best)}</b>${avg ? ` · ${icon('timer', 'sm')} Meta costuma vir às <b>${esc(fmtTime(hhmm(avg.min)))}</b>` : ''}</p>
+      <div class="streak-freeze">
+        <span class="sf-ice">${Array.from({ length: FREEZE_MAX }, (_, i) => `<i class="${i < fz ? 'on' : ''}">${icon('snow', 'sm')}</i>`).join('')}</span>
+        <span class="grow"><b>Congelamento de Ofensiva</b><small>${fz ? `${fz} de ${FREEZE_MAX} equipados: um dia sem a meta não quebra a ofensiva.` : 'Nenhum equipado. Na Loja, por 9 vouchers: protege a ofensiva num dia perdido.'}</small></span>
+        ${fz < FREEZE_MAX ? `<button type="button" class="btn small" data-sfbuy>${icon('card', 'sm')}Loja</button>` : ''}
+      </div>
       <div class="sheet-actions"><button type="button" class="btn ghost" data-goal>Mudar a meta</button><button type="button" class="btn primary" data-stclose>Fechar</button></div>
     </div>`,
     onMount(el, close) {
       el.querySelector('[data-stclose]').onclick = close;
       el.querySelector('[data-goal]').onclick = () => (close(), app.nav('ajustes-jogo'));
+      el.querySelector('[data-sfbuy]')?.addEventListener('click', async () => {
+        close();
+        const { shopView } = await import('./shop.js');
+        shopView.tab = 'vouchers';
+        app.nav('loja');
+      });
     },
   });
 }

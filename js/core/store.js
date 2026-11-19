@@ -37,6 +37,8 @@ export function createStore({ name = 'space', watch = {} } = {}) {
   const csubs = new Set();
   const snaps = new Map(); // cache de fotografias por construtor
 
+  // última gravação feita neste aparelho (para separar o que a pessoa fez do que veio da nuvem)
+  let localAt = 0;
   function notify() {
     version++;
     if (queued) return;
@@ -180,6 +182,7 @@ export function createStore({ name = 'space', watch = {} } = {}) {
   const api = {
     name,
     subscribe: (f) => (subs.add(f), () => subs.delete(f)),
+    localAt: () => localAt,
     setKick: (f) => (kick = f),
     setMe: (u) => (me = u),
     setDevice: (d) => (device = d || null),
@@ -219,6 +222,7 @@ export function createStore({ name = 'space', watch = {} } = {}) {
       const rec = build(type, data, id, recs.get(id));
       await persist(rec);
       recs.set(id, rec);
+      localAt = Date.now();
       notify();
       kick();
       return id;
@@ -245,6 +249,7 @@ export function createStore({ name = 'space', watch = {} } = {}) {
       }
       const sealed = await Promise.all(rows);
       for (let i = 0; i < sealed.length; i += 500) await db.write(sealed.slice(i, i + 500), sealed.slice(i, i + 500).map((r) => r.id));
+      localAt = Date.now();
       notify();
       kick();
       return out;
@@ -256,6 +261,7 @@ export function createStore({ name = 'space', watch = {} } = {}) {
       const rec = { id, type: prev.type, u: tick(), by: me, su: prev.su || null, del: true };
       await persist(rec);
       recs.set(id, rec);
+      localAt = Date.now();
       notify();
       kick();
     },
@@ -271,6 +277,7 @@ export function createStore({ name = 'space', watch = {} } = {}) {
       }
       if (!rows.length) return;
       await db.write(rows, rows.map((r) => r.id));
+      localAt = Date.now();
       notify();
       kick();
     },
@@ -372,6 +379,7 @@ export function createStore({ name = 'space', watch = {} } = {}) {
         await persist(next);
         recs.set(rec.id, next);
       }
+      localAt = Date.now();
       notify();
       kick();
     },

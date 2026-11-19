@@ -38,13 +38,15 @@ export const ITEMS = {
   changeModus: { name: 'Novo estilo de jogo', icon: 'user', cost: 1000, cur: 'gold', use: 'auto', desc: 'Permite trocar o seu Modus Operandi uma vez, em Ajustes.' },
   extraQuitter: { name: 'Espaço no Desapego', icon: 'shield', cost: 1700, cur: 'gold', use: 'auto', desc: 'Acompanhe mais um mau hábito no Desapego. Todo mundo começa com um espaço.' },
   freeze: { name: 'Congelamento', icon: 'snow', cost: 3, cur: 'vouchers', use: 'habit', desc: 'Protege a sequência de um hábito num dia difícil. Use no cartão do hábito.' },
+  // Congelamento de Ofensiva: como no Duolingo, fica equipado (até 2) e é gasto sozinho num dia perdido.
+  streakFreeze: { name: 'Congelamento de Ofensiva', icon: 'snow', cost: 9, cur: 'vouchers', use: 'auto', max: 2, isNew: true, desc: 'Fica equipado e, se um dia passar sem a meta da ofensiva, é gasto sozinho e a ofensiva não quebra (o dia não soma). Até 2 equipados.' },
   autoFreeze: { name: 'Congelamento Automático', icon: 'snow', cost: 9, cur: 'vouchers', use: 'auto', desc: 'Se você perder um dia, salva sozinho as sequências dos hábitos que ficaram por fazer. Um por dia perdido.' },
   dayOff: { name: 'Folga dos hábitos', icon: 'coffee', cost: 7, cur: 'vouchers', use: 'shop', desc: 'Todos os hábitos de hoje contam como feitos. Nenhuma sequência se perde.' },
   instantLuck: { name: 'Sorte instantânea', icon: 'clover', cost: 5, cur: 'vouchers', use: 'instant', desc: 'Vira uma Carta da Sorte na hora.' },
   luckyCard: { name: 'Carta da Sorte', icon: 'clover', cost: 0, cur: 'none', use: 'shop', desc: 'Quase sempre premia: ouro, XP, um voucher ou um item. De vez em quando, a sorte grande. Ganhe a cada 5 níveis (e a cada nível depois do 25).' },
 };
 export const SHOP_GOLD = ['magicDice', 'xpBoost', 'goldBoost', 'respite', 'relief', 'bonusTask', 'extraP0', 'extraP1', 'changeModus', 'extraQuitter'];
-export const SHOP_VOUCHERS = ['freeze', 'autoFreeze', 'dayOff', 'instantLuck'];
+export const SHOP_VOUCHERS = ['streakFreeze', 'freeze', 'autoFreeze', 'dayOff', 'instantLuck'];
 
 export const THEME_PRICES = { aqua: 2500, matrix: 2500, rosa: 2500, tomate: 2500, cinza: 2500, laranja: 2500, edna: 3000, monocromo: 2500, bumblebee: 2500, tumbleweed: 3000, amoledmono: 2500, yaru: 3000 };
 
@@ -252,6 +254,7 @@ export async function buy(id) {
   const m = money();
   if (!it || it.cur === 'none') return { ok: false };
   if ((m[it.cur] || 0) < it.cost) return { ok: false, reason: 'saldo' };
+  if (it.max && (m.items[id] || 0) >= it.max) return { ok: false, reason: 'max' };
   const items = id === 'instantLuck' ? { luckyCard: 1 } : { [id]: 1 };
   await commit([ev({ kind: 'buy', ref: id, [it.cur]: -it.cost, items })]);
   return { ok: true };

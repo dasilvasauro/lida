@@ -4,6 +4,38 @@
 // en/es (opcional): { title, items: [textos na mesma ordem] } para quem usa o app em inglês ou espanhol.
 export const CHANGELOG = [
   {
+    v: '3.0.0-alfa.22',
+    date: '2026-11-19',
+    title: 'Congelamento de Ofensiva, comemoração da meta e Hub de Produtividade',
+    items: [
+      ['novo', 'Congelamento de Ofensiva, na Loja por 9 vouchers: como no Duolingo, fica equipado (até 2) e é gasto sozinho num dia sem a meta, sem quebrar a ofensiva.'],
+      ['novo', 'Ao bater a meta da ofensiva com o app aberto, uma animação mostra o número subindo, marca o dia na semana e diz a que horas a meta veio, comparada com a sua média.'],
+      ['novo', 'Hub de Produtividade, na aba Eu: métodos, estudos, práticas e livros sobre constância, objetivos, foco, hábitos e corpo (água, sono, movimento). Sem patrocínio. Os "?" do app levam ao trecho certo.'],
+      ['melhoria', 'Modo demo: ritmo Impecável (ofensiva sem quebra) e simulação de nove meses.'],
+      ['correcao', 'O "?" de ajuda fica centralizado no círculo, e o ouro com seis dígitos cabe no quadro da Loja.'],
+    ],
+    en: {
+      title: 'Streak Freeze, goal celebration and the Productivity Hub',
+      items: [
+        'Streak Freeze, in the Shop for 9 vouchers: like in Duolingo, it stays equipped (up to 2) and is used automatically on a day without the goal, without breaking your streak.',
+        'When you meet your streak goal with the app open, an animation shows the number going up, marks the day in the week and tells you what time you met it, compared with your average.',
+        'Productivity Hub, in the Me tab: methods, studies, practices and books on consistency, goals, focus, habits and the body (water, sleep, movement). No sponsorship. The app\'s "?" buttons link to the right section.',
+        'Demo mode: Flawless pace (unbroken streak) and a nine-month simulation.',
+        'The help "?" is centered in its circle, and six-digit gold fits in the Shop panel.',
+      ],
+    },
+    es: {
+      title: 'Congelación de Racha, celebración de la meta y Hub de Productividad',
+      items: [
+        'Congelación de Racha, en la Tienda por 9 vales: como en Duolingo, queda equipada (hasta 2) y se usa sola en un día sin la meta, sin romper la racha.',
+        'Al cumplir la meta de la racha con la app abierta, una animación muestra el número subiendo, marca el día en la semana y dice a qué hora llegó la meta, comparada con tu promedio.',
+        'Hub de Productividad, en la pestaña Yo: métodos, estudios, prácticas y libros sobre constancia, objetivos, enfoque, hábitos y cuerpo (agua, sueño, movimiento). Sin patrocinio. Los "?" de la app llevan a la parte correcta.',
+        'Modo demo: ritmo Impecable (racha sin cortes) y simulación de nueve meses.',
+        'El "?" de ayuda queda centrado en su círculo, y el oro de seis dígitos cabe en el panel de la Tienda.',
+      ],
+    },
+  },
+  {
     v: '3.0.0-alfa.21',
     date: '2026-11-18',
     title: 'Calendário, adição rápida no widget e Lidinho Kaizen',

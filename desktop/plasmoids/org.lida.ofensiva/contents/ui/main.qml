@@ -175,8 +175,8 @@ PlasmoidItem {
                         Rectangle {
                             Layout.alignment: Qt.AlignHCenter
                             width: 14; height: 14; radius: 7
-                            color: modelData.state === "met" ? root.lit : "transparent"
-                            border.width: modelData.state === "met" ? 0 : 2
+                            color: modelData.state === "met" ? root.lit : modelData.state === "frozen" ? "#5aa9ff" : "transparent"
+                            border.width: modelData.state === "met" || modelData.state === "frozen" ? 0 : 2
                             border.color: modelData.state === "miss" ? "#e5484d" : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.25)
                         }
                         PlasmaComponents.Label {

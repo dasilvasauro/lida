@@ -15,6 +15,7 @@ import { haptic } from '../ui/haptics.js';
 import { avatar, levelCard, openMascot } from './common.js';
 import { achSection, bindAchSection } from './achievements.js';
 import { t as tt } from '../core/i18n.js';
+import { hubEntry } from './hub.js';
 
 export const MOODS = [
   { id: 'radiant', emoji: '😄', name: 'Radiante' },
@@ -62,6 +63,7 @@ export const meView = {
       <section class="me-head"><div class="me-av">${avatar(64)}</div><div class="grow"><h2>${esc(name)}</h2><p>${esc(levelTitle(m.level))} · ${esc(sub)}</p></div></section>
       ${levelCard(S)}
       ${nt ? `<p class="hint next-title">Próximo título: <b>${esc(nt[1])}</b> no nível ${nt[0]}</p>` : ''}
+      ${hubEntry()}
       ${milestones(m.level)}
       ${achSection(S)}
       ${stats(S, d)}

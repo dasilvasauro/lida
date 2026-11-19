@@ -18,15 +18,16 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 6. [Idiomas](#idiomas)
 7. [Calendário](#calendário)
 8. [Ofensiva](#ofensiva)
-9. [Lembretes](#lembretes)
-10. [Alarmes](#alarmes)
-11. [Foco](#foco)
-12. [Trazer os dados do Lida anterior](#trazer-os-dados-do-lida-anterior)
-13. [Privacidade e sincronização](#privacidade-e-sincronização)
-14. [Sua parte: publicar](#sua-parte-publicar)
-15. [Licença](#licença)
-16. [Desenvolvimento](#desenvolvimento)
-17. [Limites honestos](#limites-honestos)
+9. [Hub de Produtividade](#hub-de-produtividade)
+10. [Lembretes](#lembretes)
+11. [Alarmes](#alarmes)
+12. [Foco](#foco)
+13. [Trazer os dados do Lida anterior](#trazer-os-dados-do-lida-anterior)
+14. [Privacidade e sincronização](#privacidade-e-sincronização)
+15. [Sua parte: publicar](#sua-parte-publicar)
+16. [Licença](#licença)
+17. [Desenvolvimento](#desenvolvimento)
+18. [Limites honestos](#limites-honestos)
 
 ---
 
@@ -66,7 +67,8 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | alfa 18 | **Ofensiva** (meta do dia ajustável) com o **Lidinho em seis caras**, widgets **Ofensiva** e **IPL da semana** (Android e Plasma), **Ajustes em seções**, alarmes que abrem com o celular em uso, resumo de ontem uma vez só por conta | Pronta |
 | alfa 19 | **Pomodoro novo** (escolha do tempo girando como um timer de cozinha, com vibração), **tique do relógio** e **metrônomo** (até 8/8, seis sons) no Pomodoro e no modo foco com tempo | Pronta |
 | alfa 20 | **Chave de recuperação** da senha, **exportar** tarefas e hábitos em CSV e tudo em JSON, **tour de boas-vindas** nas contas novas, **"?" de ajuda** nas seções e **manual** em Ajustes | Pronta |
-| alfa 21 | **Calendário** (mês, semana e dia, com agendas externas: Google Agenda e links iCal), **widget de adição rápida** no Android, **conquistas da Ofensiva** e o **Lidinho Kaizen**, sons **Metal, Piano e Mokia**, temas **AMOLED Mono e Yaru** e o fim do vazamento de memória dos widgets do Plasma | **Esta versão** |
+| alfa 21 | **Calendário** (mês, semana e dia, com agendas externas: Google Agenda e links iCal), **widget de adição rápida** no Android, **conquistas da Ofensiva** e o **Lidinho Kaizen**, sons **Metal, Piano e Mokia**, temas **AMOLED Mono e Yaru** e o fim do vazamento de memória dos widgets do Plasma | Pronta |
+| alfa 22 | **Congelamento de Ofensiva**, **comemoração da meta** com o horário médio, **Hub de Produtividade** na aba Eu, demo com ritmo **Impecável** e nove meses, ajustes no "?" e no ouro de seis dígitos | **Esta versão** |
 
 ## Como o jogo funciona
 
@@ -239,9 +241,11 @@ monofônicos de celular das antigas, com melodias próprias) por 900 de ouro cad
 
 **Fontes:** além das outras, a **VT323**, retrô de terminal antigo (aparece um pouco maior, porque o desenho dela é pequeno).
 
-**Modo demo:** a barra de cima tem **Simular…**: avança o relógio uma semana, um mês ou dois, vivendo cada dia com
-tarefas, hábitos, água e humor (no ritmo Bom, Médio ou Fraco). A virada fecha o IPL, os meses e o ano de verdade,
-então dá para ver o resumo do mês e o resumão do ano.
+**Modo demo:** a barra de cima tem **Simular…**: avança o relógio uma semana, um mês, dois ou **nove meses**, vivendo
+cada dia com tarefas, hábitos, água e humor (no ritmo **Impecável**, Bom, Médio ou Fraco). No Impecável tudo é cumprido
+todo dia, então a ofensiva não quebra (bom para ver as conquistas da Ofensiva e a média de horário da meta). A virada
+fecha o IPL, os meses e o ano de verdade, então dá para ver o resumo do mês e o resumão do ano. Nove meses levam por
+volta de um minuto.
 
 Atalhos no computador: **Q**/**N** nova tarefa, **/** ou **Ctrl+K** buscar, **P** Pomodoro, **B** Esvaziar a mente, **1–5** seções.
 
@@ -529,6 +533,34 @@ contínua): todo em fogo, laranja, de óculos escuros. Ele aparece na coleção 
 foto de perfil; uma vez liberado, fica, mesmo que a ofensiva quebre depois. O desenho sai de
 `python3 scripts/lidinho-costumes.py icons/lidinho kaizen` e a selfie de
 `python3 scripts/lidinho-selfie.py icons/lidinho icons/lidinho/selfie kaizen`.
+
+**Congelamento de Ofensiva** (Loja, aba Vouchers, 9 vouchers): funciona como no Duolingo. Fica equipado (no máximo 2;
+com 2, a Loja mostra "Cheio") e, na virada do dia, se um dia fechou sem a meta e havia ofensiva em andamento, um é
+gasto sozinho: o dia fica "congelado" (azul na semana), não quebra a ofensiva e não soma. Dois dias seguidos sem a
+meta gastam dois. Sem ofensiva em andamento, o congelamento fica guardado. O registro do gasto tem id fixo por dia
+(`ev_sfz_<dia>`), então dois aparelhos não gastam em dobro. A janela da ofensiva mostra quantos estão equipados.
+
+**Comemoração da meta:** quando a meta do dia vem por algo feito neste aparelho, com o app aberto, aparece uma animação:
+a chama acende, o número sobe de um, a bolinha de hoje é marcada na semana e o Lida mostra a que horas a meta veio,
+comparada com a média dos dias anteriores ("2h10 mais cedo que a sua média"). O horário fica guardado uma vez por dia
+(`ev_sk_<dia>`, sincronizado) e a média dos últimos 60 aparece também na janela da ofensiva. Se o app abre com a meta
+já batida, ou se ela veio em outro aparelho, não há comemoração repetida.
+
+## Hub de Produtividade
+
+Na aba **Eu**, logo depois do cartão de nível: **Hub de Produtividade** (`#hub`). Oito seções: *Por que a constância
+funciona*, *Definir objetivos*, *Métodos de organização*, *Foco e atenção*, *Construir (e largar) hábitos*, *Corpo e
+energia* (água, sono, movimento), *Mente* (reflexão, autocompaixão, mentalidade), *Estante* (livros) e *Como o Lida usa
+isso*. Cada cartão diz o que é (conceito, método, estudo, prática ou livro), explica em linguagem simples, traz dicas de
+como aplicar no Lida e, quando é um estudo, o link para o artigo original (DOI ou PubMed) ou para o órgão oficial (OMS,
+EFSA, Academias Nacionais dos EUA). Tem busca em tudo.
+
+**Sem patrocínio:** nenhuma indicação é paga, não há links de loja nem de afiliado, e livros aparecem só com autor, ano e
+título. O teste `tests/hub.test.js` falha se aparecer link de loja ou afiliado, ou link num livro. A parte de corpo é
+informação geral, não orientação médica.
+
+Os **"?"** do app e os tópicos do manual levam ao cartão certo do Hub ("No Hub: …"), com destaque. O conteúdo fica em
+`js/core/hub.js`, já em português, inglês e espanhol.
 
 ## Lembretes
 

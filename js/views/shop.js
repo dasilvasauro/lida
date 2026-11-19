@@ -10,7 +10,7 @@ import { play, preview, PACKS, PACK_ORDER, soundPrefs, setSoundPrefs } from '../
 import { haptic } from '../ui/haptics.js';
 import { levelUp } from '../ui/reward.js';
 
-const TONE = { magicDice: 'acc', xpBoost: 'acc', goldBoost: 'warn', respite: 'pos', relief: 'pos', extraP0: 'neg', extraP1: 'warn', bonusTask: 'pos', changeModus: 'acc', extraQuitter: 'neg', freeze: 'acc', autoFreeze: 'acc', dayOff: 'warn', instantLuck: 'pos', luckyCard: 'pos' };
+const TONE = { magicDice: 'acc', xpBoost: 'acc', goldBoost: 'warn', respite: 'pos', relief: 'pos', extraP0: 'neg', extraP1: 'warn', bonusTask: 'pos', changeModus: 'acc', extraQuitter: 'neg', freeze: 'acc', autoFreeze: 'acc', streakFreeze: 'acc', dayOff: 'warn', instantLuck: 'pos', luckyCard: 'pos' };
 
 export const shopView = {
   title: 'Loja',
@@ -60,7 +60,7 @@ export const shopView = {
 function invTile(k, n) {
   const it = G.ITEMS[k];
   const act = { luckyCard: 'Abrir', magicDice: 'Rolar', xpBoost: 'Ativar', goldBoost: 'Ativar', dayOff: 'Usar' }[k];
-  const where = { respite: 'No cartão da tarefa', relief: 'No cartão da tarefa', freeze: 'Use no hábito', autoFreeze: 'Automático', extraP0: 'Automático', extraP1: 'Automático', bonusTask: 'Ao criar', changeModus: 'Em Ajustes', extraQuitter: 'Ativo' }[k];
+  const where = { respite: 'No cartão da tarefa', relief: 'No cartão da tarefa', freeze: 'Use no hábito', autoFreeze: 'Automático', streakFreeze: 'Equipado na ofensiva', extraP0: 'Automático', extraP1: 'Automático', bonusTask: 'Ao criar', changeModus: 'Em Ajustes', extraQuitter: 'Ativo' }[k];
   return `<div class="inv-tile tone-${TONE[k] || 'acc'}"><span class="inv-ic">${icon(it.icon)}<b>${n}</b></span><span class="grow"><b>${esc(it.name)}</b><small>${act ? '' : esc(where || '')}</small></span>${act ? `<button type="button" class="btn small primary" data-use="${k}">${act}</button>` : ''}</div>`;
 }
 
@@ -70,10 +70,11 @@ function items(ids, m) {
       const it = G.ITEMS[k];
       const can = (m[it.cur] || 0) >= it.cost;
       const own = m.items[k] || 0;
+      const full = it.max && own >= it.max;
       return `<li class="shop-item tone-${TONE[k] || 'acc'}" style="--i:${i}">
         <span class="shop-ic">${icon(it.icon)}</span>
-        <div class="grow"><b>${esc(it.name)}${own ? `<span class="own">${own} no inventário</span>` : ''}</b><p>${esc(it.desc)}</p></div>
-        <button type="button" class="price${can ? '' : ' short'}" data-buy="${k}" aria-label="Comprar ${esc(it.name)} por ${it.cost} ${it.cur === 'gold' ? 'de ouro' : 'vouchers'}">${icon(it.cur === 'gold' ? 'coin' : 'card')}${fmtInt(it.cost)}</button>
+        <div class="grow"><b>${esc(it.name)}${it.isNew ? newTag() : ''}${own ? `<span class="own">${it.max ? `${own}/${it.max} equipados` : `${own} no inventário`}</span>` : ''}</b><p>${esc(it.desc)}</p></div>
+        ${full ? `<span class="price on">${icon('check')}Cheio</span>` : `<button type="button" class="price${can ? '' : ' short'}" data-buy="${k}" aria-label="Comprar ${esc(it.name)} por ${it.cost} ${it.cur === 'gold' ? 'de ouro' : 'vouchers'}">${icon(it.cur === 'gold' ? 'coin' : 'card')}${fmtInt(it.cost)}</button>`}
       </li>`;
     })
     .join('')}</ul>`;
@@ -165,6 +166,7 @@ async function onBuy(k) {
   }
   if (it.cost >= 300 && !(await confirmDialog(`${it.desc}\n\nComprar por ${fmtInt(it.cost)} ${it.cur === 'gold' ? 'de ouro' : 'vouchers'}?`, { ok: 'Comprar', title: it.name }))) return;
   const r = await G.buy(k);
+  if (r.reason === 'max') return toast(`Você já tem ${it.max} equipados, o máximo.`);
   if (!r.ok) return toast('Não foi possível comprar.');
   play('purchase');
   haptic('done');

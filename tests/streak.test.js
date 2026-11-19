@@ -102,3 +102,34 @@ test('um ano de ofensiva cabe na janela olhada (Kaizen)', async () => {
   }
   assert.ok(streakStats(snap(t), NOW).best >= 365);
 });
+
+test('Congelamento de Ofensiva: dia perdido com ofensiva em andamento gasta um e não quebra', async () => {
+  const { freezeBatch, streakInfo, freezeId } = await import('../js/core/streak.js');
+  // 5 dias feitos, depois 2 dias perdidos (ontem e anteontem), 1 congelamento guardado
+  const t = [];
+  for (let i = 7; i >= 1; i--) {
+    const d = addDays(NOW, -i);
+    t.push({ ...task(d, i > 2 ? d : null), createdDay: addDays(NOW, -7) });
+  }
+  const S = { ...snap(t), byId: new Map() };
+  const days = [addDays(NOW, -2), addDays(NOW, -1)];
+  const r = freezeBatch(S, days, 1, NOW);
+  assert.equal(r.batch.length, 1, 'só tinha um');
+  assert.equal(r.batch[0].id, freezeId(days[0]));
+  assert.equal(r.frozen[0].run, 5);
+  // com o registro sincronizado, o dia congelado não quebra; o segundo dia perdido quebra
+  const S2 = { ...snap(t), byId: new Map([[freezeId(days[0]), {}]]) };
+  assert.equal(streakInfo(S2, NOW).count, 0);
+  const r2 = freezeBatch({ ...snap(t), byId: new Map() }, days, 2, NOW);
+  assert.equal(r2.batch.length, 2, 'com dois, os dois dias ficam congelados');
+  const S3 = { ...snap(t), byId: new Map(days.map((d) => [freezeId(d), {}])) };
+  assert.equal(streakInfo(S3, NOW).count, 5, 'a ofensiva continua (os congelados não somam)');
+  assert.equal(streakInfo(S3, NOW).week.filter((w) => w.state === 'frozen').length, 2);
+});
+
+test('sem ofensiva em andamento, o congelamento fica guardado', async () => {
+  const { freezeBatch } = await import('../js/core/streak.js');
+  const d = addDays(NOW, -1);
+  const r = freezeBatch({ ...snap([{ ...task(d), createdDay: addDays(NOW, -3) }]), byId: new Map() }, [d], 2, NOW);
+  assert.equal(r.batch.length, 0);
+});

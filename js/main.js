@@ -1,6 +1,6 @@
 // Lida 3: entrada do app (web e Android).
 import { openDB, deleteDB } from './lib/idb.js';
-import { initClock, today, shiftDays, resetClock, clockOffset } from './lib/clock.js';
+import { initClock, today, shiftDays, resetClock, clockOffset, nowMs } from './lib/clock.js';
 import { initHLC } from './lib/hlc.js';
 import { createKey, changePass } from './lib/crypto.js';
 import { uid, esc, $, debounce, addDays, LOC } from './lib/util.js';
@@ -20,6 +20,8 @@ import { initAchievements } from './views/achievements.js';
 import { initAlarms, alarmLink } from './views/alarm.js';
 import { loadDict, startDomTranslation, t } from './core/i18n.js';
 import { openStreak, streakData, streakTexts, iplWeekData } from './views/streak.js';
+import { celebrateStreak } from './views/streakwin.js';
+import { streakInfo, recordGoalTime, goalTimeId } from './core/streak.js';
 import { loadCreds, saveCreds, startFileSync } from './views/cloudfiles.js';
 import { refreshRecovery, createRecovery } from './views/recovery.js';
 import { initHelp } from './ui/help.js';
@@ -37,6 +39,7 @@ import { habitsView } from './views/habits.js';
 import { shopView } from './views/shop.js';
 import { settingsView } from './views/settings.js';
 import { meView } from './views/me.js';
+import { hubView } from './views/hub.js';
 import { maybeShowSummaries } from './views/summary.js';
 import { boardView, isBoard, BOARD_MQ } from './views/board.js';
 import { glance } from './core/glance.js';
@@ -49,7 +52,7 @@ import { openBrain } from './views/brain.js';
 import { openSearch } from './views/search.js';
 import { fmtInt, fmtTime } from './lib/util.js';
 
-const VIEWS = { hoje: todayView, planejar: planView, habitos: habitsView, loja: shopView, eu: meView, ajustes: settingsView };
+const VIEWS = { hoje: todayView, planejar: planView, habitos: habitsView, loja: shopView, eu: meView, ajustes: settingsView, hub: hubView };
 const NAV = [
   ['hoje', 'Hoje', 'today'],
   ['planejar', 'Planejar', 'upcoming'],
@@ -57,7 +60,7 @@ const NAV = [
   ['loja', 'Loja', 'shop'],
   ['eu', 'Eu', 'user'],
 ];
-const ORDER = [...NAV.map((n) => n[0]), 'ajustes'];
+const ORDER = [...NAV.map((n) => n[0]), 'hub', 'ajustes'];
 const DB_NAME = () => (app.demo ? 'lida3-demo' : 'lida3');
 
 let current = null;
@@ -276,6 +279,10 @@ async function closeDay() {
     const n = r.autoFreeze.reduce((a, x) => a + x.habits.length, 0);
     setTimeout(() => toast(`Congelamento Automático: ${n === 1 ? `“${r.autoFreeze[0].habits[0]}” manteve a sequência` : `${n} hábitos mantiveram a sequência`}.`, { ms: 6000 }), 700);
   }
+  if (r.streakFrozen?.length) {
+    const f = r.streakFrozen;
+    setTimeout(() => toast(f.length === 1 ? `Congelamento de Ofensiva usado: a ofensiva continua em ${f[0].run}.` : `${f.length} Congelamentos de Ofensiva usados: a ofensiva ficou de pé.`, { ms: 7000 }), 800);
+  }
   if (maybeShowSummaries(r) || !r.failed.length) return;
   const n = r.failed.length;
   const lost = r.penalty.xp || r.penalty.gold ? ` (${fmtInt(r.penalty.xp)} XP, ${fmtInt(r.penalty.gold)} de ouro)` : '';
@@ -335,7 +342,7 @@ function shell() {
   document.querySelectorAll('[data-new]').forEach((b) => b.addEventListener('click', newTask));
   document.querySelectorAll('[data-rail-tool]').forEach((b) => b.addEventListener('click', () => app.actions.tool(b.dataset.railTool)));
   $('[data-search]').onclick = () => openSearch();
-  $('[data-me]').onclick = () => (location.hash = current === 'eu' || (current === 'ajustes' && settingsView.cat) ? 'ajustes' : 'eu');
+  $('[data-me]').onclick = () => (location.hash = current === 'eu' || (current === 'ajustes' && settingsView.cat) ? 'ajustes' : current === 'hub' && hubView.sec ? 'hub' : 'eu');
   initSyncPill();
   if (app.demo) demobar();
 }
@@ -363,6 +370,13 @@ function route() {
     settingsView.cat = sm[1] || '';
     h = 'ajustes';
   }
+  // Hub de Produtividade: #hub (índice) e #hub-<seção>
+  const hm = h.match(/^hub(?:-([a-z]+))?$/);
+  if (hm) {
+    changedTab = (hubView.sec || '') !== (hm[1] || '');
+    hubView.sec = hm[1] || '';
+    h = 'hub';
+  }
   const pm = h.match(/^projeto-(.+)$/);
   if (h === 'entrada' || h === 'em-breve' || h === 'projetos' || pm) {
     const tab = pm ? 'projeto' : h;
@@ -377,7 +391,7 @@ function route() {
   current = next;
   const board = isBoard() && (current === 'hoje' || current === 'planejar');
   document.body.classList.toggle('is-board', board);
-  const navKey = current === 'ajustes' ? 'eu' : board ? 'hoje' : current;
+  const navKey = current === 'ajustes' || current === 'hub' ? 'eu' : board ? 'hoje' : current;
   document.querySelectorAll('[data-nav]').forEach((a) => {
     a.classList.toggle('on', a.dataset.nav === navKey);
     if (a.dataset.nav === navKey) a.setAttribute('aria-current', 'page');
@@ -388,16 +402,16 @@ function route() {
   $('[data-title]').textContent = v.title;
   // No topo: a foto leva à aba Eu; em Eu, uma engrenagem leva aos Ajustes; em Ajustes, voltar.
   const me = $('[data-me]');
-  me.classList.toggle('as-icon', current === 'eu' || current === 'ajustes');
-  me.innerHTML = current === 'eu' ? icon('settings') : current === 'ajustes' ? icon('back') : avatar(30);
-  me.setAttribute('aria-label', current === 'eu' ? 'Ajustes' : current === 'ajustes' ? (settingsView.cat ? 'Voltar para Ajustes' : 'Voltar para Eu') : 'Abrir a aba Eu');
+  me.classList.toggle('as-icon', current === 'eu' || current === 'ajustes' || current === 'hub');
+  me.innerHTML = current === 'eu' ? icon('settings') : current === 'ajustes' || current === 'hub' ? icon('back') : avatar(30);
+  me.setAttribute('aria-label', current === 'eu' ? 'Ajustes' : current === 'ajustes' ? (settingsView.cat ? 'Voltar para Ajustes' : 'Voltar para Eu') : current === 'hub' ? (hubView.sec ? 'Voltar para o Hub' : 'Voltar para Eu') : 'Abrir a aba Eu');
   document.querySelector('.fab').hidden = !['hoje', 'planejar'].includes(current) || (current === 'planejar' && planView.tab === 'projetos');
   document.title = current === 'hoje' ? 'Lida' : `${v.title} · Lida`;
   const TABS = ['em-breve', 'entrada', 'projetos', 'projeto'];
-  const dir = !prev ? 'up' : changedTab && !changed && current === 'ajustes' ? (settingsView.cat ? 'left' : 'right') : changedTab && !changed ? (TABS.indexOf(planView.tab) >= TABS.indexOf(lastTab) ? 'left' : 'right') : ORDER.indexOf(next) >= ORDER.indexOf(prev) ? 'left' : 'right';
+  const dir = !prev ? 'up' : changedTab && !changed && current === 'ajustes' ? (settingsView.cat ? 'left' : 'right') : changedTab && !changed && current === 'hub' ? (hubView.sec ? 'left' : 'right') : changedTab && !changed ? (TABS.indexOf(planView.tab) >= TABS.indexOf(lastTab) ? 'left' : 'right') : ORDER.indexOf(next) >= ORDER.indexOf(prev) ? 'left' : 'right';
   lastTab = planView.tab;
   render(changed || changedTab ? dir : false);
-  if (changed) window.scrollTo(0, 0);
+  if (changed || (changedTab && current === 'hub' && !app.hubCard)) window.scrollTo(0, 0);
 }
 
 // Indicador da seção ativa na barra de baixo (desliza até o item).
@@ -525,6 +539,32 @@ const updateWidget = debounce(() => {
   call('LidaWidget', 'update', { data: JSON.stringify({ date: d, title: t('Hoje'), sub: t(`${B.doneToday.length} de ${total}`), done: B.doneToday.length, total, tasks, quick, footer, rings, txt, streak: streakData(S), iplWeek: iplWeekData(S) }) });
 }, 1500);
 
+// Meta da ofensiva batida agora, por algo feito neste aparelho: guarda o horário (para a média) e
+// mostra a animação. Se o app abre com a meta de hoje já batida, não comemora de novo (nem inventa
+// horário). Batida em outro aparelho, o registro chega pela sincronização e aqui não anima.
+let streakArmed = null; // dia em que já olhamos (o primeiro olhar só arma)
+let streakSkip = null; // dia que já começou com a meta batida (não comemora)
+function armStreak() {
+  const d = today();
+  streakArmed = d;
+  if (!personal.get(goalTimeId(d)) && streakInfo(P(), d).todayMet) streakSkip = d;
+}
+const watchStreak = debounce(async () => {
+  if (app.simulating) return;
+  const d = today();
+  if (streakSkip === d || personal.get(goalTimeId(d))) return;
+  const s = streakInfo(P(), d);
+  if (streakArmed !== d) {
+    streakArmed = d;
+    if (s.todayMet) return (streakSkip = d); // o dia virou com a meta já batida
+  }
+  if (!s.todayMet || Date.now() - personal.localAt() > 5000) return;
+  const now = new Date(nowMs());
+  const min = now.getHours() * 60 + now.getMinutes();
+  if (!(await recordGoalTime(d, min))) return;
+  if (document.visibilityState === 'visible') setTimeout(() => celebrateStreak(streakInfo(P(), d), min), 450);
+}, 700);
+
 // Fila do widget de adição rápida (Android): tarefas anotadas e concluídas com o app fechado.
 // Aplica na ordem em que aconteceram e confirma cada operação (o widget tira da fila).
 let quickBusy = false;
@@ -593,6 +633,7 @@ function start() {
   personal.subscribe(rerender);
   personal.subscribe(reschedule);
   personal.subscribe(updateWidget);
+  personal.subscribe(watchStreak);
   notify.initNotify((r) => (location.hash = r), onNotifyAction, onInApp);
   reschedule();
   route();
@@ -603,6 +644,7 @@ function start() {
   keyboard();
   deepLinks();
   updateWidget();
+  armStreak();
   // adição rápida: ao abrir, ao voltar para o app e na hora (aviso do widget com o app aberto)
   applyQuickQueue();
   plugin('LidaWidget')?.addListener?.('quickQueue', () => applyQuickQueue());
@@ -732,9 +774,10 @@ function nativeBack() {
   const A = plugin('App');
   if (!A) return;
   A.addListener('backButton', () => {
-    const open = document.querySelector('.sheet-wrap.open, .pop-wrap.open, .reward-wrap.open, .focus-overlay.open');
+    const open = document.querySelector('.sheet-wrap.open, .pop-wrap.open, .reward-wrap.open, .focus-overlay.open, .sw-wrap.open');
     if (open) return document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     if (current === 'ajustes' && settingsView.cat) return (location.hash = 'ajustes');
+    if (current === 'hub') return (location.hash = hubView.sec ? 'hub' : 'eu');
     if (current !== 'hoje') return (location.hash = 'hoje');
     A.exitApp();
   });
@@ -776,7 +819,7 @@ function simSheet(draw) {
   sheet({
     title: 'Simular dias',
     body: `<p class="sheet-text">O relógio do demo avança dia a dia. Em cada dia são criadas tarefas (a maioria concluída), hábitos são cumpridos, água e humor registrados, e a virada fecha o IPL, o mês e o ano como no uso de verdade.</p>
-      <div class="field"><span>Quantos dias</span><div class="seg small" data-days>${[7, 30, 60].map((n) => `<button type="button" data-v="${n}" class="${n === days ? 'on' : ''}">${n === 30 ? 'Um mês' : n === 60 ? 'Dois meses' : 'Uma semana'}</button>`).join('')}</div></div>
+      <div class="field"><span>Quantos dias</span><div class="seg small" data-days>${[7, 30, 60, 270].map((n) => `<button type="button" data-v="${n}" class="${n === days ? 'on' : ''}">${{ 7: 'Uma semana', 30: 'Um mês', 60: 'Dois meses', 270: 'Nove meses' }[n]}</button>`).join('')}</div></div>
       <div class="field"><span>Ritmo</span><div class="seg small" data-pace>${Object.entries(PACES).map(([k, v]) => `<button type="button" data-v="${k}" class="${k === pace ? 'on' : ''}">${v.label}</button>`).join('')}</div></div>
       <p class="hint" data-sim-status></p>
       <div class="sheet-actions"><button type="button" class="btn ghost" data-close>Cancelar</button><button type="button" class="btn primary" data-run>${icon('play')}Simular</button></div>`,
@@ -797,9 +840,11 @@ function simSheet(draw) {
         const st = el.querySelector('[data-sim-status]');
         btn.disabled = true;
         el.querySelectorAll('.seg button, [data-close]').forEach((b) => (b.disabled = true));
+        app.simulating = true;
         const r = await simulateDays(days, { pace, onProgress: (i, n) => (st.textContent = `Dia ${i} de ${n}: ${today().split('-').reverse().join('/')}`) });
         // Mais um dia, para fechar o último simulado e mostrar os resumos (dia, mês, ano).
         shiftDays(1);
+        app.simulating = false;
         close();
         draw();
         toast(`${r.days} dias simulados: ${r.done} de ${r.tasks} tarefas concluídas, ${r.habits} hábitos cumpridos.`, { ms: 6000 });

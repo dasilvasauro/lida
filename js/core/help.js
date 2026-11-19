@@ -9,6 +9,7 @@ export const CHAPTERS = [
     topics: [
       {
         id: 'hoje',
+        hub: 'gtd',
         title: 'Hoje',
         short: 'O que é para hoje: tarefas com data de hoje, as atrasadas, as rotinas do dia e o que você já concluiu.',
         body: [
@@ -18,6 +19,7 @@ export const CHAPTERS = [
       },
       {
         id: 'adicionar',
+        hub: 'gtd',
         title: 'Adição rápida',
         short: 'Escreva como você fala: "Pagar luz amanhã 9h p1 #Casa @contas" já sai com data, hora, prioridade, projeto e etiqueta.',
         body: [
@@ -27,6 +29,7 @@ export const CHAPTERS = [
       },
       {
         id: 'planejar',
+        hub: 'timeblock',
         title: 'Planejar',
         short: 'Entrada (o que ainda não tem data), os próximos dias e os projetos, em lista ou em quadro.',
         body: [
@@ -36,6 +39,7 @@ export const CHAPTERS = [
       },
       {
         id: 'calendario',
+        hub: 'timeblock',
         title: 'Calendário',
         short: 'Ao lado de Lista e Quadro: o mês inteiro, a semana ou o dia numa linha do tempo, com hoje destacado.',
         body: [
@@ -46,6 +50,7 @@ export const CHAPTERS = [
       },
       {
         id: 'tipos',
+        hub: 'frog',
         title: 'Tipos de tarefa',
         short: 'Normal, com tempo (abre o modo foco com cronômetro), sprint (objetivo maior com etapas), desafio do dia e bônus.',
         body: [
@@ -55,6 +60,7 @@ export const CHAPTERS = [
       },
       {
         id: 'prioridades',
+        hub: 'eisenhower',
         title: 'Prioridades',
         short: 'De P0 (crítica) a P4 (sem prioridade). Quanto mais alta, mais XP e ouro; P0 e P1 têm limite por dia.',
         body: [
@@ -69,6 +75,7 @@ export const CHAPTERS = [
     topics: [
       {
         id: 'habitos',
+        hub: 'lally',
         title: 'Hábitos e sequências',
         short: 'Cada hábito tem uma meta por dia e os dias da semana. Bater a meta mantém a sequência e rende progresso de voucher.',
         body: [
@@ -78,24 +85,28 @@ export const CHAPTERS = [
       },
       {
         id: 'agua',
+        hub: 'water-need',
         title: 'Água',
         short: 'Registre copos e garrafas até a meta do dia. Dias seguidos na meta formam uma ofensiva da água.',
         body: ['Ajuste a meta, o copo e a garrafa no lápis do cartão. A cada 7 dias seguidos na meta, +200 de XP e +200 de ouro. Os lembretes de água ficam em Ajustes > Lembretes.'],
       },
       {
         id: 'rotinas',
+        hub: 'stacking',
         title: 'Rotinas',
         short: 'Uma lista curta (ex.: Manhã: água, alongar, planejar) que aparece em Hoje nos dias escolhidos.',
         body: ['A rotina vira um cartão em Hoje com os itens para marcar. Rende de 50 a 200 de XP e ouro, conforme o número de itens. Rotina não concluída não pune. Pode ter horário e alarme.'],
       },
       {
         id: 'desapego',
+        hub: 'environment',
         title: 'Desapego',
         short: 'Para o que você quer deixar de fazer: um check-in por dia sem recair, com recompensas que crescem na semana.',
         body: ['O 7º dia do ciclo traz uma Carta da Sorte. Se recair, o contador volta ao dia 1 e você perde metade do XP do nível atual e do ouro. Excluir custa o mesmo que uma recaída, para não virar atalho.'],
       },
       {
         id: 'folga',
+        hub: 'chain',
         title: 'Folga e Congelamento',
         short: 'Congelamento protege a sequência de um hábito num dia difícil; a Folga dos hábitos protege todos de uma vez.',
         body: [
@@ -110,6 +121,7 @@ export const CHAPTERS = [
     topics: [
       {
         id: 'xp',
+        hub: 'smallwins',
         title: 'XP, níveis e títulos',
         short: 'Concluir rende XP. Os níveis sobem e, de tempos em tempos, vem um título novo, com presente e o Lidinho de roupa nova.',
         body: [
@@ -118,6 +130,7 @@ export const CHAPTERS = [
       },
       {
         id: 'ouro',
+        hub: 'loop',
         title: 'Ouro e Loja',
         short: 'Ouro vem de tarefas, rotinas, água, check-ins e conquistas. Na Loja vira itens, temas e conjuntos de sons.',
         body: ['Na Loja, a aba Ouro tem os itens do dia a dia (impulsos, Dado Mágico, Respiro, Alívio...). Vouchers compram os itens especiais. Temas e sons comprados valem em todos os aparelhos.'],
@@ -138,22 +151,26 @@ export const CHAPTERS = [
       },
       {
         id: 'conquistas',
+        hub: 'smallwins',
         title: 'Conquistas',
         short: 'Mais de cem metas em nove grupos, cada uma com medalha e ouro para resgatar quando quiser.',
         body: ['O que você já tinha feito conta. Ao ganhar uma, a medalha aparece com suspense no aparelho que você está usando. O ouro fica esperando o resgate na aba Eu > Conquistas.'],
       },
       {
         id: 'ofensiva',
+        hub: 'chain',
         title: 'Ofensiva',
         short: 'Dias seguidos cumprindo a meta do dia (50% do programado, por padrão). A chama em Hoje acende quando a meta vem.',
         body: [
           'Conta as tarefas com prazo no dia e os hábitos do dia; o que você adianta ou recupera também conta. Num dia sem nada programado, basta concluir uma coisa. Dias de folga e a Folga dos hábitos não quebram. A meta muda em Ajustes > Jogo.',
           'O Lidinho muda de cara: animado de manhã, bravo no fim do dia sem a meta, de pijama depois de cumprir, chorando quando a ofensiva quebra.',
           'A ofensiva tem o seu grupo de conquistas, de 3 a 365 dias. Com 365 dias vem o Lidinho Kaizen, todo em fogo e de óculos escuros, para usar na foto de perfil.',
+          'Congelamento de Ofensiva (Loja, 9 vouchers, até 2 equipados): num dia que passa sem a meta, com a ofensiva em andamento, um é gasto sozinho na virada e a ofensiva não quebra (o dia fica azul na semana e não soma). Ao bater a meta com o app aberto, uma animação mostra o número subindo e o horário, comparado com a sua média.',
         ],
       },
       {
         id: 'premio',
+        hub: 'freshstart',
         title: 'Prêmio do dia',
         short: 'Abra o Lida todo dia e resgate: o prêmio cresce ao longo de 7 dias, e o maior vem no 7º.',
         body: ['Faltou um dia, a sequência recomeça no dia 1. É separado da ofensiva: o prêmio é por aparecer; a ofensiva é por cumprir.'],
@@ -166,6 +183,7 @@ export const CHAPTERS = [
     topics: [
       {
         id: 'pomodoro',
+        hub: 'pomodoro',
         title: 'Pomodoro, tique e metrônomo',
         short: 'Ciclos de foco e pausa. Gire a faixa de números para escolher os minutos; o tique e o metrônomo são opcionais.',
         body: [
@@ -174,12 +192,14 @@ export const CHAPTERS = [
       },
       {
         id: 'focotarefa',
+        hub: 'deepwork',
         title: 'Tarefa em foco e modo foco',
         short: 'A tarefa em foco aparece em todos os aparelhos, na notificação e nos widgets. Tarefas com tempo abrem o modo foco com cronômetro.',
         body: ['No Android, a notificação do foco mostra a contagem (e vira Live Update no Android 16). Ao minimizar o Lida com um cronômetro rodando, o relógio flutuante fica por cima dos outros apps, se você liberar.'],
       },
       {
         id: 'mente',
+        hub: 'plan',
         title: 'Esvaziar a mente',
         short: 'Despeje tudo o que está na cabeça, uma coisa por linha, e depois distribua em quatro caixas.',
         body: ['Fazer agora (leva menos de 5 minutos), Agendar, Delegar ou largar, e Incubadora (ideias para depois). Qualquer item pode virar tarefa.'],
@@ -192,6 +212,7 @@ export const CHAPTERS = [
     topics: [
       {
         id: 'ipl',
+        hub: 'harkin',
         title: 'IPL',
         short: 'Índice de Produtividade do Lida: uma nota de 0 a 100 para o dia, por partes, não pela quantidade de tarefas.',
         body: [
@@ -201,12 +222,14 @@ export const CHAPTERS = [
       },
       {
         id: 'resumos',
+        hub: 'review',
         title: 'Revisão e resumos',
         short: 'Na primeira abertura do dia, a revisão mostra o que ficou sem marcar ontem; depois vem o resumo do dia, uma vez só.',
         body: ['Marque na revisão o que você fez e esqueceu: conta para ontem, com a recompensa normal. O resumo do dia (e do mês e do ano, quando fecham) aparece no primeiro aparelho aberto e fica na aba Eu.'],
       },
       {
         id: 'visao',
+        hub: 'locke',
         title: 'Humor, visão e reflexões',
         short: 'Registre o humor do dia, escreva seus objetivos na Visão e guarde aprendizados em cartões de Reflexões.',
         body: ['A Visão lembra você de revisar os objetivos a cada poucas semanas, com o estado de cada um de 1 (inativo) a 5 (consistente). As Reflexões são frases curtas para reler quando precisar.'],
@@ -219,12 +242,14 @@ export const CHAPTERS = [
     topics: [
       {
         id: 'lembretes',
+        hub: 'implementation',
         title: 'Lembretes',
         short: 'Tarefas com horário, atrasadas, hábitos pendentes, caixa de entrada, resumo da manhã, fechamento do dia e água.',
         body: ['Cada tipo tem seu interruptor e horário em Ajustes > Lembretes. No Android, chegam com o app fechado e sem internet; na web, enquanto o Lida estiver aberto.'],
       },
       {
         id: 'alarmes',
+        hub: 'implementation',
         title: 'Alarmes',
         short: 'Alarme de tela cheia para o que não pode passar, em tarefas com horário, rotinas e hábitos. Até 10 ligados.',
         body: ['Escolha o toque no editor de cada um. A tela mostra o nome, a descrição e a hora, com Concluir e Ignorar. No Android, libere a tela cheia e "Sobrepor a outros apps" em Ajustes > Alarmes.'],
@@ -258,6 +283,7 @@ export const CHAPTERS = [
       },
       {
         id: 'widgets',
+        hub: 'environment',
         title: 'Widgets',
         short: 'No Android: Hoje, Adição rápida, Anéis, Ofensiva e IPL da semana. No Plasma (Linux): Foco, Anéis, Ofensiva e IPL da semana.',
         body: [
