@@ -1,0 +1,5 @@
+Flow: focus in a queue
+
+• New: Flow: one task at a time, full screen; finish one and the next appears. Before starting, you build the queue (today, overdue and routines; remove, add and drag), choose the order and what happens when a task's time comes. It has pause, tick, Pomodoro and activity bars that record nothing.
+• New: Timed tasks start their timer on their own in Flow, and scheduled ones come in at the right time (with a 10 s…
+More in Settings > What's new and fixes.

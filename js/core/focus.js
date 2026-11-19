@@ -7,6 +7,7 @@
 import { personal, P, app } from '../state.js';
 import { nowMs } from '../lib/clock.js';
 import { strip } from './game.js';
+import { flowSummary } from './flow.js';
 
 export const FOCUS_ID = 'focus';
 export const POMO_DEF = { mode: 'focus', running: false, endsAt: 0, left: 25 * 60, focusMin: 25, breakMin: 5 };
@@ -21,12 +22,18 @@ export function focusedTask(S = P()) {
   return t && !t.done && !t.failed && !t.archived ? t : null;
 }
 
-export async function saveFocus(patch) {
-  const prev = personal.get(FOCUS_ID);
-  const data = { ...(prev ? strip(prev) : {}), ...patch, by: app.device || 'local', at: nowMs() };
-  for (const k of Object.keys(data)) if (data[k] === undefined) delete data[k];
-  await personal.save('focus', data, FOCUS_ID);
-  return data;
+// Uma gravação por vez: cada uma parte da anterior (Pomodoro, cronômetro e Flow mudam juntos).
+let chain = Promise.resolve();
+export function saveFocus(patch) {
+  const run = chain.then(async () => {
+    const prev = personal.get(FOCUS_ID);
+    const data = { ...(prev ? strip(prev) : {}), ...patch, by: app.device || 'local', at: nowMs() };
+    for (const k of Object.keys(data)) if (data[k] === undefined) delete data[k];
+    await personal.save('focus', data, FOCUS_ID);
+    return data;
+  });
+  chain = run.catch(() => {});
+  return run;
 }
 
 // Põe uma tarefa em foco (since = desde quando). null tira o foco.
@@ -51,6 +58,8 @@ export function focusSummary(S = P(), now = nowMs()) {
     since: t ? f.since || null : null,
     pomo: { ...pomo, leftSec: pomoLeft, active: pomo.running || pomoLeft !== (pomo.mode === 'focus' ? pomo.focusMin : pomo.breakMin) * 60 },
     timer: tk ? { running: !!tk.running, endsAt: tk.endsAt || null, leftSec: taskLeft, total: tk.total } : null,
+    // Flow em andamento (fila, feitas, atual); sem segundos ao vivo: o widget mostra o resumo.
+    flow: flowSummary(S, f.flow, now),
     by: f.by || null,
     at: f.at || null,
   };

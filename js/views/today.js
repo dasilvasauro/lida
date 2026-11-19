@@ -3,7 +3,7 @@ import { P, prefs, setPref, displayName, app, personal } from '../state.js';
 import { buckets, updateTask } from '../core/tasks.js';
 import { today, now } from '../lib/clock.js';
 import { esc, fmtInt, fmtDayLong, relDay, addDays, plural, daysBetween, cap, WD, weekday } from '../lib/util.js';
-import { icon, ring, empty, toast, bar, sheet, confirmDialog, colorPicker, readForm, COLORS } from '../ui/ui.js';
+import { icon, ring, empty, toast, bar, sheet, confirmDialog, colorPicker, readForm, COLORS, newTag } from '../ui/ui.js';
 import { helpQ } from '../ui/help.js';
 import { checkinState, claimCheckin, CHECKIN } from '../core/game.js';
 import { celebrate } from './celebrate.js';
@@ -48,6 +48,7 @@ export const todayView = {
       ${moodPicker(S, day)}
       <div class="tools">
         ${focusedTask(S) ? '' : `<button type="button" class="tool" data-tool="pick-focus">${icon('target')}<span>Focar</span></button>`}
+        <button type="button" class="tool" data-tool="flow">${icon('flow')}<span translate="no">Flow</span>${newTag()}</button>
         <button type="button" class="tool" data-tool="focus">${icon('timer')}<span>Pomodoro</span></button>
         <button type="button" class="tool" data-tool="brain">${icon('brain')}<span>Esvaziar a mente</span>${S.brain.length ? `<small>${S.brain.length}</small>` : ''}</button>
       </div>

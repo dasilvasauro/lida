@@ -198,6 +198,16 @@ export const CHAPTERS = [
         body: ['No Android, a notificação do foco mostra a contagem (e vira Live Update no Android 16). Ao minimizar o Lida com um cronômetro rodando, o relógio flutuante fica por cima dos outros apps, se você liberar.'],
       },
       {
+        id: 'flow',
+        hub: 'multitask',
+        title: 'Flow',
+        short: 'Foco em fila: uma tarefa por vez, em tela cheia. Concluiu, a próxima aparece.',
+        body: [
+          'Antes de começar, escolha a ordem (prioridade, criação ou arrastando), tire ou acrescente tarefas e diga o que fazer quando chegar o horário de uma tarefa da fila: avisar e trocar em 10 s, trocar na hora ou esperar a atual terminar. Tarefas com tempo começam o cronômetro sozinhas; rotinas mostram os itens.',
+          'Dá para pausar o Flow (os relógios param), usar o tique e o Pomodoro, e ver as barras de atividade, que só contam teclas e movimentos na hora e não gravam nada. No widget Foco do KDE, o Flow aparece em verde-água, sem segundos; ao clicar, mostra o resumo.',
+        ],
+      },
+      {
         id: 'mente',
         hub: 'plan',
         title: 'Esvaziar a mente',

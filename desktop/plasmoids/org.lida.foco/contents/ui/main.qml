@@ -33,6 +33,9 @@ PlasmoidItem {
     readonly property int fSubsDone: fSubs.filter(function (s) { return s.done }).length
     readonly property var pomo: fz.pomo || ({})
     readonly property var tmr: fz.timer || null
+    // Flow (fila de foco): cor e jeito próprios; sem segundos ao vivo na barra (o resumo abre ao clicar)
+    readonly property var flow: fz.flow && fz.flow.active ? fz.flow : null
+    readonly property bool inFlow: !!flow
     readonly property var gl: st.glance || ({ tasks: {}, habits: {}, water: {} })
     readonly property var todayList: st.today || []
     readonly property var inboxList: st.inboxList || []
@@ -76,6 +79,7 @@ PlasmoidItem {
     readonly property color cWarn: dark ? "#f2c14e" : "#a87a06"
     readonly property color cWater: dark ? "#5aa9ff" : "#2f7fe0"
     readonly property color cRec: "#e5484d"
+    readonly property color cFlow: dark ? "#2dd4bf" : "#0d9488"
     function prioColor(p) {
         if (p === "P0") return dark ? "#ff5c7a" : "#d92d4c"
         if (p === "P1") return dark ? "#ff9f43" : "#d4690f"
@@ -88,7 +92,7 @@ PlasmoidItem {
     Plasmoid.icon: "io.github.dasilvasauro.lida"
     switchWidth: Kirigami.Units.gridUnit * 12
     switchHeight: Kirigami.Units.gridUnit * 12
-    toolTipMainText: fTask ? root.tx("Em foco: {0}", fTask.title) : "Lida"
+    toolTipMainText: inFlow ? root.tx(flow.paused ? "Flow pausado: {0} de {1}" : "Flow: {0} de {1}", flow.done, flow.total) + (flow.cur ? " · " + flow.cur.title : "") : fTask ? root.tx("Em foco: {0}", fTask.title) : "Lida"
     toolTipSubText: !appOn ? root.tx("O Lida está fechado") : root.tx("{0} de {1} tarefas · hábitos {2}/{3} · água: {4}", tasksDone, tasksTotal, habitsDone, habitsTotal, waterLeft > 0 ? root.tx("faltam {0}", ml(waterLeft)) : root.tx("meta batida")) + (timerText() !== "" ? "\n" + timerLabel() + " " + timerText() : "")
 
     // ---------------------------------------------------------------- utilidades
@@ -121,6 +125,12 @@ PlasmoidItem {
         if (pomo.active) return pomo.leftSec
         if (fTask && fz.since) return (now - fz.since) / 1000
         return null
+    }
+    // Minutos de Flow (sem as pausas), a partir do estado gravado (at) — sem relógio por segundo
+    function flowMin() {
+        if (!flow) return 0
+        var extra = flow.paused || !st.at ? 0 : Math.max(0, (Date.now() - st.at) / 1000)
+        return Math.floor(((flow.elapsedSec || 0) + extra) / 60)
     }
     function timerText() { var s = timerSeconds(); return (s === null || s === undefined) ? "" : fmt(s) }
     function timerLabel() {
@@ -169,10 +179,11 @@ PlasmoidItem {
     function startApp() { reader.exec("lida-desktop --background", function () { reader.refresh() }) }
 
     // Relógio da tela: só corre quando há tempo para mostrar ou o painel está aberto.
-    Timer { interval: 1000; running: root.ticking || !!root.fTask || root.expanded; repeat: true; onTriggered: root.now = Date.now() }
+    // No Flow, a barra não mostra segundos: o relógio só corre com o painel aberto.
+    Timer { interval: 1000; running: root.expanded || (!root.inFlow && (root.ticking || !!root.fTask)); repeat: true; onTriggered: root.now = Date.now() }
     // Ponto vermelho do foco: pisca seco (liga/desliga), sem animação contínua no painel.
     property bool blinkOn: true
-    Timer { interval: root.ticking ? 650 : 1000; running: !!root.fTask; repeat: true; onTriggered: root.blinkOn = !root.blinkOn; onRunningChanged: root.blinkOn = true }
+    Timer { interval: root.ticking ? 650 : 1000; running: !!root.fTask && !root.inFlow; repeat: true; onTriggered: root.blinkOn = !root.blinkOn; onRunningChanged: root.blinkOn = true }
 
     // ================================================================= peças
     // Ícone do Lida, desenhado na cor pedida.
@@ -263,6 +274,7 @@ PlasmoidItem {
         property string text: ""
         property string kind: "ghost"
         property bool small: false
+        property color accent: root.cG1
         signal clicked()
         implicitHeight: small ? 26 : 30
         implicitWidth: row.implicitWidth + (small ? 18 : 24)
@@ -275,8 +287,8 @@ PlasmoidItem {
         Gradient {
             id: primaryGrad
             orientation: Gradient.Horizontal
-            GradientStop { position: 0; color: root.cG1 }
-            GradientStop { position: 1; color: Qt.lighter(root.cG1, ma.containsMouse ? 1.12 : 1.0) }
+            GradientStop { position: 0; color: pill.accent }
+            GradientStop { position: 1; color: Qt.lighter(pill.accent, ma.containsMouse ? 1.12 : 1.0) }
         }
         Row {
             id: row
@@ -325,7 +337,7 @@ PlasmoidItem {
             radius: height / 2
             color: compact.containsMouse ? root.tint(root.cText, 0.12) : root.tint(root.cText, 0.06)
             border.width: 1
-            border.color: root.fTask ? root.tint(root.cRec, 0.55) : root.tint(root.cText, 0.12)
+            border.color: root.inFlow ? root.tint(root.cFlow, 0.7) : root.fTask ? root.tint(root.cRec, 0.55) : root.tint(root.cText, 0.12)
             Behavior on color { ColorAnimation { duration: 120 } }
         }
         Rectangle { id: flash; anchors.fill: pillBg; radius: pillBg.radius; color: root.cPos; opacity: 0 }
@@ -362,9 +374,31 @@ PlasmoidItem {
                 Text { text: "Lida"; color: root.cDim; font.pixelSize: compact.fs; anchors.verticalCenter: parent.verticalCenter }
             }
 
+            // Flow: ondas, a tarefa atual rolando e feitas/total (sem segundos)
+            Row {
+                visible: compact.flashText === "" && root.appOn && root.inFlow
+                spacing: 6
+                LIcon { name: root.flow && root.flow.paused ? "pause" : "flow"; size: compact.isz; color: root.cFlow; stroke: 2.1; anchors.verticalCenter: parent.verticalCenter }
+                Ticker {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: !!(root.flow && root.flow.cur)
+                    text: root.flow && root.flow.cur ? root.flow.cur.title : ""
+                    pixelSize: compact.fs
+                    color: root.flow && root.flow.paused ? root.cMuted : root.cText
+                    maxWidth: Plasmoid.configuration.focusNameWidth
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.flow ? root.flow.done + "/" + root.flow.total : ""
+                    color: root.cFlow
+                    font.pixelSize: compact.fs
+                    font.weight: Font.DemiBold
+                    font.features: { "tnum": 1 }
+                }
+            }
             // Tarefa em foco: ponto vermelho, nome rolando e o tempo
             Row {
-                visible: compact.flashText === "" && root.appOn && !!root.fTask
+                visible: compact.flashText === "" && root.appOn && !!root.fTask && !root.inFlow
                 spacing: 6
                 Rectangle {
                     width: 7; height: 7; radius: 3.5; color: root.cRec
@@ -390,12 +424,12 @@ PlasmoidItem {
             }
             // Pomodoro sem tarefa em foco
             Row {
-                visible: compact.flashText === "" && root.appOn && !root.fTask && root.pomoOn && Plasmoid.configuration.showTimer
+                visible: compact.flashText === "" && root.appOn && !root.fTask && !root.inFlow && root.pomoOn && Plasmoid.configuration.showTimer
                 spacing: 4
                 LIcon { name: "timer"; size: compact.isz; color: root.pomo.running ? root.cRec : root.cMuted; anchors.verticalCenter: parent.verticalCenter }
                 Text { text: root.timerText(); color: root.pomo.running ? root.cText : root.cMuted; font.pixelSize: compact.fs; font.weight: Font.DemiBold; font.features: { "tnum": 1 }; anchors.verticalCenter: parent.verticalCenter }
             }
-            Rectangle { visible: compact.flashText === "" && root.appOn && (!!root.fTask || root.pomoOn); implicitWidth: 1; implicitHeight: bar.height * 0.55; color: root.tint(root.cText, 0.18) }
+            Rectangle { visible: compact.flashText === "" && root.appOn && (!!root.fTask || root.pomoOn || root.inFlow); implicitWidth: 1; implicitHeight: bar.height * 0.55; color: root.tint(root.cText, 0.18) }
 
             // Tarefas de hoje: anel de progresso + abertas; atrasadas em vermelho
             Row {
@@ -522,10 +556,91 @@ PlasmoidItem {
                 font.pixelSize: 11
             }
 
+            // Flow: resumo (feitas, a atual, a seguir e o tempo) e as ações da fila
+            Rectangle {
+                Layout.fillWidth: true
+                visible: root.inFlow
+                implicitHeight: flcol.implicitHeight + 24
+                radius: 14
+                border.width: 1
+                border.color: root.tint(root.cFlow, 0.45)
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0; color: Qt.tint(root.cSurface, root.tint(root.cFlow, 0.16)) }
+                    GradientStop { position: 0.8; color: root.cSurface }
+                }
+                ColumnLayout {
+                    id: flcol
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 6
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        LIcon { name: "flow"; size: 15; color: root.cFlow; stroke: 2.1 }
+                        Text { text: "FLOW"; color: root.cFlow; font.pixelSize: 11; font.bold: true; font.letterSpacing: 0.8 }
+                        Text { visible: !!(root.flow && root.flow.paused); text: root.tx("pausado"); color: root.cMuted; font.pixelSize: 11; font.bold: true }
+                        Item { Layout.fillWidth: true }
+                        Text { text: root.tx("{0} min", root.flowMin()); color: root.cMuted; font.pixelSize: 11; font.features: { "tnum": 1 } }
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: root.flow && root.flow.cur ? root.flow.cur.title : ""
+                        color: root.cText
+                        font.pixelSize: 15
+                        font.bold: true
+                        wrapMode: Text.Wrap
+                        maximumLineCount: 2
+                        elide: Text.ElideRight
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: 4
+                            radius: 2
+                            color: root.cSurface3
+                            Rectangle {
+                                width: parent.width * (root.flow && root.flow.total ? root.flow.done / root.flow.total : 0)
+                                height: parent.height
+                                radius: 2
+                                color: root.cFlow
+                                Behavior on width { NumberAnimation { duration: 450; easing.type: Easing.OutCubic } }
+                            }
+                        }
+                        Text { text: root.tx("{0} de {1} concluídas", root.flow ? root.flow.done : 0, root.flow ? root.flow.total : 0); color: root.cMuted; font.pixelSize: 11; font.features: { "tnum": 1 } }
+                    }
+                    Repeater {
+                        model: root.flow ? root.flow.next || [] : []
+                        delegate: Text {
+                            required property var modelData
+                            required property int index
+                            Layout.fillWidth: true
+                            text: (index === 0 ? root.tx("A seguir") + ": " : "· ") + modelData
+                            color: index === 0 ? root.cText : root.cDim
+                            font.pixelSize: 12
+                            elide: Text.ElideRight
+                        }
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 2
+                        spacing: 6
+                        Pill { kind: "primary"; accent: root.cFlow; icon: "check"; text: root.tx("Concluir"); onClicked: root.lida("flow concluir", root.tx("Concluindo…")) }
+                        Pill { icon: root.flow && root.flow.paused ? "play" : "pause"; text: root.flow && root.flow.paused ? root.tx("Continuar") : root.tx("Pausar"); onClicked: root.lida("flow toggle") }
+                        IconBtn { visible: !!(root.flow && root.flow.left > 1); icon: "right"; tip: root.tx("Pular"); onClicked: root.lida("flow pular") }
+                        Item { Layout.fillWidth: true }
+                        IconBtn { icon: "out"; tip: root.tx("Abrir o Flow"); onClicked: root.lida("flow abrir") }
+                        IconBtn { icon: "x"; tip: root.tx("Encerrar o Flow"); onClicked: root.lida("flow encerrar") }
+                    }
+                }
+            }
+
             // Em foco / Pomodoro
             Rectangle {
                 Layout.fillWidth: true
-                visible: !!root.fTask || root.pomoOn
+                visible: (!!root.fTask || root.pomoOn) && !root.inFlow
                 implicitHeight: fcol.implicitHeight + 24
                 radius: 14
                 border.width: 1
@@ -654,10 +769,11 @@ PlasmoidItem {
             // Nada em foco
             RowLayout {
                 Layout.fillWidth: true
-                visible: !root.fTask && !root.pomoOn
+                visible: !root.fTask && !root.pomoOn && !root.inFlow
                 spacing: 8
                 LIcon { name: "target"; size: 16; color: root.cDim }
                 Text { Layout.fillWidth: true; text: root.tx("Nada em foco. Passe o mouse numa tarefa e toque no alvo."); color: root.cMuted; font.pixelSize: 12; wrapMode: Text.Wrap }
+                Pill { small: true; icon: "flow"; text: "Flow"; onClicked: root.lida("flow comecar", root.tx("Começando…")) }
                 Pill { small: true; icon: "play"; text: "Pomodoro"; onClicked: root.lida("pomo start") }
             }
 

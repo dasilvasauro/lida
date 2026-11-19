@@ -18,7 +18,7 @@ import { t as tx, tr } from '../core/i18n.js';
 import { dial } from '../ui/dial.js';
 import { tickPrefs, setTickPrefs, tickWhere, previewRun, previewBeat, TICK_SOUNDS, TICK_ORDER, BEAT_STATES, MAX_BEATS } from '../core/metronome.js';
 
-const fmt = (sec) => {
+export const fmt = (sec) => {
   const s = Math.max(0, Math.round(sec));
   const h = Math.floor(s / 3600);
   const mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
@@ -92,7 +92,9 @@ async function pomoFinish() {
   setPomo({ mode: next, running: false, left: (next === 'focus' ? pomo.focusMin : pomo.breakMin) * 60 });
   play('bell');
   haptic('done');
-  if (was !== 'focus') return toast('Pausa encerrada. Quando quiser, comece outro ciclo.');
+  // No Flow com Pomodoro, os ciclos emendam sozinhos (foco → pausa → foco).
+  const inFlow = app.actions.flowPomo?.(was);
+  if (was !== 'focus') return inFlow || toast('Pausa encerrada. Quando quiser, comece outro ciclo.');
   const id = `ev_focus_${endedAt}`;
   if (personal.get(id)) return;
   const batch = [{ type: 'ev', id, data: { kind: 'focus', date: today(), focusSec: pomo.focusMin * 60 } }];
@@ -105,6 +107,13 @@ async function pomoFinish() {
 
 const focusSeconds = (S = P()) => sum(S.ev.filter((e) => e.kind === 'focus'), (e) => e.focusSec || 0);
 const focusToday = (S = P()) => S.ev.filter((e) => e.kind === 'focus' && e.date === today());
+
+// A cada segundo (para o Flow e outras telas que mostram tempo)
+export function onSecond(fn) {
+  ensureTicker();
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
 
 // Um relógio só para tudo: confere os cronômetros a cada segundo e atualiza o que estiver na tela.
 let ticker = 0;
@@ -123,6 +132,7 @@ function ensureTicker() {
 export function paintChip() {
   const chip = document.querySelector('[data-timer-chip]');
   if (!chip) return;
+  if (app.actions.flowChip?.(chip)) return;
   if (task.taskId) {
     const left = taskLeft();
     chip.hidden = false;
@@ -285,14 +295,14 @@ export function openPomodoro() {
 
 /* ---------- Tique do relógio e metrônomo ---------- */
 // Botão "Tique" (liga e desliga) e o montador de batida, no Pomodoro e no modo foco.
-function tickControls() {
+export function tickControls() {
   const p = tickPrefs();
   return `<div class="tick-row">
     <button type="button" class="chip tick-toggle${p.on ? ' on' : ''}" data-tick aria-pressed="${p.on}">${icon('timer', 'sm')}<span>Tique</span></button>
     <button type="button" class="chip" data-tickset>${icon('settings', 'sm')}<span>${p.beats > 1 || p.bpm !== 60 ? `${p.beats}/8 · ${p.bpm} bpm` : 'Metrônomo'}</span></button>
   </div>`;
 }
-function bindTickControls(el) {
+export function bindTickControls(el) {
   const t = el.querySelector('[data-tick]');
   if (t)
     t.onclick = () => {
@@ -312,7 +322,10 @@ const htmlEl = (h) => {
   return d.firstElementChild;
 };
 // Onde o tique deve tocar agora.
-function syncTick() {
+export function syncTick() {
+  // No Flow, o tique segue a escolha feita ao começar (e para na pausa do Flow).
+  const fl = app.actions.flowTick?.();
+  if (fl !== undefined) return tickWhere(fl);
   tickWhere(task.taskId && task.running ? 'focus' : pomo.running ? (pomo.mode === 'focus' ? 'pomo' : 'pause') : null);
 }
 
@@ -445,7 +458,9 @@ function syncLive() {
   const since = focusOf()?.since;
   if (pomo.running) return live({ title: ft ? ft.title : `Pomodoro · ${label}`, body: ft ? `Pomodoro · ${label} · ciclo de ${pomo.mode === 'focus' ? pomo.focusMin : pomo.breakMin} min` : pomo.mode === 'focus' ? `Ciclo de ${pomo.focusMin} min` : `Pausa de ${pomo.breakMin} min`, endsAt: pomo.endsAt, totalMs: (pomo.mode === 'focus' ? pomo.focusMin : pomo.breakMin) * 60000, chip: label, focus: !!ft, ...(ft ? {} : { timeoutMs: Math.max(1000, pomo.endsAt - nowMs()) }) });
   if (pomo.left !== dur()) return live({ title: ft ? ft.title : `Pomodoro · ${label} parado`, body: ft ? `Pomodoro parado · ${mm(pomo.left)} restantes` : `${mm(pomo.left)} restantes`, paused: true, leftMs: pomo.left * 1000, chip: 'Pausa', focus: !!ft });
-  // Só a tarefa em foco: contagem para cima desde que o foco começou.
+  // Só a tarefa em foco: contagem para cima desde que o foco começou (no Flow, desde que ela entrou).
+  const fl = app.actions.flowLine?.();
+  if (ft && fl) return live({ title: ft.title, body: fl.body, ...(fl.paused ? { paused: true, leftMs: 0 } : { startedAt: fl.since || nowMs() }), chip: 'Flow', focus: true });
   if (ft) return live({ title: ft.title, body: 'Em foco', startedAt: since || nowMs(), chip: 'Foco', focus: true });
   return liveTimer(null);
 }
@@ -466,6 +481,31 @@ export function focusTask(id) {
     haptic('start');
   }
   openTaskFocus();
+}
+
+// Cronômetro de uma tarefa com tempo dentro do Flow (sem abrir a tela do modo foco).
+export const taskTimer = () => ({ ...task, leftSec: task.taskId ? taskLeft() : null });
+export function taskTimerStart(id) {
+  const t = P().byId.get(id);
+  if (!t) return;
+  const total = (t.duration || 30) * 60;
+  setTask({ taskId: id, total, running: true, endsAt: nowMs() + total * 1000, left: total, rang: false });
+  timerAlert('focus', task.endsAt, tx('Tempo esgotado'), t.title);
+}
+export function taskTimerPause() {
+  if (!task.taskId || !task.running) return;
+  setTask({ running: false, left: taskLeft() });
+  timerAlert('focus', null);
+}
+export function taskTimerResume() {
+  if (!task.taskId || task.running) return;
+  setTask({ running: true, endsAt: nowMs() + task.left * 1000 });
+  if (task.left > 0) timerAlert('focus', task.endsAt, tx('Tempo esgotado'), P().byId.get(task.taskId)?.title || tx('Modo foco'));
+}
+export function taskTimerClear() {
+  if (!task.taskId) return;
+  timerAlert('focus', null);
+  setTask(null);
 }
 
 function taskTimeUp() {
@@ -561,6 +601,8 @@ const ago = (ms) => {
 };
 
 export function focusCard(S = P()) {
+  const fc = app.actions.flowCard?.(S);
+  if (fc) return fc;
   const t = focusedTask(S);
   if (!t) return '';
   const f = focusOf(S);
@@ -589,6 +631,7 @@ function fcSubs(t) {
 }
 
 export function bindFocusCard(el) {
+  app.actions.bindFlowCard?.(el);
   const card = el.querySelector('[data-focuscard]');
   if (!card) return;
   const id = card.dataset.id;

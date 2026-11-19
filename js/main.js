@@ -30,7 +30,7 @@ import { initSound } from './core/sound.js';
 import { grantPastTitles, itemsGiftText } from './core/game.js';
 import { app, personal, P, setPref } from './state.js';
 import { applyAppearance, storedAppearance, FONTS, THEMES } from './ui/theme.js';
-import { icon, initTips, toast, sheet, banner, morph } from './ui/ui.js';
+import { icon, initTips, toast, sheet, banner, morph, newTag } from './ui/ui.js';
 import { initPickers } from './ui/pickers.js';
 import { isNative, plugin, call } from './native.js';
 import * as gate from './views/gate.js';
@@ -48,6 +48,7 @@ import { initChartTips } from './ui/chart.js';
 import { editTask, openTask, addFromText } from './views/tasks.js';
 import { avatar } from './views/common.js';
 import { openPomodoro, initTimers, paintChip, pickFocus } from './views/focus.js';
+import { initFlow, openFlowSetup } from './views/flow.js';
 import { openBrain } from './views/brain.js';
 import { openSearch } from './views/search.js';
 import { fmtInt, fmtTime } from './lib/util.js';
@@ -322,6 +323,7 @@ function shell() {
       <div class="rail-tools rail-projects" data-railproj hidden></div>
       <div class="rail-tools"><span>Ferramentas</span>
         <button type="button" data-rail-tool="pick-focus">${icon('target')}<span>Focar numa tarefa</span></button>
+        <button type="button" data-rail-tool="flow">${icon('flow')}<span translate="no">Flow</span>${newTag()}</button>
         <button type="button" data-rail-tool="focus">${icon('timer')}<span>Pomodoro</span></button>
         <button type="button" data-rail-tool="brain">${icon('brain')}<span>Esvaziar a mente</span></button>
       </div>
@@ -638,6 +640,7 @@ function start() {
   reschedule();
   route();
   initTimers();
+  initFlow();
   dismissBoot();
   call('SplashScreen', 'hide');
   nativeBack();
@@ -859,6 +862,7 @@ Object.assign(app.actions, {
   tool(t) {
     if (t === 'focus') openPomodoro();
     if (t === 'pick-focus') pickFocus();
+    if (t === 'flow') (app.actions.flow || openFlowSetup)();
     if (t === 'brain') openBrain();
   },
   setTheme(id) {

@@ -13,12 +13,16 @@ const NOTE = '<div class="hub-note">' + '<b>Sem patrocínio.</b> Nenhuma indica�
 function card(c) {
   const k = KINDS[c.kind];
   const srcs = [c.src, c.src2, c.src3].filter(Boolean);
+  const free = [...(c.free || []), ...srcs.filter((x) => x.open)];
+  const paid = srcs.filter((x) => !x.open);
+  const link = (x) => `<a href="${esc(x.url)}" data-ext rel="noopener noreferrer" target="_blank" translate="no">${esc(x.label)}</a>`;
   return `<article class="hub-card k-${c.kind}" id="hub-c-${c.id}" data-hcard="${c.id}">
     <small class="hub-kind">${icon(k.icon, 'sm')}${esc(tr(k.name))}</small>
     <h3>${esc(tr(c.title))}</h3>
     <p>${esc(tr(c.text))}</p>
     ${c.tips?.length ? `<ul class="hub-tips">${c.tips.map((x) => `<li>${esc(tr(x))}</li>`).join('')}</ul>` : ''}
-    ${srcs.length ? `<p class="hub-src">${icon('open', 'sm')}${srcs.map((s) => `<a href="${esc(s.url)}" data-ext rel="noopener noreferrer" target="_blank" translate="no">${esc(s.label)}</a>`).join(' · ')}</p>` : ''}
+    ${free.length ? `<div class="hub-src free"><b>${icon('unlock', 'sm')}Ler de graça</b>${free.map(link).join('')}</div>` : ''}
+    ${paid.length ? `<div class="hub-src"><b>${icon('open', 'sm')}Artigo original</b>${paid.map(link).join('')}<small>${free.length ? 'Pode pedir assinatura; o resumo é aberto.' : 'Pode pedir assinatura; o resumo é aberto. Não achamos uma versão gratuita confiável.'}</small></div>` : ''}
   </article>`;
 }
 

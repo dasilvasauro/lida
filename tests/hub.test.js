@@ -25,7 +25,7 @@ test('cada seção e cartão tem texto em pt, en e es', () => {
 test('links só para fontes neutras (https, sem lojas nem afiliados); livros sem link', () => {
   const banned = /amazon|amzn|mercadolivre|submarino|americanas|saraiva|magazineluiza|shopee|aliexpress|bookdepository|kobo\.com|play\.google|apple\.com\/.*book|[?&](tag|ref|aff|affiliate)=/i;
   for (const c of HUB_CARD.values()) {
-    for (const s of [c.src, c.src2, c.src3].filter(Boolean)) {
+    for (const s of [c.src, c.src2, c.src3, ...(c.free || [])].filter(Boolean)) {
       assert.match(s.url, /^https:\/\//, c.id);
       assert.doesNotMatch(s.url, banned, c.id);
     }
@@ -42,4 +42,15 @@ test('os "?" do manual apontam para cartões do Hub que existem', () => {
         assert.ok(HUB_CARD.get(tp.hub), `${tp.id} → ${tp.hub}`);
       }
   assert.ok(n >= 20);
+});
+
+test('todo estudo com artigo pago tem também uma versão de acesso livre (ou fonte oficial aberta)', () => {
+  const sem = [];
+  for (const c of HUB_CARD.values()) {
+    if (c.kind !== 'estudo') continue;
+    const srcs = [c.src, c.src2, c.src3].filter(Boolean);
+    if (srcs.length && !srcs.some((x) => x.open) && !(c.free || []).length) sem.push(c.id);
+  }
+  // Locke & Latham: sem versão gratuita confiável encontrada (só cópias em ementas de curso)
+  assert.deepEqual(sem, ['locke']);
 });

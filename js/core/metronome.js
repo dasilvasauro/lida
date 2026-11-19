@@ -179,7 +179,8 @@ function restart() {
 }
 function update() {
   const p = tickPrefs();
-  const run = (wanted && p.on && p[wanted] && soundPrefs().on !== false) || preview;
+  // 'flow': o Flow liga o tique pela escolha feita ao começar (independe do "Onde tocar").
+  const run = (wanted && (wanted === 'flow' || (p.on && p[wanted])) && soundPrefs().on !== false) || preview;
   if (run) start();
   else stop();
   if (ctx && out) out.gain.value = volumeNow();

@@ -9,6 +9,7 @@ e espera. Tudo passa pelas regras do Lida: recompensas, punições, foco global 
     lida done 2 | lida done "relatório"
     lida foco "relatório"        põe em foco (lida foco sozinho abre a tela de foco ao vivo)
     lida pomo start|pause|reset|skip|status
+    lida flow [comecar|concluir|pular|pausar|continuar|encerrar]   o Flow (fila de foco)
     lida habitos | lida habito ler | lida agua copo | lida ipl
 
 Referências a tarefas: o número da última lista mostrada, o id, o título ou um pedaço único dele.
@@ -227,9 +228,21 @@ def print_tasks(tasks, focus_id=None, ids=False, numbered=True, subtasks=True, s
         save_last(tasks)
 
 
+def flow_text(fl):
+    """Linha do Flow: feitas/total, a atual e o tempo (sem as pausas)."""
+    if not fl or not fl.get("active"):
+        return ""
+    cur = (fl.get("cur") or {}).get("title")
+    mins = int((fl.get("elapsedSec") or 0) // 60)
+    state = dim(" (pausado)") if fl.get("paused") else ""
+    return cyan("≈ Flow") + f" {fl.get('done', 0)}/{fl.get('total', 0)}" + (f"  {bold(cur)}" if cur else "") + dim(f"  {mins} min") + state
+
+
 def focus_text(f, now_ms=None):
     """Linha do foco: tarefa + cronômetro (Pomodoro, modo foco ou tempo desde o início)."""
     now_ms = now_ms or time.time() * 1000
+    if f.get("flow") and f["flow"].get("active"):
+        return flow_text(f["flow"])
     task = f.get("task")
     pomo = f.get("pomo") or {}
     timer = f.get("timer")
@@ -385,6 +398,25 @@ def cmd_focus(a):
         if not sys.stdout.isatty() or a.no_screen:
             return
     focus_screen()
+
+
+FLOW_ACTIONS = {"comecar": "start", "começar": "start", "iniciar": "start", "concluir": "done", "pular": "skip", "pausar": "pause", "continuar": "resume", "encerrar": "stop", "parar": "stop", "abrir": "open"}
+
+
+def cmd_flow(a):
+    act = FLOW_ACTIONS.get(a.action, a.action)
+    if act == "open":
+        call("show", {"route": ""})
+    fl = call("flow", {"action": act})
+    if act == "open" and not a.json:
+        return
+    if a.json:
+        return print(json.dumps(fl, ensure_ascii=False))
+    if not fl.get("active"):
+        return ok("Flow encerrado.") if act == "stop" else print(dim("Nenhum Flow em andamento. Comece com: lida flow comecar"))
+    print(flow_text(fl))
+    for t in fl.get("next") or []:
+        print(dim(f"      a seguir: {t}"))
 
 
 def cmd_pomo(a):
@@ -638,7 +670,7 @@ def interactive():
 
 
 # ---------------------------------------------------------------- completions
-COMMANDS = ["ls", "hoje", "add", "done", "undone", "rm", "edit", "sub", "foco", "pomo", "habitos", "habito", "agua", "ipl", "mente", "projetos", "buscar", "abrir", "status", "fechar", "completions", "interativo"]
+COMMANDS = ["ls", "hoje", "add", "done", "undone", "rm", "edit", "sub", "foco", "flow", "pomo", "habitos", "habito", "agua", "ipl", "mente", "projetos", "buscar", "abrir", "status", "fechar", "completions", "interativo"]
 
 
 def completion(shell):
@@ -653,6 +685,7 @@ _lida() {{
     ls) COMPREPLY=( $(compgen -W "hoje atrasadas entrada proximos feitas tudo" -- "$cur") ) ;;
     pomo) COMPREPLY=( $(compgen -W "start pause toggle reset skip status iniciar pausar reiniciar pular" -- "$cur") ) ;;
     foco) COMPREPLY=( $(compgen -W "parar concluir status" -- "$cur") ) ;;
+    flow) COMPREPLY=( $(compgen -W "comecar concluir pular pausar continuar encerrar abrir status" -- "$cur") ) ;;
     agua) COMPREPLY=( $(compgen -W "copo garrafa" -- "$cur") ) ;;
     abrir) COMPREPLY=( $(compgen -W "hoje planejar habitos loja eu ajustes entrada em-breve projetos" -- "$cur") ) ;;
     completions) COMPREPLY=( $(compgen -W "bash zsh fish" -- "$cur") ) ;;
@@ -670,6 +703,7 @@ _lida() {{
     ls) _values 'lista' hoje atrasadas entrada proximos feitas tudo ;;
     pomo) _values 'ação' start pause toggle reset skip status ;;
     foco) _values 'ação' parar concluir status ;;
+    flow) _values 'ação' comecar concluir pular pausar continuar encerrar abrir status ;;
     agua) _values 'quantidade' copo garrafa ;;
     abrir) _values 'seção' hoje planejar habitos loja eu ajustes ;;
     completions) _values 'shell' bash zsh fish ;;
@@ -680,7 +714,7 @@ _lida "$@"
     if shell == "fish":
         lines = ["# lida: completar comandos (fish)", "complete -c lida -f"]
         lines += [f"complete -c lida -n '__fish_use_subcommand' -a {x}" for x in COMMANDS]
-        for sub, vals in {"ls": "hoje atrasadas entrada proximos feitas tudo", "pomo": "start pause toggle reset skip status", "foco": "parar concluir status", "agua": "copo garrafa", "abrir": "hoje planejar habitos loja eu ajustes", "completions": "bash zsh fish"}.items():
+        for sub, vals in {"ls": "hoje atrasadas entrada proximos feitas tudo", "pomo": "start pause toggle reset skip status", "foco": "parar concluir status", "flow": "comecar concluir pular pausar continuar encerrar abrir status", "agua": "copo garrafa", "abrir": "hoje planejar habitos loja eu ajustes", "completions": "bash zsh fish"}.items():
             lines.append(f"complete -c lida -n '__fish_seen_subcommand_from {sub}' -a '{vals}'")
         return "\n".join(lines) + "\n"
     raise AppError("Use bash, zsh ou fish.")
@@ -742,6 +776,8 @@ def parser():
     s.add_argument("what", nargs="?")
     s.add_argument("rest", nargs="*")
     s.add_argument("--sem-tela", dest="no_screen", action="store_true", help="não abre a tela de foco depois")
+    s = add("flow", cmd_flow, "Flow, a fila de foco: comecar | concluir | pular | pausar | continuar | encerrar | abrir | status")
+    s.add_argument("action", nargs="?", default="status", choices=["status", "start", "done", "skip", "pause", "resume", "toggle", "stop", "open", *FLOW_ACTIONS.keys()])
     s = add("pomo", cmd_pomo, "Pomodoro: start | pause | toggle | reset | skip | status", ["pomodoro"])
     s.add_argument("action", nargs="?", default="status", choices=["start", "pause", "toggle", "reset", "skip", "status", "iniciar", "pausar", "reiniciar", "pular"])
     s.add_argument("--foco", type=int, help="minutos de foco (5 a 90)")

@@ -4,7 +4,9 @@
 // Regras do conteúdo:
 //   - nada é patrocinado; livros aparecem só com autor, ano e título (sem link de loja ou afiliado);
 //   - links só para fontes neutras: o estudo original (DOI ou PubMed) e órgãos oficiais (OMS, EFSA,
-//     Academias Nacionais dos EUA);
+//     Academias Nacionais dos EUA). Como muitos artigos pedem assinatura, cada estudo também tem, quando
+//     existe, uma versão de acesso livre (free): PubMed Central, repositório da universidade, página do
+//     autor, ou um texto confiável sobre ele (BPS, SPSP, HBS, Harvard, notícia da universidade);
 //   - números citados como o estudo diz, com o tamanho e o limite de cada um.
 // kind: conceito | metodo | estudo | pratica | livro
 // i18n:skip-start
@@ -46,6 +48,7 @@ export const HUB = [
           L('Falhou um dia? Volte no seguinte. É para isso que existe o Congelamento.', 'Missed a day? Come back the next. That is what the Freeze is for.', '¿Fallaste un día? Vuelve al siguiente. Para eso existe la Congelación.'),
         ],
         src: { label: 'Lally et al. (2010), European Journal of Social Psychology', url: doi('10.1002/ejsp.674') },
+        free: [{ label: 'BPS Research Digest — How long does it take to form a habit?', url: 'https://bps.org.uk/research-digest/how-form-habit' }],
       },
       {
         id: 'wood',
@@ -58,6 +61,7 @@ export const HUB = [
         ),
         tips: [L('Sempre no mesmo momento do dia: rotinas do Lida com horário ajudam nisso.', 'Always at the same moment of the day: Lida routines with a time help with that.', 'Siempre en el mismo momento del día: las rutinas de Lida con horario ayudan con eso.')],
         src: { label: 'Wood & Neal (2007), Psychological Review', url: doi('10.1037/0033-295X.114.4.843') },
+        free: [{ label: 'Wood & Neal (2007) — PDF, USC', url: 'https://dornsife.usc.edu/wendy-wood/wp-content/uploads/sites/183/2023/10/wood.neal_.2007psychrev_a_new_look_at_habits_and_the_interface_between_habits_and_goals.pdf' }],
       },
       {
         id: 'harkin',
@@ -70,6 +74,7 @@ export const HUB = [
         ),
         tips: [L('A ofensiva, os anéis e o IPL são justamente formas de deixar o progresso visível.', 'The streak, the rings and the IPL are exactly ways to make progress visible.', 'La racha, los anillos y el IPL son justamente formas de dejar el progreso visible.')],
         src: { label: 'Harkin et al. (2016), Psychological Bulletin', url: doi('10.1037/bul0000025') },
+        free: [{ label: 'Harkin et al. (2016) — White Rose Research Online', url: 'https://eprints.whiterose.ac.uk/91437/' }],
       },
       {
         id: 'smallwins',
@@ -82,6 +87,7 @@ export const HUB = [
         ),
         tips: [L('Divida tarefas grandes em subtarefas: cada uma marcada é uma pequena vitória.', 'Split big tasks into subtasks: each one checked is a small win.', 'Divide las tareas grandes en subtareas: cada una marcada es una pequeña victoria.')],
         src: { label: 'Amabile & Kramer (2011), Harvard Business Review', url: 'https://hbr.org/2011/05/the-power-of-small-wins' },
+        free: [{ label: 'HBS Working Knowledge — How Small Wins Unleash Creativity', url: 'https://www.library.hbs.edu/working-knowledge/how-small-wins-unleash-creativity' }],
       },
       {
         id: 'freshstart',
@@ -94,6 +100,7 @@ export const HUB = [
         ),
         tips: [L('Ofensiva quebrou? Use a segunda-feira ou o dia 1 como recomeço, sem culpa.', 'Streak broke? Use Monday or the 1st as a restart, without guilt.', '¿Se rompió la racha? Usa el lunes o el día 1 como reinicio, sin culpa.')],
         src: { label: 'Dai, Milkman & Riis (2014), Management Science', url: doi('10.1287/mnsc.2014.1901') },
+        free: [{ label: 'Dai, Milkman & Riis (2014) — PDF, Wharton', url: 'https://faculty.wharton.upenn.edu/wp-content/uploads/2014/06/Dai_Fresh_Start_2014_Mgmt_Sci.pdf' }],
       },
       {
         id: 'chain',
@@ -161,6 +168,7 @@ export const HUB = [
           L('Ligue o novo hábito a um que já existe: "depois do café, alongar 5 minutos".', 'Attach the new habit to an existing one: "after coffee, stretch 5 minutes".', 'Une el nuevo hábito a uno que ya existe: "después del café, estirar 5 minutos".'),
         ],
         src: { label: 'Gollwitzer & Sheeran (2006), Advances in Experimental Social Psychology', url: doi('10.1016/S0065-2601(06)38002-1') },
+        free: [{ label: 'Gollwitzer & Sheeran (2006) — KOPS, Universität Konstanz', url: 'https://kops.uni-konstanz.de/entities/publication/2e749bfb-8533-437c-8203-7e788c910c5f' }],
       },
       {
         id: 'woop',
@@ -172,7 +180,7 @@ export const HUB = [
           'Método de Gabriele Oettingen que une el "contraste mental" (imaginar el resultado y justo después el obstáculo interno real) con un plan "si... entonces...". Imaginar solo el resultado positivo tiende a relajar; mirar el obstáculo prepara para actuar.',
         ),
         tips: [L('Wish: o que eu quero? Outcome: como vai ser? Obstacle: o que em mim atrapalha? Plan: se o obstáculo vier, eu...', 'Wish: what do I want? Outcome: what will it be like? Obstacle: what in me gets in the way? Plan: if the obstacle comes, I will...', 'Wish: ¿qué quiero? Outcome: ¿cómo será? Obstacle: ¿qué en mí lo impide? Plan: si llega el obstáculo, yo...')],
-        src: { label: 'WOOP (site oficial, gratuito)', url: 'https://woopmylife.org' },
+        src: { label: 'WOOP — woopmylife.org', open: true, url: 'https://woopmylife.org' },
       },
       {
         id: 'planfallacy',
@@ -188,6 +196,7 @@ export const HUB = [
           L('Use a duração nas tarefas e compare com o tempo real no modo foco.', 'Use durations on tasks and compare with the real time in focus mode.', 'Usa la duración en las tareas y compárala con el tiempo real en el modo enfoque.'),
         ],
         src: { label: 'Buehler, Griffin & Ross (1994), Journal of Personality and Social Psychology', url: doi('10.1037/0022-3514.67.3.366') },
+        free: [{ label: 'SPSP — Buehler and the planning fallacy', url: 'https://spsp.org/news-center/blog/buehler-planning-fallacy' }],
       },
       {
         id: 'plan',
@@ -200,6 +209,7 @@ export const HUB = [
         ),
         tips: [L('Antes de dormir, use Esvaziar a mente e dê data ao que importa.', 'Before bed, use Empty your mind and give a date to what matters.', 'Antes de dormir, usa Vaciar la mente y ponle fecha a lo que importa.')],
         src: { label: 'Masicampo & Baumeister (2011), Journal of Personality and Social Psychology', url: pubmed('21688924') },
+        free: [{ label: 'E. J. Masicampo — Wake Forest University (publications)', url: 'https://users.wfu.edu/masicaej/publications.html' }],
       },
     ],
   },
@@ -317,6 +327,7 @@ export const HUB = [
         ),
         tips: [L('Uma tarefa em foco por vez: o alvo no Lida existe para isso.', 'One task in focus at a time: the target in Lida exists for that.', 'Una tarea en enfoque a la vez: el objetivo en Lida existe para eso.')],
         src: { label: 'Ophir, Nass & Wagner (2009), PNAS', url: doi('10.1073/pnas.0903620106') },
+        free: [{ label: 'Ophir, Nass & Wagner (2009) — PubMed Central', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC2747164/' }],
       },
       {
         id: 'interrupt',
@@ -329,6 +340,7 @@ export const HUB = [
         ),
         tips: [L('Durante o Pomodoro, silencie notificações; anote o que surgir em Esvaziar a mente.', 'During a Pomodoro, silence notifications; jot down what comes up in Empty your mind.', 'Durante el Pomodoro, silencia las notificaciones; anota lo que surja en Vaciar la mente.')],
         src: { label: 'Mark, Gudith & Klocke (2008), CHI', url: doi('10.1145/1357054.1357072') },
+        free: [{ label: 'Mark, Gudith & Klocke (2008) — PDF, UC Irvine', url: 'https://www.ics.uci.edu/~gmark/chi08-mark.pdf' }],
       },
       {
         id: 'breaks',
@@ -341,6 +353,7 @@ export const HUB = [
         ),
         tips: [L('Na pausa, levante, beba água, olhe longe: nada de trocar uma tela por outra.', 'On a break, stand up, drink water, look far away: don\'t swap one screen for another.', 'En la pausa, levántate, bebe agua, mira lejos: no cambies una pantalla por otra.')],
         src: { label: 'Ariga & Lleras (2011), Cognition', url: doi('10.1016/j.cognition.2010.12.007') },
+        free: [{ label: 'University of Illinois — Brief diversions vastly improve focus', url: 'https://news.illinois.edu/brief-diversions-vastly-improve-focus-researchers-find/' }],
       },
       {
         id: 'deepwork',
@@ -409,6 +422,7 @@ export const HUB = [
         ),
         tips: [L('Aquela série só durante a faxina; aquele podcast só na caminhada.', 'That show only while cleaning; that podcast only on the walk.', 'Esa serie solo durante la limpieza; ese podcast solo en la caminata.')],
         src: { label: 'Milkman, Minson & Volpp (2014), Management Science', url: doi('10.1287/mnsc.2013.1784') },
+        free: [{ label: 'Milkman, Minson & Volpp (2014) — Penn Repository', url: 'https://repository.upenn.edu/oid_papers/150' }, { label: 'Knowledge at Wharton — The Hunger Games at the gym', url: 'https://knowledge.wharton.upenn.edu/article/researchers-used-hunger-games-encourage-healthier-choices/' }],
       },
       {
         id: 'environment',
@@ -446,7 +460,8 @@ export const HUB = [
           L('A meta de água do Lida (2 L por padrão) é das bebidas: ajuste ao seu corpo, ao calor e ao exercício.', 'Lida\'s water goal (2 L by default) is for drinks: adjust it to your body, the heat and exercise.', 'La meta de agua de Lida (2 L por defecto) es de bebidas: ajústala a tu cuerpo, al calor y al ejercicio.'),
           L('Um sinal simples: urina clara, quase sem cor, costuma indicar boa hidratação.', 'A simple sign: pale, almost colorless urine usually indicates good hydration.', 'Una señal simple: orina clara, casi sin color, suele indicar buena hidratación.'),
         ],
-        src: { label: 'EFSA (2010), Dietary Reference Values for water', url: doi('10.2903/j.efsa.2010.1459') },
+        src: { label: 'EFSA (2010), Dietary Reference Values for water', open: true, url: doi('10.2903/j.efsa.2010.1459') },
+        free: [{ label: 'Harvard T.H. Chan — The Nutrition Source: Water', url: 'https://nutritionsource.hsph.harvard.edu/water/' }],
       },
       {
         id: 'water-mind',
@@ -461,6 +476,7 @@ export const HUB = [
         src: { label: 'Ganio et al. (2011), British Journal of Nutrition', url: pubmed('21736786') },
         src2: { label: 'Armstrong et al. (2012), Journal of Nutrition', url: doi('10.3945/jn.111.142000') },
         src3: { label: 'Adan (2012), Journal of the American College of Nutrition', url: pubmed('22855911') },
+        free: [{ label: "Popkin, D'Anci & Rosenberg (2010), Water, hydration and health — PubMed Central", url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC2908954/' }],
       },
       {
         id: 'water-us',
@@ -471,7 +487,7 @@ export const HUB = [
           'The US National Academies (Institute of Medicine, 2004) set an adequate total water intake of about 3.7 L/day for men and 2.7 L/day for women, counting drinks and food. The numbers are higher than EFSA\'s because they come from different intake data; neither is a strict minimum.',
           'Las Academias Nacionales de EE. UU. (Institute of Medicine, 2004) definieron como ingesta adecuada de agua total cerca de 3,7 L/día para hombres y 2,7 L/día para mujeres, contando bebidas y alimentos. Las cifras son mayores que las de la EFSA porque parten de otros datos de consumo; ninguna es un mínimo rígido.',
         ),
-        src: { label: 'National Academies (2004), Dietary Reference Intakes for Water', url: doi('10.17226/10925') },
+        src: { label: 'National Academies (2004), Dietary Reference Intakes for Water', open: true, url: doi('10.17226/10925') },
       },
       {
         id: 'sleep',
@@ -484,6 +500,7 @@ export const HUB = [
         ),
         tips: [L('Horário de dormir também pode ser hábito: um hábito "Deitar às 23h" com alarme.', 'Bedtime can be a habit too: a "In bed by 11pm" habit with an alarm.', 'La hora de dormir también puede ser un hábito: un hábito "Acostarse a las 23h" con alarma.')],
         src: { label: 'Watson et al. (2015), Sleep', url: doi('10.5665/sleep.4716') },
+        free: [{ label: 'Watson et al. (2015) — PubMed Central', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC4434546/' }],
       },
       {
         id: 'move',
@@ -495,7 +512,7 @@ export const HUB = [
           'La Organización Mundial de la Salud recomienda a los adultos de 150 a 300 minutos de actividad física moderada por semana (o 75 a 150 de intensa), más fortalecimiento muscular 2 veces por semana, y reducir el tiempo sentado. Cualquier cantidad es mejor que nada.',
         ),
         tips: [L('Um hábito de 30 minutos, 5 dias por semana, já chega aos 150.', 'A 30-minute habit, 5 days a week, already gets you to 150.', 'Un hábito de 30 minutos, 5 días por semana, ya llega a 150.')],
-        src: { label: 'OMS (2020), Guidelines on physical activity and sedentary behaviour', url: 'https://www.who.int/publications/i/item/9789240015128' },
+        src: { label: 'WHO (2020), Guidelines on physical activity and sedentary behaviour', open: true, url: 'https://www.who.int/publications/i/item/9789240015128' },
       },
       {
         id: 'move-mind',
@@ -508,6 +525,7 @@ export const HUB = [
         ),
         tips: [L('Use a pausa longa do Pomodoro para caminhar uns minutos.', 'Use the long Pomodoro break for a few minutes\' walk.', 'Usa la pausa larga del Pomodoro para caminar unos minutos.')],
         src: { label: 'Hillman, Erickson & Kramer (2008), Nature Reviews Neuroscience', url: doi('10.1038/nrn2298') },
+        free: [{ label: 'Erickson et al. (2019) — PubMed Central', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC6527141/' }],
       },
     ],
   },
@@ -532,6 +550,7 @@ export const HUB = [
         ),
         tips: [L('Ofensiva quebrou? Leia o resumo do dia como dado, não como sentença.', 'Streak broke? Read the day\'s summary as data, not as a verdict.', '¿Se rompió la racha? Lee el resumen del día como dato, no como sentencia.')],
         src: { label: 'Breines & Chen (2012), Personality and Social Psychology Bulletin', url: doi('10.1177/0146167212445599') },
+        free: [{ label: 'Kelly McGonigal (Stanford) — Psychology Today', url: 'https://www.psychologytoday.com/us/blog/the-science-of-willpower/201206/does-self-compassion-or-criticism-motivate-self-improvement' }],
       },
       {
         id: 'mindset',

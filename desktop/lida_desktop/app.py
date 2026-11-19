@@ -40,7 +40,7 @@ from PySide6.QtWebEngineCore import (  # noqa: E402
 from PySide6.QtWebEngineWidgets import QWebEngineView  # noqa: E402
 from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QMessageBox, QSystemTrayIcon  # noqa: E402
 
-ACTIONS = {"nova-tarefa": ("ui", {"action": "new-task"}), "pomodoro": ("ui", {"action": "tool", "value": "focus"}), "focar": ("ui", {"action": "tool", "value": "pick-focus"}), "buscar": ("ui", {"action": "search"}), "mente": ("ui", {"action": "tool", "value": "brain"})}
+ACTIONS = {"nova-tarefa": ("ui", {"action": "new-task"}), "pomodoro": ("ui", {"action": "tool", "value": "focus"}), "focar": ("ui", {"action": "tool", "value": "pick-focus"}), "flow": ("ui", {"action": "tool", "value": "flow"}), "buscar": ("ui", {"action": "search"}), "mente": ("ui", {"action": "tool", "value": "brain"})}
 
 
 def send_to_running(req):
@@ -344,6 +344,10 @@ class Window(QMainWindow):
         self.a_stopfocus = self._act(f, tr("Parar foco"), lambda: self._exec_js(0, "focus", json.dumps({"action": "stop"})))
         self.a_donefocus = self._act(f, tr("Concluir a tarefa em foco"), lambda: self._exec_js(0, "focus", json.dumps({"action": "done"})), "Ctrl+Shift+D")
         f.addSeparator()
+        self._act(f, tr("Flow…"), lambda: (self.show_window(), self.ui("tool", "flow")), "Ctrl+Shift+L")
+        self._act(f, tr("Pausar / continuar o Flow"), lambda: self._exec_js(0, "flow", json.dumps({"action": "toggle"})))
+        self._act(f, tr("Concluir e ir para a próxima do Flow"), lambda: self._exec_js(0, "flow", json.dumps({"action": "done"})))
+        f.addSeparator()
         self.a_pomo = self._act(f, tr("Iniciar Pomodoro"), lambda: self._exec_js(0, "pomo", json.dumps({"action": "toggle"})), "Ctrl+P")
         self._act(f, tr("Reiniciar Pomodoro"), lambda: self._exec_js(0, "pomo", json.dumps({"action": "reset"})))
         self._act(f, tr("Pular para a pausa / foco"), lambda: self._exec_js(0, "pomo", json.dumps({"action": "skip"})))
@@ -459,6 +463,7 @@ class Window(QMainWindow):
         menu.addAction(tr("Nova tarefa"), lambda: (self.show_window(), self.ui("new-task")))
         menu.addSeparator()
         self.t_focus = menu.addAction(tr("Focar numa tarefa…"), lambda: (self.show_window(), self.ui("tool", "pick-focus")))
+        menu.addAction(tr("Flow…"), lambda: (self.show_window(), self.ui("tool", "flow")))
         self.t_stop = menu.addAction(tr("Parar foco"), lambda: self._exec_js(0, "focus", json.dumps({"action": "stop"})))
         self.t_pomo = menu.addAction(tr("Iniciar Pomodoro"), lambda: self._exec_js(0, "pomo", json.dumps({"action": "toggle"})))
         menu.addSeparator()
@@ -479,6 +484,9 @@ class Window(QMainWindow):
         left = (pomo.get("endsAt", 0) - now) / 1000 if running else pomo.get("leftSec", 0)
         timer = f.get("timer")
         parts = []
+        fl = f.get("flow") or {}
+        if fl.get("active"):
+            parts.append(tr("Flow pausado: {0} de {1}" if fl.get("paused") else "Flow: {0} de {1}", fl.get("done", 0), fl.get("total", 0)))
         if task:
             parts.append(tr("Em foco: {0}", task["title"]))
         if timer:

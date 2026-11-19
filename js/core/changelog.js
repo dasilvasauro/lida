@@ -4,6 +4,41 @@
 // en/es (opcional): { title, items: [textos na mesma ordem] } para quem usa o app em inglês ou espanhol.
 export const CHANGELOG = [
   {
+    v: '3.0.0-alfa.23',
+    date: '2026-11-19',
+    title: 'Flow: foco em fila',
+    items: [
+      ['novo', 'Flow: uma tarefa por vez, em tela cheia; concluiu, a próxima aparece. Antes de começar, você monta a fila (hoje, atrasadas e rotinas; tira, acrescenta e arrasta), escolhe a ordem e o que fazer quando chega o horário de uma tarefa. Tem pausa, tique, Pomodoro e barras de atividade que não gravam nada.'],
+      ['novo', 'Tarefas com tempo começam o cronômetro sozinhas no Flow, e as com horário entram na hora certa (com aviso de 10 s, na hora ou depois da atual, como você escolher).'],
+      ['novo', 'Widget Foco do KDE: durante o Flow, fica verde-água e sem segundos; ao clicar, mostra o resumo, a próxima e os botões Concluir, Pausar e Pular. Na CLI: lida flow.'],
+      ['novo', 'Conquistas do Flow: dez novas, de "Primeiro Flow" a "Cem horas de Flow".'],
+      ['melhoria', 'Hub: cada estudo pago ganhou uma versão de leitura gratuita e confiável (PubMed Central, repositórios das universidades, sites dos autores e revistas).'],
+      ['correcao', 'Hub no celular: o texto não é mais cortado na borda direita.'],
+    ],
+    en: {
+      title: 'Flow: focus in a queue',
+      items: [
+        'Flow: one task at a time, full screen; finish one and the next appears. Before starting, you build the queue (today, overdue and routines; remove, add and drag), choose the order and what happens when a task\'s time comes. It has pause, tick, Pomodoro and activity bars that record nothing.',
+        'Timed tasks start their timer on their own in Flow, and scheduled ones come in at the right time (with a 10 s warning, right away or after the current one, as you choose).',
+        'KDE Focus widget: during Flow, it turns teal with no seconds; click it to see the summary, what\'s next and the Complete, Pause and Skip buttons. In the CLI: lida flow.',
+        'Flow achievements: ten new ones, from "First Flow" to "A hundred hours of Flow".',
+        'Hub: every paywalled study now has a free, reliable version to read (PubMed Central, university repositories, authors\' and journals\' sites).',
+        'Hub on phones: text is no longer cut off at the right edge.',
+      ],
+    },
+    es: {
+      title: 'Flow: enfoque en cola',
+      items: [
+        'Flow: una tarea a la vez, a pantalla completa; terminas una y aparece la siguiente. Antes de empezar, armas la cola (hoy, atrasadas y rutinas; quitas, añades y arrastras), eliges el orden y qué hacer cuando llega la hora de una tarea. Tiene pausa, tic, Pomodoro y barras de actividad que no guardan nada.',
+        'Las tareas con tiempo inician su cronómetro solas en el Flow, y las que tienen hora entran a tiempo (con aviso de 10 s, al momento o después de la actual, como elijas).',
+        'Widget Enfoque de KDE: durante el Flow, se vuelve verde agua y sin segundos; al hacer clic, muestra el resumen, la siguiente y los botones Completar, Pausar y Saltar. En la CLI: lida flow.',
+        'Logros del Flow: diez nuevos, de "Primer Flow" a "Cien horas de Flow".',
+        'Hub: cada estudio de pago tiene ahora una versión gratuita y confiable para leer (PubMed Central, repositorios de universidades, sitios de autores y revistas).',
+        'Hub en el móvil: el texto ya no se corta en el borde derecho.',
+      ],
+    },
+  },
+  {
     v: '3.0.0-alfa.22',
     date: '2026-11-19',
     title: 'Congelamento de Ofensiva, comemoração da meta e Hub de Produtividade',

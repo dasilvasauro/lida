@@ -1,0 +1,5 @@
+Flow: foco em fila
+
+• Novo: Flow: uma tarefa por vez, em tela cheia; concluiu, a próxima aparece. Antes de começar, você monta a fila (hoje, atrasadas e rotinas; tira, acrescenta e arrasta), escolhe a ordem e o que fazer quando chega o horário de uma tarefa. Tem pausa, tique, Pomodoro e barras de atividade que não gravam nada.
+• Novo: Tarefas com tempo começam o cronômetro sozinhas no Flow, e as com horário entram na hora certa (com…
+Mais em Ajustes > Novidades e correções.

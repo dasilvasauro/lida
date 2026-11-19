@@ -42,8 +42,13 @@ FIXTURE = {
                 "days": [{"d": "x", "l": l, "s": s, "today": i == 6} for i, (l, s) in enumerate(zip("DSTQQSS", [62, 88, None, 74, 55, 70, 41]))]},
 }
 
+# Mesmo estado, com um Flow em andamento (o widget de foco muda de cor e de jeito)
+FLOW_FIXTURE = json.loads(json.dumps(FIXTURE))
+FLOW_FIXTURE["focus"]["flow"] = {"active": True, "paused": False, "startedAt": now - 1500000, "elapsedSec": 1380, "done": 3, "left": 5, "total": 8, "order": "priority",
+                                 "cur": {"id": "t1", "title": "Revisar a proposta do cliente", "kind": "normal", "priority": "P1"}, "next": ["Caminhada", "Responder e-mails", "Organizar a despensa"]}
 
-def check(widget):
+
+def check(widget, fixture=FIXTURE):
     src = PLASMOIDS / widget / "contents" / "ui"
     base = Path(tempfile.mkdtemp())
     tmp = base / "ui"
@@ -61,7 +66,7 @@ def check(widget):
         (tmp / f.name).write_text(re.sub(r"^\s*Plasmoid\.icon:.*$", "", f.read_text(encoding="utf-8"), flags=re.M), encoding="utf-8")
     view = QQuickView()
     view.engine().addImportPath(str(HERE / "qmlstub"))
-    view.rootContext().setContextProperty("fixtureState", json.dumps(FIXTURE))
+    view.rootContext().setContextProperty("fixtureState", json.dumps(fixture))
     msgs = []
     view.engine().warnings.connect(lambda ws: msgs.extend(w.toString() for w in ws))
     view.setSource(QUrl.fromLocalFile(str(tmp / "main.qml")))
@@ -91,6 +96,7 @@ def main():
     qInstallMessageHandler(on_msg)
     app = QGuiApplication(sys.argv)
     results = {w: check(w) for w in ("org.lida.foco", "org.lida.aneis", "org.lida.ofensiva", "org.lida.semana")}
+    results["org.lida.foco-flow"] = check("org.lida.foco", FLOW_FIXTURE)
     failed = []
 
     def done():

@@ -16,6 +16,7 @@ import { dayIPL, monthIPL, grade } from './core/ipl.js';
 import { parseQuick } from './core/parse.js';
 import { addFromText } from './views/tasks.js';
 import { focusOn, pomoStart, pomoPause, pomoReset, pomoSkip, pomoSet, pomoState } from './views/focus.js';
+import { flowCommand } from './views/flow.js';
 import { storedAppearance, THEMES, THEME_ORDER, FONTS, FONT_ORDER, SIZES, themeName } from './ui/theme.js';
 import { soundPrefs, setSoundPrefs } from './core/sound.js';
 import * as notify from './core/notify.js';
@@ -125,6 +126,19 @@ function taskList(S, view, project) {
 /* ---------- Estado para o app (menu, bandeja, widgets) ---------- */
 // Textos dos widgets do Plasma (vão traduzidos no estado, em txt; o widget usa o português se faltar).
 const PLASMA_TEXTS = [
+  // Flow ("Flow" fica igual em todos os idiomas)
+  'Flow: {0} de {1}',
+  'Flow pausado: {0} de {1}',
+  'pausado',
+  '{0} min',
+  '{0} de {1} concluídas',
+  'A seguir',
+  'Pausar',
+  'Continuar',
+  'Pular',
+  'Abrir o Flow',
+  'Encerrar o Flow',
+  'Começando…',
   'Em foco: {0}',
   'O Lida está fechado',
   'O Lida está fechado.',
@@ -314,6 +328,8 @@ const COMMANDS = {
     } else if (ref) await focusOn(findTask(P(), ref).id);
     return focusSummary(P());
   },
+  // Flow: start | done | skip | pause | resume | toggle | stop | status
+  flow: async ({ action = 'status' } = {}) => flowCommand(action),
   pomo: async ({ action = 'status', focusMin, breakMin } = {}) => {
     if (focusMin || breakMin) pomoSet({ focusMin, breakMin });
     if (action === 'start') pomoStart();

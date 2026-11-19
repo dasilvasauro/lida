@@ -68,7 +68,8 @@ Funciona no navegador (celular e computador) e como app Android, offline, com os
 | alfa 19 | **Pomodoro novo** (escolha do tempo girando como um timer de cozinha, com vibração), **tique do relógio** e **metrônomo** (até 8/8, seis sons) no Pomodoro e no modo foco com tempo | Pronta |
 | alfa 20 | **Chave de recuperação** da senha, **exportar** tarefas e hábitos em CSV e tudo em JSON, **tour de boas-vindas** nas contas novas, **"?" de ajuda** nas seções e **manual** em Ajustes | Pronta |
 | alfa 21 | **Calendário** (mês, semana e dia, com agendas externas: Google Agenda e links iCal), **widget de adição rápida** no Android, **conquistas da Ofensiva** e o **Lidinho Kaizen**, sons **Metal, Piano e Mokia**, temas **AMOLED Mono e Yaru** e o fim do vazamento de memória dos widgets do Plasma | Pronta |
-| alfa 22 | **Congelamento de Ofensiva**, **comemoração da meta** com o horário médio, **Hub de Produtividade** na aba Eu, demo com ritmo **Impecável** e nove meses, ajustes no "?" e no ouro de seis dígitos | **Esta versão** |
+| alfa 22 | **Congelamento de Ofensiva**, **comemoração da meta** com o horário médio, **Hub de Produtividade** na aba Eu, demo com ritmo **Impecável** e nove meses, ajustes no "?" e no ouro de seis dígitos | Pronta |
+| alfa 23 | **Flow** (foco em fila, em tela cheia, com horários, pausa, tique, Pomodoro e barras de atividade), Flow no **widget Foco do KDE** e na CLI, **conquistas do Flow**, **leitura gratuita** para os estudos do Hub e o Hub sem cortes no celular | **Esta versão** |
 
 ## Como o jogo funciona
 
@@ -405,6 +406,7 @@ lida foco "relatório"                  # põe em foco (celular, bandeja e widge
 lida foco                              # tela de foco ao vivo: espaço Pomodoro, c concluir, s parar, ↑↓ e enter subtarefas
 lida foco parar | concluir | status
 lida pomo start|pause|toggle|reset|skip|status [--foco 50 --pausa 10]
+lida flow [comecar|concluir|pular|pausar|continuar|encerrar|abrir]   # o Flow (sem nada: como está)
 lida habitos · lida habito ler [-u] · lida agua [copo|garrafa|300] [-u]
 lida ipl · lida mente "ligar pro banco" · lida projetos · lida buscar luz
 lida abrir [hoje|habitos|eu|ajustes] · lida status · lida fechar
@@ -439,6 +441,10 @@ Clique com o botão direito no painel ou na área de trabalho > **Adicionar widg
   enche). Pisca verde quando uma tarefa é concluída em qualquer lugar. **Clique** para as ações rápidas: adicionar em
   linguagem natural, concluir/Pomodoro/parar o foco, abas Hoje · Atrasadas · Entrada (concluir ou focar cada tarefa),
   hábitos (toque soma um) e água (Copo, Garrafa).
+  **Durante um Flow**, o widget muda de cor e de jeito: verde-água, ondas no lugar do ponto vermelho, a tarefa atual
+  e feitas/total, **sem segundos ao vivo** (o relógio do widget nem corre com ele fechado). Ao clicar, o resumo do
+  Flow: a atual, quantas já foram, os minutos de Flow (sem as pausas), as três próximas e Concluir, Pausar/Continuar,
+  Pular, Abrir e Encerrar. Sem nada em foco, há um botão para começar um Flow com a fila de hoje.
 - **Lida · Anéis**: os três anéis do dia (tarefas, hábitos e água), com legenda, IPL e botões Copo/Garrafa.
 - **Lida · Ofensiva**: o Lidinho com a cara do momento, a ofensiva, o que falta hoje e a semana. No painel, a chama
   e o número.
@@ -555,6 +561,11 @@ isso*. Cada cartão diz o que é (conceito, método, estudo, prática ou livro),
 como aplicar no Lida e, quando é um estudo, o link para o artigo original (DOI ou PubMed) ou para o órgão oficial (OMS,
 EFSA, Academias Nacionais dos EUA). Tem busca em tudo.
 
+**Ler de graça:** muitos artigos originais ficam atrás de assinatura. Por isso cada estudo pago traz também uma versão
+gratuita e confiável: PubMed Central, repositórios das universidades (White Rose, Penn, Konstanz), páginas dos próprios
+autores, a revista da Sociedade Britânica de Psicologia, Harvard e sites de notícias das universidades. O teste exige
+uma alternativa gratuita para cada estudo pago (a única exceção hoje é Locke & Latham, sem cópia aberta confiável).
+
 **Sem patrocínio:** nenhuma indicação é paga, não há links de loja nem de afiliado, e livros aparecem só com autor, ano e
 título. O teste `tests/hub.test.js` falha se aparecer link de loja ou afiliado, ou link num livro. A parte de corpo é
 informação geral, não orientação médica.
@@ -641,6 +652,32 @@ No editor de cada um, escolha um toque em **Alarme de tela cheia** (rotinas e h�
   normal ou mudo; andamento de 30 a 200 bpm; seis sons (relógio de parede, bloco de madeira, claves, bipe digital,
   pulso suave e gota); escolha se toca no foco, na pausa e no modo foco. Enquanto o montador está aberto, ele toca
   para você ouvir. Preferência de cada aparelho; o volume segue também o de Ajustes > Sons.
+
+### Flow
+
+Foco em fila: **uma tarefa por vez, em tela cheia**; concluiu, a próxima já aparece. "Flow" é o nome do modo e não se
+traduz. Fica em Hoje (botão **Flow**), na barra lateral do computador, no menu Foco e na bandeja do Linux
+(Ctrl+Shift+L) e na CLI (`lida flow`).
+
+- **Antes de começar**: a fila vem com as tarefas de hoje, as atrasadas e as rotinas do dia. Dá para **tirar**,
+  **acrescentar** (da Entrada ou de outros dias) e **arrastar** pela alça (ou setas do teclado). A ordem pode ser por
+  **prioridade** (e horário), **data de criação** ou **personalizada** (arrastar já muda para ela).
+- **Tarefas com horário**: você escolhe, antes de começar, o que acontece quando chega a hora de uma tarefa da fila:
+  **avisar e trocar** (contagem de 10 s com "Trocar agora" e "Depois desta"; a atual volta para o topo), **trocar na
+  hora** ou **esperar a atual** (ela entra logo depois). Só valem os horários depois do começo do Flow; rotinas usam o
+  alarme da rotina.
+- **Tarefas com tempo** começam o cronômetro sozinhas quando chegam à frente da fila (com tempo extra se passar).
+  As outras mostram há quanto tempo você está nela. Rotinas e tarefas com subtarefas mostram os itens para marcar.
+- **Pausa**: para os relógios (o do Flow, o da tarefa e o Pomodoro) e a fila continua do mesmo ponto.
+- **Tique e Pomodoro**: escolhidos no começo e trocáveis durante; com o Pomodoro, foco e pausa emendam sozinhos.
+- **Visualizador de atividade** (ligado por padrão, dá para desligar): barras que sobem quando você digita ou mexe o
+  mouse/toca, com "Digitando", "Mexendo" ou "Parado há N min". Só conta *quantas* teclas e movimentos houve no último
+  segundo, enquanto a tela do Flow está aberta; desenha uma vez por segundo e **não grava nem envia nada**.
+- **Entre aparelhos**: o Flow fica no mesmo registro sincronizado do foco, então o celular, o computador, a
+  notificação, o widget e a CLI veem a mesma fila. Uma tarefa concluída fora do Flow sai da fila e conta.
+- **No fim**: resumo com concluídas, tempo de Flow (sem as pausas), puladas e pausas. Cada Flow com ao menos uma tarefa
+  conta para as **conquistas do Flow** (primeiro Flow; 5, 10 e 20 tarefas num Flow; fila zerada; 10 e 50 Flows; 10 e
+  100 horas).
 
 ## Widgets (Android)
 

@@ -13,6 +13,7 @@ import { isDone, isScheduled, bestStreak, daysClean } from './habits.js';
 import { strip } from './tasks.js';
 import { tr, fill, num } from './i18n.js';
 import { streakStats } from './streak.js';
+import { flowStats } from './flow.js';
 
 // Ouro por dificuldade.
 export const TIER_GOLD = { 1: 100, 2: 250, 3: 600, 4: 1400, 5: 3000 };
@@ -34,6 +35,7 @@ export const CATS = {
   off: { icon: 'coffee', name: { pt: 'Dias de folga', en: 'Days off', es: 'Días libres' } },
   journey: { icon: 'compass', name: { pt: 'Jornada', en: 'Journey', es: 'Trayectoria' } },
   ofensiva: { icon: 'flame', name: { pt: 'Ofensiva', en: 'Streak', es: 'Racha' } },
+  flow: { icon: 'flow', name: { pt: 'Flow', en: 'Flow', es: 'Flow' } },
 };
 
 // [id, grupo, ícone, dificuldade, métrica, meta, nome, descrição]  ({n} = meta)
@@ -57,6 +59,9 @@ const O_HAB = L('Cumpra hábitos {n} vezes em dias de folga.', 'Complete habits 
 const J_LVL = L('Chegue ao nível {n}.', 'Reach level {n}.', 'Llega al nivel {n}.');
 const J_FOCUS = L('Some {n} horas de foco no Pomodoro.', 'Log {n} hours of Pomodoro focus.', 'Suma {n} horas de enfoque en Pomodoro.');
 const J_MOOD = L('Registre o seu humor em {n} dias.', 'Log your mood on {n} days.', 'Registra tu ánimo en {n} días.');
+const F_ONE = L('Conclua {n} tarefas num só Flow.', 'Complete {n} tasks in a single Flow.', 'Completa {n} tareas en un solo Flow.');
+const F_N = L('Faça {n} Flows (com pelo menos uma tarefa concluída).', 'Do {n} Flows (with at least one task completed).', 'Haz {n} Flows (con al menos una tarea completada).');
+const F_H = L('Some {n} horas de Flow.', 'Log {n} hours of Flow.', 'Suma {n} horas de Flow.');
 const S_RUN = L('Mantenha a ofensiva por {n} dias seguidos.', 'Keep your streak going for {n} days in a row.', 'Mantén la racha durante {n} días seguidos.');
 const DEFS = [
   // Tarefas criadas e concluídas
@@ -199,6 +204,17 @@ const DEFS = [
   ['s_phoenix', 'ofensiva', 'bird', 2, 'streakRuns7', 2, L('Fênix', 'Phoenix', 'Fénix'), L('Chegue a 7 dias de ofensiva, deixe quebrar e chegue a 7 de novo ({n} vezes ao todo).', 'Reach a 7-day streak, let it break and reach 7 again ({n} times in all).', 'Llega a 7 días de racha, déjala romperse y llega a 7 otra vez ({n} veces en total).')],
   ['s_full10', 'ofensiva', 'checks', 2, 'streakFull', 10, L('Tudo ou nada', 'All or nothing', 'Todo o nada'), L('Faça 100% do programado em {n} dias.', 'Get 100% of what was planned done on {n} days.', 'Haz el 100% de lo programado en {n} días.')],
   ['s_full50', 'ofensiva', 'medal', 4, 'streakFull', 50, L('Sem sobras', 'Nothing left over', 'Sin sobras'), L('Faça 100% do programado em {n} dias.', 'Get 100% of what was planned done on {n} days.', 'Haz el 100% de lo programado en {n} días.')],
+  // Flow ("Flow" é o nome do modo: fica igual nos três idiomas)
+  ['f_1', 'flow', 'flow', 1, 'flows', 1, L('Primeiro Flow', 'First Flow', 'Primer Flow'), L('Conclua pelo menos uma tarefa num Flow.', 'Complete at least one task in a Flow.', 'Completa al menos una tarea en un Flow.')],
+  ['f_t5', 'flow', 'checks', 1, 'flowBest', 5, L('Embalado', 'On a roll', 'Embalado'), F_ONE],
+  ['f_t10', 'flow', 'bolt', 2, 'flowBest', 10, L('Correnteza', 'Current', 'Corriente'), F_ONE],
+  ['f_t20', 'flow', 'rocket', 3, 'flowBest', 20, L('Maré alta', 'High tide', 'Marea alta'), F_ONE],
+  ['f_clear', 'flow', 'sparkles', 2, 'flowCleared', 1, L('Fila zerada', 'Queue cleared', 'Cola vacía'), L('Termine a fila inteira de um Flow (3 tarefas ou mais).', 'Finish the whole queue of a Flow (3 tasks or more).', 'Termina toda la cola de un Flow (3 tareas o más).')],
+  ['f_clear10', 'flow', 'medal', 3, 'flowCleared', 10, L('Nada fica para trás', 'Nothing left behind', 'Nada queda atrás'), L('Termine a fila inteira de {n} Flows (3 tarefas ou mais).', 'Finish the whole queue of {n} Flows (3 tasks or more).', 'Termina toda la cola de {n} Flows (3 tareas o más).')],
+  ['f_x10', 'flow', 'repeat', 2, 'flows', 10, L('Freguês do Flow', 'Flow regular', 'Habitual del Flow'), F_N],
+  ['f_x50', 'flow', 'crown', 4, 'flows', 50, L('Vive no Flow', 'Lives in Flow', 'Vive en Flow'), F_N],
+  ['f_h10', 'flow', 'timer', 2, 'flowH', 10, L('Dez horas de Flow', 'Ten hours of Flow', 'Diez horas de Flow'), F_H],
+  ['f_h100', 'flow', 'hourglass', 4, 'flowH', 100, L('Cem horas de Flow', 'A hundred hours of Flow', 'Cien horas de Flow'), F_H],
 ];
 
 export const ACHIEVEMENTS = DEFS.map(([id, cat, icon, tier, metric, goal, name, desc]) => ({ id, cat, icon, tier, metric, goal, name, desc, gold: TIER_GOLD[tier] }));
@@ -291,6 +307,7 @@ export function achStats(S = P()) {
     streakBest: sk.best,
     streakRuns7: sk.runs7,
     streakFull: sk.full,
+    ...flowStats(S),
     sprints: done.filter((t) => t.kind === 'sprint').length,
     challenges: done.filter((t) => t.kind === 'challenge').length,
     early: done.filter((t) => hourOf(t) >= 0 && hourOf(t) < 8).length,
